@@ -12,39 +12,59 @@
 namespace das {
 #include "dasIMGUI_NODE_EDITOR.func.aot.decl.inc"
 void Module_dasIMGUI_NODE_EDITOR::initFunctions_3() {
-	addExtern< bool (*)() , ax::NodeEditor::AcceptNewItem >(*this,lib,"AcceptNewItem",SideEffects::worstDefault,"ax::NodeEditor::AcceptNewItem");
-	addExtern< bool (*)(const ImVec4 &,float) , ax::NodeEditor::AcceptNewItem >(*this,lib,"AcceptNewItem",SideEffects::worstDefault,"ax::NodeEditor::AcceptNewItem")
+	makeExtern< bool (*)() , ax::NodeEditor::AcceptNewItem , SimNode_ExtFuncCall >(lib,"AcceptNewItem","ax::NodeEditor::AcceptNewItem")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< bool (*)(const ImVec4 &,float) , ax::NodeEditor::AcceptNewItem , SimNode_ExtFuncCall >(lib,"AcceptNewItem","ax::NodeEditor::AcceptNewItem")
 		->args({"color","thickness"})
-		->arg_init(1,make_smart<ExprConstFloat>(1.00000000000000000));
-	addExtern< void (*)() , ax::NodeEditor::RejectNewItem >(*this,lib,"RejectNewItem",SideEffects::worstDefault,"ax::NodeEditor::RejectNewItem");
-	addExtern< void (*)(const ImVec4 &,float) , ax::NodeEditor::RejectNewItem >(*this,lib,"RejectNewItem",SideEffects::worstDefault,"ax::NodeEditor::RejectNewItem")
+		->arg_init(1,make_smart<ExprConstFloat>(1.00000000000000000))
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)() , ax::NodeEditor::RejectNewItem , SimNode_ExtFuncCall >(lib,"RejectNewItem","ax::NodeEditor::RejectNewItem")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(const ImVec4 &,float) , ax::NodeEditor::RejectNewItem , SimNode_ExtFuncCall >(lib,"RejectNewItem","ax::NodeEditor::RejectNewItem")
 		->args({"color","thickness"})
-		->arg_init(1,make_smart<ExprConstFloat>(1.00000000000000000));
-	addExtern< void (*)() , ax::NodeEditor::EndCreate >(*this,lib,"EndCreate",SideEffects::worstDefault,"ax::NodeEditor::EndCreate");
-	addExtern< bool (*)() , ax::NodeEditor::BeginDelete >(*this,lib,"BeginDelete",SideEffects::worstDefault,"ax::NodeEditor::BeginDelete");
-	addExtern< bool (*)(ax::NodeEditor::LinkId *,ax::NodeEditor::PinId *,ax::NodeEditor::PinId *) , ax::NodeEditor::QueryDeletedLink >(*this,lib,"QueryDeletedLink",SideEffects::worstDefault,"ax::NodeEditor::QueryDeletedLink")
+		->arg_init(1,make_smart<ExprConstFloat>(1.00000000000000000))
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)() , ax::NodeEditor::EndCreate , SimNode_ExtFuncCall >(lib,"EndCreate","ax::NodeEditor::EndCreate")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< bool (*)() , ax::NodeEditor::BeginDelete , SimNode_ExtFuncCall >(lib,"BeginDelete","ax::NodeEditor::BeginDelete")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< bool (*)(ax::NodeEditor::LinkId *,ax::NodeEditor::PinId *,ax::NodeEditor::PinId *) , ax::NodeEditor::QueryDeletedLink , SimNode_ExtFuncCall >(lib,"QueryDeletedLink","ax::NodeEditor::QueryDeletedLink")
 		->args({"linkId","startId","endId"})
 		->arg_init(1,make_smart<ExprConstPtr>())
-		->arg_init(2,make_smart<ExprConstPtr>());
-	addExtern< bool (*)(ax::NodeEditor::NodeId *) , ax::NodeEditor::QueryDeletedNode >(*this,lib,"QueryDeletedNode",SideEffects::worstDefault,"ax::NodeEditor::QueryDeletedNode")
-		->args({"nodeId"});
-	addExtern< bool (*)() , ax::NodeEditor::AcceptDeletedItem >(*this,lib,"AcceptDeletedItem",SideEffects::worstDefault,"ax::NodeEditor::AcceptDeletedItem");
-	addExtern< void (*)() , ax::NodeEditor::RejectDeletedItem >(*this,lib,"RejectDeletedItem",SideEffects::worstDefault,"ax::NodeEditor::RejectDeletedItem");
-	addExtern< void (*)() , ax::NodeEditor::EndDelete >(*this,lib,"EndDelete",SideEffects::worstDefault,"ax::NodeEditor::EndDelete");
-	addExtern< void (*)(ax::NodeEditor::NodeId,const ImVec2 &) , ax::NodeEditor::SetNodePosition >(*this,lib,"SetNodePosition",SideEffects::worstDefault,"ax::NodeEditor::SetNodePosition")
-		->args({"nodeId","editorPosition"});
-	addExtern< ImVec2 (*)(ax::NodeEditor::NodeId) , ax::NodeEditor::GetNodePosition >(*this,lib,"GetNodePosition",SideEffects::worstDefault,"ax::NodeEditor::GetNodePosition")
-		->args({"nodeId"});
-	addExtern< ImVec2 (*)(ax::NodeEditor::NodeId) , ax::NodeEditor::GetNodeSize >(*this,lib,"GetNodeSize",SideEffects::worstDefault,"ax::NodeEditor::GetNodeSize")
-		->args({"nodeId"});
-	addExtern< void (*)(ax::NodeEditor::NodeId) , ax::NodeEditor::CenterNodeOnScreen >(*this,lib,"CenterNodeOnScreen",SideEffects::worstDefault,"ax::NodeEditor::CenterNodeOnScreen")
-		->args({"nodeId"});
-	addExtern< void (*)(ax::NodeEditor::NodeId) , ax::NodeEditor::RestoreNodeState >(*this,lib,"RestoreNodeState",SideEffects::worstDefault,"ax::NodeEditor::RestoreNodeState")
-		->args({"nodeId"});
-	addExtern< void (*)() , ax::NodeEditor::Suspend >(*this,lib,"Suspend",SideEffects::worstDefault,"ax::NodeEditor::Suspend");
-	addExtern< void (*)() , ax::NodeEditor::Resume >(*this,lib,"Resume",SideEffects::worstDefault,"ax::NodeEditor::Resume");
-	addExtern< bool (*)() , ax::NodeEditor::IsSuspended >(*this,lib,"IsSuspended",SideEffects::worstDefault,"ax::NodeEditor::IsSuspended");
-	addExtern< bool (*)() , ax::NodeEditor::IsActive >(*this,lib,"IsActive",SideEffects::worstDefault,"ax::NodeEditor::IsActive");
+		->arg_init(2,make_smart<ExprConstPtr>())
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< bool (*)(ax::NodeEditor::NodeId *) , ax::NodeEditor::QueryDeletedNode , SimNode_ExtFuncCall >(lib,"QueryDeletedNode","ax::NodeEditor::QueryDeletedNode")
+		->args({"nodeId"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< bool (*)() , ax::NodeEditor::AcceptDeletedItem , SimNode_ExtFuncCall >(lib,"AcceptDeletedItem","ax::NodeEditor::AcceptDeletedItem")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)() , ax::NodeEditor::RejectDeletedItem , SimNode_ExtFuncCall >(lib,"RejectDeletedItem","ax::NodeEditor::RejectDeletedItem")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)() , ax::NodeEditor::EndDelete , SimNode_ExtFuncCall >(lib,"EndDelete","ax::NodeEditor::EndDelete")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(ax::NodeEditor::NodeId,const ImVec2 &) , ax::NodeEditor::SetNodePosition , SimNode_ExtFuncCall >(lib,"SetNodePosition","ax::NodeEditor::SetNodePosition")
+		->args({"nodeId","editorPosition"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< ImVec2 (*)(ax::NodeEditor::NodeId) , ax::NodeEditor::GetNodePosition , SimNode_ExtFuncCallAndCopyOrMove >(lib,"GetNodePosition","ax::NodeEditor::GetNodePosition")
+		->args({"nodeId"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< ImVec2 (*)(ax::NodeEditor::NodeId) , ax::NodeEditor::GetNodeSize , SimNode_ExtFuncCallAndCopyOrMove >(lib,"GetNodeSize","ax::NodeEditor::GetNodeSize")
+		->args({"nodeId"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(ax::NodeEditor::NodeId) , ax::NodeEditor::CenterNodeOnScreen , SimNode_ExtFuncCall >(lib,"CenterNodeOnScreen","ax::NodeEditor::CenterNodeOnScreen")
+		->args({"nodeId"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(ax::NodeEditor::NodeId) , ax::NodeEditor::RestoreNodeState , SimNode_ExtFuncCall >(lib,"RestoreNodeState","ax::NodeEditor::RestoreNodeState")
+		->args({"nodeId"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)() , ax::NodeEditor::Suspend , SimNode_ExtFuncCall >(lib,"Suspend","ax::NodeEditor::Suspend")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)() , ax::NodeEditor::Resume , SimNode_ExtFuncCall >(lib,"Resume","ax::NodeEditor::Resume")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< bool (*)() , ax::NodeEditor::IsSuspended , SimNode_ExtFuncCall >(lib,"IsSuspended","ax::NodeEditor::IsSuspended")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< bool (*)() , ax::NodeEditor::IsActive , SimNode_ExtFuncCall >(lib,"IsActive","ax::NodeEditor::IsActive")
+		->addToModule(*this, SideEffects::worstDefault);
 }
 }
 

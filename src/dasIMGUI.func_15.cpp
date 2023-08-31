@@ -12,37 +12,57 @@
 namespace das {
 #include "dasIMGUI.func.aot.decl.inc"
 void Module_dasIMGUI::initFunctions_15() {
-	addExtern< ImVec2 (*)() , ImGui::GetItemRectMin >(*this,lib,"GetItemRectMin",SideEffects::worstDefault,"ImGui::GetItemRectMin");
-	addExtern< ImVec2 (*)() , ImGui::GetItemRectMax >(*this,lib,"GetItemRectMax",SideEffects::worstDefault,"ImGui::GetItemRectMax");
-	addExtern< ImVec2 (*)() , ImGui::GetItemRectSize >(*this,lib,"GetItemRectSize",SideEffects::worstDefault,"ImGui::GetItemRectSize");
-	addExtern< void (*)() , ImGui::SetItemAllowOverlap >(*this,lib,"SetItemAllowOverlap",SideEffects::worstDefault,"ImGui::SetItemAllowOverlap");
-	addExtern< ImGuiViewport * (*)() , ImGui::GetMainViewport >(*this,lib,"GetMainViewport",SideEffects::worstDefault,"ImGui::GetMainViewport");
-	addExtern< bool (*)(const ImVec2 &) , ImGui::IsRectVisible >(*this,lib,"IsRectVisible",SideEffects::worstDefault,"ImGui::IsRectVisible")
-		->args({"size"});
-	addExtern< bool (*)(const ImVec2 &,const ImVec2 &) , ImGui::IsRectVisible >(*this,lib,"IsRectVisible",SideEffects::worstDefault,"ImGui::IsRectVisible")
-		->args({"rect_min","rect_max"});
-	addExtern< double (*)() , ImGui::GetTime >(*this,lib,"GetTime",SideEffects::worstDefault,"ImGui::GetTime");
-	addExtern< int (*)() , ImGui::GetFrameCount >(*this,lib,"GetFrameCount",SideEffects::worstDefault,"ImGui::GetFrameCount");
-	addExtern< ImDrawList * (*)() , ImGui::GetBackgroundDrawList >(*this,lib,"GetBackgroundDrawList",SideEffects::worstDefault,"ImGui::GetBackgroundDrawList");
-	addExtern< ImDrawList * (*)() , ImGui::GetForegroundDrawList >(*this,lib,"GetForegroundDrawList",SideEffects::worstDefault,"ImGui::GetForegroundDrawList");
-	addExtern< ImDrawListSharedData * (*)() , ImGui::GetDrawListSharedData >(*this,lib,"GetDrawListSharedData",SideEffects::worstDefault,"ImGui::GetDrawListSharedData");
-	addExtern< const char * (*)(int) , ImGui::GetStyleColorName >(*this,lib,"GetStyleColorName",SideEffects::worstDefault,"ImGui::GetStyleColorName")
+	makeExtern< ImVec2 (*)() , ImGui::GetItemRectMin , SimNode_ExtFuncCallAndCopyOrMove ,imguiTempFn>(lib,"GetItemRectMin","ImGui::GetItemRectMin")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< ImVec2 (*)() , ImGui::GetItemRectMax , SimNode_ExtFuncCallAndCopyOrMove ,imguiTempFn>(lib,"GetItemRectMax","ImGui::GetItemRectMax")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< ImVec2 (*)() , ImGui::GetItemRectSize , SimNode_ExtFuncCallAndCopyOrMove ,imguiTempFn>(lib,"GetItemRectSize","ImGui::GetItemRectSize")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)() , ImGui::SetItemAllowOverlap , SimNode_ExtFuncCall ,imguiTempFn>(lib,"SetItemAllowOverlap","ImGui::SetItemAllowOverlap")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< ImGuiViewport * (*)() , ImGui::GetMainViewport , SimNode_ExtFuncCall ,imguiTempFn>(lib,"GetMainViewport","ImGui::GetMainViewport")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< bool (*)(const ImVec2 &) , ImGui::IsRectVisible , SimNode_ExtFuncCall ,imguiTempFn>(lib,"IsRectVisible","ImGui::IsRectVisible")
+		->args({"size"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< bool (*)(const ImVec2 &,const ImVec2 &) , ImGui::IsRectVisible , SimNode_ExtFuncCall ,imguiTempFn>(lib,"IsRectVisible","ImGui::IsRectVisible")
+		->args({"rect_min","rect_max"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< double (*)() , ImGui::GetTime , SimNode_ExtFuncCall ,imguiTempFn>(lib,"GetTime","ImGui::GetTime")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< int (*)() , ImGui::GetFrameCount , SimNode_ExtFuncCall ,imguiTempFn>(lib,"GetFrameCount","ImGui::GetFrameCount")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< ImDrawList * (*)() , ImGui::GetBackgroundDrawList , SimNode_ExtFuncCall ,imguiTempFn>(lib,"GetBackgroundDrawList","ImGui::GetBackgroundDrawList")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< ImDrawList * (*)() , ImGui::GetForegroundDrawList , SimNode_ExtFuncCall ,imguiTempFn>(lib,"GetForegroundDrawList","ImGui::GetForegroundDrawList")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< ImDrawListSharedData * (*)() , ImGui::GetDrawListSharedData , SimNode_ExtFuncCall ,imguiTempFn>(lib,"GetDrawListSharedData","ImGui::GetDrawListSharedData")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< const char * (*)(int) , ImGui::GetStyleColorName , SimNode_ExtFuncCall ,imguiTempFn>(lib,"GetStyleColorName","ImGui::GetStyleColorName")
 		->args({"idx"})
-		->arg_type(0,makeType<ImGuiCol_>(lib));
-	addExtern< void (*)(ImGuiStorage *) , ImGui::SetStateStorage >(*this,lib,"SetStateStorage",SideEffects::worstDefault,"ImGui::SetStateStorage")
-		->args({"storage"});
-	addExtern< ImGuiStorage * (*)() , ImGui::GetStateStorage >(*this,lib,"GetStateStorage",SideEffects::worstDefault,"ImGui::GetStateStorage");
-	addExtern< void (*)(int,float,int *,int *) , ImGui::CalcListClipping >(*this,lib,"CalcListClipping",SideEffects::worstDefault,"ImGui::CalcListClipping")
-		->args({"items_count","items_height","out_items_display_start","out_items_display_end"});
-	addExtern< bool (*)(unsigned int,const ImVec2 &,int) , ImGui::BeginChildFrame >(*this,lib,"BeginChildFrame",SideEffects::worstDefault,"ImGui::BeginChildFrame")
+		->arg_type(0,makeType<ImGuiCol_>(lib))
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(ImGuiStorage *) , ImGui::SetStateStorage , SimNode_ExtFuncCall ,imguiTempFn>(lib,"SetStateStorage","ImGui::SetStateStorage")
+		->args({"storage"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< ImGuiStorage * (*)() , ImGui::GetStateStorage , SimNode_ExtFuncCall ,imguiTempFn>(lib,"GetStateStorage","ImGui::GetStateStorage")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(int,float,int *,int *) , ImGui::CalcListClipping , SimNode_ExtFuncCall ,imguiTempFn>(lib,"CalcListClipping","ImGui::CalcListClipping")
+		->args({"items_count","items_height","out_items_display_start","out_items_display_end"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< bool (*)(unsigned int,const ImVec2 &,int) , ImGui::BeginChildFrame , SimNode_ExtFuncCall ,imguiTempFn>(lib,"BeginChildFrame","ImGui::BeginChildFrame")
 		->args({"id","size","flags"})
 		->arg_type(2,makeType<ImGuiWindowFlags_>(lib))
-		->arg_init(2,make_smart<ExprConstEnumeration>(0,makeType<ImGuiWindowFlags_>(lib)));
-	addExtern< void (*)() , ImGui::EndChildFrame >(*this,lib,"EndChildFrame",SideEffects::worstDefault,"ImGui::EndChildFrame");
-	addExtern< ImVec4 (*)(unsigned int) , ImGui::ColorConvertU32ToFloat4 >(*this,lib,"ColorConvertU32ToFloat4",SideEffects::worstDefault,"ImGui::ColorConvertU32ToFloat4")
-		->args({"in"});
-	addExtern< unsigned int (*)(const ImVec4 &) , ImGui::ColorConvertFloat4ToU32 >(*this,lib,"ColorConvertFloat4ToU32",SideEffects::worstDefault,"ImGui::ColorConvertFloat4ToU32")
-		->args({"in"});
+		->arg_init(2,make_smart<ExprConstEnumeration>(0,makeType<ImGuiWindowFlags_>(lib)))
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)() , ImGui::EndChildFrame , SimNode_ExtFuncCall ,imguiTempFn>(lib,"EndChildFrame","ImGui::EndChildFrame")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< ImVec4 (*)(unsigned int) , ImGui::ColorConvertU32ToFloat4 , SimNode_ExtFuncCallAndCopyOrMove ,imguiTempFn>(lib,"ColorConvertU32ToFloat4","ImGui::ColorConvertU32ToFloat4")
+		->args({"in"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< unsigned int (*)(const ImVec4 &) , ImGui::ColorConvertFloat4ToU32 , SimNode_ExtFuncCall ,imguiTempFn>(lib,"ColorConvertFloat4ToU32","ImGui::ColorConvertFloat4ToU32")
+		->args({"in"})
+		->addToModule(*this, SideEffects::worstDefault);
 }
 }
 

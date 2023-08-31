@@ -105,4 +105,45 @@ struct typeFactory<ImVector<TT>> {
     }
 };
 
+struct imguiTempFn {
+    ___noinline bool operator()( Function * fn ) {
+        if ( tempArgs || implicitArgs ) {
+            for ( auto &arg : fn->arguments ) {
+                if ( arg->type->isTempType() ) {
+                    arg->type->temporary = tempArgs;
+                    arg->type->implicit = implicitArgs;
+                    arg->type->explicitConst = explicitConstArgs;
+                }
+            }
+        }
+        if ( tempResult ) {
+            if ( fn->result->isTempType() ) {
+                fn->result->temporary = true;
+            }
+        }
+
+        bool anyString = false;
+        for ( auto &arg : fn->arguments ) {
+            if ( arg->type->constant && arg->type->ref && arg->type->dim.size() == 0 ) {
+                if ( arg->type->baseType == Type::tFloat2 || arg->type->baseType == Type::tFloat4 ) {
+                    arg->type->ref = false;
+                }
+            }
+            if ( arg->type->isString() && !arg->type->ref ) {
+                anyString = true;
+            }
+        }
+
+        if (anyString) {
+            fn->needStringCast = true;
+        }
+
+        return true;
+    }
+    bool tempArgs = false;
+    bool implicitArgs = true;
+    bool tempResult = false;
+    bool explicitConstArgs = false;
+};
+
 }

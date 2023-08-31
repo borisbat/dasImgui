@@ -12,51 +12,71 @@
 namespace das {
 #include "dasIMGUI.func.aot.decl.inc"
 void Module_dasIMGUI::initFunctions_4() {
-	addExtern< float (*)() , ImGui::GetScrollMaxY >(*this,lib,"GetScrollMaxY",SideEffects::worstDefault,"ImGui::GetScrollMaxY");
-	addExtern< void (*)(float) , ImGui::SetScrollHereX >(*this,lib,"SetScrollHereX",SideEffects::worstDefault,"ImGui::SetScrollHereX")
+	makeExtern< float (*)() , ImGui::GetScrollMaxY , SimNode_ExtFuncCall ,imguiTempFn>(lib,"GetScrollMaxY","ImGui::GetScrollMaxY")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(float) , ImGui::SetScrollHereX , SimNode_ExtFuncCall ,imguiTempFn>(lib,"SetScrollHereX","ImGui::SetScrollHereX")
 		->args({"center_x_ratio"})
-		->arg_init(0,make_smart<ExprConstFloat>(0.50000000000000000));
-	addExtern< void (*)(float) , ImGui::SetScrollHereY >(*this,lib,"SetScrollHereY",SideEffects::worstDefault,"ImGui::SetScrollHereY")
+		->arg_init(0,make_smart<ExprConstFloat>(0.50000000000000000))
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(float) , ImGui::SetScrollHereY , SimNode_ExtFuncCall ,imguiTempFn>(lib,"SetScrollHereY","ImGui::SetScrollHereY")
 		->args({"center_y_ratio"})
-		->arg_init(0,make_smart<ExprConstFloat>(0.50000000000000000));
-	addExtern< void (*)(float,float) , ImGui::SetScrollFromPosX >(*this,lib,"SetScrollFromPosX",SideEffects::worstDefault,"ImGui::SetScrollFromPosX")
+		->arg_init(0,make_smart<ExprConstFloat>(0.50000000000000000))
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(float,float) , ImGui::SetScrollFromPosX , SimNode_ExtFuncCall ,imguiTempFn>(lib,"SetScrollFromPosX","ImGui::SetScrollFromPosX")
 		->args({"local_x","center_x_ratio"})
-		->arg_init(1,make_smart<ExprConstFloat>(0.50000000000000000));
-	addExtern< void (*)(float,float) , ImGui::SetScrollFromPosY >(*this,lib,"SetScrollFromPosY",SideEffects::worstDefault,"ImGui::SetScrollFromPosY")
+		->arg_init(1,make_smart<ExprConstFloat>(0.50000000000000000))
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(float,float) , ImGui::SetScrollFromPosY , SimNode_ExtFuncCall ,imguiTempFn>(lib,"SetScrollFromPosY","ImGui::SetScrollFromPosY")
 		->args({"local_y","center_y_ratio"})
-		->arg_init(1,make_smart<ExprConstFloat>(0.50000000000000000));
-	addExtern< void (*)(ImFont *) , ImGui::PushFont >(*this,lib,"PushFont",SideEffects::worstDefault,"ImGui::PushFont")
-		->args({"font"});
-	addExtern< void (*)() , ImGui::PopFont >(*this,lib,"PopFont",SideEffects::worstDefault,"ImGui::PopFont");
-	addExtern< void (*)(int,unsigned int) , ImGui::PushStyleColor >(*this,lib,"PushStyleColor",SideEffects::worstDefault,"ImGui::PushStyleColor")
+		->arg_init(1,make_smart<ExprConstFloat>(0.50000000000000000))
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(ImFont *) , ImGui::PushFont , SimNode_ExtFuncCall ,imguiTempFn>(lib,"PushFont","ImGui::PushFont")
+		->args({"font"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)() , ImGui::PopFont , SimNode_ExtFuncCall ,imguiTempFn>(lib,"PopFont","ImGui::PopFont")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(int,unsigned int) , ImGui::PushStyleColor , SimNode_ExtFuncCall ,imguiTempFn>(lib,"PushStyleColor","ImGui::PushStyleColor")
 		->args({"idx","col"})
-		->arg_type(0,makeType<ImGuiCol_>(lib));
-	addExtern< void (*)(int,const ImVec4 &) , ImGui::PushStyleColor >(*this,lib,"PushStyleColor",SideEffects::worstDefault,"ImGui::PushStyleColor")
+		->arg_type(0,makeType<ImGuiCol_>(lib))
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(int,const ImVec4 &) , ImGui::PushStyleColor , SimNode_ExtFuncCall ,imguiTempFn>(lib,"PushStyleColor","ImGui::PushStyleColor")
 		->args({"idx","col"})
-		->arg_type(0,makeType<ImGuiCol_>(lib));
-	addExtern< void (*)(int) , ImGui::PopStyleColor >(*this,lib,"PopStyleColor",SideEffects::worstDefault,"ImGui::PopStyleColor")
+		->arg_type(0,makeType<ImGuiCol_>(lib))
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(int) , ImGui::PopStyleColor , SimNode_ExtFuncCall ,imguiTempFn>(lib,"PopStyleColor","ImGui::PopStyleColor")
 		->args({"count"})
-		->arg_init(0,make_smart<ExprConstInt>(1));
-	addExtern< void (*)(int,float) , ImGui::PushStyleVar >(*this,lib,"PushStyleVar",SideEffects::worstDefault,"ImGui::PushStyleVar")
+		->arg_init(0,make_smart<ExprConstInt>(1))
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(int,float) , ImGui::PushStyleVar , SimNode_ExtFuncCall ,imguiTempFn>(lib,"PushStyleVar","ImGui::PushStyleVar")
 		->args({"idx","val"})
-		->arg_type(0,makeType<ImGuiStyleVar_>(lib));
-	addExtern< void (*)(int,const ImVec2 &) , ImGui::PushStyleVar >(*this,lib,"PushStyleVar",SideEffects::worstDefault,"ImGui::PushStyleVar")
+		->arg_type(0,makeType<ImGuiStyleVar_>(lib))
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(int,const ImVec2 &) , ImGui::PushStyleVar , SimNode_ExtFuncCall ,imguiTempFn>(lib,"PushStyleVar","ImGui::PushStyleVar")
 		->args({"idx","val"})
-		->arg_type(0,makeType<ImGuiStyleVar_>(lib));
-	addExtern< void (*)(int) , ImGui::PopStyleVar >(*this,lib,"PopStyleVar",SideEffects::worstDefault,"ImGui::PopStyleVar")
+		->arg_type(0,makeType<ImGuiStyleVar_>(lib))
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(int) , ImGui::PopStyleVar , SimNode_ExtFuncCall ,imguiTempFn>(lib,"PopStyleVar","ImGui::PopStyleVar")
 		->args({"count"})
-		->arg_init(0,make_smart<ExprConstInt>(1));
-	addExtern< void (*)(bool) , ImGui::PushAllowKeyboardFocus >(*this,lib,"PushAllowKeyboardFocus",SideEffects::worstDefault,"ImGui::PushAllowKeyboardFocus")
-		->args({"allow_keyboard_focus"});
-	addExtern< void (*)() , ImGui::PopAllowKeyboardFocus >(*this,lib,"PopAllowKeyboardFocus",SideEffects::worstDefault,"ImGui::PopAllowKeyboardFocus");
-	addExtern< void (*)(bool) , ImGui::PushButtonRepeat >(*this,lib,"PushButtonRepeat",SideEffects::worstDefault,"ImGui::PushButtonRepeat")
-		->args({"repeat"});
-	addExtern< void (*)() , ImGui::PopButtonRepeat >(*this,lib,"PopButtonRepeat",SideEffects::worstDefault,"ImGui::PopButtonRepeat");
-	addExtern< void (*)(float) , ImGui::PushItemWidth >(*this,lib,"PushItemWidth",SideEffects::worstDefault,"ImGui::PushItemWidth")
-		->args({"item_width"});
-	addExtern< void (*)() , ImGui::PopItemWidth >(*this,lib,"PopItemWidth",SideEffects::worstDefault,"ImGui::PopItemWidth");
-	addExtern< void (*)(float) , ImGui::SetNextItemWidth >(*this,lib,"SetNextItemWidth",SideEffects::worstDefault,"ImGui::SetNextItemWidth")
-		->args({"item_width"});
+		->arg_init(0,make_smart<ExprConstInt>(1))
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(bool) , ImGui::PushAllowKeyboardFocus , SimNode_ExtFuncCall ,imguiTempFn>(lib,"PushAllowKeyboardFocus","ImGui::PushAllowKeyboardFocus")
+		->args({"allow_keyboard_focus"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)() , ImGui::PopAllowKeyboardFocus , SimNode_ExtFuncCall ,imguiTempFn>(lib,"PopAllowKeyboardFocus","ImGui::PopAllowKeyboardFocus")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(bool) , ImGui::PushButtonRepeat , SimNode_ExtFuncCall ,imguiTempFn>(lib,"PushButtonRepeat","ImGui::PushButtonRepeat")
+		->args({"repeat"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)() , ImGui::PopButtonRepeat , SimNode_ExtFuncCall ,imguiTempFn>(lib,"PopButtonRepeat","ImGui::PopButtonRepeat")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(float) , ImGui::PushItemWidth , SimNode_ExtFuncCall ,imguiTempFn>(lib,"PushItemWidth","ImGui::PushItemWidth")
+		->args({"item_width"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)() , ImGui::PopItemWidth , SimNode_ExtFuncCall ,imguiTempFn>(lib,"PopItemWidth","ImGui::PopItemWidth")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(float) , ImGui::SetNextItemWidth , SimNode_ExtFuncCall ,imguiTempFn>(lib,"SetNextItemWidth","ImGui::SetNextItemWidth")
+		->args({"item_width"})
+		->addToModule(*this, SideEffects::worstDefault);
 }
 }
 

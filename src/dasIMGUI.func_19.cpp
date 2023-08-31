@@ -13,33 +13,42 @@ namespace das {
 #include "dasIMGUI.func.aot.decl.inc"
 void Module_dasIMGUI::initFunctions_19() {
 	using _method_19 = das::das_call_member< void (ImGuiTextFilter::ImGuiTextRange::*)(char,ImVector<ImGuiTextFilter::ImGuiTextRange> *) const,&ImGuiTextFilter::ImGuiTextRange::split >;
-	addExtern<DAS_CALL_METHOD(_method_19)>(*this,lib,"split",SideEffects::worstDefault,"das_call_member< void (ImGuiTextFilter::ImGuiTextRange::*)(char,ImVector<ImGuiTextFilter::ImGuiTextRange> *) const , &ImGuiTextFilter::ImGuiTextRange::split >::invoke")
-		->args({"self","separator","out"});
+	makeExtern<DAS_CALL_METHOD(_method_19), SimNode_ExtFuncCall ,imguiTempFn>(lib,"split","das_call_member< void (ImGuiTextFilter::ImGuiTextRange::*)(char,ImVector<ImGuiTextFilter::ImGuiTextRange> *) const , &ImGuiTextFilter::ImGuiTextRange::split >::invoke")
+		->args({"self","separator","out"})
+		->addToModule(*this, SideEffects::worstDefault);
 	addCtorAndUsing<ImGuiTextBuffer>(*this,lib,"ImGuiTextBuffer","ImGuiTextBuffer");
 	using _method_20 = das::das_call_member< char (ImGuiTextBuffer::*)(int) const,&ImGuiTextBuffer::operator[] >;
-	addExtern<DAS_CALL_METHOD(_method_20)>(*this,lib,"[]",SideEffects::worstDefault,"das_call_member< char (ImGuiTextBuffer::*)(int) const , &ImGuiTextBuffer::operator[] >::invoke")
-		->args({"self","i"});
+	makeExtern<DAS_CALL_METHOD(_method_20), SimNode_ExtFuncCall ,imguiTempFn>(lib,"[]","das_call_member< char (ImGuiTextBuffer::*)(int) const , &ImGuiTextBuffer::operator[] >::invoke")
+		->args({"self","i"})
+		->addToModule(*this, SideEffects::worstDefault);
 	using _method_21 = das::das_call_member< const char * (ImGuiTextBuffer::*)() const,&ImGuiTextBuffer::begin >;
-	addExtern<DAS_CALL_METHOD(_method_21)>(*this,lib,"begin",SideEffects::worstDefault,"das_call_member< const char * (ImGuiTextBuffer::*)() const , &ImGuiTextBuffer::begin >::invoke")
-		->args({"self"});
+	makeExtern<DAS_CALL_METHOD(_method_21), SimNode_ExtFuncCall ,imguiTempFn>(lib,"begin","das_call_member< const char * (ImGuiTextBuffer::*)() const , &ImGuiTextBuffer::begin >::invoke")
+		->args({"self"})
+		->addToModule(*this, SideEffects::worstDefault);
 	using _method_22 = das::das_call_member< const char * (ImGuiTextBuffer::*)() const,&ImGuiTextBuffer::end >;
-	addExtern<DAS_CALL_METHOD(_method_22)>(*this,lib,"end",SideEffects::worstDefault,"das_call_member< const char * (ImGuiTextBuffer::*)() const , &ImGuiTextBuffer::end >::invoke")
-		->args({"self"});
+	makeExtern<DAS_CALL_METHOD(_method_22), SimNode_ExtFuncCall ,imguiTempFn>(lib,"end","das_call_member< const char * (ImGuiTextBuffer::*)() const , &ImGuiTextBuffer::end >::invoke")
+		->args({"self"})
+		->addToModule(*this, SideEffects::worstDefault);
 	using _method_23 = das::das_call_member< int (ImGuiTextBuffer::*)() const,&ImGuiTextBuffer::size >;
-	addExtern<DAS_CALL_METHOD(_method_23)>(*this,lib,"size",SideEffects::worstDefault,"das_call_member< int (ImGuiTextBuffer::*)() const , &ImGuiTextBuffer::size >::invoke")
-		->args({"self"});
+	makeExtern<DAS_CALL_METHOD(_method_23), SimNode_ExtFuncCall ,imguiTempFn>(lib,"size","das_call_member< int (ImGuiTextBuffer::*)() const , &ImGuiTextBuffer::size >::invoke")
+		->args({"self"})
+		->addToModule(*this, SideEffects::worstDefault);
 	using _method_24 = das::das_call_member< bool (ImGuiTextBuffer::*)() const,&ImGuiTextBuffer::empty >;
-	addExtern<DAS_CALL_METHOD(_method_24)>(*this,lib,"empty",SideEffects::worstDefault,"das_call_member< bool (ImGuiTextBuffer::*)() const , &ImGuiTextBuffer::empty >::invoke")
-		->args({"self"});
+	makeExtern<DAS_CALL_METHOD(_method_24), SimNode_ExtFuncCall ,imguiTempFn>(lib,"empty","das_call_member< bool (ImGuiTextBuffer::*)() const , &ImGuiTextBuffer::empty >::invoke")
+		->args({"self"})
+		->addToModule(*this, SideEffects::worstDefault);
 	using _method_25 = das::das_call_member< void (ImGuiTextBuffer::*)(),&ImGuiTextBuffer::clear >;
-	addExtern<DAS_CALL_METHOD(_method_25)>(*this,lib,"clear",SideEffects::worstDefault,"das_call_member< void (ImGuiTextBuffer::*)() , &ImGuiTextBuffer::clear >::invoke")
-		->args({"self"});
+	makeExtern<DAS_CALL_METHOD(_method_25), SimNode_ExtFuncCall ,imguiTempFn>(lib,"clear","das_call_member< void (ImGuiTextBuffer::*)() , &ImGuiTextBuffer::clear >::invoke")
+		->args({"self"})
+		->addToModule(*this, SideEffects::worstDefault);
 	using _method_26 = das::das_call_member< void (ImGuiTextBuffer::*)(int),&ImGuiTextBuffer::reserve >;
-	addExtern<DAS_CALL_METHOD(_method_26)>(*this,lib,"reserve",SideEffects::worstDefault,"das_call_member< void (ImGuiTextBuffer::*)(int) , &ImGuiTextBuffer::reserve >::invoke")
-		->args({"self","capacity"});
+	makeExtern<DAS_CALL_METHOD(_method_26), SimNode_ExtFuncCall ,imguiTempFn>(lib,"reserve","das_call_member< void (ImGuiTextBuffer::*)(int) , &ImGuiTextBuffer::reserve >::invoke")
+		->args({"self","capacity"})
+		->addToModule(*this, SideEffects::worstDefault);
 	using _method_27 = das::das_call_member< const char * (ImGuiTextBuffer::*)() const,&ImGuiTextBuffer::c_str >;
-	addExtern<DAS_CALL_METHOD(_method_27)>(*this,lib,"c_str",SideEffects::worstDefault,"das_call_member< const char * (ImGuiTextBuffer::*)() const , &ImGuiTextBuffer::c_str >::invoke")
-		->args({"self"});
+	makeExtern<DAS_CALL_METHOD(_method_27), SimNode_ExtFuncCall ,imguiTempFn>(lib,"c_str","das_call_member< const char * (ImGuiTextBuffer::*)() const , &ImGuiTextBuffer::c_str >::invoke")
+		->args({"self"})
+		->addToModule(*this, SideEffects::worstDefault);
 	addCtorAndUsing<ImGuiStorage::ImGuiStoragePair,unsigned int,int>(*this,lib,"ImGuiStoragePair","ImGuiStorage::ImGuiStoragePair")
 		->args({"_key","_val_i"});
 	addCtorAndUsing<ImGuiStorage::ImGuiStoragePair,unsigned int,float>(*this,lib,"ImGuiStoragePair","ImGuiStorage::ImGuiStoragePair")
@@ -47,29 +56,36 @@ void Module_dasIMGUI::initFunctions_19() {
 	addCtorAndUsing<ImGuiStorage::ImGuiStoragePair,unsigned int,void *>(*this,lib,"ImGuiStoragePair","ImGuiStorage::ImGuiStoragePair")
 		->args({"_key","_val_p"});
 	using _method_28 = das::das_call_member< void (ImGuiStorage::*)(),&ImGuiStorage::Clear >;
-	addExtern<DAS_CALL_METHOD(_method_28)>(*this,lib,"Clear",SideEffects::worstDefault,"das_call_member< void (ImGuiStorage::*)() , &ImGuiStorage::Clear >::invoke")
-		->args({"self"});
+	makeExtern<DAS_CALL_METHOD(_method_28), SimNode_ExtFuncCall ,imguiTempFn>(lib,"Clear","das_call_member< void (ImGuiStorage::*)() , &ImGuiStorage::Clear >::invoke")
+		->args({"self"})
+		->addToModule(*this, SideEffects::worstDefault);
 	using _method_29 = das::das_call_member< int (ImGuiStorage::*)(unsigned int,int) const,&ImGuiStorage::GetInt >;
-	addExtern<DAS_CALL_METHOD(_method_29)>(*this,lib,"GetInt",SideEffects::worstDefault,"das_call_member< int (ImGuiStorage::*)(unsigned int,int) const , &ImGuiStorage::GetInt >::invoke")
+	makeExtern<DAS_CALL_METHOD(_method_29), SimNode_ExtFuncCall ,imguiTempFn>(lib,"GetInt","das_call_member< int (ImGuiStorage::*)(unsigned int,int) const , &ImGuiStorage::GetInt >::invoke")
 		->args({"self","key","default_val"})
-		->arg_init(2,make_smart<ExprConstInt>(0));
+		->arg_init(2,make_smart<ExprConstInt>(0))
+		->addToModule(*this, SideEffects::worstDefault);
 	using _method_30 = das::das_call_member< void (ImGuiStorage::*)(unsigned int,int),&ImGuiStorage::SetInt >;
-	addExtern<DAS_CALL_METHOD(_method_30)>(*this,lib,"SetInt",SideEffects::worstDefault,"das_call_member< void (ImGuiStorage::*)(unsigned int,int) , &ImGuiStorage::SetInt >::invoke")
-		->args({"self","key","val"});
+	makeExtern<DAS_CALL_METHOD(_method_30), SimNode_ExtFuncCall ,imguiTempFn>(lib,"SetInt","das_call_member< void (ImGuiStorage::*)(unsigned int,int) , &ImGuiStorage::SetInt >::invoke")
+		->args({"self","key","val"})
+		->addToModule(*this, SideEffects::worstDefault);
 	using _method_31 = das::das_call_member< bool (ImGuiStorage::*)(unsigned int,bool) const,&ImGuiStorage::GetBool >;
-	addExtern<DAS_CALL_METHOD(_method_31)>(*this,lib,"GetBool",SideEffects::worstDefault,"das_call_member< bool (ImGuiStorage::*)(unsigned int,bool) const , &ImGuiStorage::GetBool >::invoke")
+	makeExtern<DAS_CALL_METHOD(_method_31), SimNode_ExtFuncCall ,imguiTempFn>(lib,"GetBool","das_call_member< bool (ImGuiStorage::*)(unsigned int,bool) const , &ImGuiStorage::GetBool >::invoke")
 		->args({"self","key","default_val"})
-		->arg_init(2,make_smart<ExprConstBool>(false));
+		->arg_init(2,make_smart<ExprConstBool>(false))
+		->addToModule(*this, SideEffects::worstDefault);
 	using _method_32 = das::das_call_member< void (ImGuiStorage::*)(unsigned int,bool),&ImGuiStorage::SetBool >;
-	addExtern<DAS_CALL_METHOD(_method_32)>(*this,lib,"SetBool",SideEffects::worstDefault,"das_call_member< void (ImGuiStorage::*)(unsigned int,bool) , &ImGuiStorage::SetBool >::invoke")
-		->args({"self","key","val"});
+	makeExtern<DAS_CALL_METHOD(_method_32), SimNode_ExtFuncCall ,imguiTempFn>(lib,"SetBool","das_call_member< void (ImGuiStorage::*)(unsigned int,bool) , &ImGuiStorage::SetBool >::invoke")
+		->args({"self","key","val"})
+		->addToModule(*this, SideEffects::worstDefault);
 	using _method_33 = das::das_call_member< float (ImGuiStorage::*)(unsigned int,float) const,&ImGuiStorage::GetFloat >;
-	addExtern<DAS_CALL_METHOD(_method_33)>(*this,lib,"GetFloat",SideEffects::worstDefault,"das_call_member< float (ImGuiStorage::*)(unsigned int,float) const , &ImGuiStorage::GetFloat >::invoke")
+	makeExtern<DAS_CALL_METHOD(_method_33), SimNode_ExtFuncCall ,imguiTempFn>(lib,"GetFloat","das_call_member< float (ImGuiStorage::*)(unsigned int,float) const , &ImGuiStorage::GetFloat >::invoke")
 		->args({"self","key","default_val"})
-		->arg_init(2,make_smart<ExprConstFloat>(0.00000000000000000));
+		->arg_init(2,make_smart<ExprConstFloat>(0.00000000000000000))
+		->addToModule(*this, SideEffects::worstDefault);
 	using _method_34 = das::das_call_member< void (ImGuiStorage::*)(unsigned int,float),&ImGuiStorage::SetFloat >;
-	addExtern<DAS_CALL_METHOD(_method_34)>(*this,lib,"SetFloat",SideEffects::worstDefault,"das_call_member< void (ImGuiStorage::*)(unsigned int,float) , &ImGuiStorage::SetFloat >::invoke")
-		->args({"self","key","val"});
+	makeExtern<DAS_CALL_METHOD(_method_34), SimNode_ExtFuncCall ,imguiTempFn>(lib,"SetFloat","das_call_member< void (ImGuiStorage::*)(unsigned int,float) , &ImGuiStorage::SetFloat >::invoke")
+		->args({"self","key","val"})
+		->addToModule(*this, SideEffects::worstDefault);
 }
 }
 

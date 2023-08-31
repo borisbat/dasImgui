@@ -13,63 +13,82 @@ namespace das {
 #include "dasIMGUI.func.aot.decl.inc"
 void Module_dasIMGUI::initFunctions_23() {
 	using _method_91 = das::das_call_member< void (ImDrawList::*)(int),&ImDrawList::ChannelsSetCurrent >;
-	addExtern<DAS_CALL_METHOD(_method_91)>(*this,lib,"ChannelsSetCurrent",SideEffects::worstDefault,"das_call_member< void (ImDrawList::*)(int) , &ImDrawList::ChannelsSetCurrent >::invoke")
-		->args({"self","n"});
+	makeExtern<DAS_CALL_METHOD(_method_91), SimNode_ExtFuncCall ,imguiTempFn>(lib,"ChannelsSetCurrent","das_call_member< void (ImDrawList::*)(int) , &ImDrawList::ChannelsSetCurrent >::invoke")
+		->args({"self","n"})
+		->addToModule(*this, SideEffects::worstDefault);
 	using _method_92 = das::das_call_member< void (ImDrawList::*)(int,int),&ImDrawList::PrimReserve >;
-	addExtern<DAS_CALL_METHOD(_method_92)>(*this,lib,"PrimReserve",SideEffects::worstDefault,"das_call_member< void (ImDrawList::*)(int,int) , &ImDrawList::PrimReserve >::invoke")
-		->args({"self","idx_count","vtx_count"});
+	makeExtern<DAS_CALL_METHOD(_method_92), SimNode_ExtFuncCall ,imguiTempFn>(lib,"PrimReserve","das_call_member< void (ImDrawList::*)(int,int) , &ImDrawList::PrimReserve >::invoke")
+		->args({"self","idx_count","vtx_count"})
+		->addToModule(*this, SideEffects::worstDefault);
 	using _method_93 = das::das_call_member< void (ImDrawList::*)(int,int),&ImDrawList::PrimUnreserve >;
-	addExtern<DAS_CALL_METHOD(_method_93)>(*this,lib,"PrimUnreserve",SideEffects::worstDefault,"das_call_member< void (ImDrawList::*)(int,int) , &ImDrawList::PrimUnreserve >::invoke")
-		->args({"self","idx_count","vtx_count"});
+	makeExtern<DAS_CALL_METHOD(_method_93), SimNode_ExtFuncCall ,imguiTempFn>(lib,"PrimUnreserve","das_call_member< void (ImDrawList::*)(int,int) , &ImDrawList::PrimUnreserve >::invoke")
+		->args({"self","idx_count","vtx_count"})
+		->addToModule(*this, SideEffects::worstDefault);
 	using _method_94 = das::das_call_member< void (ImDrawList::*)(const ImVec2 &,const ImVec2 &,unsigned int),&ImDrawList::PrimRect >;
-	addExtern<DAS_CALL_METHOD(_method_94)>(*this,lib,"PrimRect",SideEffects::worstDefault,"das_call_member< void (ImDrawList::*)(const ImVec2 &,const ImVec2 &,unsigned int) , &ImDrawList::PrimRect >::invoke")
-		->args({"self","a","b","col"});
+	makeExtern<DAS_CALL_METHOD(_method_94), SimNode_ExtFuncCall ,imguiTempFn>(lib,"PrimRect","das_call_member< void (ImDrawList::*)(const ImVec2 &,const ImVec2 &,unsigned int) , &ImDrawList::PrimRect >::invoke")
+		->args({"self","a","b","col"})
+		->addToModule(*this, SideEffects::worstDefault);
 	using _method_95 = das::das_call_member< void (ImDrawList::*)(const ImVec2 &,const ImVec2 &,const ImVec2 &,const ImVec2 &,unsigned int),&ImDrawList::PrimRectUV >;
-	addExtern<DAS_CALL_METHOD(_method_95)>(*this,lib,"PrimRectUV",SideEffects::worstDefault,"das_call_member< void (ImDrawList::*)(const ImVec2 &,const ImVec2 &,const ImVec2 &,const ImVec2 &,unsigned int) , &ImDrawList::PrimRectUV >::invoke")
-		->args({"self","a","b","uv_a","uv_b","col"});
+	makeExtern<DAS_CALL_METHOD(_method_95), SimNode_ExtFuncCall ,imguiTempFn>(lib,"PrimRectUV","das_call_member< void (ImDrawList::*)(const ImVec2 &,const ImVec2 &,const ImVec2 &,const ImVec2 &,unsigned int) , &ImDrawList::PrimRectUV >::invoke")
+		->args({"self","a","b","uv_a","uv_b","col"})
+		->addToModule(*this, SideEffects::worstDefault);
 	using _method_96 = das::das_call_member< void (ImDrawList::*)(const ImVec2 &,const ImVec2 &,const ImVec2 &,const ImVec2 &,const ImVec2 &,const ImVec2 &,const ImVec2 &,const ImVec2 &,unsigned int),&ImDrawList::PrimQuadUV >;
-	addExtern<DAS_CALL_METHOD(_method_96)>(*this,lib,"PrimQuadUV",SideEffects::worstDefault,"das_call_member< void (ImDrawList::*)(const ImVec2 &,const ImVec2 &,const ImVec2 &,const ImVec2 &,const ImVec2 &,const ImVec2 &,const ImVec2 &,const ImVec2 &,unsigned int) , &ImDrawList::PrimQuadUV >::invoke")
-		->args({"self","a","b","c","d","uv_a","uv_b","uv_c","uv_d","col"});
+	makeExtern<DAS_CALL_METHOD(_method_96), SimNode_ExtFuncCall ,imguiTempFn>(lib,"PrimQuadUV","das_call_member< void (ImDrawList::*)(const ImVec2 &,const ImVec2 &,const ImVec2 &,const ImVec2 &,const ImVec2 &,const ImVec2 &,const ImVec2 &,const ImVec2 &,unsigned int) , &ImDrawList::PrimQuadUV >::invoke")
+		->args({"self","a","b","c","d","uv_a","uv_b","uv_c","uv_d","col"})
+		->addToModule(*this, SideEffects::worstDefault);
 	using _method_97 = das::das_call_member< void (ImDrawList::*)(const ImVec2 &,const ImVec2 &,unsigned int),&ImDrawList::PrimWriteVtx >;
-	addExtern<DAS_CALL_METHOD(_method_97)>(*this,lib,"PrimWriteVtx",SideEffects::worstDefault,"das_call_member< void (ImDrawList::*)(const ImVec2 &,const ImVec2 &,unsigned int) , &ImDrawList::PrimWriteVtx >::invoke")
-		->args({"self","pos","uv","col"});
+	makeExtern<DAS_CALL_METHOD(_method_97), SimNode_ExtFuncCall ,imguiTempFn>(lib,"PrimWriteVtx","das_call_member< void (ImDrawList::*)(const ImVec2 &,const ImVec2 &,unsigned int) , &ImDrawList::PrimWriteVtx >::invoke")
+		->args({"self","pos","uv","col"})
+		->addToModule(*this, SideEffects::worstDefault);
 	using _method_98 = das::das_call_member< void (ImDrawList::*)(unsigned int),&ImDrawList::PrimWriteIdx >;
-	addExtern<DAS_CALL_METHOD(_method_98)>(*this,lib,"PrimWriteIdx",SideEffects::worstDefault,"das_call_member< void (ImDrawList::*)(unsigned int) , &ImDrawList::PrimWriteIdx >::invoke")
-		->args({"self","idx"});
+	makeExtern<DAS_CALL_METHOD(_method_98), SimNode_ExtFuncCall ,imguiTempFn>(lib,"PrimWriteIdx","das_call_member< void (ImDrawList::*)(unsigned int) , &ImDrawList::PrimWriteIdx >::invoke")
+		->args({"self","idx"})
+		->addToModule(*this, SideEffects::worstDefault);
 	using _method_99 = das::das_call_member< void (ImDrawList::*)(const ImVec2 &,const ImVec2 &,unsigned int),&ImDrawList::PrimVtx >;
-	addExtern<DAS_CALL_METHOD(_method_99)>(*this,lib,"PrimVtx",SideEffects::worstDefault,"das_call_member< void (ImDrawList::*)(const ImVec2 &,const ImVec2 &,unsigned int) , &ImDrawList::PrimVtx >::invoke")
-		->args({"self","pos","uv","col"});
+	makeExtern<DAS_CALL_METHOD(_method_99), SimNode_ExtFuncCall ,imguiTempFn>(lib,"PrimVtx","das_call_member< void (ImDrawList::*)(const ImVec2 &,const ImVec2 &,unsigned int) , &ImDrawList::PrimVtx >::invoke")
+		->args({"self","pos","uv","col"})
+		->addToModule(*this, SideEffects::worstDefault);
 	using _method_100 = das::das_call_member< void (ImDrawList::*)(),&ImDrawList::_ResetForNewFrame >;
-	addExtern<DAS_CALL_METHOD(_method_100)>(*this,lib,"_ResetForNewFrame",SideEffects::worstDefault,"das_call_member< void (ImDrawList::*)() , &ImDrawList::_ResetForNewFrame >::invoke")
-		->args({"self"});
+	makeExtern<DAS_CALL_METHOD(_method_100), SimNode_ExtFuncCall ,imguiTempFn>(lib,"_ResetForNewFrame","das_call_member< void (ImDrawList::*)() , &ImDrawList::_ResetForNewFrame >::invoke")
+		->args({"self"})
+		->addToModule(*this, SideEffects::worstDefault);
 	using _method_101 = das::das_call_member< void (ImDrawList::*)(),&ImDrawList::_ClearFreeMemory >;
-	addExtern<DAS_CALL_METHOD(_method_101)>(*this,lib,"_ClearFreeMemory",SideEffects::worstDefault,"das_call_member< void (ImDrawList::*)() , &ImDrawList::_ClearFreeMemory >::invoke")
-		->args({"self"});
+	makeExtern<DAS_CALL_METHOD(_method_101), SimNode_ExtFuncCall ,imguiTempFn>(lib,"_ClearFreeMemory","das_call_member< void (ImDrawList::*)() , &ImDrawList::_ClearFreeMemory >::invoke")
+		->args({"self"})
+		->addToModule(*this, SideEffects::worstDefault);
 	using _method_102 = das::das_call_member< void (ImDrawList::*)(),&ImDrawList::_PopUnusedDrawCmd >;
-	addExtern<DAS_CALL_METHOD(_method_102)>(*this,lib,"_PopUnusedDrawCmd",SideEffects::worstDefault,"das_call_member< void (ImDrawList::*)() , &ImDrawList::_PopUnusedDrawCmd >::invoke")
-		->args({"self"});
+	makeExtern<DAS_CALL_METHOD(_method_102), SimNode_ExtFuncCall ,imguiTempFn>(lib,"_PopUnusedDrawCmd","das_call_member< void (ImDrawList::*)() , &ImDrawList::_PopUnusedDrawCmd >::invoke")
+		->args({"self"})
+		->addToModule(*this, SideEffects::worstDefault);
 	using _method_103 = das::das_call_member< void (ImDrawList::*)(),&ImDrawList::_OnChangedClipRect >;
-	addExtern<DAS_CALL_METHOD(_method_103)>(*this,lib,"_OnChangedClipRect",SideEffects::worstDefault,"das_call_member< void (ImDrawList::*)() , &ImDrawList::_OnChangedClipRect >::invoke")
-		->args({"self"});
+	makeExtern<DAS_CALL_METHOD(_method_103), SimNode_ExtFuncCall ,imguiTempFn>(lib,"_OnChangedClipRect","das_call_member< void (ImDrawList::*)() , &ImDrawList::_OnChangedClipRect >::invoke")
+		->args({"self"})
+		->addToModule(*this, SideEffects::worstDefault);
 	using _method_104 = das::das_call_member< void (ImDrawList::*)(),&ImDrawList::_OnChangedTextureID >;
-	addExtern<DAS_CALL_METHOD(_method_104)>(*this,lib,"_OnChangedTextureID",SideEffects::worstDefault,"das_call_member< void (ImDrawList::*)() , &ImDrawList::_OnChangedTextureID >::invoke")
-		->args({"self"});
+	makeExtern<DAS_CALL_METHOD(_method_104), SimNode_ExtFuncCall ,imguiTempFn>(lib,"_OnChangedTextureID","das_call_member< void (ImDrawList::*)() , &ImDrawList::_OnChangedTextureID >::invoke")
+		->args({"self"})
+		->addToModule(*this, SideEffects::worstDefault);
 	using _method_105 = das::das_call_member< void (ImDrawList::*)(),&ImDrawList::_OnChangedVtxOffset >;
-	addExtern<DAS_CALL_METHOD(_method_105)>(*this,lib,"_OnChangedVtxOffset",SideEffects::worstDefault,"das_call_member< void (ImDrawList::*)() , &ImDrawList::_OnChangedVtxOffset >::invoke")
-		->args({"self"});
+	makeExtern<DAS_CALL_METHOD(_method_105), SimNode_ExtFuncCall ,imguiTempFn>(lib,"_OnChangedVtxOffset","das_call_member< void (ImDrawList::*)() , &ImDrawList::_OnChangedVtxOffset >::invoke")
+		->args({"self"})
+		->addToModule(*this, SideEffects::worstDefault);
 	using _method_106 = das::das_call_member< int (ImDrawList::*)(float) const,&ImDrawList::_CalcCircleAutoSegmentCount >;
-	addExtern<DAS_CALL_METHOD(_method_106)>(*this,lib,"_CalcCircleAutoSegmentCount",SideEffects::worstDefault,"das_call_member< int (ImDrawList::*)(float) const , &ImDrawList::_CalcCircleAutoSegmentCount >::invoke")
-		->args({"self","radius"});
+	makeExtern<DAS_CALL_METHOD(_method_106), SimNode_ExtFuncCall ,imguiTempFn>(lib,"_CalcCircleAutoSegmentCount","das_call_member< int (ImDrawList::*)(float) const , &ImDrawList::_CalcCircleAutoSegmentCount >::invoke")
+		->args({"self","radius"})
+		->addToModule(*this, SideEffects::worstDefault);
 	using _method_107 = das::das_call_member< void (ImDrawList::*)(const ImVec2 &,float,int,int,int),&ImDrawList::_PathArcToFastEx >;
-	addExtern<DAS_CALL_METHOD(_method_107)>(*this,lib,"_PathArcToFastEx",SideEffects::worstDefault,"das_call_member< void (ImDrawList::*)(const ImVec2 &,float,int,int,int) , &ImDrawList::_PathArcToFastEx >::invoke")
-		->args({"self","center","radius","a_min_sample","a_max_sample","a_step"});
+	makeExtern<DAS_CALL_METHOD(_method_107), SimNode_ExtFuncCall ,imguiTempFn>(lib,"_PathArcToFastEx","das_call_member< void (ImDrawList::*)(const ImVec2 &,float,int,int,int) , &ImDrawList::_PathArcToFastEx >::invoke")
+		->args({"self","center","radius","a_min_sample","a_max_sample","a_step"})
+		->addToModule(*this, SideEffects::worstDefault);
 	using _method_108 = das::das_call_member< void (ImDrawList::*)(const ImVec2 &,float,float,float,int),&ImDrawList::_PathArcToN >;
-	addExtern<DAS_CALL_METHOD(_method_108)>(*this,lib,"_PathArcToN",SideEffects::worstDefault,"das_call_member< void (ImDrawList::*)(const ImVec2 &,float,float,float,int) , &ImDrawList::_PathArcToN >::invoke")
-		->args({"self","center","radius","a_min","a_max","num_segments"});
+	makeExtern<DAS_CALL_METHOD(_method_108), SimNode_ExtFuncCall ,imguiTempFn>(lib,"_PathArcToN","das_call_member< void (ImDrawList::*)(const ImVec2 &,float,float,float,int) , &ImDrawList::_PathArcToN >::invoke")
+		->args({"self","center","radius","a_min","a_max","num_segments"})
+		->addToModule(*this, SideEffects::worstDefault);
 	addCtorAndUsing<ImDrawData>(*this,lib,"ImDrawData","ImDrawData");
 	using _method_109 = das::das_call_member< void (ImDrawData::*)(),&ImDrawData::Clear >;
-	addExtern<DAS_CALL_METHOD(_method_109)>(*this,lib,"Clear",SideEffects::worstDefault,"das_call_member< void (ImDrawData::*)() , &ImDrawData::Clear >::invoke")
-		->args({"self"});
+	makeExtern<DAS_CALL_METHOD(_method_109), SimNode_ExtFuncCall ,imguiTempFn>(lib,"Clear","das_call_member< void (ImDrawData::*)() , &ImDrawData::Clear >::invoke")
+		->args({"self"})
+		->addToModule(*this, SideEffects::worstDefault);
 }
 }
 

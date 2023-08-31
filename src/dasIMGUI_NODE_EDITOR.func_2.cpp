@@ -12,43 +12,63 @@
 namespace das {
 #include "dasIMGUI_NODE_EDITOR.func.aot.decl.inc"
 void Module_dasIMGUI_NODE_EDITOR::initFunctions_2() {
-	addExtern< void (*)(const ImVec2 &) , ax::NodeEditor::PinPivotSize >(*this,lib,"PinPivotSize",SideEffects::worstDefault,"ax::NodeEditor::PinPivotSize")
-		->args({"size"});
-	addExtern< void (*)(const ImVec2 &) , ax::NodeEditor::PinPivotScale >(*this,lib,"PinPivotScale",SideEffects::worstDefault,"ax::NodeEditor::PinPivotScale")
-		->args({"scale"});
-	addExtern< void (*)(const ImVec2 &) , ax::NodeEditor::PinPivotAlignment >(*this,lib,"PinPivotAlignment",SideEffects::worstDefault,"ax::NodeEditor::PinPivotAlignment")
-		->args({"alignment"});
-	addExtern< void (*)() , ax::NodeEditor::EndPin >(*this,lib,"EndPin",SideEffects::worstDefault,"ax::NodeEditor::EndPin");
-	addExtern< void (*)(const ImVec2 &) , ax::NodeEditor::Group >(*this,lib,"Group",SideEffects::worstDefault,"ax::NodeEditor::Group")
-		->args({"size"});
-	addExtern< void (*)() , ax::NodeEditor::EndNode >(*this,lib,"EndNode",SideEffects::worstDefault,"ax::NodeEditor::EndNode");
-	addExtern< bool (*)(ax::NodeEditor::NodeId) , ax::NodeEditor::BeginGroupHint >(*this,lib,"BeginGroupHint",SideEffects::worstDefault,"ax::NodeEditor::BeginGroupHint")
-		->args({"nodeId"});
-	addExtern< ImVec2 (*)() , ax::NodeEditor::GetGroupMin >(*this,lib,"GetGroupMin",SideEffects::worstDefault,"ax::NodeEditor::GetGroupMin");
-	addExtern< ImVec2 (*)() , ax::NodeEditor::GetGroupMax >(*this,lib,"GetGroupMax",SideEffects::worstDefault,"ax::NodeEditor::GetGroupMax");
-	addExtern< ImDrawList * (*)() , ax::NodeEditor::GetHintForegroundDrawList >(*this,lib,"GetHintForegroundDrawList",SideEffects::worstDefault,"ax::NodeEditor::GetHintForegroundDrawList");
-	addExtern< ImDrawList * (*)() , ax::NodeEditor::GetHintBackgroundDrawList >(*this,lib,"GetHintBackgroundDrawList",SideEffects::worstDefault,"ax::NodeEditor::GetHintBackgroundDrawList");
-	addExtern< void (*)() , ax::NodeEditor::EndGroupHint >(*this,lib,"EndGroupHint",SideEffects::worstDefault,"ax::NodeEditor::EndGroupHint");
-	addExtern< ImDrawList * (*)(ax::NodeEditor::NodeId) , ax::NodeEditor::GetNodeBackgroundDrawList >(*this,lib,"GetNodeBackgroundDrawList",SideEffects::worstDefault,"ax::NodeEditor::GetNodeBackgroundDrawList")
-		->args({"nodeId"});
-	addExtern< bool (*)(ax::NodeEditor::LinkId,ax::NodeEditor::PinId,ax::NodeEditor::PinId,const ImVec4 &,float) , ax::NodeEditor::Link >(*this,lib,"Link",SideEffects::worstDefault,"ax::NodeEditor::Link")
+	makeExtern< void (*)(const ImVec2 &) , ax::NodeEditor::PinPivotSize , SimNode_ExtFuncCall >(lib,"PinPivotSize","ax::NodeEditor::PinPivotSize")
+		->args({"size"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(const ImVec2 &) , ax::NodeEditor::PinPivotScale , SimNode_ExtFuncCall >(lib,"PinPivotScale","ax::NodeEditor::PinPivotScale")
+		->args({"scale"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(const ImVec2 &) , ax::NodeEditor::PinPivotAlignment , SimNode_ExtFuncCall >(lib,"PinPivotAlignment","ax::NodeEditor::PinPivotAlignment")
+		->args({"alignment"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)() , ax::NodeEditor::EndPin , SimNode_ExtFuncCall >(lib,"EndPin","ax::NodeEditor::EndPin")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(const ImVec2 &) , ax::NodeEditor::Group , SimNode_ExtFuncCall >(lib,"Group","ax::NodeEditor::Group")
+		->args({"size"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)() , ax::NodeEditor::EndNode , SimNode_ExtFuncCall >(lib,"EndNode","ax::NodeEditor::EndNode")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< bool (*)(ax::NodeEditor::NodeId) , ax::NodeEditor::BeginGroupHint , SimNode_ExtFuncCall >(lib,"BeginGroupHint","ax::NodeEditor::BeginGroupHint")
+		->args({"nodeId"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< ImVec2 (*)() , ax::NodeEditor::GetGroupMin , SimNode_ExtFuncCallAndCopyOrMove >(lib,"GetGroupMin","ax::NodeEditor::GetGroupMin")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< ImVec2 (*)() , ax::NodeEditor::GetGroupMax , SimNode_ExtFuncCallAndCopyOrMove >(lib,"GetGroupMax","ax::NodeEditor::GetGroupMax")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< ImDrawList * (*)() , ax::NodeEditor::GetHintForegroundDrawList , SimNode_ExtFuncCall >(lib,"GetHintForegroundDrawList","ax::NodeEditor::GetHintForegroundDrawList")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< ImDrawList * (*)() , ax::NodeEditor::GetHintBackgroundDrawList , SimNode_ExtFuncCall >(lib,"GetHintBackgroundDrawList","ax::NodeEditor::GetHintBackgroundDrawList")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)() , ax::NodeEditor::EndGroupHint , SimNode_ExtFuncCall >(lib,"EndGroupHint","ax::NodeEditor::EndGroupHint")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< ImDrawList * (*)(ax::NodeEditor::NodeId) , ax::NodeEditor::GetNodeBackgroundDrawList , SimNode_ExtFuncCall >(lib,"GetNodeBackgroundDrawList","ax::NodeEditor::GetNodeBackgroundDrawList")
+		->args({"nodeId"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< bool (*)(ax::NodeEditor::LinkId,ax::NodeEditor::PinId,ax::NodeEditor::PinId,const ImVec4 &,float) , ax::NodeEditor::Link , SimNode_ExtFuncCall >(lib,"Link","ax::NodeEditor::Link")
 		->args({"id","startPinId","endPinId","color","thickness"})
-		->arg_init(4,make_smart<ExprConstFloat>(1.00000000000000000));
-	addExtern< void (*)(ax::NodeEditor::LinkId) , ax::NodeEditor::Flow >(*this,lib,"Flow",SideEffects::worstDefault,"ax::NodeEditor::Flow")
-		->args({"linkId"});
-	addExtern< bool (*)(const ImVec4 &,float) , ax::NodeEditor::BeginCreate >(*this,lib,"BeginCreate",SideEffects::worstDefault,"ax::NodeEditor::BeginCreate")
+		->arg_init(4,make_smart<ExprConstFloat>(1.00000000000000000))
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(ax::NodeEditor::LinkId) , ax::NodeEditor::Flow , SimNode_ExtFuncCall >(lib,"Flow","ax::NodeEditor::Flow")
+		->args({"linkId"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< bool (*)(const ImVec4 &,float) , ax::NodeEditor::BeginCreate , SimNode_ExtFuncCall >(lib,"BeginCreate","ax::NodeEditor::BeginCreate")
 		->args({"color","thickness"})
-		->arg_init(1,make_smart<ExprConstFloat>(1.00000000000000000));
-	addExtern< bool (*)(ax::NodeEditor::PinId *,ax::NodeEditor::PinId *) , ax::NodeEditor::QueryNewLink >(*this,lib,"QueryNewLink",SideEffects::worstDefault,"ax::NodeEditor::QueryNewLink")
-		->args({"startId","endId"});
-	addExtern< bool (*)(ax::NodeEditor::PinId *,ax::NodeEditor::PinId *,const ImVec4 &,float) , ax::NodeEditor::QueryNewLink >(*this,lib,"QueryNewLink",SideEffects::worstDefault,"ax::NodeEditor::QueryNewLink")
+		->arg_init(1,make_smart<ExprConstFloat>(1.00000000000000000))
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< bool (*)(ax::NodeEditor::PinId *,ax::NodeEditor::PinId *) , ax::NodeEditor::QueryNewLink , SimNode_ExtFuncCall >(lib,"QueryNewLink","ax::NodeEditor::QueryNewLink")
+		->args({"startId","endId"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< bool (*)(ax::NodeEditor::PinId *,ax::NodeEditor::PinId *,const ImVec4 &,float) , ax::NodeEditor::QueryNewLink , SimNode_ExtFuncCall >(lib,"QueryNewLink","ax::NodeEditor::QueryNewLink")
 		->args({"startId","endId","color","thickness"})
-		->arg_init(3,make_smart<ExprConstFloat>(1.00000000000000000));
-	addExtern< bool (*)(ax::NodeEditor::PinId *) , ax::NodeEditor::QueryNewNode >(*this,lib,"QueryNewNode",SideEffects::worstDefault,"ax::NodeEditor::QueryNewNode")
-		->args({"pinId"});
-	addExtern< bool (*)(ax::NodeEditor::PinId *,const ImVec4 &,float) , ax::NodeEditor::QueryNewNode >(*this,lib,"QueryNewNode",SideEffects::worstDefault,"ax::NodeEditor::QueryNewNode")
+		->arg_init(3,make_smart<ExprConstFloat>(1.00000000000000000))
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< bool (*)(ax::NodeEditor::PinId *) , ax::NodeEditor::QueryNewNode , SimNode_ExtFuncCall >(lib,"QueryNewNode","ax::NodeEditor::QueryNewNode")
+		->args({"pinId"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< bool (*)(ax::NodeEditor::PinId *,const ImVec4 &,float) , ax::NodeEditor::QueryNewNode , SimNode_ExtFuncCall >(lib,"QueryNewNode","ax::NodeEditor::QueryNewNode")
 		->args({"pinId","color","thickness"})
-		->arg_init(2,make_smart<ExprConstFloat>(1.00000000000000000));
+		->arg_init(2,make_smart<ExprConstFloat>(1.00000000000000000))
+		->addToModule(*this, SideEffects::worstDefault);
 }
 }
 

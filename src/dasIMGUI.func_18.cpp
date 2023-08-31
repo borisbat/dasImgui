@@ -13,30 +13,38 @@ namespace das {
 #include "dasIMGUI.func.aot.decl.inc"
 void Module_dasIMGUI::initFunctions_18() {
 	using _method_6 = das::das_call_member< void (ImGuiInputTextCallbackData::*)(int,int),&ImGuiInputTextCallbackData::DeleteChars >;
-	addExtern<DAS_CALL_METHOD(_method_6)>(*this,lib,"DeleteChars",SideEffects::worstDefault,"das_call_member< void (ImGuiInputTextCallbackData::*)(int,int) , &ImGuiInputTextCallbackData::DeleteChars >::invoke")
-		->args({"self","pos","bytes_count"});
+	makeExtern<DAS_CALL_METHOD(_method_6), SimNode_ExtFuncCall ,imguiTempFn>(lib,"DeleteChars","das_call_member< void (ImGuiInputTextCallbackData::*)(int,int) , &ImGuiInputTextCallbackData::DeleteChars >::invoke")
+		->args({"self","pos","bytes_count"})
+		->addToModule(*this, SideEffects::worstDefault);
 	using _method_7 = das::das_call_member< void (ImGuiInputTextCallbackData::*)(),&ImGuiInputTextCallbackData::SelectAll >;
-	addExtern<DAS_CALL_METHOD(_method_7)>(*this,lib,"SelectAll",SideEffects::worstDefault,"das_call_member< void (ImGuiInputTextCallbackData::*)() , &ImGuiInputTextCallbackData::SelectAll >::invoke")
-		->args({"self"});
+	makeExtern<DAS_CALL_METHOD(_method_7), SimNode_ExtFuncCall ,imguiTempFn>(lib,"SelectAll","das_call_member< void (ImGuiInputTextCallbackData::*)() , &ImGuiInputTextCallbackData::SelectAll >::invoke")
+		->args({"self"})
+		->addToModule(*this, SideEffects::worstDefault);
 	using _method_8 = das::das_call_member< void (ImGuiInputTextCallbackData::*)(),&ImGuiInputTextCallbackData::ClearSelection >;
-	addExtern<DAS_CALL_METHOD(_method_8)>(*this,lib,"ClearSelection",SideEffects::worstDefault,"das_call_member< void (ImGuiInputTextCallbackData::*)() , &ImGuiInputTextCallbackData::ClearSelection >::invoke")
-		->args({"self"});
+	makeExtern<DAS_CALL_METHOD(_method_8), SimNode_ExtFuncCall ,imguiTempFn>(lib,"ClearSelection","das_call_member< void (ImGuiInputTextCallbackData::*)() , &ImGuiInputTextCallbackData::ClearSelection >::invoke")
+		->args({"self"})
+		->addToModule(*this, SideEffects::worstDefault);
 	using _method_9 = das::das_call_member< bool (ImGuiInputTextCallbackData::*)() const,&ImGuiInputTextCallbackData::HasSelection >;
-	addExtern<DAS_CALL_METHOD(_method_9)>(*this,lib,"HasSelection",SideEffects::worstDefault,"das_call_member< bool (ImGuiInputTextCallbackData::*)() const , &ImGuiInputTextCallbackData::HasSelection >::invoke")
-		->args({"self"});
+	makeExtern<DAS_CALL_METHOD(_method_9), SimNode_ExtFuncCall ,imguiTempFn>(lib,"HasSelection","das_call_member< bool (ImGuiInputTextCallbackData::*)() const , &ImGuiInputTextCallbackData::HasSelection >::invoke")
+		->args({"self"})
+		->addToModule(*this, SideEffects::worstDefault);
 	addCtorAndUsing<ImGuiPayload>(*this,lib,"ImGuiPayload","ImGuiPayload");
 	using _method_10 = das::das_call_member< void (ImGuiPayload::*)(),&ImGuiPayload::Clear >;
-	addExtern<DAS_CALL_METHOD(_method_10)>(*this,lib,"Clear",SideEffects::worstDefault,"das_call_member< void (ImGuiPayload::*)() , &ImGuiPayload::Clear >::invoke")
-		->args({"self"});
+	makeExtern<DAS_CALL_METHOD(_method_10), SimNode_ExtFuncCall ,imguiTempFn>(lib,"Clear","das_call_member< void (ImGuiPayload::*)() , &ImGuiPayload::Clear >::invoke")
+		->args({"self"})
+		->addToModule(*this, SideEffects::worstDefault);
 	using _method_11 = das::das_call_member< bool (ImGuiPayload::*)(const char *) const,&ImGuiPayload::IsDataType >;
-	addExtern<DAS_CALL_METHOD(_method_11)>(*this,lib,"IsDataType",SideEffects::worstDefault,"das_call_member< bool (ImGuiPayload::*)(const char *) const , &ImGuiPayload::IsDataType >::invoke")
-		->args({"self","type"});
+	makeExtern<DAS_CALL_METHOD(_method_11), SimNode_ExtFuncCall ,imguiTempFn>(lib,"IsDataType","das_call_member< bool (ImGuiPayload::*)(const char *) const , &ImGuiPayload::IsDataType >::invoke")
+		->args({"self","type"})
+		->addToModule(*this, SideEffects::worstDefault);
 	using _method_12 = das::das_call_member< bool (ImGuiPayload::*)() const,&ImGuiPayload::IsPreview >;
-	addExtern<DAS_CALL_METHOD(_method_12)>(*this,lib,"IsPreview",SideEffects::worstDefault,"das_call_member< bool (ImGuiPayload::*)() const , &ImGuiPayload::IsPreview >::invoke")
-		->args({"self"});
+	makeExtern<DAS_CALL_METHOD(_method_12), SimNode_ExtFuncCall ,imguiTempFn>(lib,"IsPreview","das_call_member< bool (ImGuiPayload::*)() const , &ImGuiPayload::IsPreview >::invoke")
+		->args({"self"})
+		->addToModule(*this, SideEffects::worstDefault);
 	using _method_13 = das::das_call_member< bool (ImGuiPayload::*)() const,&ImGuiPayload::IsDelivery >;
-	addExtern<DAS_CALL_METHOD(_method_13)>(*this,lib,"IsDelivery",SideEffects::worstDefault,"das_call_member< bool (ImGuiPayload::*)() const , &ImGuiPayload::IsDelivery >::invoke")
-		->args({"self"});
+	makeExtern<DAS_CALL_METHOD(_method_13), SimNode_ExtFuncCall ,imguiTempFn>(lib,"IsDelivery","das_call_member< bool (ImGuiPayload::*)() const , &ImGuiPayload::IsDelivery >::invoke")
+		->args({"self"})
+		->addToModule(*this, SideEffects::worstDefault);
 	addCtorAndUsing<ImGuiTableColumnSortSpecs>(*this,lib,"ImGuiTableColumnSortSpecs","ImGuiTableColumnSortSpecs");
 	addCtorAndUsing<ImGuiTableSortSpecs>(*this,lib,"ImGuiTableSortSpecs","ImGuiTableSortSpecs");
 	addCtorAndUsing<ImGuiOnceUponAFrame>(*this,lib,"ImGuiOnceUponAFrame","ImGuiOnceUponAFrame");
@@ -44,25 +52,30 @@ void Module_dasIMGUI::initFunctions_18() {
 		->args({"default_filter"})
 		->arg_init(0,make_smart<ExprConstString>(""));
 	using _method_14 = das::das_call_member< bool (ImGuiTextFilter::*)(const char *,float),&ImGuiTextFilter::Draw >;
-	addExtern<DAS_CALL_METHOD(_method_14)>(*this,lib,"Draw",SideEffects::worstDefault,"das_call_member< bool (ImGuiTextFilter::*)(const char *,float) , &ImGuiTextFilter::Draw >::invoke")
+	makeExtern<DAS_CALL_METHOD(_method_14), SimNode_ExtFuncCall ,imguiTempFn>(lib,"Draw","das_call_member< bool (ImGuiTextFilter::*)(const char *,float) , &ImGuiTextFilter::Draw >::invoke")
 		->args({"self","label","width"})
 		->arg_init(1,make_smart<ExprConstString>("Filter (inc,-exc)"))
-		->arg_init(2,make_smart<ExprConstFloat>(0.00000000000000000));
+		->arg_init(2,make_smart<ExprConstFloat>(0.00000000000000000))
+		->addToModule(*this, SideEffects::worstDefault);
 	using _method_15 = das::das_call_member< void (ImGuiTextFilter::*)(),&ImGuiTextFilter::Build >;
-	addExtern<DAS_CALL_METHOD(_method_15)>(*this,lib,"Build",SideEffects::worstDefault,"das_call_member< void (ImGuiTextFilter::*)() , &ImGuiTextFilter::Build >::invoke")
-		->args({"self"});
+	makeExtern<DAS_CALL_METHOD(_method_15), SimNode_ExtFuncCall ,imguiTempFn>(lib,"Build","das_call_member< void (ImGuiTextFilter::*)() , &ImGuiTextFilter::Build >::invoke")
+		->args({"self"})
+		->addToModule(*this, SideEffects::worstDefault);
 	using _method_16 = das::das_call_member< void (ImGuiTextFilter::*)(),&ImGuiTextFilter::Clear >;
-	addExtern<DAS_CALL_METHOD(_method_16)>(*this,lib,"Clear",SideEffects::worstDefault,"das_call_member< void (ImGuiTextFilter::*)() , &ImGuiTextFilter::Clear >::invoke")
-		->args({"self"});
+	makeExtern<DAS_CALL_METHOD(_method_16), SimNode_ExtFuncCall ,imguiTempFn>(lib,"Clear","das_call_member< void (ImGuiTextFilter::*)() , &ImGuiTextFilter::Clear >::invoke")
+		->args({"self"})
+		->addToModule(*this, SideEffects::worstDefault);
 	using _method_17 = das::das_call_member< bool (ImGuiTextFilter::*)() const,&ImGuiTextFilter::IsActive >;
-	addExtern<DAS_CALL_METHOD(_method_17)>(*this,lib,"IsActive",SideEffects::worstDefault,"das_call_member< bool (ImGuiTextFilter::*)() const , &ImGuiTextFilter::IsActive >::invoke")
-		->args({"self"});
+	makeExtern<DAS_CALL_METHOD(_method_17), SimNode_ExtFuncCall ,imguiTempFn>(lib,"IsActive","das_call_member< bool (ImGuiTextFilter::*)() const , &ImGuiTextFilter::IsActive >::invoke")
+		->args({"self"})
+		->addToModule(*this, SideEffects::worstDefault);
 	addCtorAndUsing<ImGuiTextFilter::ImGuiTextRange>(*this,lib,"ImGuiTextRange","ImGuiTextFilter::ImGuiTextRange");
 	addCtorAndUsing<ImGuiTextFilter::ImGuiTextRange,const char *,const char *>(*this,lib,"ImGuiTextRange","ImGuiTextFilter::ImGuiTextRange")
 		->args({"_b","_e"});
 	using _method_18 = das::das_call_member< bool (ImGuiTextFilter::ImGuiTextRange::*)() const,&ImGuiTextFilter::ImGuiTextRange::empty >;
-	addExtern<DAS_CALL_METHOD(_method_18)>(*this,lib,"empty",SideEffects::worstDefault,"das_call_member< bool (ImGuiTextFilter::ImGuiTextRange::*)() const , &ImGuiTextFilter::ImGuiTextRange::empty >::invoke")
-		->args({"self"});
+	makeExtern<DAS_CALL_METHOD(_method_18), SimNode_ExtFuncCall ,imguiTempFn>(lib,"empty","das_call_member< bool (ImGuiTextFilter::ImGuiTextRange::*)() const , &ImGuiTextFilter::ImGuiTextRange::empty >::invoke")
+		->args({"self"})
+		->addToModule(*this, SideEffects::worstDefault);
 }
 }
 

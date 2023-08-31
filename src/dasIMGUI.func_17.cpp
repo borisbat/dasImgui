@@ -12,49 +12,66 @@
 namespace das {
 #include "dasIMGUI.func.aot.decl.inc"
 void Module_dasIMGUI::initFunctions_17() {
-	addExtern< int (*)() , ImGui::GetMouseCursor >(*this,lib,"GetMouseCursor",SideEffects::worstDefault,"ImGui::GetMouseCursor")
-		->res_type(makeType<ImGuiMouseCursor_>(lib));
-	addExtern< void (*)(int) , ImGui::SetMouseCursor >(*this,lib,"SetMouseCursor",SideEffects::worstDefault,"ImGui::SetMouseCursor")
+	makeExtern< int (*)() , ImGui::GetMouseCursor , SimNode_ExtFuncCall ,imguiTempFn>(lib,"GetMouseCursor","ImGui::GetMouseCursor")
+		->res_type(makeType<ImGuiMouseCursor_>(lib))
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(int) , ImGui::SetMouseCursor , SimNode_ExtFuncCall ,imguiTempFn>(lib,"SetMouseCursor","ImGui::SetMouseCursor")
 		->args({"cursor_type"})
-		->arg_type(0,makeType<ImGuiMouseCursor_>(lib));
-	addExtern< void (*)(bool) , ImGui::CaptureMouseFromApp >(*this,lib,"CaptureMouseFromApp",SideEffects::worstDefault,"ImGui::CaptureMouseFromApp")
+		->arg_type(0,makeType<ImGuiMouseCursor_>(lib))
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(bool) , ImGui::CaptureMouseFromApp , SimNode_ExtFuncCall ,imguiTempFn>(lib,"CaptureMouseFromApp","ImGui::CaptureMouseFromApp")
 		->args({"want_capture_mouse_value"})
-		->arg_init(0,make_smart<ExprConstBool>(true));
-	addExtern< const char * (*)() , ImGui::GetClipboardText >(*this,lib,"GetClipboardText",SideEffects::worstDefault,"ImGui::GetClipboardText");
-	addExtern< void (*)(const char *) , ImGui::SetClipboardText >(*this,lib,"SetClipboardText",SideEffects::worstDefault,"ImGui::SetClipboardText")
-		->args({"text"});
-	addExtern< void (*)(const char *) , ImGui::LoadIniSettingsFromDisk >(*this,lib,"LoadIniSettingsFromDisk",SideEffects::worstDefault,"ImGui::LoadIniSettingsFromDisk")
-		->args({"ini_filename"});
-	addExtern< void (*)(const char *,size_t) , ImGui::LoadIniSettingsFromMemory >(*this,lib,"LoadIniSettingsFromMemory",SideEffects::worstDefault,"ImGui::LoadIniSettingsFromMemory")
+		->arg_init(0,make_smart<ExprConstBool>(true))
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< const char * (*)() , ImGui::GetClipboardText , SimNode_ExtFuncCall ,imguiTempFn>(lib,"GetClipboardText","ImGui::GetClipboardText")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(const char *) , ImGui::SetClipboardText , SimNode_ExtFuncCall ,imguiTempFn>(lib,"SetClipboardText","ImGui::SetClipboardText")
+		->args({"text"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(const char *) , ImGui::LoadIniSettingsFromDisk , SimNode_ExtFuncCall ,imguiTempFn>(lib,"LoadIniSettingsFromDisk","ImGui::LoadIniSettingsFromDisk")
+		->args({"ini_filename"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(const char *,size_t) , ImGui::LoadIniSettingsFromMemory , SimNode_ExtFuncCall ,imguiTempFn>(lib,"LoadIniSettingsFromMemory","ImGui::LoadIniSettingsFromMemory")
 		->args({"ini_data","ini_size"})
-		->arg_init(1,make_smart<ExprConstUInt64>(0x0));
-	addExtern< void (*)(const char *) , ImGui::SaveIniSettingsToDisk >(*this,lib,"SaveIniSettingsToDisk",SideEffects::worstDefault,"ImGui::SaveIniSettingsToDisk")
-		->args({"ini_filename"});
-	addExtern< const char * (*)(size_t *) , ImGui::SaveIniSettingsToMemory >(*this,lib,"SaveIniSettingsToMemory",SideEffects::worstDefault,"ImGui::SaveIniSettingsToMemory")
+		->arg_init(1,make_smart<ExprConstUInt64>(0x0))
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(const char *) , ImGui::SaveIniSettingsToDisk , SimNode_ExtFuncCall ,imguiTempFn>(lib,"SaveIniSettingsToDisk","ImGui::SaveIniSettingsToDisk")
+		->args({"ini_filename"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< const char * (*)(size_t *) , ImGui::SaveIniSettingsToMemory , SimNode_ExtFuncCall ,imguiTempFn>(lib,"SaveIniSettingsToMemory","ImGui::SaveIniSettingsToMemory")
 		->args({"out_ini_size"})
-		->arg_init(0,make_smart<ExprConstPtr>());
-	addExtern< bool (*)(const char *,size_t,size_t,size_t,size_t,size_t,size_t) , ImGui::DebugCheckVersionAndDataLayout >(*this,lib,"DebugCheckVersionAndDataLayout",SideEffects::worstDefault,"ImGui::DebugCheckVersionAndDataLayout")
-		->args({"version_str","sz_io","sz_style","sz_vec2","sz_vec4","sz_drawvert","sz_drawidx"});
-	addExtern< void * (*)(size_t) , ImGui::MemAlloc >(*this,lib,"MemAlloc",SideEffects::worstDefault,"ImGui::MemAlloc")
-		->args({"size"});
-	addExtern< void (*)(void *) , ImGui::MemFree >(*this,lib,"MemFree",SideEffects::worstDefault,"ImGui::MemFree")
-		->args({"ptr"});
+		->arg_init(0,make_smart<ExprConstPtr>())
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< bool (*)(const char *,size_t,size_t,size_t,size_t,size_t,size_t) , ImGui::DebugCheckVersionAndDataLayout , SimNode_ExtFuncCall ,imguiTempFn>(lib,"DebugCheckVersionAndDataLayout","ImGui::DebugCheckVersionAndDataLayout")
+		->args({"version_str","sz_io","sz_style","sz_vec2","sz_vec4","sz_drawvert","sz_drawidx"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void * (*)(size_t) , ImGui::MemAlloc , SimNode_ExtFuncCall ,imguiTempFn>(lib,"MemAlloc","ImGui::MemAlloc")
+		->args({"size"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(void *) , ImGui::MemFree , SimNode_ExtFuncCall ,imguiTempFn>(lib,"MemFree","ImGui::MemFree")
+		->args({"ptr"})
+		->addToModule(*this, SideEffects::worstDefault);
 	addCtorAndUsing<ImGuiStyle>(*this,lib,"ImGuiStyle","ImGuiStyle");
 	using _method_1 = das::das_call_member< void (ImGuiStyle::*)(float),&ImGuiStyle::ScaleAllSizes >;
-	addExtern<DAS_CALL_METHOD(_method_1)>(*this,lib,"ScaleAllSizes",SideEffects::worstDefault,"das_call_member< void (ImGuiStyle::*)(float) , &ImGuiStyle::ScaleAllSizes >::invoke")
-		->args({"self","scale_factor"});
+	makeExtern<DAS_CALL_METHOD(_method_1), SimNode_ExtFuncCall ,imguiTempFn>(lib,"ScaleAllSizes","das_call_member< void (ImGuiStyle::*)(float) , &ImGuiStyle::ScaleAllSizes >::invoke")
+		->args({"self","scale_factor"})
+		->addToModule(*this, SideEffects::worstDefault);
 	using _method_2 = das::das_call_member< void (ImGuiIO::*)(unsigned int),&ImGuiIO::AddInputCharacter >;
-	addExtern<DAS_CALL_METHOD(_method_2)>(*this,lib,"AddInputCharacter",SideEffects::worstDefault,"das_call_member< void (ImGuiIO::*)(unsigned int) , &ImGuiIO::AddInputCharacter >::invoke")
-		->args({"self","c"});
+	makeExtern<DAS_CALL_METHOD(_method_2), SimNode_ExtFuncCall ,imguiTempFn>(lib,"AddInputCharacter","das_call_member< void (ImGuiIO::*)(unsigned int) , &ImGuiIO::AddInputCharacter >::invoke")
+		->args({"self","c"})
+		->addToModule(*this, SideEffects::worstDefault);
 	using _method_3 = das::das_call_member< void (ImGuiIO::*)(unsigned short),&ImGuiIO::AddInputCharacterUTF16 >;
-	addExtern<DAS_CALL_METHOD(_method_3)>(*this,lib,"AddInputCharacterUTF16",SideEffects::worstDefault,"das_call_member< void (ImGuiIO::*)(unsigned short) , &ImGuiIO::AddInputCharacterUTF16 >::invoke")
-		->args({"self","c"});
+	makeExtern<DAS_CALL_METHOD(_method_3), SimNode_ExtFuncCall ,imguiTempFn>(lib,"AddInputCharacterUTF16","das_call_member< void (ImGuiIO::*)(unsigned short) , &ImGuiIO::AddInputCharacterUTF16 >::invoke")
+		->args({"self","c"})
+		->addToModule(*this, SideEffects::worstDefault);
 	using _method_4 = das::das_call_member< void (ImGuiIO::*)(const char *),&ImGuiIO::AddInputCharactersUTF8 >;
-	addExtern<DAS_CALL_METHOD(_method_4)>(*this,lib,"AddInputCharactersUTF8",SideEffects::worstDefault,"das_call_member< void (ImGuiIO::*)(const char *) , &ImGuiIO::AddInputCharactersUTF8 >::invoke")
-		->args({"self","str"});
+	makeExtern<DAS_CALL_METHOD(_method_4), SimNode_ExtFuncCall ,imguiTempFn>(lib,"AddInputCharactersUTF8","das_call_member< void (ImGuiIO::*)(const char *) , &ImGuiIO::AddInputCharactersUTF8 >::invoke")
+		->args({"self","str"})
+		->addToModule(*this, SideEffects::worstDefault);
 	using _method_5 = das::das_call_member< void (ImGuiIO::*)(),&ImGuiIO::ClearInputCharacters >;
-	addExtern<DAS_CALL_METHOD(_method_5)>(*this,lib,"ClearInputCharacters",SideEffects::worstDefault,"das_call_member< void (ImGuiIO::*)() , &ImGuiIO::ClearInputCharacters >::invoke")
-		->args({"self"});
+	makeExtern<DAS_CALL_METHOD(_method_5), SimNode_ExtFuncCall ,imguiTempFn>(lib,"ClearInputCharacters","das_call_member< void (ImGuiIO::*)() , &ImGuiIO::ClearInputCharacters >::invoke")
+		->args({"self"})
+		->addToModule(*this, SideEffects::worstDefault);
 	addCtorAndUsing<ImGuiIO>(*this,lib,"ImGuiIO","ImGuiIO");
 	addCtorAndUsing<ImGuiInputTextCallbackData>(*this,lib,"ImGuiInputTextCallbackData","ImGuiInputTextCallbackData");
 }

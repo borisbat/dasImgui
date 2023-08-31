@@ -12,57 +12,77 @@
 namespace das {
 #include "dasIMGUI.func.aot.decl.inc"
 void Module_dasIMGUI::initFunctions_12() {
-	addExtern< bool (*)(const char *,int) , ImGui::IsPopupOpen >(*this,lib,"IsPopupOpen",SideEffects::worstDefault,"ImGui::IsPopupOpen")
+	makeExtern< bool (*)(const char *,int) , ImGui::IsPopupOpen , SimNode_ExtFuncCall ,imguiTempFn>(lib,"IsPopupOpen","ImGui::IsPopupOpen")
 		->args({"str_id","flags"})
 		->arg_type(1,makeType<ImGuiPopupFlags_>(lib))
-		->arg_init(1,make_smart<ExprConstEnumeration>(0,makeType<ImGuiPopupFlags_>(lib)));
-	addExtern< bool (*)(const char *,int,int,const ImVec2 &,float) , ImGui::BeginTable >(*this,lib,"BeginTable",SideEffects::worstDefault,"ImGui::BeginTable")
+		->arg_init(1,make_smart<ExprConstEnumeration>(0,makeType<ImGuiPopupFlags_>(lib)))
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< bool (*)(const char *,int,int,const ImVec2 &,float) , ImGui::BeginTable , SimNode_ExtFuncCall ,imguiTempFn>(lib,"BeginTable","ImGui::BeginTable")
 		->args({"str_id","column","flags","outer_size","inner_width"})
 		->arg_type(2,makeType<ImGuiTableFlags_>(lib))
 		->arg_init(2,make_smart<ExprConstEnumeration>(0,makeType<ImGuiTableFlags_>(lib)))
-		->arg_init(4,make_smart<ExprConstFloat>(0.00000000000000000));
-	addExtern< void (*)() , ImGui::EndTable >(*this,lib,"EndTable",SideEffects::worstDefault,"ImGui::EndTable");
-	addExtern< void (*)(int,float) , ImGui::TableNextRow >(*this,lib,"TableNextRow",SideEffects::worstDefault,"ImGui::TableNextRow")
+		->arg_init(4,make_smart<ExprConstFloat>(0.00000000000000000))
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)() , ImGui::EndTable , SimNode_ExtFuncCall ,imguiTempFn>(lib,"EndTable","ImGui::EndTable")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(int,float) , ImGui::TableNextRow , SimNode_ExtFuncCall ,imguiTempFn>(lib,"TableNextRow","ImGui::TableNextRow")
 		->args({"row_flags","min_row_height"})
 		->arg_type(0,makeType<ImGuiTableRowFlags_>(lib))
 		->arg_init(0,make_smart<ExprConstEnumeration>(0,makeType<ImGuiTableRowFlags_>(lib)))
-		->arg_init(1,make_smart<ExprConstFloat>(0.00000000000000000));
-	addExtern< bool (*)() , ImGui::TableNextColumn >(*this,lib,"TableNextColumn",SideEffects::worstDefault,"ImGui::TableNextColumn");
-	addExtern< bool (*)(int) , ImGui::TableSetColumnIndex >(*this,lib,"TableSetColumnIndex",SideEffects::worstDefault,"ImGui::TableSetColumnIndex")
-		->args({"column_n"});
-	addExtern< void (*)(const char *,int,float,unsigned int) , ImGui::TableSetupColumn >(*this,lib,"TableSetupColumn",SideEffects::worstDefault,"ImGui::TableSetupColumn")
+		->arg_init(1,make_smart<ExprConstFloat>(0.00000000000000000))
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< bool (*)() , ImGui::TableNextColumn , SimNode_ExtFuncCall ,imguiTempFn>(lib,"TableNextColumn","ImGui::TableNextColumn")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< bool (*)(int) , ImGui::TableSetColumnIndex , SimNode_ExtFuncCall ,imguiTempFn>(lib,"TableSetColumnIndex","ImGui::TableSetColumnIndex")
+		->args({"column_n"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(const char *,int,float,unsigned int) , ImGui::TableSetupColumn , SimNode_ExtFuncCall ,imguiTempFn>(lib,"TableSetupColumn","ImGui::TableSetupColumn")
 		->args({"label","flags","init_width_or_weight","user_id"})
 		->arg_type(1,makeType<ImGuiTableColumnFlags_>(lib))
 		->arg_init(1,make_smart<ExprConstEnumeration>(0,makeType<ImGuiTableColumnFlags_>(lib)))
 		->arg_init(2,make_smart<ExprConstFloat>(0.00000000000000000))
-		->arg_init(3,make_smart<ExprConstUInt>(0x0));
-	addExtern< void (*)(int,int) , ImGui::TableSetupScrollFreeze >(*this,lib,"TableSetupScrollFreeze",SideEffects::worstDefault,"ImGui::TableSetupScrollFreeze")
-		->args({"cols","rows"});
-	addExtern< void (*)() , ImGui::TableHeadersRow >(*this,lib,"TableHeadersRow",SideEffects::worstDefault,"ImGui::TableHeadersRow");
-	addExtern< void (*)(const char *) , ImGui::TableHeader >(*this,lib,"TableHeader",SideEffects::worstDefault,"ImGui::TableHeader")
-		->args({"label"});
-	addExtern< ImGuiTableSortSpecs * (*)() , ImGui::TableGetSortSpecs >(*this,lib,"TableGetSortSpecs",SideEffects::worstDefault,"ImGui::TableGetSortSpecs");
-	addExtern< int (*)() , ImGui::TableGetColumnCount >(*this,lib,"TableGetColumnCount",SideEffects::worstDefault,"ImGui::TableGetColumnCount");
-	addExtern< int (*)() , ImGui::TableGetColumnIndex >(*this,lib,"TableGetColumnIndex",SideEffects::worstDefault,"ImGui::TableGetColumnIndex");
-	addExtern< int (*)() , ImGui::TableGetRowIndex >(*this,lib,"TableGetRowIndex",SideEffects::worstDefault,"ImGui::TableGetRowIndex");
-	addExtern< const char * (*)(int) , ImGui::TableGetColumnName >(*this,lib,"TableGetColumnName",SideEffects::worstDefault,"ImGui::TableGetColumnName")
-		->args({"column_n"})
-		->arg_init(0,make_smart<ExprConstInt>(-1));
-	addExtern< int (*)(int) , ImGui::TableGetColumnFlags >(*this,lib,"TableGetColumnFlags",SideEffects::worstDefault,"ImGui::TableGetColumnFlags")
+		->arg_init(3,make_smart<ExprConstUInt>(0x0))
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(int,int) , ImGui::TableSetupScrollFreeze , SimNode_ExtFuncCall ,imguiTempFn>(lib,"TableSetupScrollFreeze","ImGui::TableSetupScrollFreeze")
+		->args({"cols","rows"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)() , ImGui::TableHeadersRow , SimNode_ExtFuncCall ,imguiTempFn>(lib,"TableHeadersRow","ImGui::TableHeadersRow")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(const char *) , ImGui::TableHeader , SimNode_ExtFuncCall ,imguiTempFn>(lib,"TableHeader","ImGui::TableHeader")
+		->args({"label"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< ImGuiTableSortSpecs * (*)() , ImGui::TableGetSortSpecs , SimNode_ExtFuncCall ,imguiTempFn>(lib,"TableGetSortSpecs","ImGui::TableGetSortSpecs")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< int (*)() , ImGui::TableGetColumnCount , SimNode_ExtFuncCall ,imguiTempFn>(lib,"TableGetColumnCount","ImGui::TableGetColumnCount")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< int (*)() , ImGui::TableGetColumnIndex , SimNode_ExtFuncCall ,imguiTempFn>(lib,"TableGetColumnIndex","ImGui::TableGetColumnIndex")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< int (*)() , ImGui::TableGetRowIndex , SimNode_ExtFuncCall ,imguiTempFn>(lib,"TableGetRowIndex","ImGui::TableGetRowIndex")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< const char * (*)(int) , ImGui::TableGetColumnName , SimNode_ExtFuncCall ,imguiTempFn>(lib,"TableGetColumnName","ImGui::TableGetColumnName")
 		->args({"column_n"})
 		->arg_init(0,make_smart<ExprConstInt>(-1))
-		->res_type(makeType<ImGuiTableColumnFlags_>(lib));
-	addExtern< void (*)(int,unsigned int,int) , ImGui::TableSetBgColor >(*this,lib,"TableSetBgColor",SideEffects::worstDefault,"ImGui::TableSetBgColor")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< int (*)(int) , ImGui::TableGetColumnFlags , SimNode_ExtFuncCall ,imguiTempFn>(lib,"TableGetColumnFlags","ImGui::TableGetColumnFlags")
+		->args({"column_n"})
+		->arg_init(0,make_smart<ExprConstInt>(-1))
+		->res_type(makeType<ImGuiTableColumnFlags_>(lib))
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(int,unsigned int,int) , ImGui::TableSetBgColor , SimNode_ExtFuncCall ,imguiTempFn>(lib,"TableSetBgColor","ImGui::TableSetBgColor")
 		->args({"target","color","column_n"})
 		->arg_type(0,makeType<ImGuiTableBgTarget_>(lib))
-		->arg_init(2,make_smart<ExprConstInt>(-1));
-	addExtern< void (*)(int,const char *,bool) , ImGui::Columns >(*this,lib,"Columns",SideEffects::worstDefault,"ImGui::Columns")
+		->arg_init(2,make_smart<ExprConstInt>(-1))
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(int,const char *,bool) , ImGui::Columns , SimNode_ExtFuncCall ,imguiTempFn>(lib,"Columns","ImGui::Columns")
 		->args({"count","id","border"})
 		->arg_init(0,make_smart<ExprConstInt>(1))
 		->arg_init(1,make_smart<ExprConstString>(""))
-		->arg_init(2,make_smart<ExprConstBool>(true));
-	addExtern< void (*)() , ImGui::NextColumn >(*this,lib,"NextColumn",SideEffects::worstDefault,"ImGui::NextColumn");
-	addExtern< int (*)() , ImGui::GetColumnIndex >(*this,lib,"GetColumnIndex",SideEffects::worstDefault,"ImGui::GetColumnIndex");
+		->arg_init(2,make_smart<ExprConstBool>(true))
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)() , ImGui::NextColumn , SimNode_ExtFuncCall ,imguiTempFn>(lib,"NextColumn","ImGui::NextColumn")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< int (*)() , ImGui::GetColumnIndex , SimNode_ExtFuncCall ,imguiTempFn>(lib,"GetColumnIndex","ImGui::GetColumnIndex")
+		->addToModule(*this, SideEffects::worstDefault);
 }
 }
 

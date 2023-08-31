@@ -12,36 +12,56 @@
 namespace das {
 #include "dasIMGUI.func.aot.decl.inc"
 void Module_dasIMGUI::initFunctions_6() {
-	addExtern< float (*)() , ImGui::GetCursorPosX >(*this,lib,"GetCursorPosX",SideEffects::worstDefault,"ImGui::GetCursorPosX");
-	addExtern< float (*)() , ImGui::GetCursorPosY >(*this,lib,"GetCursorPosY",SideEffects::worstDefault,"ImGui::GetCursorPosY");
-	addExtern< void (*)(const ImVec2 &) , ImGui::SetCursorPos >(*this,lib,"SetCursorPos",SideEffects::worstDefault,"ImGui::SetCursorPos")
-		->args({"local_pos"});
-	addExtern< void (*)(float) , ImGui::SetCursorPosX >(*this,lib,"SetCursorPosX",SideEffects::worstDefault,"ImGui::SetCursorPosX")
-		->args({"local_x"});
-	addExtern< void (*)(float) , ImGui::SetCursorPosY >(*this,lib,"SetCursorPosY",SideEffects::worstDefault,"ImGui::SetCursorPosY")
-		->args({"local_y"});
-	addExtern< ImVec2 (*)() , ImGui::GetCursorStartPos >(*this,lib,"GetCursorStartPos",SideEffects::worstDefault,"ImGui::GetCursorStartPos");
-	addExtern< ImVec2 (*)() , ImGui::GetCursorScreenPos >(*this,lib,"GetCursorScreenPos",SideEffects::worstDefault,"ImGui::GetCursorScreenPos");
-	addExtern< void (*)(const ImVec2 &) , ImGui::SetCursorScreenPos >(*this,lib,"SetCursorScreenPos",SideEffects::worstDefault,"ImGui::SetCursorScreenPos")
-		->args({"pos"});
-	addExtern< void (*)() , ImGui::AlignTextToFramePadding >(*this,lib,"AlignTextToFramePadding",SideEffects::worstDefault,"ImGui::AlignTextToFramePadding");
-	addExtern< float (*)() , ImGui::GetTextLineHeight >(*this,lib,"GetTextLineHeight",SideEffects::worstDefault,"ImGui::GetTextLineHeight");
-	addExtern< float (*)() , ImGui::GetTextLineHeightWithSpacing >(*this,lib,"GetTextLineHeightWithSpacing",SideEffects::worstDefault,"ImGui::GetTextLineHeightWithSpacing");
-	addExtern< float (*)() , ImGui::GetFrameHeight >(*this,lib,"GetFrameHeight",SideEffects::worstDefault,"ImGui::GetFrameHeight");
-	addExtern< float (*)() , ImGui::GetFrameHeightWithSpacing >(*this,lib,"GetFrameHeightWithSpacing",SideEffects::worstDefault,"ImGui::GetFrameHeightWithSpacing");
-	addExtern< void (*)(const char *) , ImGui::PushID >(*this,lib,"PushID",SideEffects::worstDefault,"ImGui::PushID")
-		->args({"str_id"});
-	addExtern< void (*)(const char *,const char *) , ImGui::PushID >(*this,lib,"PushID",SideEffects::worstDefault,"ImGui::PushID")
-		->args({"str_id_begin","str_id_end"});
-	addExtern< void (*)(const void *) , ImGui::PushID >(*this,lib,"PushID",SideEffects::worstDefault,"ImGui::PushID")
-		->args({"ptr_id"});
-	addExtern< void (*)(int) , ImGui::PushID >(*this,lib,"PushID",SideEffects::worstDefault,"ImGui::PushID")
-		->args({"int_id"});
-	addExtern< void (*)() , ImGui::PopID >(*this,lib,"PopID",SideEffects::worstDefault,"ImGui::PopID");
-	addExtern< unsigned int (*)(const char *) , ImGui::GetID >(*this,lib,"GetID",SideEffects::worstDefault,"ImGui::GetID")
-		->args({"str_id"});
-	addExtern< unsigned int (*)(const char *,const char *) , ImGui::GetID >(*this,lib,"GetID",SideEffects::worstDefault,"ImGui::GetID")
-		->args({"str_id_begin","str_id_end"});
+	makeExtern< float (*)() , ImGui::GetCursorPosX , SimNode_ExtFuncCall ,imguiTempFn>(lib,"GetCursorPosX","ImGui::GetCursorPosX")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< float (*)() , ImGui::GetCursorPosY , SimNode_ExtFuncCall ,imguiTempFn>(lib,"GetCursorPosY","ImGui::GetCursorPosY")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(const ImVec2 &) , ImGui::SetCursorPos , SimNode_ExtFuncCall ,imguiTempFn>(lib,"SetCursorPos","ImGui::SetCursorPos")
+		->args({"local_pos"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(float) , ImGui::SetCursorPosX , SimNode_ExtFuncCall ,imguiTempFn>(lib,"SetCursorPosX","ImGui::SetCursorPosX")
+		->args({"local_x"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(float) , ImGui::SetCursorPosY , SimNode_ExtFuncCall ,imguiTempFn>(lib,"SetCursorPosY","ImGui::SetCursorPosY")
+		->args({"local_y"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< ImVec2 (*)() , ImGui::GetCursorStartPos , SimNode_ExtFuncCallAndCopyOrMove ,imguiTempFn>(lib,"GetCursorStartPos","ImGui::GetCursorStartPos")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< ImVec2 (*)() , ImGui::GetCursorScreenPos , SimNode_ExtFuncCallAndCopyOrMove ,imguiTempFn>(lib,"GetCursorScreenPos","ImGui::GetCursorScreenPos")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(const ImVec2 &) , ImGui::SetCursorScreenPos , SimNode_ExtFuncCall ,imguiTempFn>(lib,"SetCursorScreenPos","ImGui::SetCursorScreenPos")
+		->args({"pos"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)() , ImGui::AlignTextToFramePadding , SimNode_ExtFuncCall ,imguiTempFn>(lib,"AlignTextToFramePadding","ImGui::AlignTextToFramePadding")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< float (*)() , ImGui::GetTextLineHeight , SimNode_ExtFuncCall ,imguiTempFn>(lib,"GetTextLineHeight","ImGui::GetTextLineHeight")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< float (*)() , ImGui::GetTextLineHeightWithSpacing , SimNode_ExtFuncCall ,imguiTempFn>(lib,"GetTextLineHeightWithSpacing","ImGui::GetTextLineHeightWithSpacing")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< float (*)() , ImGui::GetFrameHeight , SimNode_ExtFuncCall ,imguiTempFn>(lib,"GetFrameHeight","ImGui::GetFrameHeight")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< float (*)() , ImGui::GetFrameHeightWithSpacing , SimNode_ExtFuncCall ,imguiTempFn>(lib,"GetFrameHeightWithSpacing","ImGui::GetFrameHeightWithSpacing")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(const char *) , ImGui::PushID , SimNode_ExtFuncCall ,imguiTempFn>(lib,"PushID","ImGui::PushID")
+		->args({"str_id"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(const char *,const char *) , ImGui::PushID , SimNode_ExtFuncCall ,imguiTempFn>(lib,"PushID","ImGui::PushID")
+		->args({"str_id_begin","str_id_end"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(const void *) , ImGui::PushID , SimNode_ExtFuncCall ,imguiTempFn>(lib,"PushID","ImGui::PushID")
+		->args({"ptr_id"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(int) , ImGui::PushID , SimNode_ExtFuncCall ,imguiTempFn>(lib,"PushID","ImGui::PushID")
+		->args({"int_id"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)() , ImGui::PopID , SimNode_ExtFuncCall ,imguiTempFn>(lib,"PopID","ImGui::PopID")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< unsigned int (*)(const char *) , ImGui::GetID , SimNode_ExtFuncCall ,imguiTempFn>(lib,"GetID","ImGui::GetID")
+		->args({"str_id"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< unsigned int (*)(const char *,const char *) , ImGui::GetID , SimNode_ExtFuncCall ,imguiTempFn>(lib,"GetID","ImGui::GetID")
+		->args({"str_id_begin","str_id_end"})
+		->addToModule(*this, SideEffects::worstDefault);
 }
 }
 

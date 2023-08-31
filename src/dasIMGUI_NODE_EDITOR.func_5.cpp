@@ -12,30 +12,49 @@
 namespace das {
 #include "dasIMGUI_NODE_EDITOR.func.aot.decl.inc"
 void Module_dasIMGUI_NODE_EDITOR::initFunctions_5() {
-	addExtern< bool (*)() , ax::NodeEditor::AcceptCut >(*this,lib,"AcceptCut",SideEffects::worstDefault,"ax::NodeEditor::AcceptCut");
-	addExtern< bool (*)() , ax::NodeEditor::AcceptCopy >(*this,lib,"AcceptCopy",SideEffects::worstDefault,"ax::NodeEditor::AcceptCopy");
-	addExtern< bool (*)() , ax::NodeEditor::AcceptPaste >(*this,lib,"AcceptPaste",SideEffects::worstDefault,"ax::NodeEditor::AcceptPaste");
-	addExtern< bool (*)() , ax::NodeEditor::AcceptDuplicate >(*this,lib,"AcceptDuplicate",SideEffects::worstDefault,"ax::NodeEditor::AcceptDuplicate");
-	addExtern< bool (*)() , ax::NodeEditor::AcceptCreateNode >(*this,lib,"AcceptCreateNode",SideEffects::worstDefault,"ax::NodeEditor::AcceptCreateNode");
-	addExtern< int (*)() , ax::NodeEditor::GetActionContextSize >(*this,lib,"GetActionContextSize",SideEffects::worstDefault,"ax::NodeEditor::GetActionContextSize");
-	addExtern< int (*)(ax::NodeEditor::NodeId *,int) , ax::NodeEditor::GetActionContextNodes >(*this,lib,"GetActionContextNodes",SideEffects::worstDefault,"ax::NodeEditor::GetActionContextNodes")
-		->args({"nodes","size"});
-	addExtern< int (*)(ax::NodeEditor::LinkId *,int) , ax::NodeEditor::GetActionContextLinks >(*this,lib,"GetActionContextLinks",SideEffects::worstDefault,"ax::NodeEditor::GetActionContextLinks")
-		->args({"links","size"});
-	addExtern< void (*)() , ax::NodeEditor::EndShortcut >(*this,lib,"EndShortcut",SideEffects::worstDefault,"ax::NodeEditor::EndShortcut");
-	addExtern< float (*)() , ax::NodeEditor::GetCurrentZoom >(*this,lib,"GetCurrentZoom",SideEffects::worstDefault,"ax::NodeEditor::GetCurrentZoom");
-	addExtern< ax::NodeEditor::NodeId (*)() , ax::NodeEditor::GetDoubleClickedNode >(*this,lib,"GetDoubleClickedNode",SideEffects::worstDefault,"ax::NodeEditor::GetDoubleClickedNode");
-	addExtern< ax::NodeEditor::PinId (*)() , ax::NodeEditor::GetDoubleClickedPin >(*this,lib,"GetDoubleClickedPin",SideEffects::worstDefault,"ax::NodeEditor::GetDoubleClickedPin");
-	addExtern< ax::NodeEditor::LinkId (*)() , ax::NodeEditor::GetDoubleClickedLink >(*this,lib,"GetDoubleClickedLink",SideEffects::worstDefault,"ax::NodeEditor::GetDoubleClickedLink");
-	addExtern< bool (*)() , ax::NodeEditor::IsBackgroundClicked >(*this,lib,"IsBackgroundClicked",SideEffects::worstDefault,"ax::NodeEditor::IsBackgroundClicked");
-	addExtern< bool (*)() , ax::NodeEditor::IsBackgroundDoubleClicked >(*this,lib,"IsBackgroundDoubleClicked",SideEffects::worstDefault,"ax::NodeEditor::IsBackgroundDoubleClicked");
-	addExtern< bool (*)(ax::NodeEditor::PinId) , ax::NodeEditor::PinHadAnyLinks >(*this,lib,"PinHadAnyLinks",SideEffects::worstDefault,"ax::NodeEditor::PinHadAnyLinks")
-		->args({"pinId"});
-	addExtern< ImVec2 (*)() , ax::NodeEditor::GetScreenSize >(*this,lib,"GetScreenSize",SideEffects::worstDefault,"ax::NodeEditor::GetScreenSize");
-	addExtern< ImVec2 (*)(const ImVec2 &) , ax::NodeEditor::ScreenToCanvas >(*this,lib,"ScreenToCanvas",SideEffects::worstDefault,"ax::NodeEditor::ScreenToCanvas")
-		->args({"pos"});
-	addExtern< ImVec2 (*)(const ImVec2 &) , ax::NodeEditor::CanvasToScreen >(*this,lib,"CanvasToScreen",SideEffects::worstDefault,"ax::NodeEditor::CanvasToScreen")
-		->args({"pos"});
+	makeExtern< bool (*)() , ax::NodeEditor::AcceptCut , SimNode_ExtFuncCall >(lib,"AcceptCut","ax::NodeEditor::AcceptCut")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< bool (*)() , ax::NodeEditor::AcceptCopy , SimNode_ExtFuncCall >(lib,"AcceptCopy","ax::NodeEditor::AcceptCopy")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< bool (*)() , ax::NodeEditor::AcceptPaste , SimNode_ExtFuncCall >(lib,"AcceptPaste","ax::NodeEditor::AcceptPaste")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< bool (*)() , ax::NodeEditor::AcceptDuplicate , SimNode_ExtFuncCall >(lib,"AcceptDuplicate","ax::NodeEditor::AcceptDuplicate")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< bool (*)() , ax::NodeEditor::AcceptCreateNode , SimNode_ExtFuncCall >(lib,"AcceptCreateNode","ax::NodeEditor::AcceptCreateNode")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< int (*)() , ax::NodeEditor::GetActionContextSize , SimNode_ExtFuncCall >(lib,"GetActionContextSize","ax::NodeEditor::GetActionContextSize")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< int (*)(ax::NodeEditor::NodeId *,int) , ax::NodeEditor::GetActionContextNodes , SimNode_ExtFuncCall >(lib,"GetActionContextNodes","ax::NodeEditor::GetActionContextNodes")
+		->args({"nodes","size"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< int (*)(ax::NodeEditor::LinkId *,int) , ax::NodeEditor::GetActionContextLinks , SimNode_ExtFuncCall >(lib,"GetActionContextLinks","ax::NodeEditor::GetActionContextLinks")
+		->args({"links","size"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)() , ax::NodeEditor::EndShortcut , SimNode_ExtFuncCall >(lib,"EndShortcut","ax::NodeEditor::EndShortcut")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< float (*)() , ax::NodeEditor::GetCurrentZoom , SimNode_ExtFuncCall >(lib,"GetCurrentZoom","ax::NodeEditor::GetCurrentZoom")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< ax::NodeEditor::NodeId (*)() , ax::NodeEditor::GetDoubleClickedNode , SimNode_ExtFuncCallAndCopyOrMove >(lib,"GetDoubleClickedNode","ax::NodeEditor::GetDoubleClickedNode")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< ax::NodeEditor::PinId (*)() , ax::NodeEditor::GetDoubleClickedPin , SimNode_ExtFuncCallAndCopyOrMove >(lib,"GetDoubleClickedPin","ax::NodeEditor::GetDoubleClickedPin")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< ax::NodeEditor::LinkId (*)() , ax::NodeEditor::GetDoubleClickedLink , SimNode_ExtFuncCallAndCopyOrMove >(lib,"GetDoubleClickedLink","ax::NodeEditor::GetDoubleClickedLink")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< bool (*)() , ax::NodeEditor::IsBackgroundClicked , SimNode_ExtFuncCall >(lib,"IsBackgroundClicked","ax::NodeEditor::IsBackgroundClicked")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< bool (*)() , ax::NodeEditor::IsBackgroundDoubleClicked , SimNode_ExtFuncCall >(lib,"IsBackgroundDoubleClicked","ax::NodeEditor::IsBackgroundDoubleClicked")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< bool (*)(ax::NodeEditor::PinId) , ax::NodeEditor::PinHadAnyLinks , SimNode_ExtFuncCall >(lib,"PinHadAnyLinks","ax::NodeEditor::PinHadAnyLinks")
+		->args({"pinId"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< ImVec2 (*)() , ax::NodeEditor::GetScreenSize , SimNode_ExtFuncCallAndCopyOrMove >(lib,"GetScreenSize","ax::NodeEditor::GetScreenSize")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< ImVec2 (*)(const ImVec2 &) , ax::NodeEditor::ScreenToCanvas , SimNode_ExtFuncCallAndCopyOrMove >(lib,"ScreenToCanvas","ax::NodeEditor::ScreenToCanvas")
+		->args({"pos"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< ImVec2 (*)(const ImVec2 &) , ax::NodeEditor::CanvasToScreen , SimNode_ExtFuncCallAndCopyOrMove >(lib,"CanvasToScreen","ax::NodeEditor::CanvasToScreen")
+		->args({"pos"})
+		->addToModule(*this, SideEffects::worstDefault);
 }
 }
 

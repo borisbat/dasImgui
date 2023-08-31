@@ -14,42 +14,60 @@ namespace das {
 void Module_dasIMGUI_NODE_EDITOR::initFunctions_1() {
 	addCtorAndUsing<ax::NodeEditor::Config>(*this,lib,"Config","ax::NodeEditor::Config");
 	addCtorAndUsing<ax::NodeEditor::Style>(*this,lib,"Style","ax::NodeEditor::Style");
-	addExtern< void (*)(ax::NodeEditor::EditorContext *) , ax::NodeEditor::SetCurrentEditor >(*this,lib,"SetCurrentEditor",SideEffects::worstDefault,"ax::NodeEditor::SetCurrentEditor")
-		->args({"ctx"});
-	addExtern< ax::NodeEditor::EditorContext * (*)() , ax::NodeEditor::GetCurrentEditor >(*this,lib,"GetCurrentEditor",SideEffects::worstDefault,"ax::NodeEditor::GetCurrentEditor");
-	addExtern< ax::NodeEditor::EditorContext * (*)(const ax::NodeEditor::Config *) , ax::NodeEditor::CreateEditor >(*this,lib,"CreateEditor",SideEffects::worstDefault,"ax::NodeEditor::CreateEditor")
+	makeExtern< void (*)(ax::NodeEditor::EditorContext *) , ax::NodeEditor::SetCurrentEditor , SimNode_ExtFuncCall >(lib,"SetCurrentEditor","ax::NodeEditor::SetCurrentEditor")
+		->args({"ctx"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< ax::NodeEditor::EditorContext * (*)() , ax::NodeEditor::GetCurrentEditor , SimNode_ExtFuncCall >(lib,"GetCurrentEditor","ax::NodeEditor::GetCurrentEditor")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< ax::NodeEditor::EditorContext * (*)(const ax::NodeEditor::Config *) , ax::NodeEditor::CreateEditor , SimNode_ExtFuncCall >(lib,"CreateEditor","ax::NodeEditor::CreateEditor")
 		->args({"config"})
-		->arg_init(0,make_smart<ExprConstPtr>());
-	addExtern< void (*)(ax::NodeEditor::EditorContext *) , ax::NodeEditor::DestroyEditor >(*this,lib,"DestroyEditor",SideEffects::worstDefault,"ax::NodeEditor::DestroyEditor")
-		->args({"ctx"});
-	addExtern< ax::NodeEditor::Style & (*)() , ax::NodeEditor::GetStyle , SimNode_ExtFuncCallRef>(*this,lib,"GetStyle",SideEffects::worstDefault,"ax::NodeEditor::GetStyle");
-	addExtern< const char * (*)(ax::NodeEditor::StyleColor) , ax::NodeEditor::GetStyleColorName >(*this,lib,"GetStyleColorName",SideEffects::worstDefault,"ax::NodeEditor::GetStyleColorName")
-		->args({"colorIndex"});
-	addExtern< void (*)(ax::NodeEditor::StyleColor,const ImVec4 &) , ax::NodeEditor::PushStyleColor >(*this,lib,"PushStyleColor",SideEffects::worstDefault,"ax::NodeEditor::PushStyleColor")
-		->args({"colorIndex","color"});
-	addExtern< void (*)(int) , ax::NodeEditor::PopStyleColor >(*this,lib,"PopStyleColor",SideEffects::worstDefault,"ax::NodeEditor::PopStyleColor")
+		->arg_init(0,make_smart<ExprConstPtr>())
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(ax::NodeEditor::EditorContext *) , ax::NodeEditor::DestroyEditor , SimNode_ExtFuncCall >(lib,"DestroyEditor","ax::NodeEditor::DestroyEditor")
+		->args({"ctx"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< ax::NodeEditor::Style & (*)() , ax::NodeEditor::GetStyle , SimNode_ExtFuncCallRef >(lib,"GetStyle","ax::NodeEditor::GetStyle")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< const char * (*)(ax::NodeEditor::StyleColor) , ax::NodeEditor::GetStyleColorName , SimNode_ExtFuncCall >(lib,"GetStyleColorName","ax::NodeEditor::GetStyleColorName")
+		->args({"colorIndex"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(ax::NodeEditor::StyleColor,const ImVec4 &) , ax::NodeEditor::PushStyleColor , SimNode_ExtFuncCall >(lib,"PushStyleColor","ax::NodeEditor::PushStyleColor")
+		->args({"colorIndex","color"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(int) , ax::NodeEditor::PopStyleColor , SimNode_ExtFuncCall >(lib,"PopStyleColor","ax::NodeEditor::PopStyleColor")
 		->args({"count"})
-		->arg_init(0,make_smart<ExprConstInt>(1));
-	addExtern< void (*)(ax::NodeEditor::StyleVar,float) , ax::NodeEditor::PushStyleVar >(*this,lib,"PushStyleVar",SideEffects::worstDefault,"ax::NodeEditor::PushStyleVar")
-		->args({"varIndex","value"});
-	addExtern< void (*)(ax::NodeEditor::StyleVar,const ImVec2 &) , ax::NodeEditor::PushStyleVar >(*this,lib,"PushStyleVar",SideEffects::worstDefault,"ax::NodeEditor::PushStyleVar")
-		->args({"varIndex","value"});
-	addExtern< void (*)(ax::NodeEditor::StyleVar,const ImVec4 &) , ax::NodeEditor::PushStyleVar >(*this,lib,"PushStyleVar",SideEffects::worstDefault,"ax::NodeEditor::PushStyleVar")
-		->args({"varIndex","value"});
-	addExtern< void (*)(int) , ax::NodeEditor::PopStyleVar >(*this,lib,"PopStyleVar",SideEffects::worstDefault,"ax::NodeEditor::PopStyleVar")
+		->arg_init(0,make_smart<ExprConstInt>(1))
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(ax::NodeEditor::StyleVar,float) , ax::NodeEditor::PushStyleVar , SimNode_ExtFuncCall >(lib,"PushStyleVar","ax::NodeEditor::PushStyleVar")
+		->args({"varIndex","value"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(ax::NodeEditor::StyleVar,const ImVec2 &) , ax::NodeEditor::PushStyleVar , SimNode_ExtFuncCall >(lib,"PushStyleVar","ax::NodeEditor::PushStyleVar")
+		->args({"varIndex","value"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(ax::NodeEditor::StyleVar,const ImVec4 &) , ax::NodeEditor::PushStyleVar , SimNode_ExtFuncCall >(lib,"PushStyleVar","ax::NodeEditor::PushStyleVar")
+		->args({"varIndex","value"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(int) , ax::NodeEditor::PopStyleVar , SimNode_ExtFuncCall >(lib,"PopStyleVar","ax::NodeEditor::PopStyleVar")
 		->args({"count"})
-		->arg_init(0,make_smart<ExprConstInt>(1));
-	addExtern< void (*)(const char *,const ImVec2 &) , ax::NodeEditor::Begin >(*this,lib,"Begin",SideEffects::worstDefault,"ax::NodeEditor::Begin")
-		->args({"id","size"});
-	addExtern< void (*)() , ax::NodeEditor::End >(*this,lib,"End",SideEffects::worstDefault,"ax::NodeEditor::End");
-	addExtern< void (*)(ax::NodeEditor::NodeId) , ax::NodeEditor::BeginNode >(*this,lib,"BeginNode",SideEffects::worstDefault,"ax::NodeEditor::BeginNode")
-		->args({"id"});
-	addExtern< void (*)(ax::NodeEditor::PinId,ax::NodeEditor::PinKind) , ax::NodeEditor::BeginPin >(*this,lib,"BeginPin",SideEffects::worstDefault,"ax::NodeEditor::BeginPin")
-		->args({"id","kind"});
-	addExtern< void (*)(const ImVec2 &,const ImVec2 &) , ax::NodeEditor::PinRect >(*this,lib,"PinRect",SideEffects::worstDefault,"ax::NodeEditor::PinRect")
-		->args({"a","b"});
-	addExtern< void (*)(const ImVec2 &,const ImVec2 &) , ax::NodeEditor::PinPivotRect >(*this,lib,"PinPivotRect",SideEffects::worstDefault,"ax::NodeEditor::PinPivotRect")
-		->args({"a","b"});
+		->arg_init(0,make_smart<ExprConstInt>(1))
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(const char *,const ImVec2 &) , ax::NodeEditor::Begin , SimNode_ExtFuncCall >(lib,"Begin","ax::NodeEditor::Begin")
+		->args({"id","size"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)() , ax::NodeEditor::End , SimNode_ExtFuncCall >(lib,"End","ax::NodeEditor::End")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(ax::NodeEditor::NodeId) , ax::NodeEditor::BeginNode , SimNode_ExtFuncCall >(lib,"BeginNode","ax::NodeEditor::BeginNode")
+		->args({"id"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(ax::NodeEditor::PinId,ax::NodeEditor::PinKind) , ax::NodeEditor::BeginPin , SimNode_ExtFuncCall >(lib,"BeginPin","ax::NodeEditor::BeginPin")
+		->args({"id","kind"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(const ImVec2 &,const ImVec2 &) , ax::NodeEditor::PinRect , SimNode_ExtFuncCall >(lib,"PinRect","ax::NodeEditor::PinRect")
+		->args({"a","b"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(const ImVec2 &,const ImVec2 &) , ax::NodeEditor::PinPivotRect , SimNode_ExtFuncCall >(lib,"PinPivotRect","ax::NodeEditor::PinPivotRect")
+		->args({"a","b"})
+		->addToModule(*this, SideEffects::worstDefault);
 }
 }
 

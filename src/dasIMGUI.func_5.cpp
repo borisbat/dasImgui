@@ -12,43 +12,63 @@
 namespace das {
 #include "dasIMGUI.func.aot.decl.inc"
 void Module_dasIMGUI::initFunctions_5() {
-	addExtern< float (*)() , ImGui::CalcItemWidth >(*this,lib,"CalcItemWidth",SideEffects::worstDefault,"ImGui::CalcItemWidth");
-	addExtern< void (*)(float) , ImGui::PushTextWrapPos >(*this,lib,"PushTextWrapPos",SideEffects::worstDefault,"ImGui::PushTextWrapPos")
+	makeExtern< float (*)() , ImGui::CalcItemWidth , SimNode_ExtFuncCall ,imguiTempFn>(lib,"CalcItemWidth","ImGui::CalcItemWidth")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(float) , ImGui::PushTextWrapPos , SimNode_ExtFuncCall ,imguiTempFn>(lib,"PushTextWrapPos","ImGui::PushTextWrapPos")
 		->args({"wrap_local_pos_x"})
-		->arg_init(0,make_smart<ExprConstFloat>(0.00000000000000000));
-	addExtern< void (*)() , ImGui::PopTextWrapPos >(*this,lib,"PopTextWrapPos",SideEffects::worstDefault,"ImGui::PopTextWrapPos");
-	addExtern< ImFont * (*)() , ImGui::GetFont >(*this,lib,"GetFont",SideEffects::worstDefault,"ImGui::GetFont");
-	addExtern< float (*)() , ImGui::GetFontSize >(*this,lib,"GetFontSize",SideEffects::worstDefault,"ImGui::GetFontSize");
-	addExtern< ImVec2 (*)() , ImGui::GetFontTexUvWhitePixel >(*this,lib,"GetFontTexUvWhitePixel",SideEffects::worstDefault,"ImGui::GetFontTexUvWhitePixel");
-	addExtern< unsigned int (*)(int,float) , ImGui::GetColorU32 >(*this,lib,"GetColorU32",SideEffects::worstDefault,"ImGui::GetColorU32")
+		->arg_init(0,make_smart<ExprConstFloat>(0.00000000000000000))
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)() , ImGui::PopTextWrapPos , SimNode_ExtFuncCall ,imguiTempFn>(lib,"PopTextWrapPos","ImGui::PopTextWrapPos")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< ImFont * (*)() , ImGui::GetFont , SimNode_ExtFuncCall ,imguiTempFn>(lib,"GetFont","ImGui::GetFont")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< float (*)() , ImGui::GetFontSize , SimNode_ExtFuncCall ,imguiTempFn>(lib,"GetFontSize","ImGui::GetFontSize")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< ImVec2 (*)() , ImGui::GetFontTexUvWhitePixel , SimNode_ExtFuncCallAndCopyOrMove ,imguiTempFn>(lib,"GetFontTexUvWhitePixel","ImGui::GetFontTexUvWhitePixel")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< unsigned int (*)(int,float) , ImGui::GetColorU32 , SimNode_ExtFuncCall ,imguiTempFn>(lib,"GetColorU32","ImGui::GetColorU32")
 		->args({"idx","alpha_mul"})
 		->arg_type(0,makeType<ImGuiCol_>(lib))
-		->arg_init(1,make_smart<ExprConstFloat>(1.00000000000000000));
-	addExtern< unsigned int (*)(const ImVec4 &) , ImGui::GetColorU32 >(*this,lib,"GetColorU32",SideEffects::worstDefault,"ImGui::GetColorU32")
-		->args({"col"});
-	addExtern< unsigned int (*)(unsigned int) , ImGui::GetColorU32 >(*this,lib,"GetColorU32",SideEffects::worstDefault,"ImGui::GetColorU32")
-		->args({"col"});
-	addExtern< const ImVec4 & (*)(int) , ImGui::GetStyleColorVec4 , SimNode_ExtFuncCallRef>(*this,lib,"GetStyleColorVec4",SideEffects::worstDefault,"ImGui::GetStyleColorVec4")
+		->arg_init(1,make_smart<ExprConstFloat>(1.00000000000000000))
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< unsigned int (*)(const ImVec4 &) , ImGui::GetColorU32 , SimNode_ExtFuncCall ,imguiTempFn>(lib,"GetColorU32","ImGui::GetColorU32")
+		->args({"col"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< unsigned int (*)(unsigned int) , ImGui::GetColorU32 , SimNode_ExtFuncCall ,imguiTempFn>(lib,"GetColorU32","ImGui::GetColorU32")
+		->args({"col"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< const ImVec4 & (*)(int) , ImGui::GetStyleColorVec4 , SimNode_ExtFuncCallRef ,imguiTempFn>(lib,"GetStyleColorVec4","ImGui::GetStyleColorVec4")
 		->args({"idx"})
-		->arg_type(0,makeType<ImGuiCol_>(lib));
-	addExtern< void (*)() , ImGui::Separator >(*this,lib,"Separator",SideEffects::worstDefault,"ImGui::Separator");
-	addExtern< void (*)(float,float) , ImGui::SameLine >(*this,lib,"SameLine",SideEffects::worstDefault,"ImGui::SameLine")
+		->arg_type(0,makeType<ImGuiCol_>(lib))
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)() , ImGui::Separator , SimNode_ExtFuncCall ,imguiTempFn>(lib,"Separator","ImGui::Separator")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(float,float) , ImGui::SameLine , SimNode_ExtFuncCall ,imguiTempFn>(lib,"SameLine","ImGui::SameLine")
 		->args({"offset_from_start_x","spacing"})
 		->arg_init(0,make_smart<ExprConstFloat>(0.00000000000000000))
-		->arg_init(1,make_smart<ExprConstFloat>(-1.00000000000000000));
-	addExtern< void (*)() , ImGui::NewLine >(*this,lib,"NewLine",SideEffects::worstDefault,"ImGui::NewLine");
-	addExtern< void (*)() , ImGui::Spacing >(*this,lib,"Spacing",SideEffects::worstDefault,"ImGui::Spacing");
-	addExtern< void (*)(const ImVec2 &) , ImGui::Dummy >(*this,lib,"Dummy",SideEffects::worstDefault,"ImGui::Dummy")
-		->args({"size"});
-	addExtern< void (*)(float) , ImGui::Indent >(*this,lib,"Indent",SideEffects::worstDefault,"ImGui::Indent")
+		->arg_init(1,make_smart<ExprConstFloat>(-1.00000000000000000))
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)() , ImGui::NewLine , SimNode_ExtFuncCall ,imguiTempFn>(lib,"NewLine","ImGui::NewLine")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)() , ImGui::Spacing , SimNode_ExtFuncCall ,imguiTempFn>(lib,"Spacing","ImGui::Spacing")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(const ImVec2 &) , ImGui::Dummy , SimNode_ExtFuncCall ,imguiTempFn>(lib,"Dummy","ImGui::Dummy")
+		->args({"size"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(float) , ImGui::Indent , SimNode_ExtFuncCall ,imguiTempFn>(lib,"Indent","ImGui::Indent")
 		->args({"indent_w"})
-		->arg_init(0,make_smart<ExprConstFloat>(0.00000000000000000));
-	addExtern< void (*)(float) , ImGui::Unindent >(*this,lib,"Unindent",SideEffects::worstDefault,"ImGui::Unindent")
+		->arg_init(0,make_smart<ExprConstFloat>(0.00000000000000000))
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(float) , ImGui::Unindent , SimNode_ExtFuncCall ,imguiTempFn>(lib,"Unindent","ImGui::Unindent")
 		->args({"indent_w"})
-		->arg_init(0,make_smart<ExprConstFloat>(0.00000000000000000));
-	addExtern< void (*)() , ImGui::BeginGroup >(*this,lib,"BeginGroup",SideEffects::worstDefault,"ImGui::BeginGroup");
-	addExtern< void (*)() , ImGui::EndGroup >(*this,lib,"EndGroup",SideEffects::worstDefault,"ImGui::EndGroup");
-	addExtern< ImVec2 (*)() , ImGui::GetCursorPos >(*this,lib,"GetCursorPos",SideEffects::worstDefault,"ImGui::GetCursorPos");
+		->arg_init(0,make_smart<ExprConstFloat>(0.00000000000000000))
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)() , ImGui::BeginGroup , SimNode_ExtFuncCall ,imguiTempFn>(lib,"BeginGroup","ImGui::BeginGroup")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)() , ImGui::EndGroup , SimNode_ExtFuncCall ,imguiTempFn>(lib,"EndGroup","ImGui::EndGroup")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< ImVec2 (*)() , ImGui::GetCursorPos , SimNode_ExtFuncCallAndCopyOrMove ,imguiTempFn>(lib,"GetCursorPos","ImGui::GetCursorPos")
+		->addToModule(*this, SideEffects::worstDefault);
 }
 }
 

@@ -12,56 +12,76 @@
 namespace das {
 #include "dasIMGUI.func.aot.decl.inc"
 void Module_dasIMGUI::initFunctions_2() {
-	addExtern< void (*)(ImGuiStyle *) , ImGui::StyleColorsClassic >(*this,lib,"StyleColorsClassic",SideEffects::worstDefault,"ImGui::StyleColorsClassic")
+	makeExtern< void (*)(ImGuiStyle *) , ImGui::StyleColorsClassic , SimNode_ExtFuncCall ,imguiTempFn>(lib,"StyleColorsClassic","ImGui::StyleColorsClassic")
 		->args({"dst"})
-		->arg_init(0,make_smart<ExprConstPtr>());
-	addExtern< bool (*)(const char *,bool *,int) , ImGui::Begin >(*this,lib,"Begin",SideEffects::worstDefault,"ImGui::Begin")
+		->arg_init(0,make_smart<ExprConstPtr>())
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< bool (*)(const char *,bool *,int) , ImGui::Begin , SimNode_ExtFuncCall ,imguiTempFn>(lib,"Begin","ImGui::Begin")
 		->args({"name","p_open","flags"})
 		->arg_init(1,make_smart<ExprConstPtr>())
 		->arg_type(2,makeType<ImGuiWindowFlags_>(lib))
-		->arg_init(2,make_smart<ExprConstEnumeration>(0,makeType<ImGuiWindowFlags_>(lib)));
-	addExtern< void (*)() , ImGui::End >(*this,lib,"End",SideEffects::worstDefault,"ImGui::End");
-	addExtern< bool (*)(const char *,const ImVec2 &,bool,int) , ImGui::BeginChild >(*this,lib,"BeginChild",SideEffects::worstDefault,"ImGui::BeginChild")
+		->arg_init(2,make_smart<ExprConstEnumeration>(0,makeType<ImGuiWindowFlags_>(lib)))
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)() , ImGui::End , SimNode_ExtFuncCall ,imguiTempFn>(lib,"End","ImGui::End")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< bool (*)(const char *,const ImVec2 &,bool,int) , ImGui::BeginChild , SimNode_ExtFuncCall ,imguiTempFn>(lib,"BeginChild","ImGui::BeginChild")
 		->args({"str_id","size","border","flags"})
 		->arg_init(2,make_smart<ExprConstBool>(false))
 		->arg_type(3,makeType<ImGuiWindowFlags_>(lib))
-		->arg_init(3,make_smart<ExprConstEnumeration>(0,makeType<ImGuiWindowFlags_>(lib)));
-	addExtern< bool (*)(unsigned int,const ImVec2 &,bool,int) , ImGui::BeginChild >(*this,lib,"BeginChild",SideEffects::worstDefault,"ImGui::BeginChild")
+		->arg_init(3,make_smart<ExprConstEnumeration>(0,makeType<ImGuiWindowFlags_>(lib)))
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< bool (*)(unsigned int,const ImVec2 &,bool,int) , ImGui::BeginChild , SimNode_ExtFuncCall ,imguiTempFn>(lib,"BeginChild","ImGui::BeginChild")
 		->args({"id","size","border","flags"})
 		->arg_init(2,make_smart<ExprConstBool>(false))
 		->arg_type(3,makeType<ImGuiWindowFlags_>(lib))
-		->arg_init(3,make_smart<ExprConstEnumeration>(0,makeType<ImGuiWindowFlags_>(lib)));
-	addExtern< void (*)() , ImGui::EndChild >(*this,lib,"EndChild",SideEffects::worstDefault,"ImGui::EndChild");
-	addExtern< bool (*)() , ImGui::IsWindowAppearing >(*this,lib,"IsWindowAppearing",SideEffects::worstDefault,"ImGui::IsWindowAppearing");
-	addExtern< bool (*)() , ImGui::IsWindowCollapsed >(*this,lib,"IsWindowCollapsed",SideEffects::worstDefault,"ImGui::IsWindowCollapsed");
-	addExtern< bool (*)(int) , ImGui::IsWindowFocused >(*this,lib,"IsWindowFocused",SideEffects::worstDefault,"ImGui::IsWindowFocused")
+		->arg_init(3,make_smart<ExprConstEnumeration>(0,makeType<ImGuiWindowFlags_>(lib)))
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)() , ImGui::EndChild , SimNode_ExtFuncCall ,imguiTempFn>(lib,"EndChild","ImGui::EndChild")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< bool (*)() , ImGui::IsWindowAppearing , SimNode_ExtFuncCall ,imguiTempFn>(lib,"IsWindowAppearing","ImGui::IsWindowAppearing")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< bool (*)() , ImGui::IsWindowCollapsed , SimNode_ExtFuncCall ,imguiTempFn>(lib,"IsWindowCollapsed","ImGui::IsWindowCollapsed")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< bool (*)(int) , ImGui::IsWindowFocused , SimNode_ExtFuncCall ,imguiTempFn>(lib,"IsWindowFocused","ImGui::IsWindowFocused")
 		->args({"flags"})
 		->arg_type(0,makeType<ImGuiFocusedFlags_>(lib))
-		->arg_init(0,make_smart<ExprConstEnumeration>(0,makeType<ImGuiFocusedFlags_>(lib)));
-	addExtern< bool (*)(int) , ImGui::IsWindowHovered >(*this,lib,"IsWindowHovered",SideEffects::worstDefault,"ImGui::IsWindowHovered")
+		->arg_init(0,make_smart<ExprConstEnumeration>(0,makeType<ImGuiFocusedFlags_>(lib)))
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< bool (*)(int) , ImGui::IsWindowHovered , SimNode_ExtFuncCall ,imguiTempFn>(lib,"IsWindowHovered","ImGui::IsWindowHovered")
 		->args({"flags"})
 		->arg_type(0,makeType<ImGuiHoveredFlags_>(lib))
-		->arg_init(0,make_smart<ExprConstEnumeration>(0,makeType<ImGuiHoveredFlags_>(lib)));
-	addExtern< ImDrawList * (*)() , ImGui::GetWindowDrawList >(*this,lib,"GetWindowDrawList",SideEffects::worstDefault,"ImGui::GetWindowDrawList");
-	addExtern< ImVec2 (*)() , ImGui::GetWindowPos >(*this,lib,"GetWindowPos",SideEffects::worstDefault,"ImGui::GetWindowPos");
-	addExtern< ImVec2 (*)() , ImGui::GetWindowSize >(*this,lib,"GetWindowSize",SideEffects::worstDefault,"ImGui::GetWindowSize");
-	addExtern< float (*)() , ImGui::GetWindowWidth >(*this,lib,"GetWindowWidth",SideEffects::worstDefault,"ImGui::GetWindowWidth");
-	addExtern< float (*)() , ImGui::GetWindowHeight >(*this,lib,"GetWindowHeight",SideEffects::worstDefault,"ImGui::GetWindowHeight");
-	addExtern< void (*)(const ImVec2 &,int,const ImVec2 &) , ImGui::SetNextWindowPos >(*this,lib,"SetNextWindowPos",SideEffects::worstDefault,"ImGui::SetNextWindowPos")
+		->arg_init(0,make_smart<ExprConstEnumeration>(0,makeType<ImGuiHoveredFlags_>(lib)))
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< ImDrawList * (*)() , ImGui::GetWindowDrawList , SimNode_ExtFuncCall ,imguiTempFn>(lib,"GetWindowDrawList","ImGui::GetWindowDrawList")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< ImVec2 (*)() , ImGui::GetWindowPos , SimNode_ExtFuncCallAndCopyOrMove ,imguiTempFn>(lib,"GetWindowPos","ImGui::GetWindowPos")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< ImVec2 (*)() , ImGui::GetWindowSize , SimNode_ExtFuncCallAndCopyOrMove ,imguiTempFn>(lib,"GetWindowSize","ImGui::GetWindowSize")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< float (*)() , ImGui::GetWindowWidth , SimNode_ExtFuncCall ,imguiTempFn>(lib,"GetWindowWidth","ImGui::GetWindowWidth")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< float (*)() , ImGui::GetWindowHeight , SimNode_ExtFuncCall ,imguiTempFn>(lib,"GetWindowHeight","ImGui::GetWindowHeight")
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(const ImVec2 &,int,const ImVec2 &) , ImGui::SetNextWindowPos , SimNode_ExtFuncCall ,imguiTempFn>(lib,"SetNextWindowPos","ImGui::SetNextWindowPos")
 		->args({"pos","cond","pivot"})
 		->arg_type(1,makeType<ImGuiCond_>(lib))
-		->arg_init(1,make_smart<ExprConstEnumeration>(0,makeType<ImGuiCond_>(lib)));
-	addExtern< void (*)(const ImVec2 &,int) , ImGui::SetNextWindowSize >(*this,lib,"SetNextWindowSize",SideEffects::worstDefault,"ImGui::SetNextWindowSize")
+		->arg_init(1,make_smart<ExprConstEnumeration>(0,makeType<ImGuiCond_>(lib)))
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(const ImVec2 &,int) , ImGui::SetNextWindowSize , SimNode_ExtFuncCall ,imguiTempFn>(lib,"SetNextWindowSize","ImGui::SetNextWindowSize")
 		->args({"size","cond"})
 		->arg_type(1,makeType<ImGuiCond_>(lib))
-		->arg_init(1,make_smart<ExprConstEnumeration>(0,makeType<ImGuiCond_>(lib)));
-	addExtern< void (*)(const ImVec2 &) , ImGui::SetNextWindowContentSize >(*this,lib,"SetNextWindowContentSize",SideEffects::worstDefault,"ImGui::SetNextWindowContentSize")
-		->args({"size"});
-	addExtern< void (*)(bool,int) , ImGui::SetNextWindowCollapsed >(*this,lib,"SetNextWindowCollapsed",SideEffects::worstDefault,"ImGui::SetNextWindowCollapsed")
+		->arg_init(1,make_smart<ExprConstEnumeration>(0,makeType<ImGuiCond_>(lib)))
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(const ImVec2 &) , ImGui::SetNextWindowContentSize , SimNode_ExtFuncCall ,imguiTempFn>(lib,"SetNextWindowContentSize","ImGui::SetNextWindowContentSize")
+		->args({"size"})
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)(bool,int) , ImGui::SetNextWindowCollapsed , SimNode_ExtFuncCall ,imguiTempFn>(lib,"SetNextWindowCollapsed","ImGui::SetNextWindowCollapsed")
 		->args({"collapsed","cond"})
 		->arg_type(1,makeType<ImGuiCond_>(lib))
-		->arg_init(1,make_smart<ExprConstEnumeration>(0,makeType<ImGuiCond_>(lib)));
-	addExtern< void (*)() , ImGui::SetNextWindowFocus >(*this,lib,"SetNextWindowFocus",SideEffects::worstDefault,"ImGui::SetNextWindowFocus");
+		->arg_init(1,make_smart<ExprConstEnumeration>(0,makeType<ImGuiCond_>(lib)))
+		->addToModule(*this, SideEffects::worstDefault);
+	makeExtern< void (*)() , ImGui::SetNextWindowFocus , SimNode_ExtFuncCall ,imguiTempFn>(lib,"SetNextWindowFocus","ImGui::SetNextWindowFocus")
+		->addToModule(*this, SideEffects::worstDefault);
 }
 }
 
