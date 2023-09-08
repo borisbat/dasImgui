@@ -2,6 +2,8 @@
 // all user modifications will be lost after this file is re-generated
 
 struct ax_NodeEditor_Config_GeneratedAnnotation : ManagedStructureAnnotation<ax::NodeEditor::Config> {
+	virtual bool isLocal() const override { return true; }
+	virtual bool canBePlacedInContainer() const override { return true; }
 	ax_NodeEditor_Config_GeneratedAnnotation(ModuleLibrary & ml) : ManagedStructureAnnotation ("Config", ml, "ax::NodeEditor::Config") {
 	}
 	void init () {

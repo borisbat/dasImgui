@@ -38,7 +38,7 @@ void Module_dasIMNODES::initFunctions_1() {
 	makeExtern< void (*)(imnodes::EditorContext *) , imnodes::EditorContextSet , SimNode_ExtFuncCall >(lib,"EditorContextSet","imnodes::EditorContextSet")
 		->args({""})
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< ImVec2 (*)() , imnodes::EditorContextGetPanning , SimNode_ExtFuncCallAndCopyOrMove >(lib,"EditorContextGetPanning","imnodes::EditorContextGetPanning")
+	makeExtern< ImVec2 (*)() , imnodes::EditorContextGetPanning , SimNode_ExtFuncCall >(lib,"EditorContextGetPanning","imnodes::EditorContextGetPanning")
 		->addToModule(*this, SideEffects::worstDefault);
 	makeExtern< void (*)(const ImVec2 &) , imnodes::EditorContextResetPanning , SimNode_ExtFuncCall >(lib,"EditorContextResetPanning","imnodes::EditorContextResetPanning")
 		->args({"pos"})

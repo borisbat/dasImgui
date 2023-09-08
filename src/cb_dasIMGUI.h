@@ -106,6 +106,7 @@ struct typeFactory<ImVector<TT>> {
 };
 
 struct imguiTempFn {
+    imguiTempFn() = default;
     ___noinline bool operator()( Function * fn ) {
         if ( tempArgs || implicitArgs ) {
             for ( auto &arg : fn->arguments ) {

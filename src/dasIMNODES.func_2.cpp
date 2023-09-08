@@ -31,7 +31,7 @@ void Module_dasIMNODES::initFunctions_2() {
 		->addToModule(*this, SideEffects::worstDefault);
 	makeExtern< void (*)() , imnodes::EndNode , SimNode_ExtFuncCall >(lib,"EndNode","imnodes::EndNode")
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< ImVec2 (*)(int) , imnodes::GetNodeDimensions , SimNode_ExtFuncCallAndCopyOrMove >(lib,"GetNodeDimensions","imnodes::GetNodeDimensions")
+	makeExtern< ImVec2 (*)(int) , imnodes::GetNodeDimensions , SimNode_ExtFuncCall >(lib,"GetNodeDimensions","imnodes::GetNodeDimensions")
 		->args({"id"})
 		->addToModule(*this, SideEffects::worstDefault);
 	makeExtern< void (*)() , imnodes::BeginNodeTitleBar , SimNode_ExtFuncCall >(lib,"BeginNodeTitleBar","imnodes::BeginNodeTitleBar")

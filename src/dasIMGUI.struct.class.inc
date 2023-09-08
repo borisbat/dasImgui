@@ -193,6 +193,8 @@ struct ImGuiPayload_GeneratedAnnotation : ManagedStructureAnnotation<ImGuiPayloa
 };
 
 struct ImGuiTableColumnSortSpecs_GeneratedAnnotation : ManagedStructureAnnotation<ImGuiTableColumnSortSpecs> {
+	virtual bool isLocal() const override { return true; }
+	virtual bool canBePlacedInContainer() const override { return true; }
 	ImGuiTableColumnSortSpecs_GeneratedAnnotation(ModuleLibrary & ml) : ManagedStructureAnnotation ("ImGuiTableColumnSortSpecs", ml, "ImGuiTableColumnSortSpecs") {
 	}
 	void init () {

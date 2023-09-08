@@ -134,6 +134,10 @@ namespace das {
         return filter.PassFilter(text, nullptr);
     }
 
+    char * text_range_string( ImGuiTextFilter::ImGuiTextRange & r, das::Context *context, das::LineInfoArg * ) {
+        return context->stringHeap->allocateString(r.b, r.e - r.b);
+    }
+
     void AddText( ImDrawList & drawList, const ImVec2& pos, ImU32 col, const char* text ) {
         drawList.AddText(pos, col, text);
     }
@@ -283,6 +287,8 @@ namespace das {
         // imgui text filter
         addExtern<DAS_BIND_FUN(das::PassFilter)>(*this, lib, "PassFilter",
             SideEffects::worstDefault, "das::PassFilter");
+        addExtern<DAS_BIND_FUN(das::text_range_string)>(*this, lib, "string",
+            SideEffects::worstDefault, "das::text_range_string");
         // imcolor
         addExtern<DAS_BIND_FUN(das::HSV)>(*this, lib, "HSV",
             SideEffects::none, "das::HSV")
@@ -303,7 +309,7 @@ namespace das {
             SideEffects::worstDefault,"das::TextWrapped");
         addExtern<DAS_BIND_FUN(das::TextDisabled)>(*this,lib,"TextDisabled",
             SideEffects::worstDefault,"das::TextDisabled");
-        addExtern<DAS_BIND_FUN(das::TextColored)>(*this,lib,"TextColored",
+        addExtern<DAS_BIND_FUN(das::TextColored), SimNode_ExtFuncCall, imguiTempFn>(*this,lib,"TextColored",
             SideEffects::worstDefault,"das::TextColored");
         addExtern<DAS_BIND_FUN(das::LabelText)>(*this,lib,"LabelText",
             SideEffects::worstDefault,"das::LabelText");
@@ -328,7 +334,7 @@ namespace das {
             SideEffects::worstDefault, "das::InputText");
         addExtern<DAS_BIND_FUN(das::InputTextWithHint)>(*this, lib, "_builtin_InputTextWithHint",
             SideEffects::worstDefault, "das::InputTextWithHint");
-        addExtern<DAS_BIND_FUN(das::InputTextMultiline)>(*this, lib, "_builtin_InputTextMultiline",
+        addExtern<DAS_BIND_FUN(das::InputTextMultiline), SimNode_ExtFuncCall, imguiTempFn>(*this, lib, "_builtin_InputTextMultiline",
             SideEffects::worstDefault, "das::InputTextMultiline");
         // imgui text buffer
         addExtern<DAS_BIND_FUN(das::ImGTB_Append)>(*this,lib,"append",
@@ -343,7 +349,7 @@ namespace das {
         addExtern<DAS_BIND_FUN(das::InsertChars)>(*this,lib,"InsertChars",
             SideEffects::worstDefault,"das::InsertChars");
         // SetNextWindowSizeConstraints
-        addExtern<DAS_BIND_FUN(das::SetNextWindowSizeConstraints)>(*this,lib,"_builtin_SetNextWindowSizeConstraints",
+        addExtern<DAS_BIND_FUN(das::SetNextWindowSizeConstraints), SimNode_ExtFuncCall, imguiTempFn>(*this,lib,"_builtin_SetNextWindowSizeConstraints",
             SideEffects::worstDefault,"das::SetNextWindowSizeConstraints");
         addExtern<DAS_BIND_FUN(das::SetNextWindowSizeConstraintsNoCallback)>(*this,lib,"SetNextWindowSizeConstraints",
             SideEffects::worstDefault,"das::SetNextWindowSizeConstraintsNoCallback")

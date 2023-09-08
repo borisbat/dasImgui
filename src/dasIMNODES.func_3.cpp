@@ -24,13 +24,13 @@ void Module_dasIMNODES::initFunctions_3() {
 	makeExtern< void (*)(int,const ImVec2 &) , imnodes::SetNodeGridSpacePos , SimNode_ExtFuncCall >(lib,"SetNodeGridSpacePos","imnodes::SetNodeGridSpacePos")
 		->args({"node_id","grid_pos"})
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< ImVec2 (*)(const int) , imnodes::GetNodeScreenSpacePos , SimNode_ExtFuncCallAndCopyOrMove >(lib,"GetNodeScreenSpacePos","imnodes::GetNodeScreenSpacePos")
+	makeExtern< ImVec2 (*)(const int) , imnodes::GetNodeScreenSpacePos , SimNode_ExtFuncCall >(lib,"GetNodeScreenSpacePos","imnodes::GetNodeScreenSpacePos")
 		->args({"node_id"})
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< ImVec2 (*)(const int) , imnodes::GetNodeEditorSpacePos , SimNode_ExtFuncCallAndCopyOrMove >(lib,"GetNodeEditorSpacePos","imnodes::GetNodeEditorSpacePos")
+	makeExtern< ImVec2 (*)(const int) , imnodes::GetNodeEditorSpacePos , SimNode_ExtFuncCall >(lib,"GetNodeEditorSpacePos","imnodes::GetNodeEditorSpacePos")
 		->args({"node_id"})
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< ImVec2 (*)(const int) , imnodes::GetNodeGridSpacePos , SimNode_ExtFuncCallAndCopyOrMove >(lib,"GetNodeGridSpacePos","imnodes::GetNodeGridSpacePos")
+	makeExtern< ImVec2 (*)(const int) , imnodes::GetNodeGridSpacePos , SimNode_ExtFuncCall >(lib,"GetNodeGridSpacePos","imnodes::GetNodeGridSpacePos")
 		->args({"node_id"})
 		->addToModule(*this, SideEffects::worstDefault);
 	makeExtern< bool (*)() , imnodes::IsEditorHovered , SimNode_ExtFuncCall >(lib,"IsEditorHovered","imnodes::IsEditorHovered")
