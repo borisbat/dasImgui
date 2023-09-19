@@ -177,8 +177,8 @@ def public draw_preview ( display_w, display_h : int )
     identity(v_view)
     for y in range(sqY)
         for x in range(sqX)
-            let rot1 = un_quat_from_unit_vec_ang(normalize(float3(1.,0.,0.)), radians(rot_tri * 0.25))
-            let rot2 = un_quat_from_unit_vec_ang(normalize(float3(0.,1.,0.)), radians(rot_cube))
+            let rot1 = quat_from_unit_vec_ang(normalize(float3(1.,0.,0.)), radians(rot_tri * 0.25))
+            let rot2 = quat_from_unit_vec_ang(normalize(float3(0.,1.,0.)), radians(rot_cube))
             let rot = quat_mul(rot1, rot2)
             v_model = compose(
                     float4(float(x)*stepX+halfX, float(y)*stepY+halfY, -2. - float(sqX-1)*2., 0.0),

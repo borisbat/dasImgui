@@ -12,7 +12,7 @@ void compile_and_run ( const string & fn, const string & mainFnName, bool output
     ModuleGroup dummyGroup;
     CodeOfPolicies policies;
     policies.aot = true;
-    if ( auto program = compileDaScript(fn,access,tout,dummyGroup,false,policies) ) {
+    if ( auto program = compileDaScript(fn,access,tout,dummyGroup,policies) ) {
         if ( program->failed() ) {
             for ( auto & err : program->errors ) {
                 tout << reportError(err.at, err.what, err.extra, err.fixme, err.cerr );

@@ -341,7 +341,7 @@ def public surface_gen_compose ( var surf:Surface; src:Surface; offset,scale:flo
     f_tex := src.tex
     v_tex_transform = compose(
         float4(offset, 0.0, 1.0),
-        un_quat_from_unit_vec_ang(float3(0.,0.,1.), angle_rad),
+        quat_from_unit_vec_ang(float3(0.,0.,1.), angle_rad),
         float4(scale, 1.0, 1.0))
     vs_transform_effect_bind_uniform(transform_program)
     if aa

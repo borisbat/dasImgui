@@ -14,7 +14,7 @@ void application () {
     policies.aot = USE_AOT;
     policies.fail_on_no_aot = false;
     auto fAccess = make_smart<FsFileAccess>();
-    auto program = compileDaScript(getDasRoot() + APP_NAME, fAccess, tout, dummyLibGroup, false, policies);
+    auto program = compileDaScript(getDasRoot() + APP_NAME, fAccess, tout, dummyLibGroup, policies);
     if ( program->failed() ) {
         tout << "failed to compile\n";
         for ( auto & err : program->errors ) {
