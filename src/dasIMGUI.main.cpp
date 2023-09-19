@@ -66,7 +66,7 @@ namespace das {
     bool InputTextMultiline(vec4f vdiit, const char* label, const ImVec2& size, ImGuiInputTextFlags_ flags, LineInfoArg * at, Context * context ) {
         auto diit = cast<DasImguiInputText *>::to(vdiit);
         if ( diit->buffer.size==0 ) {
-            builtin_array_resize(diit->buffer, 256, 1, context);
+            builtin_array_resize(diit->buffer, 256, 1, context, at);
         }
         if ( diit->callback.capture ) {
             diit->context = context;
@@ -88,7 +88,7 @@ namespace das {
     bool InputText(vec4f vdiit, const char * label, ImGuiInputTextFlags_ flags, LineInfoArg * at, Context * context ) {
         auto diit = cast<DasImguiInputText *>::to(vdiit);
         if ( diit->buffer.size==0 ) {
-            builtin_array_resize(diit->buffer, 256, 1, context);
+            builtin_array_resize(diit->buffer, 256, 1, context, at);
         }
         if ( diit->callback.capture ) {
             diit->context = context;
@@ -109,7 +109,7 @@ namespace das {
     bool InputTextWithHint(vec4f vdiit, const char * label, const char * hint, ImGuiInputTextFlags_ flags, LineInfoArg * at, Context * context ) {
         auto diit = cast<DasImguiInputText *>::to(vdiit);
         if ( diit->buffer.size==0 ) {
-            builtin_array_resize(diit->buffer, 256, 1, context);
+            builtin_array_resize(diit->buffer, 256, 1, context, at);
         }
         if ( diit->callback.capture ) {
             diit->context = context;
