@@ -181,9 +181,9 @@ def public draw_preview ( display_w, display_h : int )
             let rot2 = quat_from_unit_vec_ang(normalize(float3(0.,1.,0.)), radians(rot_cube))
             let rot = quat_mul(rot1, rot2)
             v_model = compose(
-                    float4(float(x)*stepX+halfX, float(y)*stepY+halfY, -2. - float(sqX-1)*2., 0.0),
+                    float3(float(x)*stepX+halfX, float(y)*stepY+halfY, -2. - float(sqX-1)*2.),
                     rot,
-                    float4(g_PreviewMode==PreviewMode Cube ? 0.7 : 1.))
+                    float3(g_PreviewMode==PreviewMode Cube ? 0.7 : 1.))
             let aspect = display_h>0 ? float(display_w)/float(display_h) : 1.0
             v_projection = perspective_rh( radians(45.0f), aspect, 0.1f, 100.0f)
             glEnable(GL_DEPTH_TEST)
