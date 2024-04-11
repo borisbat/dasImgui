@@ -134,8 +134,10 @@ namespace das {
         return filter.PassFilter(text, nullptr);
     }
 
-    char * text_range_string( ImGuiTextFilter::ImGuiTextRange & r, das::Context *context, das::LineInfoArg * ) {
-        return context->stringHeap->allocateString(r.b, r.e - r.b);
+    char * text_range_string( ImGuiTextFilter::ImGuiTextRange & r, das::Context *context, das::LineInfoArg * at ) {
+        auto res = context->stringHeap->allocateString(context,r.b, r.e - r.b);
+        if ( !res ) context->throw_error_at(at, "out of string heap");
+        return res;
     }
 
     void AddText( ImDrawList & drawList, const ImVec2& pos, ImU32 col, const char* text ) {
@@ -175,7 +177,9 @@ namespace das {
         if ( len>buf.size() ) {
             context->throw_error_at(at, "can't get slice of ImGuiTextBuffer, slice too big");
         }
-        return context->stringHeap->allocateString(buf.begin() + head,len+1);
+        auto res = context->stringHeap->allocateString(context,buf.begin() + head,len+1);
+        if ( !res ) context->throw_error_at(at, "out of string heap");
+        return res;
     }
 
     // ImGuiInputTextCallbackData
