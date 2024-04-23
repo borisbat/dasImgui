@@ -209,25 +209,25 @@ IF((NOT DAS_IMGUI_INCLUDED) AND ((NOT ${DAS_IMGUI_DISABLED}) OR (NOT DEFINED DAS
 	SETUP_CPP11(libDasModuleImGui)
 
     install(DIRECTORY ${PROJECT_SOURCE_DIR}/modules/dasImgui/daslib
-        DESTINATION modules/dasImgui
+        DESTINATION ${DAS_INSTALL_MODULESDIR}/dasImgui
         FILES_MATCHING
         PATTERN "*.das"
     )
     install(FILES
 			${PROJECT_SOURCE_DIR}/modules/dasImgui/example/imgui_opengl2.das
 			${PROJECT_SOURCE_DIR}/modules/dasImgui/example/imgui_demo.das
-        DESTINATION examples/imgui
+        DESTINATION ${DAS_INSTALL_EXAMPLESDIR}/imgui
     )
     file(GLOB DAS_IMGUI_EXAMPLES
         ${PROJECT_SOURCE_DIR}/modules/dasImgui/greyprint/*.das
     )
     install(FILES ${DAS_IMGUI_EXAMPLES}
-        DESTINATION examples/imgui/greyprint
+        DESTINATION ${DAS_INSTALL_EXAMPLESDIR}/imgui/greyprint
     )
 
-	install(FILES ${PROJECT_SOURCE_DIR}/modules/dasImgui/imgui/LICENSE.txt DESTINATION . RENAME IMGUI.LICENSE)
-	install(FILES ${PROJECT_SOURCE_DIR}/modules/dasImgui/imgui-node-editor/LICENSE DESTINATION . RENAME IMGUI-NODE-EDITOR.LICENSE)
-	install(FILES ${PROJECT_SOURCE_DIR}/modules/dasImgui/imnodes/LICENSE.md DESTINATION . RENAME IMNODES.LICENSE)
+	install(FILES ${PROJECT_SOURCE_DIR}/modules/dasImgui/imgui/LICENSE.txt DESTINATION ${DAS_INSTALL_DOCDIR} RENAME IMGUI.LICENSE)
+	install(FILES ${PROJECT_SOURCE_DIR}/modules/dasImgui/imgui-node-editor/LICENSE DESTINATION ${DAS_INSTALL_DOCDIR} RENAME IMGUI-NODE-EDITOR.LICENSE)
+	install(FILES ${PROJECT_SOURCE_DIR}/modules/dasImgui/imnodes/LICENSE.md DESTINATION ${DAS_INSTALL_DOCDIR} RENAME IMNODES.LICENSE)
 
 	FIND_PACKAGE(OpenGL)
 	IF(NOT OPENGL_FOUND)
