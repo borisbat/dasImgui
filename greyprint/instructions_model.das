@@ -135,7 +135,7 @@ class Instruction_ActionResultSurface : Instruction_ActionResultAny
     def Instruction_ActionResultSurface
         Instruction_ActionResultAny`Instruction_ActionResultAny(self,TYPE_SURFACE)
     def override edit ( mode:EditMode ): void
-        Instruction_ActionArgumentAny`edit(self,mode)
+        Instruction_ActionResultAny`edit(self,mode)
         NodeCheckbox(mode,id,"preview",preview)
     def override produce ( var src_regs : array<int> ): array<string>
         var res <- [{string

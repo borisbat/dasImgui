@@ -136,7 +136,7 @@ namespace das {
 
     char * text_range_string( ImGuiTextFilter::ImGuiTextRange & r, das::Context *context, das::LineInfoArg * at ) {
         auto res = context->stringHeap->allocateString(context,r.b, r.e - r.b);
-        if ( !res ) context->throw_error_at(at, "out of string heap");
+        if ( !res ) context->throw_out_of_memory(true, r.e - r.b, at );
         return res;
     }
 
@@ -178,7 +178,7 @@ namespace das {
             context->throw_error_at(at, "can't get slice of ImGuiTextBuffer, slice too big");
         }
         auto res = context->stringHeap->allocateString(context,buf.begin() + head,len+1);
-        if ( !res ) context->throw_error_at(at, "out of string heap");
+        if ( !res ) context->throw_out_of_memory(true, len+1, at );
         return res;
     }
 
