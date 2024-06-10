@@ -12,49 +12,65 @@
 namespace das {
 #include "dasIMNODES.func.aot.decl.inc"
 void Module_dasIMNODES::initFunctions_1() {
-	addCtorAndUsing<imnodes::IO::EmulateThreeButtonMouse>(*this,lib,"EmulateThreeButtonMouse","imnodes::IO::EmulateThreeButtonMouse");
-	addCtorAndUsing<imnodes::IO::LinkDetachWithModifierClick>(*this,lib,"LinkDetachWithModifierClick","imnodes::IO::LinkDetachWithModifierClick");
-	addCtorAndUsing<imnodes::IO>(*this,lib,"IO","imnodes::IO");
-	addCtorAndUsing<imnodes::Style>(*this,lib,"Style","imnodes::Style");
-	makeExtern< void (*)(ImGuiContext *) , imnodes::SetImGuiContext , SimNode_ExtFuncCall >(lib,"SetImGuiContext","imnodes::SetImGuiContext")
+	addCtorAndUsing<ImNodesIO::EmulateThreeButtonMouseStruct>(*this,lib,"EmulateThreeButtonMouseStruct","ImNodesIO::EmulateThreeButtonMouseStruct");
+	addCtorAndUsing<ImNodesIO::LinkDetachWithModifierClickStruct>(*this,lib,"LinkDetachWithModifierClickStruct","ImNodesIO::LinkDetachWithModifierClickStruct");
+	addCtorAndUsing<ImNodesIO>(*this,lib,"ImNodesIO","ImNodesIO");
+	addCtorAndUsing<ImNodesStyle>(*this,lib,"ImNodesStyle","ImNodesStyle");
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:226:6
+	makeExtern< void (*)(ImGuiContext *) , ImNodes::SetImGuiContext , SimNode_ExtFuncCall >(lib,"SetImGuiContext","ImNodes::SetImGuiContext")
 		->args({"ctx"})
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< imnodes::Context * (*)() , imnodes::CreateContext , SimNode_ExtFuncCall >(lib,"CreateContext","imnodes::CreateContext")
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:228:17
+	makeExtern< ImNodesContext * (*)() , ImNodes::CreateContext , SimNode_ExtFuncCall >(lib,"CreateContext","ImNodes::CreateContext")
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< void (*)(imnodes::Context *) , imnodes::DestroyContext , SimNode_ExtFuncCall >(lib,"DestroyContext","imnodes::DestroyContext")
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:229:17
+	makeExtern< void (*)(ImNodesContext *) , ImNodes::DestroyContext , SimNode_ExtFuncCall >(lib,"DestroyContext","ImNodes::DestroyContext")
 		->args({"ctx"})
 		->arg_init(0,make_smart<ExprConstPtr>())
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< imnodes::Context * (*)() , imnodes::GetCurrentContext , SimNode_ExtFuncCall >(lib,"GetCurrentContext","imnodes::GetCurrentContext")
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:230:17
+	makeExtern< ImNodesContext * (*)() , ImNodes::GetCurrentContext , SimNode_ExtFuncCall >(lib,"GetCurrentContext","ImNodes::GetCurrentContext")
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< void (*)(imnodes::Context *) , imnodes::SetCurrentContext , SimNode_ExtFuncCall >(lib,"SetCurrentContext","imnodes::SetCurrentContext")
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:231:17
+	makeExtern< void (*)(ImNodesContext *) , ImNodes::SetCurrentContext , SimNode_ExtFuncCall >(lib,"SetCurrentContext","ImNodes::SetCurrentContext")
 		->args({"ctx"})
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< imnodes::EditorContext * (*)() , imnodes::EditorContextCreate , SimNode_ExtFuncCall >(lib,"EditorContextCreate","imnodes::EditorContextCreate")
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:233:23
+	makeExtern< ImNodesEditorContext * (*)() , ImNodes::EditorContextCreate , SimNode_ExtFuncCall >(lib,"EditorContextCreate","ImNodes::EditorContextCreate")
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< void (*)(imnodes::EditorContext *) , imnodes::EditorContextFree , SimNode_ExtFuncCall >(lib,"EditorContextFree","imnodes::EditorContextFree")
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:234:23
+	makeExtern< void (*)(ImNodesEditorContext *) , ImNodes::EditorContextFree , SimNode_ExtFuncCall >(lib,"EditorContextFree","ImNodes::EditorContextFree")
 		->args({""})
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< void (*)(imnodes::EditorContext *) , imnodes::EditorContextSet , SimNode_ExtFuncCall >(lib,"EditorContextSet","imnodes::EditorContextSet")
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:235:23
+	makeExtern< void (*)(ImNodesEditorContext *) , ImNodes::EditorContextSet , SimNode_ExtFuncCall >(lib,"EditorContextSet","ImNodes::EditorContextSet")
 		->args({""})
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< ImVec2 (*)() , imnodes::EditorContextGetPanning , SimNode_ExtFuncCall >(lib,"EditorContextGetPanning","imnodes::EditorContextGetPanning")
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:236:23
+	makeExtern< ImVec2 (*)() , ImNodes::EditorContextGetPanning , SimNode_ExtFuncCall >(lib,"EditorContextGetPanning","ImNodes::EditorContextGetPanning")
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< void (*)(const ImVec2 &) , imnodes::EditorContextResetPanning , SimNode_ExtFuncCall >(lib,"EditorContextResetPanning","imnodes::EditorContextResetPanning")
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:237:23
+	makeExtern< void (*)(const ImVec2 &) , ImNodes::EditorContextResetPanning , SimNode_ExtFuncCall >(lib,"EditorContextResetPanning","ImNodes::EditorContextResetPanning")
 		->args({"pos"})
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< void (*)(const int) , imnodes::EditorContextMoveToNode , SimNode_ExtFuncCall >(lib,"EditorContextMoveToNode","imnodes::EditorContextMoveToNode")
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:238:23
+	makeExtern< void (*)(const int) , ImNodes::EditorContextMoveToNode , SimNode_ExtFuncCall >(lib,"EditorContextMoveToNode","ImNodes::EditorContextMoveToNode")
 		->args({"node_id"})
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< imnodes::IO & (*)() , imnodes::GetIO , SimNode_ExtFuncCallRef >(lib,"GetIO","imnodes::GetIO")
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:240:12
+	makeExtern< ImNodesIO & (*)() , ImNodes::GetIO , SimNode_ExtFuncCallRef >(lib,"GetIO","ImNodes::GetIO")
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< imnodes::Style & (*)() , imnodes::GetStyle , SimNode_ExtFuncCallRef >(lib,"GetStyle","imnodes::GetStyle")
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:243:15
+	makeExtern< ImNodesStyle & (*)() , ImNodes::GetStyle , SimNode_ExtFuncCallRef >(lib,"GetStyle","ImNodes::GetStyle")
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< void (*)() , imnodes::StyleColorsDark , SimNode_ExtFuncCall >(lib,"StyleColorsDark","imnodes::StyleColorsDark")
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:245:6
+	makeExtern< void (*)() , ImNodes::StyleColorsDark , SimNode_ExtFuncCall >(lib,"StyleColorsDark","ImNodes::StyleColorsDark")
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< void (*)() , imnodes::StyleColorsClassic , SimNode_ExtFuncCall >(lib,"StyleColorsClassic","imnodes::StyleColorsClassic")
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:246:6
+	makeExtern< void (*)() , ImNodes::StyleColorsClassic , SimNode_ExtFuncCall >(lib,"StyleColorsClassic","ImNodes::StyleColorsClassic")
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< void (*)() , imnodes::StyleColorsLight , SimNode_ExtFuncCall >(lib,"StyleColorsLight","imnodes::StyleColorsLight")
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:247:6
+	makeExtern< void (*)() , ImNodes::StyleColorsLight , SimNode_ExtFuncCall >(lib,"StyleColorsLight","ImNodes::StyleColorsLight")
 		->addToModule(*this, SideEffects::worstDefault);
 }
 }

@@ -12,75 +12,94 @@
 namespace das {
 #include "dasIMGUI.func.aot.decl.inc"
 void Module_dasIMGUI::initFunctions_2() {
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:337:29
+	makeExtern< void (*)(ImGuiStyle *) , ImGui::StyleColorsDark , SimNode_ExtFuncCall , imguiTempFn>(lib,"StyleColorsDark","ImGui::StyleColorsDark")
+		->args({"dst"})
+		->arg_init(0,make_smart<ExprConstPtr>())
+		->addToModule(*this, SideEffects::worstDefault);
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:338:29
+	makeExtern< void (*)(ImGuiStyle *) , ImGui::StyleColorsLight , SimNode_ExtFuncCall , imguiTempFn>(lib,"StyleColorsLight","ImGui::StyleColorsLight")
+		->args({"dst"})
+		->arg_init(0,make_smart<ExprConstPtr>())
+		->addToModule(*this, SideEffects::worstDefault);
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:339:29
 	makeExtern< void (*)(ImGuiStyle *) , ImGui::StyleColorsClassic , SimNode_ExtFuncCall , imguiTempFn>(lib,"StyleColorsClassic","ImGui::StyleColorsClassic")
 		->args({"dst"})
 		->arg_init(0,make_smart<ExprConstPtr>())
 		->addToModule(*this, SideEffects::worstDefault);
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:353:29
 	makeExtern< bool (*)(const char *,bool *,int) , ImGui::Begin , SimNode_ExtFuncCall , imguiTempFn>(lib,"Begin","ImGui::Begin")
 		->args({"name","p_open","flags"})
 		->arg_init(1,make_smart<ExprConstPtr>())
 		->arg_type(2,makeType<ImGuiWindowFlags_>(lib))
 		->arg_init(2,make_smart<ExprConstEnumeration>(0,makeType<ImGuiWindowFlags_>(lib)))
 		->addToModule(*this, SideEffects::worstDefault);
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:354:29
 	makeExtern< void (*)() , ImGui::End , SimNode_ExtFuncCall , imguiTempFn>(lib,"End","ImGui::End")
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< bool (*)(const char *,const ImVec2 &,bool,int) , ImGui::BeginChild , SimNode_ExtFuncCall , imguiTempFn>(lib,"BeginChild","ImGui::BeginChild")
-		->args({"str_id","size","border","flags"})
-		->arg_init(2,make_smart<ExprConstBool>(false))
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:374:29
+	makeExtern< bool (*)(const char *,const ImVec2 &,int,int) , ImGui::BeginChild , SimNode_ExtFuncCall , imguiTempFn>(lib,"BeginChild","ImGui::BeginChild")
+		->args({"str_id","size","child_flags","window_flags"})
+		->arg_type(2,makeType<ImGuiChildFlags_>(lib))
+		->arg_init(2,make_smart<ExprConstEnumeration>(0,makeType<ImGuiChildFlags_>(lib)))
 		->arg_type(3,makeType<ImGuiWindowFlags_>(lib))
 		->arg_init(3,make_smart<ExprConstEnumeration>(0,makeType<ImGuiWindowFlags_>(lib)))
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< bool (*)(unsigned int,const ImVec2 &,bool,int) , ImGui::BeginChild , SimNode_ExtFuncCall , imguiTempFn>(lib,"BeginChild","ImGui::BeginChild")
-		->args({"id","size","border","flags"})
-		->arg_init(2,make_smart<ExprConstBool>(false))
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:375:29
+	makeExtern< bool (*)(unsigned int,const ImVec2 &,int,int) , ImGui::BeginChild , SimNode_ExtFuncCall , imguiTempFn>(lib,"BeginChild","ImGui::BeginChild")
+		->args({"id","size","child_flags","window_flags"})
+		->arg_type(2,makeType<ImGuiChildFlags_>(lib))
+		->arg_init(2,make_smart<ExprConstEnumeration>(0,makeType<ImGuiChildFlags_>(lib)))
 		->arg_type(3,makeType<ImGuiWindowFlags_>(lib))
 		->arg_init(3,make_smart<ExprConstEnumeration>(0,makeType<ImGuiWindowFlags_>(lib)))
 		->addToModule(*this, SideEffects::worstDefault);
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:376:29
 	makeExtern< void (*)() , ImGui::EndChild , SimNode_ExtFuncCall , imguiTempFn>(lib,"EndChild","ImGui::EndChild")
 		->addToModule(*this, SideEffects::worstDefault);
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:380:29
 	makeExtern< bool (*)() , ImGui::IsWindowAppearing , SimNode_ExtFuncCall , imguiTempFn>(lib,"IsWindowAppearing","ImGui::IsWindowAppearing")
 		->addToModule(*this, SideEffects::worstDefault);
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:381:29
 	makeExtern< bool (*)() , ImGui::IsWindowCollapsed , SimNode_ExtFuncCall , imguiTempFn>(lib,"IsWindowCollapsed","ImGui::IsWindowCollapsed")
 		->addToModule(*this, SideEffects::worstDefault);
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:382:29
 	makeExtern< bool (*)(int) , ImGui::IsWindowFocused , SimNode_ExtFuncCall , imguiTempFn>(lib,"IsWindowFocused","ImGui::IsWindowFocused")
 		->args({"flags"})
 		->arg_type(0,makeType<ImGuiFocusedFlags_>(lib))
 		->arg_init(0,make_smart<ExprConstEnumeration>(0,makeType<ImGuiFocusedFlags_>(lib)))
 		->addToModule(*this, SideEffects::worstDefault);
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:383:29
 	makeExtern< bool (*)(int) , ImGui::IsWindowHovered , SimNode_ExtFuncCall , imguiTempFn>(lib,"IsWindowHovered","ImGui::IsWindowHovered")
 		->args({"flags"})
 		->arg_type(0,makeType<ImGuiHoveredFlags_>(lib))
 		->arg_init(0,make_smart<ExprConstEnumeration>(0,makeType<ImGuiHoveredFlags_>(lib)))
 		->addToModule(*this, SideEffects::worstDefault);
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:384:29
 	makeExtern< ImDrawList * (*)() , ImGui::GetWindowDrawList , SimNode_ExtFuncCall , imguiTempFn>(lib,"GetWindowDrawList","ImGui::GetWindowDrawList")
 		->addToModule(*this, SideEffects::worstDefault);
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:385:29
+	makeExtern< float (*)() , ImGui::GetWindowDpiScale , SimNode_ExtFuncCall , imguiTempFn>(lib,"GetWindowDpiScale","ImGui::GetWindowDpiScale")
+		->addToModule(*this, SideEffects::worstDefault);
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:386:29
 	makeExtern< ImVec2 (*)() , ImGui::GetWindowPos , SimNode_ExtFuncCall , imguiTempFn>(lib,"GetWindowPos","ImGui::GetWindowPos")
 		->addToModule(*this, SideEffects::worstDefault);
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:387:29
 	makeExtern< ImVec2 (*)() , ImGui::GetWindowSize , SimNode_ExtFuncCall , imguiTempFn>(lib,"GetWindowSize","ImGui::GetWindowSize")
 		->addToModule(*this, SideEffects::worstDefault);
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:388:29
 	makeExtern< float (*)() , ImGui::GetWindowWidth , SimNode_ExtFuncCall , imguiTempFn>(lib,"GetWindowWidth","ImGui::GetWindowWidth")
 		->addToModule(*this, SideEffects::worstDefault);
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:389:29
 	makeExtern< float (*)() , ImGui::GetWindowHeight , SimNode_ExtFuncCall , imguiTempFn>(lib,"GetWindowHeight","ImGui::GetWindowHeight")
 		->addToModule(*this, SideEffects::worstDefault);
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:390:29
+	makeExtern< ImGuiViewport * (*)() , ImGui::GetWindowViewport , SimNode_ExtFuncCall , imguiTempFn>(lib,"GetWindowViewport","ImGui::GetWindowViewport")
+		->addToModule(*this, SideEffects::worstDefault);
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:394:29
 	makeExtern< void (*)(const ImVec2 &,int,const ImVec2 &) , ImGui::SetNextWindowPos , SimNode_ExtFuncCall , imguiTempFn>(lib,"SetNextWindowPos","ImGui::SetNextWindowPos")
 		->args({"pos","cond","pivot"})
 		->arg_type(1,makeType<ImGuiCond_>(lib))
 		->arg_init(1,make_smart<ExprConstEnumeration>(0,makeType<ImGuiCond_>(lib)))
-		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< void (*)(const ImVec2 &,int) , ImGui::SetNextWindowSize , SimNode_ExtFuncCall , imguiTempFn>(lib,"SetNextWindowSize","ImGui::SetNextWindowSize")
-		->args({"size","cond"})
-		->arg_type(1,makeType<ImGuiCond_>(lib))
-		->arg_init(1,make_smart<ExprConstEnumeration>(0,makeType<ImGuiCond_>(lib)))
-		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< void (*)(const ImVec2 &) , ImGui::SetNextWindowContentSize , SimNode_ExtFuncCall , imguiTempFn>(lib,"SetNextWindowContentSize","ImGui::SetNextWindowContentSize")
-		->args({"size"})
-		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< void (*)(bool,int) , ImGui::SetNextWindowCollapsed , SimNode_ExtFuncCall , imguiTempFn>(lib,"SetNextWindowCollapsed","ImGui::SetNextWindowCollapsed")
-		->args({"collapsed","cond"})
-		->arg_type(1,makeType<ImGuiCond_>(lib))
-		->arg_init(1,make_smart<ExprConstEnumeration>(0,makeType<ImGuiCond_>(lib)))
-		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< void (*)() , ImGui::SetNextWindowFocus , SimNode_ExtFuncCall , imguiTempFn>(lib,"SetNextWindowFocus","ImGui::SetNextWindowFocus")
 		->addToModule(*this, SideEffects::worstDefault);
 }
 }

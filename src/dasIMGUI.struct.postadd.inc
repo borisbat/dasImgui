@@ -1,14 +1,16 @@
 // this file is generated via daScript automatic C++ binder
 // all user modifications will be lost after this file is re-generated
 
+initRecAnnotation(ann_ImGuiTableSortSpecs,lib);
+initRecAnnotation(ann_ImGuiTableColumnSortSpecs,lib);
 initRecAnnotation(ann_ImNewWrapper,lib);
 initRecAnnotation(ann_ImGuiStyle,lib);
+initRecAnnotation(ann_ImGuiKeyData,lib);
 initRecAnnotation(ann_ImGuiIO,lib);
 initRecAnnotation(ann_ImGuiInputTextCallbackData,lib);
 initRecAnnotation(ann_ImGuiSizeCallbackData,lib);
+initRecAnnotation(ann_ImGuiWindowClass,lib);
 initRecAnnotation(ann_ImGuiPayload,lib);
-initRecAnnotation(ann_ImGuiTableColumnSortSpecs,lib);
-initRecAnnotation(ann_ImGuiTableSortSpecs,lib);
 initRecAnnotation(ann_ImGuiOnceUponAFrame,lib);
 initRecAnnotation(ann_ImGuiTextRange,lib);
 initRecAnnotation(ann_ImGuiTextFilter,lib);
@@ -30,3 +32,6 @@ initRecAnnotation(ann_ImFontAtlasCustomRect,lib);
 initRecAnnotation(ann_ImFontAtlas,lib);
 initRecAnnotation(ann_ImFont,lib);
 initRecAnnotation(ann_ImGuiViewport,lib);
+initRecAnnotation(ann_ImGuiPlatformIO,lib);
+initRecAnnotation(ann_ImGuiPlatformMonitor,lib);
+initRecAnnotation(ann_ImGuiPlatformImeData,lib);

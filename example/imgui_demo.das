@@ -82,7 +82,7 @@ def DasShowAboutWindow(p_open: bool? implicit)
         var style & = unsafe(GetStyle())
         let copy_to_clipboard = Button("Copy to clipboard")
         var child_size = float2(0., GetTextLineHeightWithSpacing() * 18.)
-        BeginChildFrame(GetID("cfg_infos"), child_size, ImGuiWindowFlags NoMove)
+        BeginChild(GetID("cfg_infos"), child_size, ImGuiChildFlags FrameStyle, ImGuiWindowFlags NoMove)
         if copy_to_clipboard
             LogToClipboard()
             LogText("```\n")
@@ -147,7 +147,7 @@ def DasShowAboutWindow(p_open: bool? implicit)
         if (copy_to_clipboard)
             LogText("\n```\n")
             LogFinish()
-        EndChildFrame()
+        EndChild()
     End()
 
 [export]
@@ -311,7 +311,7 @@ def DasShowDemoWindow ( _p_open : bool? )
                 if (float(GetTime()) % 0.40f) < 0.20f
                     SameLine()
                     Text("<<PRESS SPACE TO DISABLE>>")
-                if IsKeyPressed(GetKeyIndex(ImGuiKey Space))
+                if IsKeyPressed(ImGuiKey Space)
                     io.ConfigFlags &= ~ImGuiConfigFlags NoMouse
             unsafe
                 CheckboxFlags("io.ConfigFlags: NoMouseCursorChange", addr(io.ConfigFlags), ImGuiConfigFlags NoMouseCursorChange)
@@ -580,7 +580,7 @@ def ShowExampleMenuFile()
         static_let <|
             var enabled = true
         MenuItem("Enabled", "", enabled)
-        BeginChild("child", float2(0., 60.), true)
+        BeginChild("child", float2(0., 60.), ImGuiChildFlags Border)
         for i in range(1)
             Text("Scrolling Text {i}")
         EndChild()
@@ -672,48 +672,17 @@ def DasShowDemoWindowMisc()
                     Text("b{i}")
             Text("Mouse wheel: {io.MouseWheel}")
             Text("Keys down:")
-            for i in range(length(io.KeysDown))
-                if io.KeysDownDuration[i] >= 0.0f
-                    SameLine()
-                    Text("{i} (0x{uint(i)}) ({io.KeysDownDuration[i]} secs)")
-            Text("Keys pressed:")
-            for i in range(length(io.KeysDown))
-                if IsKeyPressed(i)
-                    SameLine()
-                    Text("{i} (0x{uint(i)})")
-            Text("Keys release:")
-            for i in range(length(io.KeysDown))
-                if IsKeyReleased(i)
-                    SameLine()
-                    Text("{i} (0x{uint(i)})")
+            for i in range(int(ImGuiKey NamedKey_BEGIN), int(ImGuiKey NamedKey_END))
+                let key = unsafe(reinterpret<ImGuiKey> i)
+                if IsKeyDown(key)
+                    SameLine();
+                    Text("\"{GetKeyName(key)}\" {i}")
             Text("Keys mods: {io.KeyCtrl ? "CTRL " : ""}{io.KeyShift ? "SHIFT " : ""}{io.KeyAlt ? "ALT " : ""}{io.KeySuper ? "SUPER " : ""}")
             Text("Chars queue:")
             for i in range(io.InputQueueCharacters |> length)
                 let c = int(io.InputQueueCharacters[i])
                 SameLine()
                 Text("'{(c > ' ' && c <= 255) ? to_char(c) : "?"}' (0x{uint(c)})")
-            Text("NavInputs down:")
-            for i in range(length(io.NavInputs))
-                if io.NavInputs[i] > 0.0f
-                    SameLine()
-                    Text("[{i}] {io.NavInputs[i]}")
-            Text("NavInputs pressed:")
-            for i in range(length(io.NavInputs))
-                if io.NavInputsDownDuration[i] == 0.0f
-                    SameLine()
-                    Text("[{i}]")
-            Text("NavInputs duration:")
-            for i in range(length(io.NavInputs))
-                if io.NavInputsDownDuration[i] >= 0.0f
-                    SameLine()
-                    Text("[{i}] {io.NavInputsDownDuration[i]}")
-            Button("Hovering me sets the\nkeyboard capture flag")
-            if IsItemHovered()
-                CaptureKeyboardFromApp(true)
-            SameLine()
-            Button("Holding me clears the\nthe keyboard capture flag")
-            if IsItemActive()
-                CaptureKeyboardFromApp(false)
             TreePop()
 
         if TreeNode("Tabbing")
@@ -723,9 +692,9 @@ def DasShowDemoWindowMisc()
             InputText("1", buft)
             InputText("2", buft)
             InputText("3", buft)
-            PushAllowKeyboardFocus(false)
+            PushTabStop(false)
             InputText("4 (tab skip)", buft)
-            PopAllowKeyboardFocus()
+            PopTabStop()
             InputText("5", buft)
             TreePop()
 
@@ -748,13 +717,13 @@ def DasShowDemoWindowMisc()
             InputText("2", buf)
             if IsItemActive()
                 has_focus = 2
-            PushAllowKeyboardFocus(false)
+            PushTabStop(false)
             if focus_3
                 SetKeyboardFocusHere()
             InputText("3 (tab skip)", buf)
             if IsItemActive()
                 has_focus = 3
-            PopAllowKeyboardFocus()
+            PopTabStop()
             if has_focus!=0
                 Text("Item with focus: {has_focus}")
             else
@@ -835,7 +804,7 @@ def DasShowDemoWindowLayout
             var window_flags = ImGuiWindowFlags HorizontalScrollbar
             if disable_mouse_wheel
                 window_flags |= ImGuiWindowFlags NoScrollWithMouse
-            BeginChild("ChildL", float2(GetWindowContentRegionWidth() * 0.5f, 260.), false, window_flags)
+            BeginChild("ChildL", float2((GetWindowContentRegionMax().x - GetWindowContentRegionMin().x) * 0.5f, 260.), ImGuiChildFlags None, window_flags)
             for i in range(100)
                 Text("{i}: scrollable region")
             EndChild()
@@ -847,7 +816,7 @@ def DasShowDemoWindowLayout
             if !disable_menu
                 window_flags |= ImGuiWindowFlags MenuBar
             PushStyleVar(ImGuiStyleVar ChildRounding, 5.0f)
-            BeginChild("ChildR", float2(0., 260.), true, window_flags)
+            BeginChild("ChildR", float2(0., 260.), ImGuiChildFlags Border, window_flags)
             if !disable_menu && BeginMenuBar()
                 if BeginMenu("Menu")
                     ShowExampleMenuFile()
@@ -868,7 +837,7 @@ def DasShowDemoWindowLayout
             DragInt("Offset X", safe_addr(offset_x), 1.0f, -1000, 1000)
             SetCursorPosX(GetCursorPosX() + float(offset_x))
             PushStyleColor(ImGuiCol ChildBg, IM_COL32(255, 0, 0, 100))
-            BeginChild("Red", float2(200., 100.), true, ImGuiWindowFlags None)
+            BeginChild("Red", float2(200., 100.), ImGuiChildFlags Border, ImGuiWindowFlags None)
             for i in range(50)
                 Text("Some test {i}")
             EndChild()
@@ -1199,7 +1168,7 @@ def DasShowDemoWindowLayout
             var child_id : uint
             unsafe
                 child_id = GetID(reinterpret<void?> i)
-            let child_is_visible = BeginChild(child_id, float2(child_w, 200.0f), true, child_flags)
+            let child_is_visible = BeginChild(child_id, float2(child_w, 200.0f), ImGuiChildFlags Border, child_flags)
             if BeginMenuBar()
                 TextUnformatted("abc")
                 EndMenuBar()
@@ -1233,7 +1202,7 @@ def DasShowDemoWindowLayout
             var child_id : uint
             unsafe
                 child_id = GetID(reinterpret<void?> i)
-            let child_is_visible = BeginChild(child_id, float2(-100., child_height), true, child_flags)
+            let child_is_visible = BeginChild(child_id, float2(-100., child_height), ImGuiChildFlags Border, child_flags)
             if scroll_to_off
                 SetScrollX(scroll_to_off_px)
             if scroll_to_pos
@@ -1264,7 +1233,7 @@ def DasShowDemoWindowLayout
         PushStyleVar(ImGuiStyleVar FrameRounding, 3.0f)
         PushStyleVar(ImGuiStyleVar FramePadding, float2(2.0f, 1.0f))
         let scrolling_child_size = float2(0., GetFrameHeightWithSpacing() * 7.0 + 30.0)
-        BeginChild("scrolling", scrolling_child_size, true, ImGuiWindowFlags HorizontalScrollbar)
+        BeginChild("scrolling", scrolling_child_size, ImGuiChildFlags Border, ImGuiWindowFlags HorizontalScrollbar)
         for line in range(lines)
             let num_buttons = 10 + ((line & 1)!=0 ? line * 9 : line * 3)
             for n in range(num_buttons)
@@ -1377,7 +1346,7 @@ def DasShowDemoWindowLayout
                     EndTabItem()
                 EndTabBar()
             if show_child
-                BeginChild("child", float2(0., 0.), true)
+                BeginChild("child", float2(0., 0.), ImGuiChildFlags Border)
                 EndChild()
             End()
         TreePop()
@@ -1471,7 +1440,7 @@ class ExampleAppLog
         SameLine()
         *Filter |> Draw("Filter", -100.0f)
         Separator()
-        BeginChild("scrolling", float2(0., 0.), false, ImGuiWindowFlags HorizontalScrollbar)
+        BeginChild("scrolling", float2(0., 0.), ImGuiChildFlags None, ImGuiWindowFlags HorizontalScrollbar)
         if clear
             self->Clear()
         if copy
@@ -1531,7 +1500,7 @@ def DasShowExampleAppLayout(var p_open:bool? implicit)
             EndMenuBar()
         static_let <|
             var selected = 0
-        BeginChild("left pane", float2(150., 0.), true)
+        BeginChild("left pane", float2(150., 0.), ImGuiChildFlags Border)
         for i in range(100)
             if Selectable("MyObject {i}", selected == i)
                 selected = i
@@ -1623,7 +1592,7 @@ class ExampleAppConsole
         *Filter |> Draw("Filter (\"incl,-excl\") (\"error\")", 180.)
         Separator()
         let footer_height_to_reserve = GetStyle().ItemSpacing.y + GetFrameHeightWithSpacing()
-        BeginChild("ScrollingRegion", float2(0., -footer_height_to_reserve), false, ImGuiWindowFlags HorizontalScrollbar)
+        BeginChild("ScrollingRegion", float2(0., -footer_height_to_reserve), ImGuiChildFlags None, ImGuiWindowFlags HorizontalScrollbar)
         if BeginPopupContextWindow()
             if Selectable("Clear")
                 self->ClearLog()
@@ -1902,11 +1871,11 @@ def DasShowExampleAppDocuments(p_open:bool? implicit)
             if BeginPopupModal("Save?", null, ImGuiWindowFlags AlwaysAutoResize)
                 Text("Save change to the following items?")
                 let item_height = GetTextLineHeightWithSpacing()
-                if BeginChildFrame(GetID("frame"), float2(-FLT_MIN, 6.25f * item_height))
+                if BeginChild(GetID("frame"), float2(-FLT_MIN, 6.25f * item_height), ImGuiChildFlags FrameStyle)
                     for qq in close_queue
                         if qq.Dirty
                             Text("{qq.Name}")
-                    EndChildFrame()
+                EndChild()
                 var button_size = float2(GetFontSize() * 7.0f, 0.0f)
                 if Button("Yes", button_size)
                     for qq in close_queue
@@ -3643,7 +3612,7 @@ def DasShowDemoWindowTables()
                             Button(lab, float2(-FLT_MIN, 0.0f))
                         elif contents_type == ContentsTypeEx CT_Selectable || contents_type == ContentsTypeEx CT_SelectableSpanRow
                             let selectable_flags = ((contents_type == ContentsTypeEx CT_SelectableSpanRow) ?
-                                ImGuiSelectableFlags SpanAllColumns | ImGuiSelectableFlags AllowItemOverlap :
+                                ImGuiSelectableFlags SpanAllColumns | ImGuiSelectableFlags AllowOverlap :
                                     ImGuiSelectableFlags None)
                             if Selectable(lab, item_is_selected, selectable_flags, float2(0., row_min_height))
                                 if GetIO().KeyCtrl
@@ -3852,7 +3821,7 @@ def DasShowDemoWindowColumns()
     if TreeNode("Horizontal Scrolling")
         SetNextWindowContentSize(float2(1500.0f, 0.0f))
         var child_size = float2(0., GetFontSize() * 20.0f)
-        BeginChild("##ScrollingRegion", child_size, false, ImGuiWindowFlags HorizontalScrollbar)
+        BeginChild("##ScrollingRegion", child_size, ImGuiChildFlags None, ImGuiWindowFlags HorizontalScrollbar)
         Columns(10)
         let ITEMS_COUNT = 2000
         using() <| $ ( var clipper : ImGuiListClipper )
@@ -4259,8 +4228,12 @@ def DasShowDemoWindowWidgets()
             var uv1 = float2(32.0f / my_tex_w, 32.0f / my_tex_h)
             var bg_col = float4(0.0f, 0.0f, 0.0f, 1.0f)
             var tint_col = float4(1.0f, 1.0f, 1.0f, 1.0f)
-            if ImageButton(my_tex_id, size, uv0, uv1, frame_padding, bg_col, tint_col)
+            if i > 0
+                PushStyleVar(ImGuiStyleVar FramePadding, ImVec2(float(i) - 1.0f, float(i) - 1.0f))
+            if ImageButton("", my_tex_id, size, uv0, uv1, bg_col, tint_col)
                 pressed_count += 1;
+            if i > 0
+                PopStyleVar()
             PopID()
             SameLine()
         NewLine()
@@ -5265,7 +5238,7 @@ def DasShowDemoWindowWidgets()
             var embed_all_inside_a_child_window = false
         Checkbox("Embed everything inside a child window (for additional testing)", safe_addr(embed_all_inside_a_child_window))
         if embed_all_inside_a_child_window
-            BeginChild("outer_child", float2(0., GetFontSize() * 20.0f), true)
+            BeginChild("outer_child", float2(0., GetFontSize() * 20.0f), ImGuiChildFlags Border)
         BulletText(
             "IsWindowFocused() = {IsWindowFocused()}\n" +
             "IsWindowFocused(_ChildWindows) = {IsWindowFocused(ImGuiFocusedFlags ChildWindows)}\n" +
@@ -5282,7 +5255,7 @@ def DasShowDemoWindowWidgets()
             "IsWindowHovered(_RootWindow) = {IsWindowHovered(ImGuiHoveredFlags RootWindow)}\n"+
             "IsWindowHovered(_AnyWindow) = {IsWindowHovered(ImGuiHoveredFlags AnyWindow)}\n")
 
-        BeginChild("child", float2(0., 50.), true)
+        BeginChild("child", float2(0., 50.), ImGuiChildFlags Border)
         Text("This is another child window for testing the _ChildWindows flag.")
         EndChild()
         if embed_all_inside_a_child_window

@@ -1,6 +1,18 @@
 // this file is generated via daScript automatic C++ binder
 // all user modifications will be lost after this file is re-generated
 
+template <> struct cast_arg<ImGuiTableSortSpecs> {
+	static __forceinline const ImGuiTableSortSpecs & to ( Context & ctx, SimNode * node ) {
+		vec4f res = node->eval(ctx);
+		return * cast<ImGuiTableSortSpecs *>::to(res);
+	}
+};
+template <> struct cast_arg<ImGuiTableColumnSortSpecs> {
+	static __forceinline const ImGuiTableColumnSortSpecs & to ( Context & ctx, SimNode * node ) {
+		vec4f res = node->eval(ctx);
+		return * cast<ImGuiTableColumnSortSpecs *>::to(res);
+	}
+};
 template <> struct cast_arg<ImNewWrapper> {
 	static __forceinline const ImNewWrapper & to ( Context & ctx, SimNode * node ) {
 		vec4f res = node->eval(ctx);
@@ -11,6 +23,12 @@ template <> struct cast_arg<ImGuiStyle> {
 	static __forceinline const ImGuiStyle & to ( Context & ctx, SimNode * node ) {
 		vec4f res = node->eval(ctx);
 		return * cast<ImGuiStyle *>::to(res);
+	}
+};
+template <> struct cast_arg<ImGuiKeyData> {
+	static __forceinline const ImGuiKeyData & to ( Context & ctx, SimNode * node ) {
+		vec4f res = node->eval(ctx);
+		return * cast<ImGuiKeyData *>::to(res);
 	}
 };
 template <> struct cast_arg<ImGuiIO> {
@@ -31,22 +49,16 @@ template <> struct cast_arg<ImGuiSizeCallbackData> {
 		return * cast<ImGuiSizeCallbackData *>::to(res);
 	}
 };
+template <> struct cast_arg<ImGuiWindowClass> {
+	static __forceinline const ImGuiWindowClass & to ( Context & ctx, SimNode * node ) {
+		vec4f res = node->eval(ctx);
+		return * cast<ImGuiWindowClass *>::to(res);
+	}
+};
 template <> struct cast_arg<ImGuiPayload> {
 	static __forceinline const ImGuiPayload & to ( Context & ctx, SimNode * node ) {
 		vec4f res = node->eval(ctx);
 		return * cast<ImGuiPayload *>::to(res);
-	}
-};
-template <> struct cast_arg<ImGuiTableColumnSortSpecs> {
-	static __forceinline const ImGuiTableColumnSortSpecs & to ( Context & ctx, SimNode * node ) {
-		vec4f res = node->eval(ctx);
-		return * cast<ImGuiTableColumnSortSpecs *>::to(res);
-	}
-};
-template <> struct cast_arg<ImGuiTableSortSpecs> {
-	static __forceinline const ImGuiTableSortSpecs & to ( Context & ctx, SimNode * node ) {
-		vec4f res = node->eval(ctx);
-		return * cast<ImGuiTableSortSpecs *>::to(res);
 	}
 };
 template <> struct cast_arg<ImGuiOnceUponAFrame> {
@@ -173,5 +185,23 @@ template <> struct cast_arg<ImGuiViewport> {
 	static __forceinline const ImGuiViewport & to ( Context & ctx, SimNode * node ) {
 		vec4f res = node->eval(ctx);
 		return * cast<ImGuiViewport *>::to(res);
+	}
+};
+template <> struct cast_arg<ImGuiPlatformIO> {
+	static __forceinline const ImGuiPlatformIO & to ( Context & ctx, SimNode * node ) {
+		vec4f res = node->eval(ctx);
+		return * cast<ImGuiPlatformIO *>::to(res);
+	}
+};
+template <> struct cast_arg<ImGuiPlatformMonitor> {
+	static __forceinline const ImGuiPlatformMonitor & to ( Context & ctx, SimNode * node ) {
+		vec4f res = node->eval(ctx);
+		return * cast<ImGuiPlatformMonitor *>::to(res);
+	}
+};
+template <> struct cast_arg<ImGuiPlatformImeData> {
+	static __forceinline const ImGuiPlatformImeData & to ( Context & ctx, SimNode * node ) {
+		vec4f res = node->eval(ctx);
+		return * cast<ImGuiPlatformImeData *>::to(res);
 	}
 };

@@ -230,15 +230,15 @@ namespace das {
         LineInfo *  at;
     };
 
-    bool ComboGetterCallback ( void* data, int idx, const char** out_text ) {
+    const char *ComboGetterCallback(void* data, int idx) {
         ImGuiComboGetter * getter = (ImGuiComboGetter *) data;
         if ( !getter->lambda.capture ) {
             getter->context->throw_error_at(getter->at, "expecting lambda");
         }
-        *out_text = nullptr;
-        auto res = das_invoke_lambda<bool>::invoke<int,char **>(getter->context,getter->at,getter->lambda,idx,(char **)out_text);
-        if ( *out_text==nullptr ) *out_text = "";
-        return res;
+        const char *out_text = nullptr;
+        das_invoke_lambda<bool>::invoke<int,char **>(getter->context,getter->at,getter->lambda,idx,(char **)&out_text);
+        if ( out_text==nullptr ) out_text = "";
+        return out_text;
     }
 
     bool Combo ( vec4f cg, const char * label, int * current_item, int items_count, int popup_max_height_in_items, Context * ctx, LineInfoArg * at ) {
@@ -299,9 +299,9 @@ namespace das {
                 ->args({"h","s","v","a"})
                     ->arg_init(3,make_smart<ExprConstFloat>(1.0f));
         // imgui draw list
-        addExtern<DAS_BIND_FUN(das::AddText)>(*this, lib, "AddText",
+        addExtern<DAS_BIND_FUN(das::AddText), SimNode_ExtFuncCall, imguiTempFn>(*this, lib, "AddText",
             SideEffects::worstDefault, "das::AddText");
-        addExtern<DAS_BIND_FUN(das::AddText2)>(*this, lib, "AddText",
+        addExtern<DAS_BIND_FUN(das::AddText2), SimNode_ExtFuncCall, imguiTempFn>(*this, lib, "AddText",
             SideEffects::worstDefault, "das::AddText2")
                 ->args({"drawList","font","font_size","pos","col","text","wrap_width","cpu_fine_clip_rect"})
                     ->arg_init(6,make_smart<ExprConstFloat>(0.0f))
@@ -355,7 +355,7 @@ namespace das {
         // SetNextWindowSizeConstraints
         addExtern<DAS_BIND_FUN(das::SetNextWindowSizeConstraints), SimNode_ExtFuncCall, imguiTempFn>(*this,lib,"_builtin_SetNextWindowSizeConstraints",
             SideEffects::worstDefault,"das::SetNextWindowSizeConstraints");
-        addExtern<DAS_BIND_FUN(das::SetNextWindowSizeConstraintsNoCallback)>(*this,lib,"SetNextWindowSizeConstraints",
+        addExtern<DAS_BIND_FUN(das::SetNextWindowSizeConstraintsNoCallback), SimNode_ExtFuncCall, imguiTempFn>(*this,lib,"SetNextWindowSizeConstraints",
             SideEffects::worstDefault,"das::SetNextWindowSizeConstraintsNoCallback")
                 ->args({"size_min","size_max"});
         // ImGuiTableColumnSortSpecs

@@ -36,7 +36,7 @@ def NodeTextMultiline(mode:EditMode; id,name:string; var text:string&; maxlen:in
     var buf = get_next_text_buffer(text,maxlen)
     Text(name)
     SetNextItemWidth(DEFAULT_NAMED_ELEMENT_WIDTH)
-    if InputTextMultiline("##{name}{id}{mode}_Text",*buf,float2(0),ImGuiInputTextFlags Multiline)
+    if InputTextMultiline("##{name}{id}{mode}_Text",*buf,float2(0))
         text = to_string(*buf)
         undo_edit_instruction(id,name)
         update_preview()

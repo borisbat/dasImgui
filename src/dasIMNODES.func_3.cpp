@@ -12,60 +12,80 @@
 namespace das {
 #include "dasIMNODES.func.aot.decl.inc"
 void Module_dasIMNODES::initFunctions_3() {
-	makeExtern< void (*)(int,const bool) , imnodes::SetNodeDraggable , SimNode_ExtFuncCall >(lib,"SetNodeDraggable","imnodes::SetNodeDraggable")
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:309:6
+	makeExtern< void (*)(int,int,int) , ImNodes::Link , SimNode_ExtFuncCall >(lib,"Link","ImNodes::Link")
+		->args({"id","start_attribute_id","end_attribute_id"})
+		->addToModule(*this, SideEffects::worstDefault);
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:312:6
+	makeExtern< void (*)(int,const bool) , ImNodes::SetNodeDraggable , SimNode_ExtFuncCall >(lib,"SetNodeDraggable","ImNodes::SetNodeDraggable")
 		->args({"node_id","draggable"})
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< void (*)(int,const ImVec2 &) , imnodes::SetNodeScreenSpacePos , SimNode_ExtFuncCall >(lib,"SetNodeScreenSpacePos","imnodes::SetNodeScreenSpacePos")
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:323:6
+	makeExtern< void (*)(int,const ImVec2 &) , ImNodes::SetNodeScreenSpacePos , SimNode_ExtFuncCall >(lib,"SetNodeScreenSpacePos","ImNodes::SetNodeScreenSpacePos")
 		->args({"node_id","screen_space_pos"})
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< void (*)(int,const ImVec2 &) , imnodes::SetNodeEditorSpacePos , SimNode_ExtFuncCall >(lib,"SetNodeEditorSpacePos","imnodes::SetNodeEditorSpacePos")
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:324:6
+	makeExtern< void (*)(int,const ImVec2 &) , ImNodes::SetNodeEditorSpacePos , SimNode_ExtFuncCall >(lib,"SetNodeEditorSpacePos","ImNodes::SetNodeEditorSpacePos")
 		->args({"node_id","editor_space_pos"})
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< void (*)(int,const ImVec2 &) , imnodes::SetNodeGridSpacePos , SimNode_ExtFuncCall >(lib,"SetNodeGridSpacePos","imnodes::SetNodeGridSpacePos")
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:325:6
+	makeExtern< void (*)(int,const ImVec2 &) , ImNodes::SetNodeGridSpacePos , SimNode_ExtFuncCall >(lib,"SetNodeGridSpacePos","ImNodes::SetNodeGridSpacePos")
 		->args({"node_id","grid_pos"})
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< ImVec2 (*)(const int) , imnodes::GetNodeScreenSpacePos , SimNode_ExtFuncCall >(lib,"GetNodeScreenSpacePos","imnodes::GetNodeScreenSpacePos")
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:327:8
+	makeExtern< ImVec2 (*)(const int) , ImNodes::GetNodeScreenSpacePos , SimNode_ExtFuncCall >(lib,"GetNodeScreenSpacePos","ImNodes::GetNodeScreenSpacePos")
 		->args({"node_id"})
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< ImVec2 (*)(const int) , imnodes::GetNodeEditorSpacePos , SimNode_ExtFuncCall >(lib,"GetNodeEditorSpacePos","imnodes::GetNodeEditorSpacePos")
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:328:8
+	makeExtern< ImVec2 (*)(const int) , ImNodes::GetNodeEditorSpacePos , SimNode_ExtFuncCall >(lib,"GetNodeEditorSpacePos","ImNodes::GetNodeEditorSpacePos")
 		->args({"node_id"})
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< ImVec2 (*)(const int) , imnodes::GetNodeGridSpacePos , SimNode_ExtFuncCall >(lib,"GetNodeGridSpacePos","imnodes::GetNodeGridSpacePos")
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:329:8
+	makeExtern< ImVec2 (*)(const int) , ImNodes::GetNodeGridSpacePos , SimNode_ExtFuncCall >(lib,"GetNodeGridSpacePos","ImNodes::GetNodeGridSpacePos")
 		->args({"node_id"})
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< bool (*)() , imnodes::IsEditorHovered , SimNode_ExtFuncCall >(lib,"IsEditorHovered","imnodes::IsEditorHovered")
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:333:6
+	makeExtern< bool (*)() , ImNodes::IsEditorHovered , SimNode_ExtFuncCall >(lib,"IsEditorHovered","ImNodes::IsEditorHovered")
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< bool (*)(int *) , imnodes::IsNodeHovered , SimNode_ExtFuncCall >(lib,"IsNodeHovered","imnodes::IsNodeHovered")
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:337:6
+	makeExtern< bool (*)(int *) , ImNodes::IsNodeHovered , SimNode_ExtFuncCall >(lib,"IsNodeHovered","ImNodes::IsNodeHovered")
 		->args({"node_id"})
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< bool (*)(int *) , imnodes::IsLinkHovered , SimNode_ExtFuncCall >(lib,"IsLinkHovered","imnodes::IsLinkHovered")
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:338:6
+	makeExtern< bool (*)(int *) , ImNodes::IsLinkHovered , SimNode_ExtFuncCall >(lib,"IsLinkHovered","ImNodes::IsLinkHovered")
 		->args({"link_id"})
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< bool (*)(int *) , imnodes::IsPinHovered , SimNode_ExtFuncCall >(lib,"IsPinHovered","imnodes::IsPinHovered")
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:339:6
+	makeExtern< bool (*)(int *) , ImNodes::IsPinHovered , SimNode_ExtFuncCall >(lib,"IsPinHovered","ImNodes::IsPinHovered")
 		->args({"attribute_id"})
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< int (*)() , imnodes::NumSelectedNodes , SimNode_ExtFuncCall >(lib,"NumSelectedNodes","imnodes::NumSelectedNodes")
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:343:5
+	makeExtern< int (*)() , ImNodes::NumSelectedNodes , SimNode_ExtFuncCall >(lib,"NumSelectedNodes","ImNodes::NumSelectedNodes")
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< int (*)() , imnodes::NumSelectedLinks , SimNode_ExtFuncCall >(lib,"NumSelectedLinks","imnodes::NumSelectedLinks")
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:344:5
+	makeExtern< int (*)() , ImNodes::NumSelectedLinks , SimNode_ExtFuncCall >(lib,"NumSelectedLinks","ImNodes::NumSelectedLinks")
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< void (*)(int *) , imnodes::GetSelectedNodes , SimNode_ExtFuncCall >(lib,"GetSelectedNodes","imnodes::GetSelectedNodes")
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:348:6
+	makeExtern< void (*)(int *) , ImNodes::GetSelectedNodes , SimNode_ExtFuncCall >(lib,"GetSelectedNodes","ImNodes::GetSelectedNodes")
 		->args({"node_ids"})
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< void (*)(int *) , imnodes::GetSelectedLinks , SimNode_ExtFuncCall >(lib,"GetSelectedLinks","imnodes::GetSelectedLinks")
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:349:6
+	makeExtern< void (*)(int *) , ImNodes::GetSelectedLinks , SimNode_ExtFuncCall >(lib,"GetSelectedLinks","ImNodes::GetSelectedLinks")
 		->args({"link_ids"})
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< void (*)() , imnodes::ClearNodeSelection , SimNode_ExtFuncCall >(lib,"ClearNodeSelection","imnodes::ClearNodeSelection")
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:351:6
+	makeExtern< void (*)() , ImNodes::ClearNodeSelection , SimNode_ExtFuncCall >(lib,"ClearNodeSelection","ImNodes::ClearNodeSelection")
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< void (*)() , imnodes::ClearLinkSelection , SimNode_ExtFuncCall >(lib,"ClearLinkSelection","imnodes::ClearLinkSelection")
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:352:6
+	makeExtern< void (*)() , ImNodes::ClearLinkSelection , SimNode_ExtFuncCall >(lib,"ClearLinkSelection","ImNodes::ClearLinkSelection")
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< bool (*)() , imnodes::IsAttributeActive , SimNode_ExtFuncCall >(lib,"IsAttributeActive","imnodes::IsAttributeActive")
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:359:6
+	makeExtern< void (*)(int) , ImNodes::SelectNode , SimNode_ExtFuncCall >(lib,"SelectNode","ImNodes::SelectNode")
+		->args({"node_id"})
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< bool (*)(int *) , imnodes::IsAnyAttributeActive , SimNode_ExtFuncCall >(lib,"IsAnyAttributeActive","imnodes::IsAnyAttributeActive")
-		->args({"attribute_id"})
-		->arg_init(0,make_smart<ExprConstPtr>())
-		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< bool (*)(int *) , imnodes::IsLinkStarted , SimNode_ExtFuncCall >(lib,"IsLinkStarted","imnodes::IsLinkStarted")
-		->args({"started_at_attribute_id"})
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:360:6
+	makeExtern< void (*)(int) , ImNodes::ClearNodeSelection , SimNode_ExtFuncCall >(lib,"ClearNodeSelection","ImNodes::ClearNodeSelection")
+		->args({"node_id"})
 		->addToModule(*this, SideEffects::worstDefault);
 }
 }
