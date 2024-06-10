@@ -12,56 +12,78 @@
 namespace das {
 #include "dasIMNODES.func.aot.decl.inc"
 void Module_dasIMNODES::initFunctions_2() {
-	makeExtern< void (*)() , imnodes::BeginNodeEditor , SimNode_ExtFuncCall >(lib,"BeginNodeEditor","imnodes::BeginNodeEditor")
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:251:6
+	makeExtern< void (*)() , ImNodes::BeginNodeEditor , SimNode_ExtFuncCall >(lib,"BeginNodeEditor","ImNodes::BeginNodeEditor")
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< void (*)() , imnodes::EndNodeEditor , SimNode_ExtFuncCall >(lib,"EndNodeEditor","imnodes::EndNodeEditor")
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:252:6
+	makeExtern< void (*)() , ImNodes::EndNodeEditor , SimNode_ExtFuncCall >(lib,"EndNodeEditor","ImNodes::EndNodeEditor")
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< void (*)(imnodes::ColorStyle,unsigned int) , imnodes::PushColorStyle , SimNode_ExtFuncCall >(lib,"PushColorStyle","imnodes::PushColorStyle")
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:263:6
+	makeExtern< void (*)(int,unsigned int) , ImNodes::PushColorStyle , SimNode_ExtFuncCall >(lib,"PushColorStyle","ImNodes::PushColorStyle")
 		->args({"item","color"})
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< void (*)() , imnodes::PopColorStyle , SimNode_ExtFuncCall >(lib,"PopColorStyle","imnodes::PopColorStyle")
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:264:6
+	makeExtern< void (*)() , ImNodes::PopColorStyle , SimNode_ExtFuncCall >(lib,"PopColorStyle","ImNodes::PopColorStyle")
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< void (*)(imnodes::StyleVar,float) , imnodes::PushStyleVar , SimNode_ExtFuncCall >(lib,"PushStyleVar","imnodes::PushStyleVar")
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:265:6
+	makeExtern< void (*)(int,float) , ImNodes::PushStyleVar , SimNode_ExtFuncCall >(lib,"PushStyleVar","ImNodes::PushStyleVar")
 		->args({"style_item","value"})
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< void (*)() , imnodes::PopStyleVar , SimNode_ExtFuncCall >(lib,"PopStyleVar","imnodes::PopStyleVar")
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:266:6
+	makeExtern< void (*)(int,const ImVec2 &) , ImNodes::PushStyleVar , SimNode_ExtFuncCall >(lib,"PushStyleVar","ImNodes::PushStyleVar")
+		->args({"style_item","value"})
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< void (*)(int) , imnodes::BeginNode , SimNode_ExtFuncCall >(lib,"BeginNode","imnodes::BeginNode")
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:267:6
+	makeExtern< void (*)(int) , ImNodes::PopStyleVar , SimNode_ExtFuncCall >(lib,"PopStyleVar","ImNodes::PopStyleVar")
+		->args({"count"})
+		->arg_init(0,make_smart<ExprConstInt>(1))
+		->addToModule(*this, SideEffects::worstDefault);
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:270:6
+	makeExtern< void (*)(int) , ImNodes::BeginNode , SimNode_ExtFuncCall >(lib,"BeginNode","ImNodes::BeginNode")
 		->args({"id"})
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< void (*)() , imnodes::EndNode , SimNode_ExtFuncCall >(lib,"EndNode","imnodes::EndNode")
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:271:6
+	makeExtern< void (*)() , ImNodes::EndNode , SimNode_ExtFuncCall >(lib,"EndNode","ImNodes::EndNode")
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< ImVec2 (*)(int) , imnodes::GetNodeDimensions , SimNode_ExtFuncCall >(lib,"GetNodeDimensions","imnodes::GetNodeDimensions")
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:273:8
+	makeExtern< ImVec2 (*)(int) , ImNodes::GetNodeDimensions , SimNode_ExtFuncCall >(lib,"GetNodeDimensions","ImNodes::GetNodeDimensions")
 		->args({"id"})
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< void (*)() , imnodes::BeginNodeTitleBar , SimNode_ExtFuncCall >(lib,"BeginNodeTitleBar","imnodes::BeginNodeTitleBar")
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:278:6
+	makeExtern< void (*)() , ImNodes::BeginNodeTitleBar , SimNode_ExtFuncCall >(lib,"BeginNodeTitleBar","ImNodes::BeginNodeTitleBar")
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< void (*)() , imnodes::EndNodeTitleBar , SimNode_ExtFuncCall >(lib,"EndNodeTitleBar","imnodes::EndNodeTitleBar")
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:279:6
+	makeExtern< void (*)() , ImNodes::EndNodeTitleBar , SimNode_ExtFuncCall >(lib,"EndNodeTitleBar","ImNodes::EndNodeTitleBar")
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< void (*)(int,imnodes::PinShape) , imnodes::BeginInputAttribute , SimNode_ExtFuncCall >(lib,"BeginInputAttribute","imnodes::BeginInputAttribute")
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:291:6
+	makeExtern< void (*)(int,int) , ImNodes::BeginInputAttribute , SimNode_ExtFuncCall >(lib,"BeginInputAttribute","ImNodes::BeginInputAttribute")
 		->args({"id","shape"})
-		->arg_init(1,make_smart<ExprConstEnumeration>(1,makeType<imnodes::PinShape>(lib)))
+		->arg_init(1,make_smart<ExprConstInt>(1))
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< void (*)() , imnodes::EndInputAttribute , SimNode_ExtFuncCall >(lib,"EndInputAttribute","imnodes::EndInputAttribute")
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:292:6
+	makeExtern< void (*)() , ImNodes::EndInputAttribute , SimNode_ExtFuncCall >(lib,"EndInputAttribute","ImNodes::EndInputAttribute")
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< void (*)(int,imnodes::PinShape) , imnodes::BeginOutputAttribute , SimNode_ExtFuncCall >(lib,"BeginOutputAttribute","imnodes::BeginOutputAttribute")
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:294:6
+	makeExtern< void (*)(int,int) , ImNodes::BeginOutputAttribute , SimNode_ExtFuncCall >(lib,"BeginOutputAttribute","ImNodes::BeginOutputAttribute")
 		->args({"id","shape"})
-		->arg_init(1,make_smart<ExprConstEnumeration>(1,makeType<imnodes::PinShape>(lib)))
+		->arg_init(1,make_smart<ExprConstInt>(1))
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< void (*)() , imnodes::EndOutputAttribute , SimNode_ExtFuncCall >(lib,"EndOutputAttribute","imnodes::EndOutputAttribute")
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:295:6
+	makeExtern< void (*)() , ImNodes::EndOutputAttribute , SimNode_ExtFuncCall >(lib,"EndOutputAttribute","ImNodes::EndOutputAttribute")
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< void (*)(int) , imnodes::BeginStaticAttribute , SimNode_ExtFuncCall >(lib,"BeginStaticAttribute","imnodes::BeginStaticAttribute")
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:299:6
+	makeExtern< void (*)(int) , ImNodes::BeginStaticAttribute , SimNode_ExtFuncCall >(lib,"BeginStaticAttribute","ImNodes::BeginStaticAttribute")
 		->args({"id"})
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< void (*)() , imnodes::EndStaticAttribute , SimNode_ExtFuncCall >(lib,"EndStaticAttribute","imnodes::EndStaticAttribute")
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:300:6
+	makeExtern< void (*)() , ImNodes::EndStaticAttribute , SimNode_ExtFuncCall >(lib,"EndStaticAttribute","ImNodes::EndStaticAttribute")
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< void (*)(imnodes::AttributeFlags) , imnodes::PushAttributeFlag , SimNode_ExtFuncCall >(lib,"PushAttributeFlag","imnodes::PushAttributeFlag")
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:303:6
+	makeExtern< void (*)(int) , ImNodes::PushAttributeFlag , SimNode_ExtFuncCall >(lib,"PushAttributeFlag","ImNodes::PushAttributeFlag")
 		->args({"flag"})
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< void (*)() , imnodes::PopAttributeFlag , SimNode_ExtFuncCall >(lib,"PopAttributeFlag","imnodes::PopAttributeFlag")
-		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< void (*)(int,int,int) , imnodes::Link , SimNode_ExtFuncCall >(lib,"Link","imnodes::Link")
-		->args({"id","start_attribute_id","end_attribute_id"})
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:304:6
+	makeExtern< void (*)() , ImNodes::PopAttributeFlag , SimNode_ExtFuncCall >(lib,"PopAttributeFlag","ImNodes::PopAttributeFlag")
 		->addToModule(*this, SideEffects::worstDefault);
 }
 }

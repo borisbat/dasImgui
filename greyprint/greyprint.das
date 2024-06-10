@@ -99,7 +99,7 @@ def imgui_app ( title:string; blk : block )
 
         var IO & = unsafe(GetIO())
         if IO.KeyCtrl
-            if IsKeyPressed(GetKeyIndex(ImGuiKey A))
+            if IsKeyPressed(ImGuiKey A)
                 memory_report(false)
 
     ImGui_ImplOpenGL3_Shutdown()
@@ -296,15 +296,15 @@ def main_menu()
 
     var IO & = unsafe(GetIO())
     if IO.KeyCtrl
-        if IsKeyPressed(GetKeyIndex(ImGuiKey Z))
+        if IsKeyPressed(ImGuiKey Z)
             ClearSelection()
             undo()
-        if IsKeyPressed(GetKeyIndex(ImGuiKey Y))
+        if IsKeyPressed(ImGuiKey Y)
             ClearSelection()
             redo()
-        if IsKeyPressed(GetKeyIndex(ImGuiKey C))
+        if IsKeyPressed(ImGuiKey C)
             copy()
-        if IsKeyPressed(GetKeyIndex(ImGuiKey V))
+        if IsKeyPressed(ImGuiKey V)
             ClearSelection()
             paste()
 
@@ -661,7 +661,7 @@ def instruction_context_menu
         link_inst = inL.inst
         link_pin = inL.pin
     if !IsPopupOpen("",ImGuiPopupFlags AnyPopupId)
-        if IsKeyPressed(GetKeyIndex(ImGuiKey Tab)) || IsKeyPressed(GetKeyIndex(ImGuiKey Space))
+        if IsKeyPressed(ImGuiKey Tab) || IsKeyPressed(ImGuiKey Space)
             var snc = GetSelectedObjectCount()
             if snc==1
                 var sna <- GetSelectedNodes()
@@ -709,10 +709,10 @@ def create_instruction_ex(flags:EditInstructionsFlags;evt:block<(ai:InstructionC
     if flags.FromContextMenu
         if IsWindowAppearing()
             SetKeyboardFocusHere()
-        if IsKeyPressed(GetKeyIndex(ImGuiKey Escape))
+        if IsKeyPressed(ImGuiKey Escape)
             CloseCurrentPopup()
     var make_first = false
-    if flags.FromContextMenu && IsKeyPressed(GetKeyIndex(ImGuiKey Enter))
+    if flags.FromContextMenu && IsKeyPressed(ImGuiKey Enter)
         make_first = true
     var prevCategory = ""
     var collapsed = true
@@ -939,7 +939,7 @@ def project_window()
     var style & = unsafe(imgui::GetStyle())
     PushStyleColor(ImGuiCol ChildBg, style.Colors[int(ImGuiCol WindowBg)])
     BeginGroup()
-    BeginChild("Project", float2(LEFT_SIDE_PANNEL_WIDTH, -FLT_MIN), true)
+    BeginChild("Project", float2(LEFT_SIDE_PANNEL_WIDTH, -FLT_MIN), ImGuiChildFlags Border)
     if !empty(g_CurrentAction)
         Text(g_CurrentAction)
         if Button("Rename##rename_action")
@@ -988,7 +988,7 @@ def properties_window()
     var snc = GetSelectedObjectCount()
     if snc != 0
         var sna <- GetSelectedNodes()
-        BeginChild("Selection", float2(RIGHT_SIDE_PANNEL_WIDTH, -FLT_MIN), true)
+        BeginChild("Selection", float2(RIGHT_SIDE_PANNEL_WIDTH, -FLT_MIN), ImGuiChildFlags Border)
         if Button("[X]##delete selection")
             next_undo_action()
             for ng in sna
@@ -1066,7 +1066,7 @@ def main_editor_screen()
         var nedw = IO.DisplaySize.x - 10. - sz.x - 10.
         if editing
             nedw -= RIGHT_SIDE_PANNEL_WIDTH
-        BeginChild("Node editor window", float2(nedw, -FLT_MIN), true, ImGuiWindowFlags NoBackground)
+        BeginChild("Node editor window", float2(nedw, -FLT_MIN), ImGuiChildFlags Border, ImGuiWindowFlags NoBackground)
         if length(g_CurrentProject.actions)>0
             if BeginTabBar("##Tabs", ImGuiTabBarFlags None)
                 if BeginTabItem("Project")

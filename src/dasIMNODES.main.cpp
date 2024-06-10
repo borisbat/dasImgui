@@ -15,9 +15,9 @@ namespace das {
 
 	void Module_dasIMNODES::initMain () {
         findUniqueFunction("BeginInputAttribute")
-            ->arg_init(1, make_smart<ExprConstEnumeration>("CircleFilled",makeType<imnodes::PinShape>(lib)));
+            ->arg_init(1, make_smart<ExprConstEnumeration>("CircleFilled",makeType<ImNodesPinShape>(lib)));
         findUniqueFunction("BeginOutputAttribute")
-            ->arg_init(1, make_smart<ExprConstEnumeration>("CircleFilled",makeType<imnodes::PinShape>(lib)));
+            ->arg_init(1, make_smart<ExprConstEnumeration>("CircleFilled",makeType<ImNodesPinShape>(lib)));
         // time to fix-up const & ImVec2 and const & ImVec4
         for ( auto & pfn : this->functions.each() ) {
             for ( auto & arg : pfn->arguments ) {

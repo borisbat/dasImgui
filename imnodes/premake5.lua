@@ -17,7 +17,7 @@ newoption {
 
 local projectlocation = os.getcwd()
 local gl3wlocation = path.join(os.getcwd(), "dependencies/gl3w")
-local imguilocation = path.join(os.getcwd(), "dependencies/imgui-1.82")
+local imguilocation = path.join(os.getcwd(), "dependencies/imgui-1.87")
 
 if _ACTION then
     projectlocation = path.join(projectlocation, "build", _ACTION)
@@ -116,7 +116,7 @@ workspace "imnodes"
         location(projectlocation)
         kind "StaticLib"
         language "C++"
-        cppdialect "C++98"
+        cppdialect "C++11"
         targetdir "lib/%{cfg.buildcfg}"
         files { path.join(imguilocation, "**.cpp") }
         includedirs {
@@ -140,7 +140,7 @@ workspace "imnodes"
         cppdialect "C++98"
         enablewarnings { "all" }
         targetdir "lib/%{cfg.buildcfg}"
-        files { "imnodes.h", "imnodes.cpp" }
+        files { "imnodes.h", "imnodes_internal.h", "imnodes.cpp" }
         includedirs { path.join(imguilocation) }
 
     group "examples"

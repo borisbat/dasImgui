@@ -12,69 +12,86 @@
 namespace das {
 #include "dasIMGUI.func.aot.decl.inc"
 void Module_dasIMGUI::initFunctions_18() {
-	using _method_6 = das::das_call_member< void (ImGuiInputTextCallbackData::*)(int,int),&ImGuiInputTextCallbackData::DeleteChars >;
-	makeExtern<DAS_CALL_METHOD(_method_6), SimNode_ExtFuncCall , imguiTempFn>(lib,"DeleteChars","das_call_member< void (ImGuiInputTextCallbackData::*)(int,int) , &ImGuiInputTextCallbackData::DeleteChars >::invoke")
-		->args({"self","pos","bytes_count"})
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:986:32
+	makeExtern< int (*)() , ImGui::GetMouseCursor , SimNode_ExtFuncCall , imguiTempFn>(lib,"GetMouseCursor","ImGui::GetMouseCursor")
+		->res_type(makeType<ImGuiMouseCursor_>(lib))
 		->addToModule(*this, SideEffects::worstDefault);
-	using _method_7 = das::das_call_member< void (ImGuiInputTextCallbackData::*)(),&ImGuiInputTextCallbackData::SelectAll >;
-	makeExtern<DAS_CALL_METHOD(_method_7), SimNode_ExtFuncCall , imguiTempFn>(lib,"SelectAll","das_call_member< void (ImGuiInputTextCallbackData::*)() , &ImGuiInputTextCallbackData::SelectAll >::invoke")
-		->args({"self"})
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:987:29
+	makeExtern< void (*)(int) , ImGui::SetMouseCursor , SimNode_ExtFuncCall , imguiTempFn>(lib,"SetMouseCursor","ImGui::SetMouseCursor")
+		->args({"cursor_type"})
+		->arg_type(0,makeType<ImGuiMouseCursor_>(lib))
 		->addToModule(*this, SideEffects::worstDefault);
-	using _method_8 = das::das_call_member< void (ImGuiInputTextCallbackData::*)(),&ImGuiInputTextCallbackData::ClearSelection >;
-	makeExtern<DAS_CALL_METHOD(_method_8), SimNode_ExtFuncCall , imguiTempFn>(lib,"ClearSelection","das_call_member< void (ImGuiInputTextCallbackData::*)() , &ImGuiInputTextCallbackData::ClearSelection >::invoke")
-		->args({"self"})
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:988:29
+	makeExtern< void (*)(bool) , ImGui::SetNextFrameWantCaptureMouse , SimNode_ExtFuncCall , imguiTempFn>(lib,"SetNextFrameWantCaptureMouse","ImGui::SetNextFrameWantCaptureMouse")
+		->args({"want_capture_mouse"})
 		->addToModule(*this, SideEffects::worstDefault);
-	using _method_9 = das::das_call_member< bool (ImGuiInputTextCallbackData::*)() const,&ImGuiInputTextCallbackData::HasSelection >;
-	makeExtern<DAS_CALL_METHOD(_method_9), SimNode_ExtFuncCall , imguiTempFn>(lib,"HasSelection","das_call_member< bool (ImGuiInputTextCallbackData::*)() const , &ImGuiInputTextCallbackData::HasSelection >::invoke")
-		->args({"self"})
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:992:29
+	makeExtern< const char * (*)() , ImGui::GetClipboardText , SimNode_ExtFuncCall , imguiTempFn>(lib,"GetClipboardText","ImGui::GetClipboardText")
 		->addToModule(*this, SideEffects::worstDefault);
-	addCtorAndUsing<ImGuiPayload>(*this,lib,"ImGuiPayload","ImGuiPayload");
-	using _method_10 = das::das_call_member< void (ImGuiPayload::*)(),&ImGuiPayload::Clear >;
-	makeExtern<DAS_CALL_METHOD(_method_10), SimNode_ExtFuncCall , imguiTempFn>(lib,"Clear","das_call_member< void (ImGuiPayload::*)() , &ImGuiPayload::Clear >::invoke")
-		->args({"self"})
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:993:29
+	makeExtern< void (*)(const char *) , ImGui::SetClipboardText , SimNode_ExtFuncCall , imguiTempFn>(lib,"SetClipboardText","ImGui::SetClipboardText")
+		->args({"text"})
 		->addToModule(*this, SideEffects::worstDefault);
-	using _method_11 = das::das_call_member< bool (ImGuiPayload::*)(const char *) const,&ImGuiPayload::IsDataType >;
-	makeExtern<DAS_CALL_METHOD(_method_11), SimNode_ExtFuncCall , imguiTempFn>(lib,"IsDataType","das_call_member< bool (ImGuiPayload::*)(const char *) const , &ImGuiPayload::IsDataType >::invoke")
-		->args({"self","type"})
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:999:29
+	makeExtern< void (*)(const char *) , ImGui::LoadIniSettingsFromDisk , SimNode_ExtFuncCall , imguiTempFn>(lib,"LoadIniSettingsFromDisk","ImGui::LoadIniSettingsFromDisk")
+		->args({"ini_filename"})
 		->addToModule(*this, SideEffects::worstDefault);
-	using _method_12 = das::das_call_member< bool (ImGuiPayload::*)() const,&ImGuiPayload::IsPreview >;
-	makeExtern<DAS_CALL_METHOD(_method_12), SimNode_ExtFuncCall , imguiTempFn>(lib,"IsPreview","das_call_member< bool (ImGuiPayload::*)() const , &ImGuiPayload::IsPreview >::invoke")
-		->args({"self"})
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:1000:29
+	makeExtern< void (*)(const char *,size_t) , ImGui::LoadIniSettingsFromMemory , SimNode_ExtFuncCall , imguiTempFn>(lib,"LoadIniSettingsFromMemory","ImGui::LoadIniSettingsFromMemory")
+		->args({"ini_data","ini_size"})
+		->arg_init(1,make_smart<ExprConstUInt64>(0x0))
 		->addToModule(*this, SideEffects::worstDefault);
-	using _method_13 = das::das_call_member< bool (ImGuiPayload::*)() const,&ImGuiPayload::IsDelivery >;
-	makeExtern<DAS_CALL_METHOD(_method_13), SimNode_ExtFuncCall , imguiTempFn>(lib,"IsDelivery","das_call_member< bool (ImGuiPayload::*)() const , &ImGuiPayload::IsDelivery >::invoke")
-		->args({"self"})
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:1001:29
+	makeExtern< void (*)(const char *) , ImGui::SaveIniSettingsToDisk , SimNode_ExtFuncCall , imguiTempFn>(lib,"SaveIniSettingsToDisk","ImGui::SaveIniSettingsToDisk")
+		->args({"ini_filename"})
 		->addToModule(*this, SideEffects::worstDefault);
-	addCtorAndUsing<ImGuiTableColumnSortSpecs>(*this,lib,"ImGuiTableColumnSortSpecs","ImGuiTableColumnSortSpecs");
-	addCtorAndUsing<ImGuiTableSortSpecs>(*this,lib,"ImGuiTableSortSpecs","ImGuiTableSortSpecs");
-	addCtorAndUsing<ImGuiOnceUponAFrame>(*this,lib,"ImGuiOnceUponAFrame","ImGuiOnceUponAFrame");
-	addCtorAndUsing<ImGuiTextFilter,const char *>(*this,lib,"ImGuiTextFilter","ImGuiTextFilter")
-		->args({"default_filter"})
-		->arg_init(0,make_smart<ExprConstString>(""));
-	using _method_14 = das::das_call_member< bool (ImGuiTextFilter::*)(const char *,float),&ImGuiTextFilter::Draw >;
-	makeExtern<DAS_CALL_METHOD(_method_14), SimNode_ExtFuncCall , imguiTempFn>(lib,"Draw","das_call_member< bool (ImGuiTextFilter::*)(const char *,float) , &ImGuiTextFilter::Draw >::invoke")
-		->args({"self","label","width"})
-		->arg_init(1,make_smart<ExprConstString>("Filter (inc,-exc)"))
-		->arg_init(2,make_smart<ExprConstFloat>(0.00000000000000000))
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:1002:29
+	makeExtern< const char * (*)(size_t *) , ImGui::SaveIniSettingsToMemory , SimNode_ExtFuncCall , imguiTempFn>(lib,"SaveIniSettingsToMemory","ImGui::SaveIniSettingsToMemory")
+		->args({"out_ini_size"})
+		->arg_init(0,make_smart<ExprConstPtr>())
 		->addToModule(*this, SideEffects::worstDefault);
-	using _method_15 = das::das_call_member< void (ImGuiTextFilter::*)(),&ImGuiTextFilter::Build >;
-	makeExtern<DAS_CALL_METHOD(_method_15), SimNode_ExtFuncCall , imguiTempFn>(lib,"Build","das_call_member< void (ImGuiTextFilter::*)() , &ImGuiTextFilter::Build >::invoke")
-		->args({"self"})
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:1006:29
+	makeExtern< void (*)(const char *) , ImGui::DebugTextEncoding , SimNode_ExtFuncCall , imguiTempFn>(lib,"DebugTextEncoding","ImGui::DebugTextEncoding")
+		->args({"text"})
 		->addToModule(*this, SideEffects::worstDefault);
-	using _method_16 = das::das_call_member< void (ImGuiTextFilter::*)(),&ImGuiTextFilter::Clear >;
-	makeExtern<DAS_CALL_METHOD(_method_16), SimNode_ExtFuncCall , imguiTempFn>(lib,"Clear","das_call_member< void (ImGuiTextFilter::*)() , &ImGuiTextFilter::Clear >::invoke")
-		->args({"self"})
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:1007:29
+	makeExtern< void (*)(int) , ImGui::DebugFlashStyleColor , SimNode_ExtFuncCall , imguiTempFn>(lib,"DebugFlashStyleColor","ImGui::DebugFlashStyleColor")
+		->args({"idx"})
+		->arg_type(0,makeType<ImGuiCol_>(lib))
 		->addToModule(*this, SideEffects::worstDefault);
-	using _method_17 = das::das_call_member< bool (ImGuiTextFilter::*)() const,&ImGuiTextFilter::IsActive >;
-	makeExtern<DAS_CALL_METHOD(_method_17), SimNode_ExtFuncCall , imguiTempFn>(lib,"IsActive","das_call_member< bool (ImGuiTextFilter::*)() const , &ImGuiTextFilter::IsActive >::invoke")
-		->args({"self"})
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:1008:29
+	makeExtern< void (*)() , ImGui::DebugStartItemPicker , SimNode_ExtFuncCall , imguiTempFn>(lib,"DebugStartItemPicker","ImGui::DebugStartItemPicker")
 		->addToModule(*this, SideEffects::worstDefault);
-	addCtorAndUsing<ImGuiTextFilter::ImGuiTextRange>(*this,lib,"ImGuiTextRange","ImGuiTextFilter::ImGuiTextRange");
-	addCtorAndUsing<ImGuiTextFilter::ImGuiTextRange,const char *,const char *>(*this,lib,"ImGuiTextRange","ImGuiTextFilter::ImGuiTextRange")
-		->args({"_b","_e"});
-	using _method_18 = das::das_call_member< bool (ImGuiTextFilter::ImGuiTextRange::*)() const,&ImGuiTextFilter::ImGuiTextRange::empty >;
-	makeExtern<DAS_CALL_METHOD(_method_18), SimNode_ExtFuncCall , imguiTempFn>(lib,"empty","das_call_member< bool (ImGuiTextFilter::ImGuiTextRange::*)() const , &ImGuiTextFilter::ImGuiTextRange::empty >::invoke")
-		->args({"self"})
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:1009:29
+	makeExtern< bool (*)(const char *,size_t,size_t,size_t,size_t,size_t,size_t) , ImGui::DebugCheckVersionAndDataLayout , SimNode_ExtFuncCall , imguiTempFn>(lib,"DebugCheckVersionAndDataLayout","ImGui::DebugCheckVersionAndDataLayout")
+		->args({"version_str","sz_io","sz_style","sz_vec2","sz_vec4","sz_drawvert","sz_drawidx"})
+		->addToModule(*this, SideEffects::worstDefault);
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:1017:29
+	makeExtern< void * (*)(size_t) , ImGui::MemAlloc , SimNode_ExtFuncCall , imguiTempFn>(lib,"MemAlloc","ImGui::MemAlloc")
+		->args({"size"})
+		->addToModule(*this, SideEffects::worstDefault);
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:1018:29
+	makeExtern< void (*)(void *) , ImGui::MemFree , SimNode_ExtFuncCall , imguiTempFn>(lib,"MemFree","ImGui::MemFree")
+		->args({"ptr"})
+		->addToModule(*this, SideEffects::worstDefault);
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:1023:33
+	makeExtern< ImGuiPlatformIO & (*)() , ImGui::GetPlatformIO , SimNode_ExtFuncCallRef , imguiTempFn>(lib,"GetPlatformIO","ImGui::GetPlatformIO")
+		->addToModule(*this, SideEffects::worstDefault);
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:1024:33
+	makeExtern< void (*)() , ImGui::UpdatePlatformWindows , SimNode_ExtFuncCall , imguiTempFn>(lib,"UpdatePlatformWindows","ImGui::UpdatePlatformWindows")
+		->addToModule(*this, SideEffects::worstDefault);
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:1025:33
+	makeExtern< void (*)(void *,void *) , ImGui::RenderPlatformWindowsDefault , SimNode_ExtFuncCall , imguiTempFn>(lib,"RenderPlatformWindowsDefault","ImGui::RenderPlatformWindowsDefault")
+		->args({"platform_render_arg","renderer_render_arg"})
+		->arg_init(0,make_smart<ExprConstPtr>())
+		->arg_init(1,make_smart<ExprConstPtr>())
+		->addToModule(*this, SideEffects::worstDefault);
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:1026:33
+	makeExtern< void (*)() , ImGui::DestroyPlatformWindows , SimNode_ExtFuncCall , imguiTempFn>(lib,"DestroyPlatformWindows","ImGui::DestroyPlatformWindows")
+		->addToModule(*this, SideEffects::worstDefault);
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:1027:33
+	makeExtern< ImGuiViewport * (*)(unsigned int) , ImGui::FindViewportByID , SimNode_ExtFuncCall , imguiTempFn>(lib,"FindViewportByID","ImGui::FindViewportByID")
+		->args({"id"})
 		->addToModule(*this, SideEffects::worstDefault);
 }
 }

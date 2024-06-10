@@ -12,70 +12,89 @@
 namespace das {
 #include "dasIMGUI.func.aot.decl.inc"
 void Module_dasIMGUI::initFunctions_4() {
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:424:29
+	makeExtern< float (*)() , ImGui::GetScrollX , SimNode_ExtFuncCall , imguiTempFn>(lib,"GetScrollX","ImGui::GetScrollX")
+		->addToModule(*this, SideEffects::worstDefault);
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:425:29
+	makeExtern< float (*)() , ImGui::GetScrollY , SimNode_ExtFuncCall , imguiTempFn>(lib,"GetScrollY","ImGui::GetScrollY")
+		->addToModule(*this, SideEffects::worstDefault);
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:426:29
+	makeExtern< void (*)(float) , ImGui::SetScrollX , SimNode_ExtFuncCall , imguiTempFn>(lib,"SetScrollX","ImGui::SetScrollX")
+		->args({"scroll_x"})
+		->addToModule(*this, SideEffects::worstDefault);
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:427:29
+	makeExtern< void (*)(float) , ImGui::SetScrollY , SimNode_ExtFuncCall , imguiTempFn>(lib,"SetScrollY","ImGui::SetScrollY")
+		->args({"scroll_y"})
+		->addToModule(*this, SideEffects::worstDefault);
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:428:29
+	makeExtern< float (*)() , ImGui::GetScrollMaxX , SimNode_ExtFuncCall , imguiTempFn>(lib,"GetScrollMaxX","ImGui::GetScrollMaxX")
+		->addToModule(*this, SideEffects::worstDefault);
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:429:29
 	makeExtern< float (*)() , ImGui::GetScrollMaxY , SimNode_ExtFuncCall , imguiTempFn>(lib,"GetScrollMaxY","ImGui::GetScrollMaxY")
 		->addToModule(*this, SideEffects::worstDefault);
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:430:29
 	makeExtern< void (*)(float) , ImGui::SetScrollHereX , SimNode_ExtFuncCall , imguiTempFn>(lib,"SetScrollHereX","ImGui::SetScrollHereX")
 		->args({"center_x_ratio"})
 		->arg_init(0,make_smart<ExprConstFloat>(0.50000000000000000))
 		->addToModule(*this, SideEffects::worstDefault);
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:431:29
 	makeExtern< void (*)(float) , ImGui::SetScrollHereY , SimNode_ExtFuncCall , imguiTempFn>(lib,"SetScrollHereY","ImGui::SetScrollHereY")
 		->args({"center_y_ratio"})
 		->arg_init(0,make_smart<ExprConstFloat>(0.50000000000000000))
 		->addToModule(*this, SideEffects::worstDefault);
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:432:29
 	makeExtern< void (*)(float,float) , ImGui::SetScrollFromPosX , SimNode_ExtFuncCall , imguiTempFn>(lib,"SetScrollFromPosX","ImGui::SetScrollFromPosX")
 		->args({"local_x","center_x_ratio"})
 		->arg_init(1,make_smart<ExprConstFloat>(0.50000000000000000))
 		->addToModule(*this, SideEffects::worstDefault);
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:433:29
 	makeExtern< void (*)(float,float) , ImGui::SetScrollFromPosY , SimNode_ExtFuncCall , imguiTempFn>(lib,"SetScrollFromPosY","ImGui::SetScrollFromPosY")
 		->args({"local_y","center_y_ratio"})
 		->arg_init(1,make_smart<ExprConstFloat>(0.50000000000000000))
 		->addToModule(*this, SideEffects::worstDefault);
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:436:29
 	makeExtern< void (*)(ImFont *) , ImGui::PushFont , SimNode_ExtFuncCall , imguiTempFn>(lib,"PushFont","ImGui::PushFont")
 		->args({"font"})
 		->addToModule(*this, SideEffects::worstDefault);
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:437:29
 	makeExtern< void (*)() , ImGui::PopFont , SimNode_ExtFuncCall , imguiTempFn>(lib,"PopFont","ImGui::PopFont")
 		->addToModule(*this, SideEffects::worstDefault);
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:438:29
 	makeExtern< void (*)(int,unsigned int) , ImGui::PushStyleColor , SimNode_ExtFuncCall , imguiTempFn>(lib,"PushStyleColor","ImGui::PushStyleColor")
 		->args({"idx","col"})
 		->arg_type(0,makeType<ImGuiCol_>(lib))
 		->addToModule(*this, SideEffects::worstDefault);
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:439:29
 	makeExtern< void (*)(int,const ImVec4 &) , ImGui::PushStyleColor , SimNode_ExtFuncCall , imguiTempFn>(lib,"PushStyleColor","ImGui::PushStyleColor")
 		->args({"idx","col"})
 		->arg_type(0,makeType<ImGuiCol_>(lib))
 		->addToModule(*this, SideEffects::worstDefault);
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:440:29
 	makeExtern< void (*)(int) , ImGui::PopStyleColor , SimNode_ExtFuncCall , imguiTempFn>(lib,"PopStyleColor","ImGui::PopStyleColor")
 		->args({"count"})
 		->arg_init(0,make_smart<ExprConstInt>(1))
 		->addToModule(*this, SideEffects::worstDefault);
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:441:29
 	makeExtern< void (*)(int,float) , ImGui::PushStyleVar , SimNode_ExtFuncCall , imguiTempFn>(lib,"PushStyleVar","ImGui::PushStyleVar")
 		->args({"idx","val"})
 		->arg_type(0,makeType<ImGuiStyleVar_>(lib))
 		->addToModule(*this, SideEffects::worstDefault);
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:442:29
 	makeExtern< void (*)(int,const ImVec2 &) , ImGui::PushStyleVar , SimNode_ExtFuncCall , imguiTempFn>(lib,"PushStyleVar","ImGui::PushStyleVar")
 		->args({"idx","val"})
 		->arg_type(0,makeType<ImGuiStyleVar_>(lib))
 		->addToModule(*this, SideEffects::worstDefault);
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:443:29
 	makeExtern< void (*)(int) , ImGui::PopStyleVar , SimNode_ExtFuncCall , imguiTempFn>(lib,"PopStyleVar","ImGui::PopStyleVar")
 		->args({"count"})
 		->arg_init(0,make_smart<ExprConstInt>(1))
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< void (*)(bool) , ImGui::PushAllowKeyboardFocus , SimNode_ExtFuncCall , imguiTempFn>(lib,"PushAllowKeyboardFocus","ImGui::PushAllowKeyboardFocus")
-		->args({"allow_keyboard_focus"})
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:444:29
+	makeExtern< void (*)(bool) , ImGui::PushTabStop , SimNode_ExtFuncCall , imguiTempFn>(lib,"PushTabStop","ImGui::PushTabStop")
+		->args({"tab_stop"})
 		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< void (*)() , ImGui::PopAllowKeyboardFocus , SimNode_ExtFuncCall , imguiTempFn>(lib,"PopAllowKeyboardFocus","ImGui::PopAllowKeyboardFocus")
-		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< void (*)(bool) , ImGui::PushButtonRepeat , SimNode_ExtFuncCall , imguiTempFn>(lib,"PushButtonRepeat","ImGui::PushButtonRepeat")
-		->args({"repeat"})
-		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< void (*)() , ImGui::PopButtonRepeat , SimNode_ExtFuncCall , imguiTempFn>(lib,"PopButtonRepeat","ImGui::PopButtonRepeat")
-		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< void (*)(float) , ImGui::PushItemWidth , SimNode_ExtFuncCall , imguiTempFn>(lib,"PushItemWidth","ImGui::PushItemWidth")
-		->args({"item_width"})
-		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< void (*)() , ImGui::PopItemWidth , SimNode_ExtFuncCall , imguiTempFn>(lib,"PopItemWidth","ImGui::PopItemWidth")
-		->addToModule(*this, SideEffects::worstDefault);
-	makeExtern< void (*)(float) , ImGui::SetNextItemWidth , SimNode_ExtFuncCall , imguiTempFn>(lib,"SetNextItemWidth","ImGui::SetNextItemWidth")
-		->args({"item_width"})
+// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:445:29
+	makeExtern< void (*)() , ImGui::PopTabStop , SimNode_ExtFuncCall , imguiTempFn>(lib,"PopTabStop","ImGui::PopTabStop")
 		->addToModule(*this, SideEffects::worstDefault);
 }
 }

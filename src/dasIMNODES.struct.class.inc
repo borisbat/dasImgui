@@ -1,52 +1,58 @@
 // this file is generated via daScript automatic C++ binder
 // all user modifications will be lost after this file is re-generated
 
-struct imnodes_IO_EmulateThreeButtonMouse_GeneratedAnnotation : ManagedStructureAnnotation<imnodes::IO::EmulateThreeButtonMouse> {
-	imnodes_IO_EmulateThreeButtonMouse_GeneratedAnnotation(ModuleLibrary & ml) : ManagedStructureAnnotation ("EmulateThreeButtonMouse", ml, "imnodes::IO::EmulateThreeButtonMouse") {
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:109:12
+struct ImNodesIO_EmulateThreeButtonMouseStruct_GeneratedAnnotation : ManagedStructureAnnotation<ImNodesIO::EmulateThreeButtonMouseStruct> {
+	ImNodesIO_EmulateThreeButtonMouseStruct_GeneratedAnnotation(ModuleLibrary & ml) : ManagedStructureAnnotation ("EmulateThreeButtonMouseStruct", ml, "ImNodesIO::EmulateThreeButtonMouseStruct") {
 	}
 	void init () {
-		addField<DAS_BIND_MANAGED_FIELD(modifier)>("modifier","modifier");
+		addField<DAS_BIND_MANAGED_FIELD(Modifier)>("Modifier","Modifier");
 	}
 };
 
-struct imnodes_IO_LinkDetachWithModifierClick_GeneratedAnnotation : ManagedStructureAnnotation<imnodes::IO::LinkDetachWithModifierClick> {
-	imnodes_IO_LinkDetachWithModifierClick_GeneratedAnnotation(ModuleLibrary & ml) : ManagedStructureAnnotation ("LinkDetachWithModifierClick", ml, "imnodes::IO::LinkDetachWithModifierClick") {
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:121:12
+struct ImNodesIO_LinkDetachWithModifierClickStruct_GeneratedAnnotation : ManagedStructureAnnotation<ImNodesIO::LinkDetachWithModifierClickStruct> {
+	ImNodesIO_LinkDetachWithModifierClickStruct_GeneratedAnnotation(ModuleLibrary & ml) : ManagedStructureAnnotation ("LinkDetachWithModifierClickStruct", ml, "ImNodesIO::LinkDetachWithModifierClickStruct") {
 	}
 	void init () {
-		addField<DAS_BIND_MANAGED_FIELD(modifier)>("modifier","modifier");
+		addField<DAS_BIND_MANAGED_FIELD(Modifier)>("Modifier","Modifier");
 	}
 };
 
-struct imnodes_IO_GeneratedAnnotation : ManagedStructureAnnotation<imnodes::IO> {
-	imnodes_IO_GeneratedAnnotation(ModuleLibrary & ml) : ManagedStructureAnnotation ("IO", ml, "imnodes::IO") {
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:107:8
+struct ImNodesIO_GeneratedAnnotation : ManagedStructureAnnotation<ImNodesIO> {
+	ImNodesIO_GeneratedAnnotation(ModuleLibrary & ml) : ManagedStructureAnnotation ("ImNodesIO", ml, "ImNodesIO") {
 	}
 	void init () {
-		addField<DAS_BIND_MANAGED_FIELD(emulate_three_button_mouse)>("emulate_three_button_mouse","emulate_three_button_mouse");
-		addField<DAS_BIND_MANAGED_FIELD(link_detach_with_modifier_click)>("link_detach_with_modifier_click","link_detach_with_modifier_click");
-		addField<DAS_BIND_MANAGED_FIELD(alt_mouse_button)>("alt_mouse_button","alt_mouse_button");
+		addField<DAS_BIND_MANAGED_FIELD(EmulateThreeButtonMouse)>("EmulateThreeButtonMouse","EmulateThreeButtonMouse");
+		addField<DAS_BIND_MANAGED_FIELD(LinkDetachWithModifierClick)>("LinkDetachWithModifierClick","LinkDetachWithModifierClick");
+		addField<DAS_BIND_MANAGED_FIELD(AltMouseButton)>("AltMouseButton","AltMouseButton");
+		addField<DAS_BIND_MANAGED_FIELD(AutoPanningSpeed)>("AutoPanningSpeed","AutoPanningSpeed");
 	}
 };
 
-struct imnodes_Style_GeneratedAnnotation : ManagedStructureAnnotation<imnodes::Style> {
-	imnodes_Style_GeneratedAnnotation(ModuleLibrary & ml) : ManagedStructureAnnotation ("Style", ml, "imnodes::Style") {
+// from D:\daScript\github\daScript/Modules/dasImgui/imnodes/imnodes.h:147:8
+struct ImNodesStyle_GeneratedAnnotation : ManagedStructureAnnotation<ImNodesStyle> {
+	ImNodesStyle_GeneratedAnnotation(ModuleLibrary & ml) : ManagedStructureAnnotation ("ImNodesStyle", ml, "ImNodesStyle") {
 	}
 	void init () {
-		addField<DAS_BIND_MANAGED_FIELD(grid_spacing)>("grid_spacing","grid_spacing");
-		addField<DAS_BIND_MANAGED_FIELD(node_corner_rounding)>("node_corner_rounding","node_corner_rounding");
-		addField<DAS_BIND_MANAGED_FIELD(node_padding_horizontal)>("node_padding_horizontal","node_padding_horizontal");
-		addField<DAS_BIND_MANAGED_FIELD(node_padding_vertical)>("node_padding_vertical","node_padding_vertical");
-		addField<DAS_BIND_MANAGED_FIELD(node_border_thickness)>("node_border_thickness","node_border_thickness");
-		addField<DAS_BIND_MANAGED_FIELD(link_thickness)>("link_thickness","link_thickness");
-		addField<DAS_BIND_MANAGED_FIELD(link_line_segments_per_length)>("link_line_segments_per_length","link_line_segments_per_length");
-		addField<DAS_BIND_MANAGED_FIELD(link_hover_distance)>("link_hover_distance","link_hover_distance");
-		addField<DAS_BIND_MANAGED_FIELD(pin_circle_radius)>("pin_circle_radius","pin_circle_radius");
-		addField<DAS_BIND_MANAGED_FIELD(pin_quad_side_length)>("pin_quad_side_length","pin_quad_side_length");
-		addField<DAS_BIND_MANAGED_FIELD(pin_triangle_side_length)>("pin_triangle_side_length","pin_triangle_side_length");
-		addField<DAS_BIND_MANAGED_FIELD(pin_line_thickness)>("pin_line_thickness","pin_line_thickness");
-		addField<DAS_BIND_MANAGED_FIELD(pin_hover_radius)>("pin_hover_radius","pin_hover_radius");
-		addField<DAS_BIND_MANAGED_FIELD(pin_offset)>("pin_offset","pin_offset");
-		addField<DAS_BIND_MANAGED_FIELD(flags)>("flags","flags");
-		addField<DAS_BIND_MANAGED_FIELD(colors)>("colors","colors");
+		addField<DAS_BIND_MANAGED_FIELD(GridSpacing)>("GridSpacing","GridSpacing");
+		addField<DAS_BIND_MANAGED_FIELD(NodeCornerRounding)>("NodeCornerRounding","NodeCornerRounding");
+		addField<DAS_BIND_MANAGED_FIELD(NodePadding)>("NodePadding","NodePadding");
+		addField<DAS_BIND_MANAGED_FIELD(NodeBorderThickness)>("NodeBorderThickness","NodeBorderThickness");
+		addField<DAS_BIND_MANAGED_FIELD(LinkThickness)>("LinkThickness","LinkThickness");
+		addField<DAS_BIND_MANAGED_FIELD(LinkLineSegmentsPerLength)>("LinkLineSegmentsPerLength","LinkLineSegmentsPerLength");
+		addField<DAS_BIND_MANAGED_FIELD(LinkHoverDistance)>("LinkHoverDistance","LinkHoverDistance");
+		addField<DAS_BIND_MANAGED_FIELD(PinCircleRadius)>("PinCircleRadius","PinCircleRadius");
+		addField<DAS_BIND_MANAGED_FIELD(PinQuadSideLength)>("PinQuadSideLength","PinQuadSideLength");
+		addField<DAS_BIND_MANAGED_FIELD(PinTriangleSideLength)>("PinTriangleSideLength","PinTriangleSideLength");
+		addField<DAS_BIND_MANAGED_FIELD(PinLineThickness)>("PinLineThickness","PinLineThickness");
+		addField<DAS_BIND_MANAGED_FIELD(PinHoverRadius)>("PinHoverRadius","PinHoverRadius");
+		addField<DAS_BIND_MANAGED_FIELD(PinOffset)>("PinOffset","PinOffset");
+		addField<DAS_BIND_MANAGED_FIELD(MiniMapPadding)>("MiniMapPadding","MiniMapPadding");
+		addField<DAS_BIND_MANAGED_FIELD(MiniMapOffset)>("MiniMapOffset","MiniMapOffset");
+		addField<DAS_BIND_MANAGED_FIELD(Flags)>("Flags","Flags");
+		addField<DAS_BIND_MANAGED_FIELD(Colors)>("Colors","Colors");
 	}
 };
 
