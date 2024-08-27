@@ -283,10 +283,10 @@ IF((NOT DAS_IMGUI_INCLUDED) AND ((NOT ${DAS_IMGUI_DISABLED}) OR (NOT DEFINED DAS
 		${DAS_MODULES_NEED_INC}
 	)
 	SOURCE_GROUP_FILES("main" IMGUI_OPENGL_DEMO_SRC)
-	add_executable(dasImguiOpenGL ${IMGUI_OPENGL_DEMO_SRC} ${IMGUI_OPENGL_AOT_GENERATED_SRC} ${AOT_GENERATED_SRC})
-	TARGET_LINK_LIBRARIES(dasImguiOpenGL libDaScript Threads::Threads)
+	add_executable(dasImguiOpenGL ${IMGUI_OPENGL_DEMO_SRC} ${IMGUI_OPENGL_AOT_GENERATED_SRC})
+	TARGET_LINK_LIBRARIES(dasImguiOpenGL libDaScript libDaScriptAot Threads::Threads)
 	# ADD_DEPENDENCIES(dasImguiOpenGL libDaScript)
-	ADD_DEPENDENCIES(dasImguiOpenGL dasImguiOpenGL_AOT dasAotStub)
+	ADD_DEPENDENCIES(dasImguiOpenGL dasImguiOpenGL_AOT libDaScriptAot)
 	TARGET_INCLUDE_DIRECTORIES(dasImguiOpenGL PUBLIC ${imgui_INCLUDE_DIR} ${GLFW_INCLUDE_DIR} ${imnodes_INCLUDE_DIR} ${imgui_node_editor_INCLUDE_DIR})
 	SETUP_CPP11(dasImguiOpenGL)
 	SETUP_LTO(dasImguiOpenGL)
@@ -323,15 +323,6 @@ IF((NOT DAS_IMGUI_INCLUDED) AND ((NOT ${DAS_IMGUI_DISABLED}) OR (NOT DEFINED DAS
 	DAS_AOT("${DAS_IMGUI_DIR}/../dasGlsl/glsl/geom_gen.das" GREYPRINT_GENERATED_SRC GREYPRINT_AOT daScript)
 	# ttf
 	DAS_AOT("${DAS_IMGUI_DIR}/../dasStbTrueType/ttf/stb_ttf_common.das" GREYPRINT_GENERATED_SRC GREYPRINT_AOT daScript)
-	# daslib
-	DAS_AOT("daslib/functional.das" GREYPRINT_GENERATED_SRC GREYPRINT_AOT daScript)
-	DAS_AOT("daslib/json.das" GREYPRINT_GENERATED_SRC GREYPRINT_AOT daScript)
-	DAS_AOT("daslib/json_boost.das" GREYPRINT_GENERATED_SRC GREYPRINT_AOT daScript)
-	DAS_AOT("daslib/regex.das" GREYPRINT_GENERATED_SRC GREYPRINT_AOT daScript)
-	DAS_AOT("daslib/regex_boost.das" GREYPRINT_GENERATED_SRC GREYPRINT_AOT daScript)
-	DAS_AOT("daslib/strings_boost.das" GREYPRINT_GENERATED_SRC GREYPRINT_AOT daScript)
-	DAS_AOT("daslib/random.das" GREYPRINT_GENERATED_SRC GREYPRINT_AOT daScript)
-	DAS_AOT("daslib/math_boost.das" GREYPRINT_GENERATED_SRC GREYPRINT_AOT daScript)
 	SOURCE_GROUP_FILES("aot stub" GREYPRINT_GENERATED_SRC)
 
 	# now, the demo
@@ -341,9 +332,9 @@ IF((NOT DAS_IMGUI_INCLUDED) AND ((NOT ${DAS_IMGUI_DISABLED}) OR (NOT DEFINED DAS
 	)
 	SOURCE_GROUP_FILES("main" GREYPRINT_SRC)
 	add_executable(Greyprint ${GREYPRINT_SRC} ${GREYPRINT_GENERATED_SRC})
-	TARGET_LINK_LIBRARIES(Greyprint libDaScript Threads::Threads)
+	TARGET_LINK_LIBRARIES(Greyprint libDaScript libDaScriptAot Threads::Threads)
 	# ADD_DEPENDENCIES(Greyprint libDaScript)
-	ADD_DEPENDENCIES(Greyprint GREYPRINT_AOT dasAotStub)
+	ADD_DEPENDENCIES(Greyprint GREYPRINT_AOT libDaScriptAot)
 	TARGET_INCLUDE_DIRECTORIES(Greyprint PUBLIC ${imgui_INCLUDE_DIR} ${GLFW_INCLUDE_DIR} ${imnodes_INCLUDE_DIR} ${imgui_node_editor_INCLUDE_DIR})
 	SETUP_CPP11(Greyprint)
 	SETUP_LTO(Greyprint)

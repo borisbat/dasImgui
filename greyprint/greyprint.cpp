@@ -53,7 +53,11 @@ void application () {
     }
 }
 
+namespace das { vector<void *> force_aot_stub(); }
+
 int main( int, char * [] ) {
+    // force libDaScriptAot linking
+    force_aot_stub();
     NEED_ALL_DEFAULT_MODULES;
     NEED_MODULE(Module_UriParser);
     NEED_MODULE(Module_JobQue);

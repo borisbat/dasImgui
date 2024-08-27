@@ -35,7 +35,12 @@ void compile_and_run ( const string & fn, const string & mainFnName, bool output
     }
 }
 
+namespace das { vector<void *> force_aot_stub(); }
+
 int main(int argc, char * argv[]) {
+    // force libDaScriptAot linking
+    force_aot_stub();
+    // command line arguments
     setCommandLineArguments(argc,argv);
     // register modules
     NEED_MODULE(Module_BuiltIn);
