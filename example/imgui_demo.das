@@ -1723,6 +1723,7 @@ def DasShowExampleAppConsole(var p_open:bool? implicit)
         var console = new ExampleAppConsole()
     console->Draw("Example: Console", p_open)
 
+[safe_when_uninitialized]
 struct MyDocument
     Name:string
     Open:bool

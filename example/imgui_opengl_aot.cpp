@@ -48,6 +48,7 @@ int main(int argc, char * argv[]) {
     NEED_MODULE(Module_UriParser);
     NEED_MODULE(Module_JobQue);
     NEED_MODULE(Module_FIO);
+    NEED_MODULE(Module_DASBIND);
     #include "modules/external_need.inc"
     Module::Initialize();
     // compile and run
