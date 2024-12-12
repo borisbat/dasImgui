@@ -151,7 +151,7 @@ def DasShowAboutWindow(p_open: bool? implicit)
     End()
 
 [export]
-def DasShowDemoWindow ( _p_open : bool? )
+def DasShowDemoWindow ( var _p_open : bool? )
     var p_open = _p_open
     verify(GetCurrentContext() != null, "Missing dear imgui context. Refer to examples app!")
 
