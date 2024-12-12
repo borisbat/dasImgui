@@ -1,5 +1,11 @@
 options indenting = 4
 
+// OLD das restrictions
+options unsafe_table_lookup = false
+options strict_smart_pointers = false
+options relaxed_pointer_const = true
+
+
 module model_eval
 
 require instructions public

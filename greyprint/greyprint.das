@@ -2,6 +2,12 @@
 
 options multiple_contexts
 
+// OLD das restrictions
+options unsafe_table_lookup = false
+options strict_smart_pointers = false
+options relaxed_pointer_const = true
+
+
 options persistent_heap = true
 options gc
 
