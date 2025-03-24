@@ -8,7 +8,7 @@ require daslib/static_let
 require math
 require strings
 
-def DasHelpMarker(desc:string)
+def DasHelpMarker(desc : string)
     TextDisabled("(?)")
     if IsItemHovered()
         BeginTooltip()
@@ -66,7 +66,7 @@ def DasShowExampleAppMainMenuBar()
             EndMenu()
         EndMainMenuBar()
 
-def DasShowAboutWindow(p_open: bool? implicit)
+def DasShowAboutWindow(p_open : bool? implicit)
     if !Begin("About Dear ImGui", p_open, ImGuiWindowFlags AlwaysAutoResize)
         End()
         return
@@ -151,7 +151,7 @@ def DasShowAboutWindow(p_open: bool? implicit)
     End()
 
 [export]
-def DasShowDemoWindow ( var _p_open : bool? )
+def DasShowDemoWindow(var _p_open : bool?)
     var p_open = _p_open
     verify(GetCurrentContext() != null, "Missing dear imgui context. Refer to examples app!")
 
@@ -238,8 +238,8 @@ def DasShowDemoWindow ( var _p_open : bool? )
         window_flags |= ImGuiWindowFlags NoBringToFrontOnFocus
     if no_close
         p_open = null
-    SetNextWindowPos( float2(650., 20.), ImGuiCond FirstUseEver)
-    SetNextWindowSize( float2(550., 680.), ImGuiCond FirstUseEver)
+    SetNextWindowPos(float2(650., 20.), ImGuiCond FirstUseEver)
+    SetNextWindowSize(float2(550., 680.), ImGuiCond FirstUseEver)
     if !Begin("Dear ImGui Demo", p_open, window_flags)
         End()
     PushItemWidth(float(GetFontSize()) * -12.)
@@ -291,7 +291,7 @@ def DasShowDemoWindow ( var _p_open : bool? )
         DasShowUserGuide()
 
     if CollapsingHeader("Configuration")
-        var io & =unsafe(GetIO())
+        var io & = unsafe(GetIO())
         if TreeNode("Configuration##2")
             unsafe
                 CheckboxFlags("io.ConfigFlags: NavEnableKeyboard", addr(io.ConfigFlags), ImGuiConfigFlags NavEnableKeyboard)
@@ -420,14 +420,14 @@ def DasShowDemoWindowPopups()
         if BeginPopup("my_select_popup")
             Text("Aquarium")
             Separator()
-            for name,i in names,count()
+            for name, i in names, count()
                 if Selectable(name)
                     selected_fish = i
             EndPopup()
         if Button("Toggle..")
             OpenPopup("my_toggle_popup")
         if BeginPopup("my_toggle_popup")
-            for name,toggle in names,toggles
+            for name, toggle in names, toggles
                 MenuItem(name, "", toggle)
             if BeginMenu("Sub-menu")
                 MenuItem("Click me")
@@ -439,7 +439,7 @@ def DasShowDemoWindowPopups()
             if Button("Stacked Popup")
                 OpenPopup("another popup")
             if BeginPopup("another popup")
-                for name,toggle in names,toggles
+                for name, toggle in names, toggles
                     MenuItem(name, "", toggle)
                 if BeginMenu("Sub-menu")
                     MenuItem("Click me")
@@ -589,7 +589,7 @@ def ShowExampleMenuFile()
             var n = 0
         SliderFloat("Value", safe_addr(f), 0.0f, 1.0f)
         InputFloat("Input", safe_addr(f), 0.1f)
-        Combo("Combo", safe_addr(n), [[auto "Yes";"No";"Maybe"]])
+        Combo("Combo", safe_addr(n), [[auto "Yes"; "No"; "Maybe"]])
         EndMenu()
 
     if BeginMenu("Colors")
@@ -657,17 +657,17 @@ def DasShowDemoWindowMisc()
                     Text("b{i} ({io.MouseDownDuration[i]} secs)")
             Text("Mouse clicked:")
             for i in each_enum(type<ImGuiMouseButton>)
-                if i!=ImGuiMouseButton COUNT && IsMouseClicked(i)
+                if i != ImGuiMouseButton COUNT && IsMouseClicked(i)
                     SameLine()
                     Text("{i}")
             Text("Mouse dblclick:")
             for i in each_enum(type<ImGuiMouseButton>)
-                if i!=ImGuiMouseButton COUNT && IsMouseDoubleClicked(i)
+                if i != ImGuiMouseButton COUNT && IsMouseDoubleClicked(i)
                     SameLine()
                     Text("b{i}")
             Text("Mouse released:")
             for i in each_enum(type<ImGuiMouseButton>)
-                if i!=ImGuiMouseButton COUNT && IsMouseReleased(i)
+                if i != ImGuiMouseButton COUNT && IsMouseReleased(i)
                     SameLine()
                     Text("b{i}")
             Text("Mouse wheel: {io.MouseWheel}")
@@ -724,12 +724,12 @@ def DasShowDemoWindowMisc()
             if IsItemActive()
                 has_focus = 3
             PopTabStop()
-            if has_focus!=0
+            if has_focus != 0
                 Text("Item with focus: {has_focus}")
             else
                 Text("Item with focus: <none>")
             static_let <|
-                var f3 = [[float[3] 0.0f; 0.0f; 0.0f ]]
+                var f3 = [[float[3] 0.0f; 0.0f; 0.0f]]
             var focus_ahead = -1
             if Button("Focus on X")
                 focus_ahead = 0
@@ -748,7 +748,7 @@ def DasShowDemoWindowMisc()
         if TreeNode("Dragging")
             TextWrapped("You can use GetMouseDragDelta(0) to query for the dragged amount on any widget.")
             for button in each_enum(type<ImGuiMouseButton>)
-                if button!=ImGuiMouseButton COUNT
+                if button != ImGuiMouseButton COUNT
                     Text("IsMouseDragging({button}):")
                     Text("  w/ default threshold: {IsMouseDragging(button)},")
                     Text("  w/ zero threshold: {IsMouseDragging(button, 0.0f)},")
@@ -771,7 +771,7 @@ def DasShowDemoWindowMisc()
 
         if TreeNode("Mouse cursors")
             static_let <|
-                var mouse_cursors_names = [[string[] "Arrow"; "TextInput"; "ResizeAll"; "ResizeNS"; "ResizeEW"; "ResizeNESW"; "ResizeNWSE"; "Hand"; "NotAllowed" ]]
+                var mouse_cursors_names = [[string[] "Arrow"; "TextInput"; "ResizeAll"; "ResizeNS"; "ResizeEW"; "ResizeNESW"; "ResizeNWSE"; "Hand"; "NotAllowed"]]
             let current = GetMouseCursor()
             Text("Current mouse cursor = {current}: {mouse_cursors_names[int(current)]}")
             Text("Hover to see mouse cursors:")
@@ -780,7 +780,7 @@ def DasShowDemoWindowMisc()
                 "Your application can render a different mouse cursor based on what GetMouseCursor() returns. " +
                 "If software cursor rendering (io.MouseDrawCursor) is set ImGui will draw the right cursor for you, " +
                 "otherwise your backend needs to handle it.")
-            for mcn,i in mouse_cursors_names,count()
+            for mcn, i in mouse_cursors_names, count()
                 let lab = "Mouse cursor {i}: {mcn}"
                 Bullet()
                 Selectable(lab, false)
@@ -910,10 +910,10 @@ def DasShowDemoWindowLayout
         TextWrapped("(Use SameLine() to keep adding items to the right of the preceding item)")
         Text("Two items: Hello")
         SameLine()
-        TextColored(float4(1.,1.,0.,1.), "Sailor")
+        TextColored(float4(1., 1., 0., 1.), "Sailor")
         Text("More spacing: Hello")
         SameLine(0., 20.)
-        TextColored(float4(1.,1.,0.,1.), "Sailor")
+        TextColored(float4(1., 1., 0., 1.), "Sailor")
         AlignTextToFramePadding()
         Text("Normal buttons")
         SameLine()
@@ -955,7 +955,7 @@ def DasShowDemoWindowLayout
             var f2 = 3.0f
         PushItemWidth(80.)
         static_let <|
-            let items = [[string[] "AAAA"; "BBBB"; "CCCC"; "DDDD" ]]
+            let items = [[string[] "AAAA"; "BBBB"; "CCCC"; "DDDD"]]
             var item = -1
         Combo("Combo", safe_addr(item), items)
         SameLine()
@@ -1018,7 +1018,7 @@ def DasShowDemoWindowLayout
             SetTooltip("First group hovered")
         var size = GetItemRectSize()
         static_let <|
-            let values = [[float[] 0.5f; 0.20f; 0.80f; 0.60f; 0.25f ]]
+            let values = [[float[] 0.5f; 0.20f; 0.80f; 0.60f; 0.25f]]
         PlotHistogram("##values", values, 0, "", 0.0f, 1.0f, size)
         Button("ACTION", float2((size.x - GetStyle().ItemSpacing.x) * 0.5f, size.y))
         SameLine()
@@ -1162,7 +1162,7 @@ def DasShowDemoWindowLayout
                 SameLine()
             BeginGroup()
             static_let <|
-                let names_v = [[string[] "Top"; "25%"; "Center"; "75%"; "Bottom" ]]
+                let names_v = [[string[] "Top"; "25%"; "Center"; "75%"; "Bottom"]]
             TextUnformatted(names_v[i])
             let child_flags = enable_extra_decorations ? ImGuiWindowFlags MenuBar : ImGuiWindowFlags None
             var child_id : uint
@@ -1178,7 +1178,7 @@ def DasShowDemoWindowLayout
                 SetScrollFromPosY(GetCursorStartPos().y + scroll_to_pos_px, float(i) * 0.25f)
             if child_is_visible
                 for item in range(100)
-                    if enable_track && item==track_item
+                    if enable_track && item == track_item
                         TextColored(float4(1., 1., 0., 1.), "Item {item}")
                         SetScrollHereY(float(i) * 0.25f)
                     else
@@ -1191,9 +1191,9 @@ def DasShowDemoWindowLayout
         PopID()
         Spacing()
         DasHelpMarker(
-            "Use SetScrollHereX() or SetScrollFromPosX() to scroll to a given horizontal position.\n\n"+
-            "Because the clipping rectangle of most window hides half worth of WindowPadding on the "+
-            "left/right, using SetScrollFromPosX(+1) will usually result in clipped text whereas the "+
+            "Use SetScrollHereX() or SetScrollFromPosX() to scroll to a given horizontal position.\n\n" +
+            "Because the clipping rectangle of most window hides half worth of WindowPadding on the " +
+            "left/right, using SetScrollFromPosX(+1) will usually result in clipped text whereas the " +
             "equivalent SetScrollFromPosY(+1) wouldn't.")
         PushID("##HorizontalScrolling")
         for i in range(5)
@@ -1220,12 +1220,12 @@ def DasShowDemoWindowLayout
             EndChild()
             SameLine()
             static_let <|
-                let names_h = [[string[] "Left"; "25%"; "Center"; "75%"; "Right" ]]
+                let names_h = [[string[] "Left"; "25%"; "Center"; "75%"; "Right"]]
             Text("{names_h[i]}\n{scroll_x}/{scroll_max_x}")
             Spacing()
         PopID()
         DasHelpMarker(
-            "Horizontal scrolling for a window is enabled via the ImGuiWindowFlags HorizontalScrollbar flag.\n\n"+
+            "Horizontal scrolling for a window is enabled via the ImGuiWindowFlags HorizontalScrollbar flag.\n\n" +
             "You may want to also explicitly specify content width by using SetNextWindowContentWidth() before Begin().")
         static_let <|
             var lines = 7
@@ -1235,13 +1235,13 @@ def DasShowDemoWindowLayout
         let scrolling_child_size = float2(0., GetFrameHeightWithSpacing() * 7.0 + 30.0)
         BeginChild("scrolling", scrolling_child_size, ImGuiChildFlags Border, ImGuiWindowFlags HorizontalScrollbar)
         for line in range(lines)
-            let num_buttons = 10 + ((line & 1)!=0 ? line * 9 : line * 3)
+            let num_buttons = 10 + ((line & 1) != 0 ? line * 9 : line * 3)
             for n in range(num_buttons)
                 if n > 0
                     SameLine()
                 PushID(n + line * 1000)
                 let num_buf = "{n}"
-                let lab = ((n % 15)==0) ? "FizzBuzz" : ((n % 3)==0) ? "Fizz" : ((n % 5)==0) ? "Buzz" : num_buf
+                let lab = ((n % 15) == 0) ? "FizzBuzz" : ((n % 3) == 0) ? "Fizz" : ((n % 5) == 0) ? "Buzz" : num_buf
                 let hue = float(n) * 0.05f
                 PushStyleColor(ImGuiCol Button, HSV(hue, 0.6f, 0.6f))
                 PushStyleColor(ImGuiCol ButtonHovered,  HSV(hue, 0.7f, 0.7f))
@@ -1266,7 +1266,7 @@ def DasShowDemoWindowLayout
         SameLine()
         Text("{scroll_x}/{scroll_max_x}")
         if scroll_x_delta != 0.0f
-            BeginChild("scrolling", float2(0.,0.))
+            BeginChild("scrolling", float2(0., 0.))
             SetScrollX(GetScrollX() + scroll_x_delta)
             EndChild()
         Spacing()
@@ -1371,7 +1371,7 @@ def DasShowDemoWindowLayout
             let text_str = "Line 1 hello\nLine 2 clip me!";
             let text_pos = float2(p0.x + offset.x, p0.y + offset.y)
             var draw_list = GetWindowDrawList()
-            if n==0
+            if n == 0
                 DasHelpMarker(
                     "Using PushClipRect():\n" +
                     "Will alter ImGui hit-testing logic + ImDrawList rendering.\n" +
@@ -1380,7 +1380,7 @@ def DasShowDemoWindowLayout
                 *draw_list |> AddRectFilled(p0, p1, IM_COL32(90, 90, 120, 255))
                 *draw_list |> AddText(text_pos, IM_COL32_WHITE, text_str)
                 PopClipRect()
-            elif n==1
+            elif n == 1
                 DasHelpMarker(
                     "Using ImDrawList::PushClipRect():\n" +
                     "Will alter ImDrawList rendering only.\n" +
@@ -1389,7 +1389,7 @@ def DasShowDemoWindowLayout
                 *draw_list |> AddRectFilled(p0, p1, IM_COL32(90, 90, 120, 255))
                 *draw_list |> AddText(text_pos, IM_COL32_WHITE, text_str)
                 *draw_list |> PopClipRect()
-            elif n==2
+            elif n == 2
                 DasHelpMarker(
                     "Using ImDrawList::AddText() with a fine ClipRect:\n" +
                     "Will alter only this specific ImDrawList::AddText() rendering.\n" +
@@ -1402,10 +1402,10 @@ def DasShowDemoWindowLayout
         TreePop()
 
 class ExampleAppLog
-    Buf:ImGuiTextBuffer? = new ImGuiTextBuffer
-    Filter:ImGuiTextFilter? = new ImGuiTextFilter
-    LineOffsets:array<int>
-    AutoScroll:bool = true
+    Buf : ImGuiTextBuffer? = new ImGuiTextBuffer
+    Filter : ImGuiTextFilter? = new ImGuiTextFilter
+    LineOffsets : array<int>
+    AutoScroll : bool = true
     def ExampleAppLog()
         self->Clear()
     def finalize
@@ -1416,7 +1416,7 @@ class ExampleAppLog
         *Buf |> clear()
         LineOffsets |> clear()
         LineOffsets |> push(0)
-    def AddLog(txt:string) : void
+    def AddLog(txt : string) : void
         var old_size = *Buf |> size()
         *Buf |> append(txt)
         var new_size = *Buf |> size()
@@ -1424,7 +1424,7 @@ class ExampleAppLog
             if *Buf |> at(old_size) == '\n'
                 LineOffsets |> push(old_size + 1)
             old_size ++
-    def Draw(title:string; p_open:bool? implicit) : void
+    def Draw(title : string; p_open : bool? implicit) : void
         if !Begin(title, p_open)
             End()
             return
@@ -1456,10 +1456,10 @@ class ExampleAppLog
                     TextUnformatted(ltext)
                 line_no++
         else
-            using() <| $ ( var clipper : ImGuiListClipper )
+            using() <| $(var clipper : ImGuiListClipper)
                 clipper |> Begin(length(LineOffsets))
                 while clipper |> Step()
-                    for line_no in range(clipper.DisplayStart,clipper.DisplayEnd)
+                    for line_no in range(clipper.DisplayStart, clipper.DisplayEnd)
                         var line_start = LineOffsets[line_no]
                         var line_end = (line_no + 1 < length(LineOffsets)) ? (LineOffsets[line_no + 1] - 1) : (*Buf |> size())
                         var ltext = *Buf |> slice(line_start, line_end)
@@ -1471,7 +1471,7 @@ class ExampleAppLog
         EndChild()
         End()
 
-def DasShowExampleAppLog(p_open:bool? implicit)
+def DasShowExampleAppLog(p_open : bool? implicit)
     static_let <|
         var log = new ExampleAppLog()
     SetNextWindowSize(float2(500., 400.), ImGuiCond FirstUseEver)
@@ -1480,7 +1480,7 @@ def DasShowExampleAppLog(p_open:bool? implicit)
         static_let <|
             var counter = 0
             let categories = [[string[] "info"; "warn"; "error"]]
-            let words = [[string [] "Bumfuzzled"; "Cattywampus"; "Snickersnee"; "Abibliophobia"; "Absquatulate"; "Nincompoop"; "Pauciloquent" ]]
+            let words = [[string [] "Bumfuzzled"; "Cattywampus"; "Snickersnee"; "Abibliophobia"; "Absquatulate"; "Nincompoop"; "Pauciloquent"]]
         for n in range(5)
             let category = categories[counter % length(categories)]
             let word = words[counter % length(words)]
@@ -1489,7 +1489,7 @@ def DasShowExampleAppLog(p_open:bool? implicit)
     End()
     log->Draw("Example: Log", p_open)
 
-def DasShowExampleAppLayout(var p_open:bool? implicit)
+def DasShowExampleAppLayout(var p_open : bool? implicit)
     SetNextWindowSize(float2(500.0, 440.0), ImGuiCond FirstUseEver)
     if Begin("Example: Simple layout", p_open, ImGuiWindowFlags MenuBar)
         if BeginMenuBar()
@@ -1528,14 +1528,14 @@ def DasShowExampleAppLayout(var p_open:bool? implicit)
     End()
 
 class ExampleAppConsole
-    InputBuf:ImGuiInputTextBuffer <- ImGuiInputTextBuffer("",256)
-    Items:array<string>
-    Commands:array<string>
-    History:array<string>
-    HistoryPos:int = -1
-    Filter:ImGuiTextFilter? = new ImGuiTextFilter
-    AutoScroll:bool = true
-    ScrollToBottom:bool = false
+    InputBuf : ImGuiInputTextBuffer <- ImGuiInputTextBuffer("", 256)
+    Items : array<string>
+    Commands : array<string>
+    History : array<string>
+    HistoryPos : int = -1
+    Filter : ImGuiTextFilter? = new ImGuiTextFilter
+    AutoScroll : bool = true
+    ScrollToBottom : bool = false
     def ExampleAppConsole()
         self->ClearLog()
         Commands |> push("HELP")
@@ -1545,7 +1545,7 @@ class ExampleAppConsole
         self->AddLog("Welcome to Dear ImGui!")
         unsafe
             var console  = addr(self)
-            InputBuf.callback <- @ <| ( var it:ImGuiInputTextBuffer; var itc:ImGuiInputTextCallbackData ) : int
+            InputBuf.callback <- @ <| (var it : ImGuiInputTextBuffer; var itc : ImGuiInputTextCallbackData) : int
                 (*console)->TextEditCallback(itc)
                 return 0
 
@@ -1555,9 +1555,9 @@ class ExampleAppConsole
             delete Filter
     def ClearLog()
         delete Items
-    def AddLog(txt:string)
+    def AddLog(txt : string)
         Items |> push(txt)
-    def Draw(title:string;var p_open:bool? implicit)
+    def Draw(title : string; var p_open : bool? implicit)
         SetNextWindowSize(float2(520., 600.), ImGuiCond FirstUseEver)
         if !Begin(title, p_open)
             End()
@@ -1567,7 +1567,7 @@ class ExampleAppConsole
                 *p_open = false
             EndPopup()
         TextWrapped(
-            "This example implements a console with basic coloring, completion (TAB key) and history (Up/Down keys). A more elaborate "+
+            "This example implements a console with basic coloring, completion (TAB key) and history (Up/Down keys). A more elaborate " +
             "implementation may want to store entries along with extra data such as timestamp, emitter, etc.")
         TextWrapped("Enter 'HELP' for help.")
         if SmallButton("Add Debug Text")
@@ -1636,38 +1636,38 @@ class ExampleAppConsole
         if reclaim_focus
             SetKeyboardFocusHere(-1)
         End()
-    def ExecCommand(command_line:string)
+    def ExecCommand(command_line : string)
         self->AddLog("# {command_line}\n")
         HistoryPos = -1
         let index = History |> find_index(command_line)
         if index != -1
             History |> erase(index)
         History |> push(command_line)
-        if command_line=="CLEAR"
+        if command_line == "CLEAR"
             self->ClearLog()
-        elif command_line=="HELP"
+        elif command_line == "HELP"
             self->AddLog("Commands:\n")
             for cmd in Commands
                 self->AddLog("- {cmd}\n")
-        elif command_line=="HISTORY"
+        elif command_line == "HISTORY"
             let first = length(History) - 10
-            for i in range(max(0,first),length(History))
+            for i in range(max(0, first), length(History))
                 self->AddLog("{i}: {History[i]}\n")
         else
             self->AddLog("Unknown command: '{command_line}'\n")
         ScrollToBottom = true
-    def TextEditCallback(var data:ImGuiInputTextCallbackData)
-        if data.EventFlag==ImGuiInputTextFlags CallbackCompletion
+    def TextEditCallback(var data : ImGuiInputTextCallbackData)
+        if data.EventFlag == ImGuiInputTextFlags CallbackCompletion
             let word_end = data.CursorPos
             var word_start = word_end
             while word_start > 0
                 var c : int
                 unsafe
                     c = character_uat(data.Buf, word_start - 1)
-                if c==' ' || c=='\t' || c==',' || c==';'
+                if c == ' ' || c == '\t' || c == ',' || c == ';'
                     break
                 word_start--
-            let word = data.Buf |> slice(word_start,word_end)
+            let word = data.Buf |> slice(word_start, word_end)
             var match_len = word_end - word_start
             var candidates : array<string>
             for cmd in Commands
@@ -1684,10 +1684,10 @@ class ExampleAppConsole
                     var c = 0
                     var all_candidates_matches = true
                     var ucandidates <- [{for cn in candidates; to_upper(cn)}]
-                    for cnn,i in ucandidates,count()
+                    for cnn, i in ucandidates, count()
                         var tc : int
                         unsafe
-                            tc = cnn|>character_uat(match_len)
+                            tc = cnn |> character_uat(match_len)
                         if i == 0
                             c = tc
                         elif c == 0 || c != tc
@@ -1698,11 +1698,11 @@ class ExampleAppConsole
                     match_len++
                 if match_len > 0
                     data |> DeleteChars(word_start, word_end - word_start)
-                    data |> InsertChars(data.CursorPos, candidates[0] |> slice(0,match_len))
+                    data |> InsertChars(data.CursorPos, candidates[0] |> slice(0, match_len))
                 self->AddLog("Possible matches:\n")
                 for cn in candidates
                     self->AddLog("- {cn}\n")
-        elif data.EventFlag==ImGuiInputTextFlags CallbackHistory
+        elif data.EventFlag == ImGuiInputTextFlags CallbackHistory
             let prev_history_pos = HistoryPos;
             if data.EventKey == ImGuiKey UpArrow
                 if HistoryPos == -1
@@ -1718,21 +1718,21 @@ class ExampleAppConsole
                 data |> DeleteChars(0, data.BufTextLen)
                 data |> InsertChars(0, history_str)
 
-def DasShowExampleAppConsole(var p_open:bool? implicit)
+def DasShowExampleAppConsole(var p_open : bool? implicit)
     static_let <|
         var console = new ExampleAppConsole()
     console->Draw("Example: Console", p_open)
 
 [safe_when_uninitialized]
 struct MyDocument
-    Name:string
-    Open:bool
-    OpenPrev:bool
-    Dirty:bool = false
-    WantClose:bool = false
-    Color:float4 = float4()
+    Name : string
+    Open : bool
+    OpenPrev : bool
+    Dirty : bool = false
+    WantClose : bool = false
+    Color : float4 = float4()
 
-def MyDocument(name:string; open:bool = true; color:float4 = float4(1.0f, 1.0f, 1.0f, 1.0f))
+def MyDocument(name : string; open : bool = true; color : float4 = float4(1.0f, 1.0f, 1.0f, 1.0f))
     var self : MyDocument
     self.Name = name
     self.Open = open
@@ -1740,20 +1740,20 @@ def MyDocument(name:string; open:bool = true; color:float4 = float4(1.0f, 1.0f, 
     self.Color = color
     return self
 
-def DoOpen(var self:MyDocument)
+def DoOpen(var self : MyDocument)
     self.Open = true
 
-def DoQueueClose(var self:MyDocument)
+def DoQueueClose(var self : MyDocument)
     self.WantClose = true
 
-def DoForceClose(var self:MyDocument)
+def DoForceClose(var self : MyDocument)
     self.Open = false
     self.Dirty = false
 
-def DoSave(var self:MyDocument)
+def DoSave(var self : MyDocument)
     self.Dirty = false
 
-def DisplayContents(var doc:MyDocument)
+def DisplayContents(var doc : MyDocument)
     PushID(unsafe(addr(doc)))
     Text("Document \"{doc.Name}\"")
     PushStyleColor(ImGuiCol Text, doc.Color)
@@ -1767,7 +1767,7 @@ def DisplayContents(var doc:MyDocument)
     ColorEdit3("color", unsafe(addr(doc.Color.x)))
     PopID()
 
-def DisplayContextMenu(var doc:MyDocument)
+def DisplayContextMenu(var doc : MyDocument)
     if !BeginPopupContextItem()
         return
     if MenuItem("Save {doc.Name}", "CTRL+S", false, doc.Open)
@@ -1777,7 +1777,7 @@ def DisplayContextMenu(var doc:MyDocument)
     EndPopup()
 
 struct ExampleAppDocuments
-    Documents:array<MyDocument>
+    Documents : array<MyDocument>
 
 def ExampleAppDocuments()
     var self : ExampleAppDocuments
@@ -1789,13 +1789,13 @@ def ExampleAppDocuments()
     self.Documents |> push(MyDocument("Some Document",       false))
     return <- self
 
-def NotifyOfDocumentsClosedElsewhere(var app:ExampleAppDocuments)
+def NotifyOfDocumentsClosedElsewhere(var app : ExampleAppDocuments)
     for doc in app.Documents
         if !doc.Open && doc.OpenPrev
             SetTabItemClosed(doc.Name)
         doc.OpenPrev = doc.Open
 
-def DasShowExampleAppDocuments(p_open:bool? implicit)
+def DasShowExampleAppDocuments(p_open : bool? implicit)
     static_let <|
         var app <- ExampleAppDocuments()
     static_let <|
@@ -1823,7 +1823,7 @@ def DasShowExampleAppDocuments(p_open:bool? implicit)
                 pass
             EndMenu()
         EndMenuBar()
-    for doc,doc_n in app.Documents,count()
+    for doc, doc_n in app.Documents, count()
         if doc_n > 0
             SameLine()
         PushID(safe_addr(doc))
@@ -1898,7 +1898,7 @@ def DasShowExampleAppDocuments(p_open:bool? implicit)
                 EndPopup()
     End()
 
-def ShowPlaceholderObject(prefix:string;uid:int)
+def ShowPlaceholderObject(prefix : string; uid : int)
     PushID(uid)
     TableNextRow()
     TableSetColumnIndex(0)
@@ -1930,7 +1930,7 @@ def ShowPlaceholderObject(prefix:string;uid:int)
         TreePop()
     PopID()
 
-def DasShowExampleAppPropertyEditor(p_open:bool? implicit)
+def DasShowExampleAppPropertyEditor(p_open : bool? implicit)
     SetNextWindowSize(float2(430., 450.), ImGuiCond FirstUseEver)
     if !Begin("Example: Property editor", p_open)
         End()
@@ -1948,7 +1948,7 @@ def DasShowExampleAppPropertyEditor(p_open:bool? implicit)
     PopStyleVar()
     End()
 
-def DasShowExampleAppLongText(p_open:bool? implicit)
+def DasShowExampleAppLongText(p_open : bool? implicit)
     SetNextWindowSize(float2(520., 600.), ImGuiCond FirstUseEver)
     if !Begin("Example: Long text display", p_open)
         End()
@@ -1972,18 +1972,18 @@ def DasShowExampleAppLongText(p_open:bool? implicit)
             *log |> append("{lines+i} The quick brown fox jumps over the lazy dog\n")
         lines += 1000
     BeginChild("Log", float2())
-    if test_type==0
+    if test_type == 0
         TextUnformatted(*log |> c_str())
-    elif test_type==1
+    elif test_type == 1
         PushStyleVar(ImGuiStyleVar ItemSpacing, float2(0., 0.))
-        using() <| $ ( var clipper : ImGuiListClipper )
+        using() <| $(var clipper : ImGuiListClipper)
             clipper |> Begin(lines)
             while clipper |> Step()
-                for i in range(clipper.DisplayStart,clipper.DisplayEnd)
+                for i in range(clipper.DisplayStart, clipper.DisplayEnd)
                     Text("{i} The quick brown fox jumps over the lazy dog")
             clipper |> End()
             PopStyleVar()
-    elif test_type==2
+    elif test_type == 2
         PushStyleVar(ImGuiStyleVar ItemSpacing, float2(0., 0.))
         for i in range(lines)
             Text("{i} The quick brown fox jumps over the lazy dog")
@@ -1991,7 +1991,7 @@ def DasShowExampleAppLongText(p_open:bool? implicit)
     EndChild()
     End()
 
-def DasShowExampleAppAutoResize(p_open:bool? implicit)
+def DasShowExampleAppAutoResize(p_open : bool? implicit)
     if !Begin("Example: Auto-resizing window", p_open, ImGuiWindowFlags AlwaysAutoResize)
         End()
         return
@@ -2006,9 +2006,9 @@ def DasShowExampleAppAutoResize(p_open:bool? implicit)
         Text("This is line {i}")
     End()
 
-def DasShowExampleAppConstrainedResize(p_open:bool? implicit)
+def DasShowExampleAppConstrainedResize(p_open : bool? implicit)
     static_let <|
-        let test_desc =[[auto
+        let test_desc = [[auto
             "Resize vertical only";
             "Resize horizontal only";
             "Width > 100, Height > 100";
@@ -2020,11 +2020,11 @@ def DasShowExampleAppConstrainedResize(p_open:bool? implicit)
         var auto_resize = false
         var con_type = 0
         var display_lines = 10
-        var ccs_square <- ImGuiSizeConstraints() <| @(var data:ImGuiSizeCallbackData)
+        var ccs_square <- ImGuiSizeConstraints() <| @(var data : ImGuiSizeCallbackData)
             let t = max(data.DesiredSize.x, data.DesiredSize.y)
             data.DesiredSize.x = t
             data.DesiredSize.y = t
-        var ccs_step <- ImGuiSizeConstraints() <| @(var data:ImGuiSizeCallbackData)
+        var ccs_step <- ImGuiSizeConstraints() <| @(var data : ImGuiSizeCallbackData)
             let step = 100.f
             data.DesiredSize = float2(
                 floor(data.DesiredSize.x / step + 0.5f) * step,
@@ -2063,7 +2063,7 @@ def DasShowExampleAppConstrainedResize(p_open:bool? implicit)
             Text("{i} Hello, sailor! Making this line long enough for the example.")
     End()
 
-def DasShowExampleAppSimpleOverlay(var p_open:bool? implicit)
+def DasShowExampleAppSimpleOverlay(var p_open : bool? implicit)
     let PAD = 10.0f
     static_let <|
         var corner = 0
@@ -2075,10 +2075,10 @@ def DasShowExampleAppSimpleOverlay(var p_open:bool? implicit)
         var work_size = viewport.WorkSize
         var window_pos = float2()
         var window_pos_pivot = float2()
-        window_pos.x = (corner & 1)!=0 ? (work_pos.x + work_size.x - PAD) : (work_pos.x + PAD)
-        window_pos.y = (corner & 2)!=0 ? (work_pos.y + work_size.y - PAD) : (work_pos.y + PAD)
-        window_pos_pivot.x = (corner & 1)!=0 ? 1.0f : 0.0f
-        window_pos_pivot.y = (corner & 2)!=0 ? 1.0f : 0.0f
+        window_pos.x = (corner & 1) != 0 ? (work_pos.x + work_size.x - PAD) : (work_pos.x + PAD)
+        window_pos.y = (corner & 2) != 0 ? (work_pos.y + work_size.y - PAD) : (work_pos.y + PAD)
+        window_pos_pivot.x = (corner & 1) != 0 ? 1.0f : 0.0f
+        window_pos_pivot.y = (corner & 2) != 0 ? 1.0f : 0.0f
         SetNextWindowPos(window_pos, ImGuiCond Always, window_pos_pivot)
         window_flags |= ImGuiWindowFlags NoMove
     SetNextWindowBgAlpha(0.35f)
@@ -2100,12 +2100,12 @@ def DasShowExampleAppSimpleOverlay(var p_open:bool? implicit)
                 corner = 2
             if MenuItem("Bottom-right", "", corner == 3)
                 corner = 3
-            if p_open!=null && MenuItem("Close")
+            if p_open != null && MenuItem("Close")
                 *p_open = false
             EndPopup()
     End()
 
-def DasShowExampleAppWindowTitles(p_open:bool? implicit)
+def DasShowExampleAppWindowTitles(p_open : bool? implicit)
     let viewport = GetMainViewport()
     let base_pos = viewport.Pos
     SetNextWindowPos(float2(base_pos.x + 100., base_pos.y + 100.), ImGuiCond FirstUseEver)
@@ -2124,7 +2124,7 @@ def DasShowExampleAppWindowTitles(p_open:bool? implicit)
     Text("This window has a changing title.")
     End()
 
-def DasShowExampleAppCustomRendering(p_open:bool? implicit)
+def DasShowExampleAppCustomRendering(p_open : bool? implicit)
     if !Begin("Example: Custom rendering", p_open)
         End()
         return
@@ -2184,9 +2184,9 @@ def DasShowExampleAppCustomRendering(p_open:bool? implicit)
             var y = p.y + 4.0f
             for n in range(2)
                 let th = (n == 0) ? 1.0f : thickness
-                *draw_list |> AddNgon(float2(x + sz*0.5f, y + sz*0.5f), sz*0.5f, col, ngon_sides, th)
+                *draw_list |> AddNgon(float2(x + sz * 0.5f, y + sz * 0.5f), sz * 0.5f, col, ngon_sides, th)
                 x += sz + spacing
-                *draw_list |> AddCircle(float2(x + sz*0.5f, y + sz*0.5f), sz*0.5f, col, circle_segments, th)
+                *draw_list |> AddCircle(float2(x + sz * 0.5f, y + sz * 0.5f), sz * 0.5f, col, circle_segments, th)
                 x += sz + spacing
                 *draw_list |> AddRect(float2(x, y), float2(x + sz, y + sz), col, 0.0f,  corners_none, th)
                 x += sz + spacing
@@ -2194,7 +2194,7 @@ def DasShowExampleAppCustomRendering(p_open:bool? implicit)
                 x += sz + spacing
                 *draw_list |> AddRect(float2(x, y), float2(x + sz, y + sz), col, rounding, corners_tl_br, th)
                 x += sz + spacing
-                *draw_list |> AddTriangle(float2(x+sz*0.5f,y), float2(x+sz, y+sz-0.5f), float2(x, y+sz-0.5f), col, th)
+                *draw_list |> AddTriangle(float2(x + sz * 0.5f, y), float2(x + sz, y + sz - 0.5f), float2(x, y + sz - 0.5f), col, th)
                 x += sz + spacing
                 *draw_list |> AddLine(float2(x, y), float2(x + sz, y), col, th)
                 x += sz + spacing
@@ -2202,17 +2202,17 @@ def DasShowExampleAppCustomRendering(p_open:bool? implicit)
                 x += spacing
                 *draw_list |> AddLine(float2(x, y), float2(x + sz, y + sz), col, th)
                 x += sz + spacing
-                var cp3 = [[float2[3] float2(x, y + sz * 0.6f) ; float2(x + sz * 0.5f, y - sz * 0.4f) ; float2(x + sz, y + sz) ]]
+                var cp3 = [[float2[3] float2(x, y + sz * 0.6f); float2(x + sz * 0.5f, y - sz * 0.4f); float2(x + sz, y + sz)]]
                 *draw_list |> AddBezierQuadratic(cp3[0], cp3[1], cp3[2], col, th, curve_segments)
                 x += sz + spacing;
-                var cp4 = [[float2[4] float2(x, y) ; float2(x + sz * 1.3f, y + sz * 0.3f) ; float2(x + sz - sz * 1.3f, y + sz - sz * 0.3f) ; float2(x + sz, y + sz) ]]
+                var cp4 = [[float2[4] float2(x, y); float2(x + sz * 1.3f, y + sz * 0.3f); float2(x + sz - sz * 1.3f, y + sz - sz * 0.3f); float2(x + sz, y + sz)]]
                 *draw_list |> AddBezierCubic(cp4[0], cp4[1], cp4[2], cp4[3], col, th, curve_segments)
                 x = p.x + 4.
                 y += sz + spacing
 
-            *draw_list |> AddNgonFilled(float2(x + sz * 0.5f, y + sz * 0.5f), sz*0.5f, col, ngon_sides)
+            *draw_list |> AddNgonFilled(float2(x + sz * 0.5f, y + sz * 0.5f), sz * 0.5f, col, ngon_sides)
             x += sz + spacing
-            *draw_list |> AddCircleFilled(float2(x + sz*0.5f, y + sz*0.5f), sz*0.5f, col, circle_segments)
+            *draw_list |> AddCircleFilled(float2(x + sz * 0.5f, y + sz * 0.5f), sz * 0.5f, col, circle_segments)
             x += sz + spacing
             *draw_list |> AddRectFilled(float2(x, y), float2(x + sz, y + sz), col)
             x += sz + spacing
@@ -2220,7 +2220,7 @@ def DasShowExampleAppCustomRendering(p_open:bool? implicit)
             x += sz + spacing
             *draw_list |> AddRectFilled(float2(x, y), float2(x + sz, y + sz), col, 10.0f, corners_tl_br)
             x += sz + spacing
-            *draw_list |> AddTriangleFilled(float2(x+sz*0.5f,y), float2(x+sz, y+sz-0.5f), float2(x, y+sz-0.5f), col)
+            *draw_list |> AddTriangleFilled(float2(x + sz * 0.5f, y), float2(x + sz, y + sz - 0.5f), float2(x, y + sz - 0.5f), col)
             x += sz + spacing
             *draw_list |> AddRectFilled(float2(x, y), float2(x + sz, y + thickness), col)
             x += sz + spacing
@@ -2236,7 +2236,7 @@ def DasShowExampleAppCustomRendering(p_open:bool? implicit)
 
         if (BeginTabItem("Canvas"))
             static_let <|
-                var points:array<float2>
+                var points : array<float2>
                 var scrolling = float2(0.0f, 0.0f)
                 var opt_enable_grid = true
                 var opt_enable_context_menu = true
@@ -2342,20 +2342,20 @@ struct MyItem
     Name : string
     Quantity : int
 
-def SortMyItems ( var items:array<MyItem>; var sorts_specs:ImGuiTableSortSpecs? )
-    sort ( items ) <| $ ( a, b )
+def SortMyItems(var items : array<MyItem>; var sorts_specs : ImGuiTableSortSpecs?)
+    sort(items) <| $(a, b)
         for n in range(sorts_specs.SpecsCount)
             unsafe
                 let sort_spec & = sorts_specs.Specs[n]
                 var delta = 0
-                if sort_spec.ColumnUserID==uint(MyItemColumnID ID)
+                if sort_spec.ColumnUserID == uint(MyItemColumnID ID)
                     delta = a.ID - b.ID
-                elif sort_spec.ColumnUserID==uint(MyItemColumnID Name) || sort_spec.ColumnUserID==uint(MyItemColumnID Description)
-                    if a.Name<b.Name
+                elif sort_spec.ColumnUserID == uint(MyItemColumnID Name) || sort_spec.ColumnUserID == uint(MyItemColumnID Description)
+                    if a.Name < b.Name
                         delta = +1
-                    elif a.Name>b.Name
+                    elif a.Name > b.Name
                         delta = -1
-                elif sort_spec.ColumnUserID==uint(MyItemColumnID Quantity)
+                elif sort_spec.ColumnUserID == uint(MyItemColumnID Quantity)
                     delta = a.Quantity - b.Quantity
                 if delta > 0
                     return sort_spec |> SortDirection == ImGuiSortDirection Ascending
@@ -2373,11 +2373,11 @@ def PopStyleCompact
     PopStyleVar(2)
 
 struct EnumDesc
-    Value:ImGuiTableFlags
-    Name:string
-    Tooltip:string
+    Value : ImGuiTableFlags
+    Name : string
+    Tooltip : string
 
-def EditTableSizingFlags(var p_flags:ImGuiTableFlags? implicit)
+def EditTableSizingFlags(var p_flags : ImGuiTableFlags? implicit)
     static_let <|
         var policies = [[EnumDesc
             Value=ImGuiTableFlags None,                 Name="Default",
@@ -2399,12 +2399,12 @@ def EditTableSizingFlags(var p_flags:ImGuiTableFlags? implicit)
         idx ++
     var preview_text = ""
     if idx < length(policies)
-        if idx==0
+        if idx == 0
             preview_text = policies[idx].Name
         else
             preview_text = policies[idx].Name |> slice(length("ImGuiTableFlags"))
     if BeginCombo("Sizing Policy", preview_text)
-        for pol,n in policies,count()
+        for pol, n in policies, count()
             if Selectable(pol.Name, idx == n)
                 *p_flags = (*p_flags & ~ImGuiTableFlags SizingMask_) | pol.Value // TODO: add & and ~ to flags
         EndCombo()
@@ -2422,7 +2422,7 @@ def EditTableSizingFlags(var p_flags:ImGuiTableFlags? implicit)
         PopTextWrapPos()
         EndTooltip()
 
-def EditTableColumnsFlags(var p_flags:ImGuiTableColumnFlags? implicit)
+def EditTableColumnsFlags(var p_flags : ImGuiTableColumnFlags? implicit)
     CheckboxFlags("_DefaultHide", p_flags, ImGuiTableColumnFlags DefaultHide)
     CheckboxFlags("_DefaultSort", p_flags, ImGuiTableColumnFlags DefaultSort)
     if CheckboxFlags("_WidthStretch", p_flags, ImGuiTableColumnFlags WidthStretch)
@@ -2446,7 +2446,7 @@ def EditTableColumnsFlags(var p_flags:ImGuiTableColumnFlags? implicit)
     SameLine()
     DasHelpMarker("Default for column >0")
 
-def ShowTableColumnsStatusFlags(var flags:ImGuiTableColumnFlags)
+def ShowTableColumnsStatusFlags(var flags : ImGuiTableColumnFlags)
     CheckboxFlags("_IsEnabled", unsafe(addr(flags)), ImGuiTableColumnFlags IsEnabled)
     CheckboxFlags("_IsVisible", unsafe(addr(flags)), ImGuiTableColumnFlags IsVisible)
     CheckboxFlags("_IsSorted",  unsafe(addr(flags)), ImGuiTableColumnFlags IsSorted)
@@ -2768,10 +2768,10 @@ def DasShowDemoWindowTables()
                 var init = true
             if !show_widget_frame_bg
                 PushStyleColor(ImGuiCol FrameBg, 0u)
-            for cell in range(3*5)
+            for cell in range(3 * 5)
                 TableNextColumn()
                 if init
-                    text_bufs |> push(new ImGuiInputTextBuffer("edit me",16))
+                    text_bufs |> push(new ImGuiInputTextBuffer("edit me", 16))
                 SetNextItemWidth(-FLT_MIN)
                 PushID(cell)
                 InputText("##cell", *(text_bufs[cell]))
@@ -2855,17 +2855,17 @@ def DasShowDemoWindowTables()
                 let row = TableGetRowIndex()
                 PushID(cell)
                 let lab = "Hello {column},{row}"
-                if contents_type==ContentsType CT_ShortText
+                if contents_type == ContentsType CT_ShortText
                     TextUnformatted(lab)
-                elif contents_type==ContentsType CT_LongText
+                elif contents_type == ContentsType CT_LongText
                     Text("Some {column == 0 ? "long" : "longeeer"} text {column},{row}\nOver two lines..")
-                elif contents_type==ContentsType CT_ShowWidth
+                elif contents_type == ContentsType CT_ShowWidth
                     Text("W: {GetContentRegionAvail().x}")
-                elif contents_type==ContentsType CT_Button
+                elif contents_type == ContentsType CT_Button
                     Button(lab)
-                elif contents_type==ContentsType CT_FillButton
+                elif contents_type == ContentsType CT_FillButton
                     Button(lab, float2(-FLT_MIN, 0.0f))
-                elif contents_type==ContentsType CT_InputText
+                elif contents_type == ContentsType CT_InputText
                     SetNextItemWidth(-FLT_MIN)
                     static_let <|
                         var text_buf <- ImGuiInputTextBuffer("", 32)
@@ -2880,8 +2880,8 @@ def DasShowDemoWindowTables()
         DasHelpMarker("Here we activate ScrollY, which will create a child window container to allow hosting scrollable contents.\n" +
             "\nWe also demonstrate using ImGuiListClipper to virtualize the submission of many items.")
         static_let <|
-            var flags = ( ImGuiTableFlags ScrollY | ImGuiTableFlags RowBg | ImGuiTableFlags BordersOuter |
-            ImGuiTableFlags BordersV | ImGuiTableFlags Resizable | ImGuiTableFlags Reorderable | ImGuiTableFlags Hideable )
+            var flags = (ImGuiTableFlags ScrollY | ImGuiTableFlags RowBg | ImGuiTableFlags BordersOuter |
+            ImGuiTableFlags BordersV | ImGuiTableFlags Resizable | ImGuiTableFlags Reorderable | ImGuiTableFlags Hideable)
         PushStyleCompact()
         CheckboxFlags("ImGuiTableFlags ScrollY", safe_addr(flags), ImGuiTableFlags ScrollY)
         PopStyleCompact()
@@ -2892,10 +2892,10 @@ def DasShowDemoWindowTables()
             TableSetupColumn("Two", ImGuiTableColumnFlags None)
             TableSetupColumn("Three", ImGuiTableColumnFlags None)
             TableHeadersRow()
-            using() <| $ ( var clipper : ImGuiListClipper )
+            using() <| $(var clipper : ImGuiListClipper)
                 clipper |> Begin(1000)
                 while clipper |> Step()
-                    for row in range(clipper.DisplayStart,clipper.DisplayEnd)
+                    for row in range(clipper.DisplayStart, clipper.DisplayEnd)
                         TableNextRow()
                         for column in range(3)
                             TableSetColumnIndex(column)
@@ -2913,8 +2913,8 @@ def DasShowDemoWindowTables()
             "Also note that as of the current version, you will almost always want to enable ScrollY along with ScrollX," +
             "because the container window won't automatically extend vertically to fix contents (this may be improved in future versions).")
         static_let  <|
-            var flags = ( ImGuiTableFlags ScrollX | ImGuiTableFlags ScrollY | ImGuiTableFlags RowBg | ImGuiTableFlags BordersOuter |
-                ImGuiTableFlags BordersV | ImGuiTableFlags Resizable | ImGuiTableFlags Reorderable | ImGuiTableFlags Hideable )
+            var flags = (ImGuiTableFlags ScrollX | ImGuiTableFlags ScrollY | ImGuiTableFlags RowBg | ImGuiTableFlags BordersOuter |
+                ImGuiTableFlags BordersV | ImGuiTableFlags Resizable | ImGuiTableFlags Reorderable | ImGuiTableFlags Hideable)
             var freeze_cols = 1
             var freeze_rows = 1
         PushStyleCompact()
@@ -2940,7 +2940,7 @@ def DasShowDemoWindowTables()
             for row in range(20)
                 TableNextRow()
                 for column in range(7)
-                    if !TableSetColumnIndex(column) && column>0
+                    if !TableSetColumnIndex(column) && column > 0
                         continue
                     if column == 0
                         Text("Line {row}")
@@ -2955,8 +2955,8 @@ def DasShowDemoWindowTables()
             "this is rather unusual and only makes sense when specifying an 'inner_width' for the table!\n" +
             "Without an explicit value, inner_width is == outer_size.x and therefore using Stretch columns + ScrollX together doesn't make sense.")
         static_let <|
-            var flags2 = ( ImGuiTableFlags SizingStretchSame | ImGuiTableFlags ScrollX | ImGuiTableFlags ScrollY | ImGuiTableFlags BordersOuter
-                | ImGuiTableFlags RowBg | ImGuiTableFlags ContextMenuInBody )
+            var flags2 = (ImGuiTableFlags SizingStretchSame | ImGuiTableFlags ScrollX | ImGuiTableFlags ScrollY | ImGuiTableFlags BordersOuter
+                | ImGuiTableFlags RowBg | ImGuiTableFlags ContextMenuInBody)
             var inner_width = 1000.0f
         PushStyleCompact()
         PushID("flags3")
@@ -2977,7 +2977,7 @@ def DasShowDemoWindowTables()
         SetNextItemOpen(open_action != 0)
     if TreeNode("Columns flags")
         let column_count = 3
-        let column_names= [[string "One"; "Two"; "Three"]]
+        let column_names = [[string "One"; "Two"; "Three"]]
         static_let <|
             var column_flags = [[ImGuiTableColumnFlags ImGuiTableColumnFlags DefaultSort; ImGuiTableColumnFlags None; ImGuiTableColumnFlags DefaultHide]]
             var column_FlagsOut = [[ImGuiTableColumnFlags  ImGuiTableColumnFlags None; ImGuiTableColumnFlags None; ImGuiTableColumnFlags None]]
@@ -3000,7 +3000,7 @@ def DasShowDemoWindowTables()
         let flags = (
               ImGuiTableFlags SizingFixedFit | ImGuiTableFlags ScrollX | ImGuiTableFlags ScrollY
             | ImGuiTableFlags RowBg | ImGuiTableFlags BordersOuter | ImGuiTableFlags BordersV
-            | ImGuiTableFlags Resizable | ImGuiTableFlags Reorderable | ImGuiTableFlags Hideable | ImGuiTableFlags Sortable )
+            | ImGuiTableFlags Resizable | ImGuiTableFlags Reorderable | ImGuiTableFlags Hideable | ImGuiTableFlags Sortable)
         var outer_size = float2(0.0f, TEXT_BASE_HEIGHT * 9.)
         if BeginTable("table_columns_flags", column_count, flags, outer_size)
             for column in range(column_count)
@@ -3124,8 +3124,8 @@ def DasShowDemoWindowTables()
         Text("Using NoHostExtendX and NoHostExtendY:")
         PushStyleCompact()
         static_let <|
-            var flags = ( ImGuiTableFlags Borders | ImGuiTableFlags Resizable | ImGuiTableFlags ContextMenuInBody
-                | ImGuiTableFlags RowBg | ImGuiTableFlags SizingFixedFit | ImGuiTableFlags NoHostExtendX )
+            var flags = (ImGuiTableFlags Borders | ImGuiTableFlags Resizable | ImGuiTableFlags ContextMenuInBody
+                | ImGuiTableFlags RowBg | ImGuiTableFlags SizingFixedFit | ImGuiTableFlags NoHostExtendX)
         CheckboxFlags("ImGuiTableFlags NoHostExtendX", safe_addr(flags), ImGuiTableFlags NoHostExtendX)
         SameLine()
         DasHelpMarker("Make outer width auto-fit to columns, overriding outer_size.x value.\n\n" +
@@ -3181,7 +3181,7 @@ def DasShowDemoWindowTables()
         Combo("row bg target", safe_addr(row_bg_target), [[auto "RowBg0"; "RowBg1"]])
         SameLine()
         DasHelpMarker("Target RowBg0 to override the alternating odd/even colors,\nTarget RowBg1 to blend with them.")
-        Combo("cell bg type", safe_addr(cell_bg_type), [[auto "None";"Blue"]])
+        Combo("cell bg type", safe_addr(cell_bg_type), [[auto "None"; "Blue"]])
         SameLine()
         DasHelpMarker("We are colorizing cells to B1->C2 here.")
         assert(row_bg_type >= 0 && row_bg_type <= 2)
@@ -3385,7 +3385,7 @@ def DasShowDemoWindowTables()
         SetNextItemOpen(open_action != 0)
     if TreeNode("Sorting")
         static_let <|
-            var items:array<MyItem>
+            var items : array<MyItem>
         if items |> empty()
             items |> resize(50)
             for n in range(length(items))
@@ -3398,7 +3398,7 @@ def DasShowDemoWindowTables()
             var flags = (
                 ImGuiTableFlags Resizable | ImGuiTableFlags Reorderable | ImGuiTableFlags Hideable | ImGuiTableFlags Sortable | ImGuiTableFlags SortMulti
                 | ImGuiTableFlags RowBg | ImGuiTableFlags BordersOuter | ImGuiTableFlags BordersV | ImGuiTableFlags NoBordersInBody
-                | ImGuiTableFlags ScrollY )
+                | ImGuiTableFlags ScrollY)
         PushStyleCompact()
         CheckboxFlags("ImGuiTableFlags SortMulti", safe_addr(flags), ImGuiTableFlags SortMulti)
         SameLine()
@@ -3415,12 +3415,12 @@ def DasShowDemoWindowTables()
             TableSetupScrollFreeze(0, 1)
             TableHeadersRow()
             var sorts_specs = TableGetSortSpecs()
-            if sorts_specs!=null && sorts_specs.SpecsDirty
-                SortMyItems ( items, TableGetSortSpecs() )
-            using() <| $ ( var clipper : ImGuiListClipper )
+            if sorts_specs != null && sorts_specs.SpecsDirty
+                SortMyItems(items, TableGetSortSpecs())
+            using() <| $(var clipper : ImGuiListClipper)
                 clipper |> Begin(length(items))
                 while clipper |> Step()
-                    for row_n in range(clipper.DisplayStart,clipper.DisplayEnd)
+                    for row_n in range(clipper.DisplayStart, clipper.DisplayEnd)
                         var item & = unsafe(items[row_n])
                         PushID(item.ID)
                         TableNextRow()
@@ -3446,9 +3446,9 @@ def DasShowDemoWindowTables()
                 | ImGuiTableFlags Sortable  | ImGuiTableFlags SortMulti
                 | ImGuiTableFlags RowBg     | ImGuiTableFlags Borders     | ImGuiTableFlags NoBordersInBody
                 | ImGuiTableFlags ScrollX   | ImGuiTableFlags ScrollY
-                | ImGuiTableFlags SizingFixedFit )
+                | ImGuiTableFlags SizingFixedFit)
             var contents_type = ContentsTypeEx CT_SelectableSpanRow
-            let contents_type_names = [[string "Text"; "Button"; "SmallButton"; "FillButton"; "Selectable"; "Selectable (span row)" ]]
+            let contents_type_names = [[string "Text"; "Button"; "SmallButton"; "FillButton"; "Selectable"; "Selectable (span row)"]]
             var freeze_cols = 1
             var freeze_rows = 1
             var items_count = length(template_items_names) * 2
@@ -3558,8 +3558,8 @@ def DasShowDemoWindowTables()
             Spacing()
             TreePop()
         static_let <|
-            var items:array<MyItem>
-            var selection:array<int>
+            var items : array<MyItem>
+            var selection : array<int>
             var items_need_sort = false
         if length(items) != items_count
             items |> resize(items_count)
@@ -3584,19 +3584,19 @@ def DasShowDemoWindowTables()
             TableSetupColumn("Hidden",       ImGuiTableColumnFlags DefaultHide | ImGuiTableColumnFlags NoSort)
             TableSetupScrollFreeze(freeze_cols, freeze_rows)
             var sorts_specs = TableGetSortSpecs()
-            if sorts_specs!=null && sorts_specs.SpecsDirty
+            if sorts_specs != null && sorts_specs.SpecsDirty
                 items_need_sort = true
             if items_need_sort
-                SortMyItems ( items, TableGetSortSpecs() )
+                SortMyItems(items, TableGetSortSpecs())
                 items_need_sort = false
             let sorts_specs_using_quantity = TableGetColumnFlags(3) && ImGuiTableColumnFlags IsSorted
             if show_headers
                 TableHeadersRow()
             PushButtonRepeat(true)
-            using() <| $ ( var clipper : ImGuiListClipper )
+            using() <| $(var clipper : ImGuiListClipper)
                 clipper |> Begin(length(items))
                 while clipper |> Step()
-                    for row_n in range(clipper.DisplayStart,clipper.DisplayEnd)
+                    for row_n in range(clipper.DisplayStart, clipper.DisplayEnd)
                         var item & = unsafe(items[row_n])
                         let item_is_selected = selection |> find_index(item.ID) != -1
                         PushID(item.ID)
@@ -3657,7 +3657,7 @@ def DasShowDemoWindowTables()
         static_let <|
             var show_debug_details = false
         Checkbox("Debug details", safe_addr(show_debug_details))
-        if show_debug_details && table_draw_list!=null
+        if show_debug_details && table_draw_list != null
             SameLine(0.0f, 0.0f)
             let table_draw_list_draw_cmd_count = table_draw_list.CmdBuffer |> length
             if table_draw_list == parent_draw_list
@@ -3671,13 +3671,13 @@ def DasShowDemoWindowTables()
         PopStyleVar()
 
 struct MyTreeNode
-    Name:string
-    Type:string
-    Size:int
-    ChildIdx:int
-    ChildCount:int
+    Name : string
+    Type : string
+    Size : int
+    ChildIdx : int
+    ChildCount : int
 
-def DisplayNode(node:MyTreeNode const?; all_nodes:MyTreeNode const?)
+def DisplayNode(node : MyTreeNode const?; all_nodes : MyTreeNode const?)
     TableNextRow()
     TableNextColumn()
     let is_folder = node.ChildCount > 0
@@ -3730,12 +3730,12 @@ def DasShowDemoWindowColumns()
         Text("Hovered")
         NextColumn()
         Separator()
-        let names = [[string "One"; "Two"; "Three" ]]
-        let paths = [[string "/path/one"; "/path/two"; "/path/three" ]]
+        let names = [[string "One"; "Two"; "Three"]]
+        let paths = [[string "/path/one"; "/path/two"; "/path/three"]]
         static_let <|
             var selected = -1
         for i in range(3)
-            if Selectable( "{i}", selected == i, ImGuiSelectableFlags SpanAllColumns)
+            if Selectable("{i}", selected == i, ImGuiSelectableFlags SpanAllColumns)
                 selected = i
             let hovered = IsItemHovered()
             NextColumn()
@@ -3825,10 +3825,10 @@ def DasShowDemoWindowColumns()
         BeginChild("##ScrollingRegion", child_size, ImGuiChildFlags None, ImGuiWindowFlags HorizontalScrollbar)
         Columns(10)
         let ITEMS_COUNT = 2000
-        using() <| $ ( var clipper : ImGuiListClipper )
+        using() <| $(var clipper : ImGuiListClipper)
             clipper |> Begin(ITEMS_COUNT)
             while clipper |> Step()
-                for i in range(clipper.DisplayStart,clipper.DisplayEnd)
+                for i in range(clipper.DisplayStart, clipper.DisplayEnd)
                     for j in range(10)
                         Text("Line {i} Column {j}...")
                         NextColumn()
@@ -3869,13 +3869,13 @@ enum Element
 
 def DasShowDemoWindowWidgets()
     if !CollapsingHeader("Widgets")
-        return;
+        return ;
     if TreeNode("Basic")
         static_let <|
             var clicked = 0
         if Button("Button")
             clicked++;
-        if (clicked & 1)!=0
+        if (clicked & 1) != 0
             SameLine()
             Text("Thanks for clicking me!")
         static_let <|
@@ -3922,7 +3922,7 @@ def DasShowDemoWindowWidgets()
             BeginTooltip()
             Text("I am a fancy tooltip")
             static_let <|
-                var arr = [[float 0.6f; 0.1f; 1.0f; 0.5f; 0.92f; 0.1f; 0.2f ]]
+                var arr = [[float 0.6f; 0.1f; 1.0f; 0.5f; 0.92f; 0.1f; 0.2f]]
             PlotLines("Curve", arr)
             EndTooltip()
         Separator()
@@ -3937,7 +3937,7 @@ def DasShowDemoWindowWidgets()
                 " an explanation of how to use the more flexible and general BeginCombo/EndCombo API.")
         if true
             static_let <|
-                var str0 <- ImGuiInputTextBuffer("Hello, world!",128)
+                var str0 <- ImGuiInputTextBuffer("Hello, world!", 128)
             InputText("input text", str0)
             SameLine()
             DasHelpMarker(
@@ -3977,7 +3977,7 @@ def DasShowDemoWindowWidgets()
                 "You can input value using the scientific notation,\n" +
                 "  e.g. \"1e+8\" becomes \"100000000\".")
             static_let <|
-                var vec4a = [[float[4] 0.10f; 0.20f; 0.30f; 0.44f ]]
+                var vec4a = [[float[4] 0.10f; 0.20f; 0.30f; 0.44f]]
             InputFloat3("input float3", safe_addr(vec4a[0]))
         if true
             static_let <|
@@ -4011,7 +4011,7 @@ def DasShowDemoWindowWidgets()
             SliderAngle("slider angle", safe_addr(angle))
             static_let <|
                 var elem = Element Fire
-                let elems_names = [[string "Fire"; "Earth"; "Air"; "Water" ]]
+                let elems_names = [[string "Fire"; "Earth"; "Air"; "Water"]]
             let elem_name = (int(elem) >= 0 && int(elem) <= int(Element Water)) ? elems_names[int(elem)] : "Unknown";
             unsafe
                 SliderInt("slider enum", reinterpret<int?> addr(elem), 0, int(Element Water), elem_name)
@@ -4031,7 +4031,7 @@ def DasShowDemoWindowWidgets()
             ColorEdit4("color 2", safe_addr(col2[0]))
         if true
             static_let <|
-                let items = [[string "Apple"; "Banana"; "Cherry"; "Kiwi"; "Mango"; "Orange"; "Pineapple"; "Strawberry"; "Watermelon" ]]
+                let items = [[string "Apple"; "Banana"; "Cherry"; "Kiwi"; "Mango"; "Orange"; "Pineapple"; "Strawberry"; "Watermelon"]]
             static_let <|
                 var item_current = 1
             ListBox("listbox", safe_addr(item_current), items, 4)
@@ -4252,7 +4252,7 @@ def DasShowDemoWindowWidgets()
         if CheckboxFlags("ImGuiComboFlags NoPreview", safe_addr(flags), ImGuiComboFlags NoPreview)
             flags &= ~ImGuiComboFlags NoArrowButton
         static_let <|
-            let items = [[string "AAAA"; "BBBB"; "CCCC"; "DDDD"; "EEEE"; "FFFF"; "GGGG"; "HHHH"; "IIII"; "JJJJ"; "KKKK"; "LLLLLLL"; "MMMM"; "OOOOOOO" ]]
+            let items = [[string "AAAA"; "BBBB"; "CCCC"; "DDDD"; "EEEE"; "FFFF"; "GGGG"; "HHHH"; "IIII"; "JJJJ"; "KKKK"; "LLLLLLL"; "MMMM"; "OOOOOOO"]]
             var item_current_idx = 0
         let combo_label = items[item_current_idx]
         if BeginCombo("combo 1", combo_label, flags)
@@ -4265,12 +4265,12 @@ def DasShowDemoWindowWidgets()
             EndCombo()
         static_let <|
             var item_current_2 = 0
-        Combo("combo 2 (one-liner)", safe_addr(item_current_2), [[string "aaaa";"bbbb";"cccc";"dddd"; "eeee"]])
+        Combo("combo 2 (one-liner)", safe_addr(item_current_2), [[string "aaaa"; "bbbb"; "cccc"; "dddd"; "eeee"]])
         static_let <|
             var item_current_3 = -1
         Combo("combo 3 (array)", safe_addr(item_current_3), items)
         static_let <|
-            var func_getter <- ImGuiComboGetter() <| @ ( index:int; var output:string& )
+            var func_getter <- ImGuiComboGetter() <| @(index : int; var output : string&)
                 output = "fun[{index}] = {items[index]}"
                 return true
             var item_current_4 = 0
@@ -4279,7 +4279,7 @@ def DasShowDemoWindowWidgets()
 
     if TreeNode("List boxes")
         static_let <|
-            let items = [[string "AAAA"; "BBBB"; "CCCC"; "DDDD"; "EEEE"; "FFFF"; "GGGG"; "HHHH"; "IIII"; "JJJJ"; "KKKK"; "LLLLLLL"; "MMMM"; "OOOOOOO" ]]
+            let items = [[string "AAAA"; "BBBB"; "CCCC"; "DDDD"; "EEEE"; "FFFF"; "GGGG"; "HHHH"; "IIII"; "JJJJ"; "KKKK"; "LLLLLLL"; "MMMM"; "OOOOOOO"]]
             var item_current_idx = 0
         if BeginListBox("listbox 1")
             for n in range(length(items))
@@ -4303,7 +4303,7 @@ def DasShowDemoWindowWidgets()
     if TreeNode("Selectables")
         if TreeNode("Basic")
             static_let <|
-                var selection = [[bool false; true; false; false; false ]]
+                var selection = [[bool false; true; false; false; false]]
             Selectable("1. I am selectable", safe_addr(selection[0]))
             Selectable("2. I am selectable", safe_addr(selection[1]))
             Text("3. I am not selectable")
@@ -4354,7 +4354,7 @@ def DasShowDemoWindowWidgets()
                 for i in range(10)
                     TableNextRow()
                     TableNextColumn()
-                    Selectable( "Item {i}", safe_addr(selected[i]), ImGuiSelectableFlags SpanAllColumns)
+                    Selectable("Item {i}", safe_addr(selected[i]), ImGuiSelectableFlags SpanAllColumns)
                     TableNextColumn()
                     Text("Some other contents")
                     TableNextColumn()
@@ -4363,9 +4363,9 @@ def DasShowDemoWindowWidgets()
             TreePop()
         if TreeNode("Grid")
             static_let <|
-                var selected = [[int[4*4] 1; 0; 0; 0; 0; 1; 0; 0; 0; 0; 1; 0; 0; 0; 0; 1]]
+                var selected = [[int[4 * 4] 1; 0; 0; 0; 0; 1; 0; 0; 0; 0; 1; 0; 0; 0; 0; 1]]
             let time = float(GetTime())
-            let winning_state = find_index(selected,0)==0
+            let winning_state = find_index(selected, 0) == 0
             if winning_state
                 PushStyleVar(ImGuiStyleVar SelectableTextAlign, float2(0.5f + 0.5f * cos(time * 2.0f), 0.5f + 0.5f * sin(time * 3.0f)))
             for y in range(4)
@@ -4373,16 +4373,16 @@ def DasShowDemoWindowWidgets()
                     if x > 0
                         SameLine()
                     PushID(y * 4 + x)
-                    if Selectable("Sailor", selected[y*4+x] != 0, ImGuiSelectableFlags None, float2(50., 50.))
-                        selected[y*4+x] ^= 1
+                    if Selectable("Sailor", selected[y * 4 + x] != 0, ImGuiSelectableFlags None, float2(50., 50.))
+                        selected[y * 4 + x] ^= 1
                         if x > 0
-                            selected[y*4 + x - 1] ^= 1
+                            selected[y * 4 + x - 1] ^= 1
                         if x < 3
-                            selected[y*4 + x + 1] ^= 1
+                            selected[y * 4 + x + 1] ^= 1
                         if y > 0
-                            selected[(y-1)*4 + x] ^= 1
+                            selected[(y - 1) * 4 + x] ^= 1
                         if y < 3
-                            selected[(y+1)*4 + x] ^= 1
+                            selected[(y + 1) * 4 + x] ^= 1
                     PopID()
             if winning_state
                 PopStyleVar()
@@ -4393,7 +4393,7 @@ def DasShowDemoWindowWidgets()
                 "basis using PushStyleVar(). You'll probably want to always keep your default situation to " +
                 "left-align otherwise it becomes difficult to layout multiple items on a same line")
             static_let <|
-                var selected = [[bool[3*3] true; false; true; false; true; false; true; false; true ]]
+                var selected = [[bool[3 * 3] true; false; true; false; true; false; true; false; true]]
             for y in range(3)
                 for x in range(3)
                     var alignment = float2(float(x) / 2.0f, float(y) / 2.0f)
@@ -4408,7 +4408,7 @@ def DasShowDemoWindowWidgets()
     if TreeNode("Text Input")
         if TreeNode("Multi-line Text Input")
             static_let <|
-                var text <-ImGuiInputTextBuffer(
+                var text <- ImGuiInputTextBuffer(
                     "///\n" +
                     " The Pentium F00F bug, shorthand for F0 0F C7 C8,\n" +
                     " the hexadecimal encoding of one offending instruction,\n" +
@@ -4419,10 +4419,10 @@ def DasShowDemoWindowWidgets()
                     "\n\n" +
                     "label:\n" +
                     "\tlock cmpxchg8b eax\n",
-                    1024*16)
+                    1024 * 16)
                 var flags = ImGuiInputTextFlags AllowTabInput
-            DasHelpMarker("You can use the ImGuiInputTextFlags CallbackResize facility if you need to wire InputTextMultiline()"+
-                " to a dynamic string type. See misc/cpp/imgui_stdlib.h for an example. "+
+            DasHelpMarker("You can use the ImGuiInputTextFlags CallbackResize facility if you need to wire InputTextMultiline()" +
+                " to a dynamic string type. See misc/cpp/imgui_stdlib.h for an example. " +
                 "(This is not demonstrated in imgui_demo.cpp because we don't want to include <string> in here)")
             CheckboxFlags("ImGuiInputTextFlags ReadOnly", safe_addr(flags), ImGuiInputTextFlags ReadOnly)
             CheckboxFlags("ImGuiInputTextFlags AllowTabInput", safe_addr(flags), ImGuiInputTextFlags AllowTabInput)
@@ -4431,31 +4431,31 @@ def DasShowDemoWindowWidgets()
             TreePop()
         if TreeNode("Filtered Text Input")
             static_let <|
-                var buf1 <- ImGuiInputTextBuffer("",64)
+                var buf1 <- ImGuiInputTextBuffer("", 64)
             InputText("default",     buf1)
             static_let <|
-                var buf2 <- ImGuiInputTextBuffer("",64)
+                var buf2 <- ImGuiInputTextBuffer("", 64)
             InputText("decimal",     buf2, ImGuiInputTextFlags CharsDecimal)
             static_let <|
-                var buf3 <- ImGuiInputTextBuffer("",64)
+                var buf3 <- ImGuiInputTextBuffer("", 64)
             InputText("hexadecimal", buf3, ImGuiInputTextFlags CharsHexadecimal | ImGuiInputTextFlags CharsUppercase)
             static_let <|
-                var buf4 <- ImGuiInputTextBuffer("",64)
+                var buf4 <- ImGuiInputTextBuffer("", 64)
             InputText("uppercase",   buf4, ImGuiInputTextFlags CharsUppercase)
             static_let <|
-                var buf5 <- ImGuiInputTextBuffer("",64)
+                var buf5 <- ImGuiInputTextBuffer("", 64)
             InputText("no blank",    buf5, ImGuiInputTextFlags CharsNoBlank)
             static_let <|
-                var buf6 <- ImGuiInputTextBuffer("",64) <| @ ( it,data )
+                var buf6 <- ImGuiInputTextBuffer("", 64) <| @(it, data)
                     let ch = int(data.EventChar)
-                    if ch=='i' || ch=='m' || ch=='g' || ch=='u'
+                    if ch == 'i' || ch == 'm' || ch == 'g' || ch == 'u'
                         return 0
                     return 1
             InputText("\"imgui\" letters", buf6, ImGuiInputTextFlags CallbackCharFilter)
             TreePop()
         if (TreeNode("Password Input"))
             static_let <|
-                var password <- ImGuiInputTextBuffer("password123",64)
+                var password <- ImGuiInputTextBuffer("password123", 64)
             InputText("password", password, ImGuiInputTextFlags Password)
             SameLine()
             DasHelpMarker("Display all characters as '*'.\nDisable clipboard cut and copy.\nDisable logging.\n")
@@ -4465,17 +4465,17 @@ def DasShowDemoWindowWidgets()
 
         if TreeNode("Completion, History, Edit Callbacks")
             static_let <|
-                var buf1 <- ImGuiInputTextBuffer("",64) <| MakeMyCallback()
+                var buf1 <- ImGuiInputTextBuffer("", 64) <| MakeMyCallback()
             InputText("Completion", buf1, ImGuiInputTextFlags CallbackCompletion)
             SameLine()
             DasHelpMarker("Here we append \"..\" each time Tab is pressed. See 'Examples>Console' for a more meaningful demonstration of using this callback.")
             static_let <|
-                var buf2 <- ImGuiInputTextBuffer("",64) <| MakeMyCallback()
+                var buf2 <- ImGuiInputTextBuffer("", 64) <| MakeMyCallback()
             InputText("History", buf2, ImGuiInputTextFlags CallbackHistory)
             SameLine()
             DasHelpMarker("Here we replace and select text each time Up/Down are pressed. See 'Examples>Console' for a more meaningful demonstration of using this callback.")
             static_let <|
-                var buf3 <- ImGuiInputTextBuffer("",64) <| MakeMyCallback()
+                var buf3 <- ImGuiInputTextBuffer("", 64) <| MakeMyCallback()
             InputText("Edit", buf3, ImGuiInputTextFlags CallbackEdit)
             SameLine()
             DasHelpMarker("Here we toggle the casing of the first character on every edits + count edits.")
@@ -4488,7 +4488,7 @@ def DasShowDemoWindowWidgets()
                 "Using ImGuiInputTextFlags CallbackResize to wire your custom string type to InputText().\n\n" +
                 "See misc/cpp/imgui_stdlib.h for an implementation of this for std::string.")
             static_let <|
-                var m_str <- ImGuiInputTextBuffer("",64) <| @ ( it,data )
+                var m_str <- ImGuiInputTextBuffer("", 64) <| @(it, data)
                     if data.EventFlag == ImGuiInputTextFlags CallbackResize
                         it.buffer |> resize(data.BufSize)
                         unsafe
@@ -4532,7 +4532,7 @@ def DasShowDemoWindowWidgets()
                 tab_bar_flags &= ~(ImGuiTabBarFlags FittingPolicyMask_ ^ ImGuiTabBarFlags FittingPolicyScroll)
             static_let <|
                 let names = [[string "Artichoke"; "Beetroot"; "Celery"; "Daikon"]]
-                var opened = [[bool true; true; true; true ]]
+                var opened = [[bool true; true; true; true]]
             for n in range(length(opened))
                 if n > 0
                     SameLine()
@@ -4541,7 +4541,7 @@ def DasShowDemoWindowWidgets()
                 for n in range(length(opened))
                     if opened[n] && BeginTabItem(names[n], safe_addr(opened[n]), ImGuiTabItemFlags None)
                         Text("This is the {names[n]} tab!")
-                        if (n & 1)!=0
+                        if (n & 1) != 0
                             Text("I am an odd tab.")
                         EndTabItem()
                 EndTabBar()
@@ -4603,7 +4603,7 @@ def DasShowDemoWindowWidgets()
             var values : float[90]
             var values_offset = 0;
             var refresh_time = 0.0lf
-        if !animate || refresh_time==0.0lf
+        if !animate || refresh_time == 0.0lf
             refresh_time = GetTime()
         while refresh_time < GetTime()
             static_let <|
@@ -4620,10 +4620,10 @@ def DasShowDemoWindowWidgets()
             PlotLines("Lines", values, values_offset, "avg {average}", -1.0f, 1.0f, float2(0., 80.0f))
         PlotHistogram("Histogram", arr, 0, "", 0.0f, 1.0f, float2(0., 80.0f))
         static_let <|
-            var Sin <- ImGuiPlotGetter() <| @ ( i )
-                return sin(float(i)*0.1)
-            var Saw <- ImGuiPlotGetter() <| @ ( i )
-                return (i & 1)!=0 ? 1.0f : -1.0f
+            var Sin <- ImGuiPlotGetter() <| @(i)
+                return sin(float(i) * 0.1)
+            var Saw <- ImGuiPlotGetter() <| @(i)
+                return (i & 1) != 0 ? 1.0f : -1.0f
             var func_type = 0
             var display_count = 70
         Separator()
@@ -4768,7 +4768,7 @@ def DasShowDemoWindowWidgets()
             if ref_color
                 SameLine()
                 ColorEdit4("##RefColor", safe_addr(ref_color_v.x), ImGuiColorEditFlags NoInputs | misc_flags)
-        Combo("Display Mode", safe_addr(display_mode), [[string "Auto/Current";"None";"RGB Only";"HSV Only";"Hex Only"]])
+        Combo("Display Mode", safe_addr(display_mode), [[string "Auto/Current"; "None"; "RGB Only"; "HSV Only"; "Hex Only"]])
         SameLine()
         DasHelpMarker(
             "ColorEdit defaults to displaying RGB inputs if you don't specify a display mode, " +
@@ -4890,31 +4890,31 @@ def DasShowDemoWindowWidgets()
         let s32_zero = 0
         let s32_one = 1
         let s32_fifty = 50
-        let s32_min = INT_MIN/2
-        let s32_max = INT_MAX/2
-        let s32_hi_a = INT_MAX/2 - 100
-        let s32_hi_b = INT_MAX/2
+        let s32_min = INT_MIN / 2
+        let s32_max = INT_MAX / 2
+        let s32_hi_a = INT_MAX / 2 - 100
+        let s32_hi_b = INT_MAX / 2
         let u32_zero = 0u
         let u32_one = 1u
         let u32_fifty = 50u
         let u32_min = 0u
-        let u32_max = UINT_MAX/2u
-        let u32_hi_a = UINT_MAX/2u - 100u
-        let u32_hi_b = UINT_MAX/2u
+        let u32_max = UINT_MAX / 2u
+        let u32_hi_a = UINT_MAX / 2u - 100u
+        let u32_hi_b = UINT_MAX / 2u
         let s64_zero = 0l
         let s64_one = 1l
         let s64_fifty = 50l
-        let s64_min = LONG_MIN/2l
-        let s64_max = LONG_MAX/2l
-        let s64_hi_a = LONG_MAX/2l - 100l
-        let s64_hi_b = LONG_MAX/2l
+        let s64_min = LONG_MIN / 2l
+        let s64_max = LONG_MAX / 2l
+        let s64_hi_a = LONG_MAX / 2l - 100l
+        let s64_hi_b = LONG_MAX / 2l
         let u64_zero = 0ul
         let u64_one = 1ul
         let u64_fifty = 50ul
         let u64_min = 0ul
-        let u64_max = ULONG_MAX/2ul
-        let u64_hi_a = ULONG_MAX/2ul - 100ul
-        let u64_hi_b = ULONG_MAX/2ul
+        let u64_max = ULONG_MAX / 2ul
+        let u64_hi_a = ULONG_MAX / 2ul - 100ul
+        let u64_hi_b = ULONG_MAX / 2ul
         let f32_zero = 0.f
         let f32_one = 1.f
         let f32_lo_a = -10000000000.0f
@@ -4954,29 +4954,29 @@ def DasShowDemoWindowWidgets()
         DragScalar("drag float",     ImGuiDataType Float,  safe_addr(f32_v), 0.005f,  safe_addr(f32_zero), safe_addr(f32_one), "%f")
         DragScalar("drag float log", ImGuiDataType Float,  safe_addr(f32_v), 0.005f,  safe_addr(f32_zero), safe_addr(f32_one), "%f", ImGuiSliderFlags Logarithmic)
         DragScalar("drag double",    ImGuiDataType Double, safe_addr(f64_v), 0.0005f, safe_addr(f64_zero), null,     "%.10f grams")
-        DragScalar("drag double log",ImGuiDataType Double, safe_addr(f64_v), 0.0005f, safe_addr(f64_zero), safe_addr(f64_one), "0 < %.10f < 1", ImGuiSliderFlags Logarithmic)
+        DragScalar("drag double log", ImGuiDataType Double, safe_addr(f64_v), 0.0005f, safe_addr(f64_zero), safe_addr(f64_one), "0 < %.10f < 1", ImGuiSliderFlags Logarithmic)
         Text("Sliders")
         SliderScalar("slider s8 full",       ImGuiDataType S8,     safe_addr(s8_v),  safe_addr(s8_min),   safe_addr(s8_max),   "%d")
         SliderScalar("slider u8 full",       ImGuiDataType U8,     safe_addr(u8_v),  safe_addr(u8_min),   safe_addr(u8_max),   "%u")
         SliderScalar("slider s16 full",      ImGuiDataType S16,    safe_addr(s16_v), safe_addr(s16_min),  safe_addr(s16_max),  "%d")
         SliderScalar("slider u16 full",      ImGuiDataType U16,    safe_addr(u16_v), safe_addr(u16_min),  safe_addr(u16_max),  "%u")
-        SliderScalar("slider s32 low",       ImGuiDataType S32,    safe_addr(s32_v), safe_addr(s32_zero), safe_addr(s32_fifty),"%d")
+        SliderScalar("slider s32 low",       ImGuiDataType S32,    safe_addr(s32_v), safe_addr(s32_zero), safe_addr(s32_fifty), "%d")
         SliderScalar("slider s32 high",      ImGuiDataType S32,    safe_addr(s32_v), safe_addr(s32_hi_a), safe_addr(s32_hi_b), "%d")
         SliderScalar("slider s32 full",      ImGuiDataType S32,    safe_addr(s32_v), safe_addr(s32_min),  safe_addr(s32_max),  "%d")
-        SliderScalar("slider u32 low",       ImGuiDataType U32,    safe_addr(u32_v), safe_addr(u32_zero), safe_addr(u32_fifty),"%u")
+        SliderScalar("slider u32 low",       ImGuiDataType U32,    safe_addr(u32_v), safe_addr(u32_zero), safe_addr(u32_fifty), "%u")
         SliderScalar("slider u32 high",      ImGuiDataType U32,    safe_addr(u32_v), safe_addr(u32_hi_a), safe_addr(u32_hi_b), "%u")
         SliderScalar("slider u32 full",      ImGuiDataType U32,    safe_addr(u32_v), safe_addr(u32_min),  safe_addr(u32_max),  "%u")
-        SliderScalar("slider s64 low",       ImGuiDataType S64,    safe_addr(s64_v), safe_addr(s64_zero), safe_addr(s64_fifty),"%I64d")
+        SliderScalar("slider s64 low",       ImGuiDataType S64,    safe_addr(s64_v), safe_addr(s64_zero), safe_addr(s64_fifty), "%I64d")
         SliderScalar("slider s64 high",      ImGuiDataType S64,    safe_addr(s64_v), safe_addr(s64_hi_a), safe_addr(s64_hi_b), "%I64d")
         SliderScalar("slider s64 full",      ImGuiDataType S64,    safe_addr(s64_v), safe_addr(s64_min),  safe_addr(s64_max),  "%I64d")
-        SliderScalar("slider u64 low",       ImGuiDataType U64,    safe_addr(u64_v), safe_addr(u64_zero), safe_addr(u64_fifty),"%I64u ms")
+        SliderScalar("slider u64 low",       ImGuiDataType U64,    safe_addr(u64_v), safe_addr(u64_zero), safe_addr(u64_fifty), "%I64u ms")
         SliderScalar("slider u64 high",      ImGuiDataType U64,    safe_addr(u64_v), safe_addr(u64_hi_a), safe_addr(u64_hi_b), "%I64u ms")
         SliderScalar("slider u64 full",      ImGuiDataType U64,    safe_addr(u64_v), safe_addr(u64_min),  safe_addr(u64_max),  "%I64u ms")
         SliderScalar("slider float low",     ImGuiDataType Float,  safe_addr(f32_v), safe_addr(f32_zero), safe_addr(f32_one))
         SliderScalar("slider float low log", ImGuiDataType Float,  safe_addr(f32_v), safe_addr(f32_zero), safe_addr(f32_one),  "%.10f", ImGuiSliderFlags Logarithmic)
         SliderScalar("slider float high",    ImGuiDataType Float,  safe_addr(f32_v), safe_addr(f32_lo_a), safe_addr(f32_hi_a), "%e")
         SliderScalar("slider double low",    ImGuiDataType Double, safe_addr(f64_v), safe_addr(f64_zero), safe_addr(f64_one),  "%.10f grams")
-        SliderScalar("slider double low log",ImGuiDataType Double, safe_addr(f64_v), safe_addr(f64_zero), safe_addr(f64_one),  "%.10f", ImGuiSliderFlags Logarithmic)
+        SliderScalar("slider double low log", ImGuiDataType Double, safe_addr(f64_v), safe_addr(f64_zero), safe_addr(f64_one),  "%.10f", ImGuiSliderFlags Logarithmic)
         SliderScalar("slider double high",   ImGuiDataType Double, safe_addr(f64_v), safe_addr(f64_lo_a), safe_addr(f64_hi_a), "%e grams")
         Text("Sliders (reverse)")
         SliderScalar("slider s8 reverse",    ImGuiDataType S8,   safe_addr(s8_v),  safe_addr(s8_max),    safe_addr(s8_min), "%d")
@@ -5037,7 +5037,7 @@ def DasShowDemoWindowWidgets()
         VSliderInt("##int", float2(18., 160.), safe_addr(int_value), 0, 5)
         SameLine()
         static_let <|
-            var values = [[float 0.0f; 0.60f; 0.35f; 0.9f; 0.70f; 0.20f; 0.0f ]]
+            var values = [[float 0.0f; 0.60f; 0.35f; 0.9f; 0.70f; 0.20f; 0.0f]]
         PushID("set1")
         for i in range(7)
             if i > 0
@@ -5131,7 +5131,7 @@ def DasShowDemoWindowWidgets()
                         assert(payload.DataSize == 4)
                         var payload_n : int
                         unsafe
-                            payload_n = * reinterpret<int?>(payload.Data)
+                            payload_n = *reinterpret<int?>(payload.Data)
                         if mode == Mode Copy
                             names[n] = names[payload_n]
                         elif mode == Mode Move
@@ -5176,8 +5176,8 @@ def DasShowDemoWindowWidgets()
         var ret = false
         static_let <|
             var b = false
-            var col4f = [[float 1.0f; 0.5; 0.0f; 1.0f ]]
-            var str <- ImGuiInputTextBuffer("",32)
+            var col4f = [[float 1.0f; 0.5; 0.0f; 1.0f]]
+            var str <- ImGuiInputTextBuffer("", 32)
         if item_type == 0
             Text("ITEM: Text")
         elif item_type == 1
@@ -5247,13 +5247,13 @@ def DasShowDemoWindowWidgets()
             "IsWindowFocused(_RootWindow) = {IsWindowFocused(ImGuiFocusedFlags RootWindow)}\n" +
             "IsWindowFocused(_AnyWindow) = {IsWindowFocused(ImGuiFocusedFlags AnyWindow)}\n")
         BulletText(
-            "IsWindowHovered() = {IsWindowHovered()}\n"+
-            "IsWindowHovered(_AllowWhenBlockedByPopup) = {IsWindowHovered(ImGuiHoveredFlags AllowWhenBlockedByPopup)}\n"+
-            "IsWindowHovered(_AllowWhenBlockedByActiveItem) = {IsWindowHovered(ImGuiHoveredFlags AllowWhenBlockedByActiveItem)}\n"+
-            "IsWindowHovered(_ChildWindows) = {IsWindowHovered(ImGuiHoveredFlags ChildWindows)}\n"+
-            "IsWindowHovered(_ChildWindows|_RootWindow) = {IsWindowHovered(ImGuiHoveredFlags ChildWindows | ImGuiHoveredFlags RootWindow)}\n"+
-            "IsWindowHovered(_ChildWindows|_AllowWhenBlockedByPopup) = {IsWindowHovered(ImGuiHoveredFlags ChildWindows | ImGuiHoveredFlags AllowWhenBlockedByPopup)}\n"+
-            "IsWindowHovered(_RootWindow) = {IsWindowHovered(ImGuiHoveredFlags RootWindow)}\n"+
+            "IsWindowHovered() = {IsWindowHovered()}\n" +
+            "IsWindowHovered(_AllowWhenBlockedByPopup) = {IsWindowHovered(ImGuiHoveredFlags AllowWhenBlockedByPopup)}\n" +
+            "IsWindowHovered(_AllowWhenBlockedByActiveItem) = {IsWindowHovered(ImGuiHoveredFlags AllowWhenBlockedByActiveItem)}\n" +
+            "IsWindowHovered(_ChildWindows) = {IsWindowHovered(ImGuiHoveredFlags ChildWindows)}\n" +
+            "IsWindowHovered(_ChildWindows|_RootWindow) = {IsWindowHovered(ImGuiHoveredFlags ChildWindows | ImGuiHoveredFlags RootWindow)}\n" +
+            "IsWindowHovered(_ChildWindows|_AllowWhenBlockedByPopup) = {IsWindowHovered(ImGuiHoveredFlags ChildWindows | ImGuiHoveredFlags AllowWhenBlockedByPopup)}\n" +
+            "IsWindowHovered(_RootWindow) = {IsWindowHovered(ImGuiHoveredFlags RootWindow)}\n" +
             "IsWindowHovered(_AnyWindow) = {IsWindowHovered(ImGuiHoveredFlags AnyWindow)}\n")
 
         BeginChild("child", float2(0., 50.), ImGuiChildFlags Border)
@@ -5281,7 +5281,7 @@ def DasShowDemoWindowWidgets()
 var g_edit_count = 0
 
 def MakeMyCallback()
-    return @ <| ( var it:ImGuiInputTextBuffer; var data:ImGuiInputTextCallbackData ) : int
+    return @ <| (var it : ImGuiInputTextBuffer; var data : ImGuiInputTextCallbackData) : int
         if data.EventFlag == ImGuiInputTextFlags CallbackCompletion
             data |> InsertChars(data.CursorPos, "..")
         elif data.EventFlag == ImGuiInputTextFlags CallbackHistory

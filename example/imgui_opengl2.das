@@ -1,3 +1,4 @@
+options gen2
 options persistent_heap = true
 
 require imgui_app
@@ -8,23 +9,25 @@ require imgui_demo
 
 var window : GLFWwindow?
 
-def imgui_app ( title:string; blk : block )
-    if glfwInit()==0
-		panic("can't init glfw")
-    glfwInitOpenGL(3,3,false,false)
+def imgui_app(title : string; blk : block) {
+    if (glfwInit() == 0) {
+        panic("can't init glfw")
+    }
+    glfwInitOpenGL(3, 3, false, false)
     window = glfwCreateWindow(1280, 720, title, null, null)
-    if window==null
-  		panic("can't create window")
+    if (window == null) {
+          panic("can't create window")
+    }
     glfwMakeContextCurrent(window)
     glfwSwapInterval(1)
     CreateContext(null)
     var io & = unsafe(GetIO())
-    io.FontGlobalScale = 2.0;   // BBATKIN: note - my monitor is HUGE
+    io.FontGlobalScale = 2.0   // BBATKIN: note - my monitor is HUGE
     StyleColorsDark(null)
     ImGui_ImplGlfw_InitForOpenGL(window, true)
     ImGui_ImplOpenGL3_Init("#version 330")
     var clear_color = float4(0.45f, 0.55f, 0.60f, 1.00f)
-    while glfwWindowShouldClose(window)==0
+    while (glfwWindowShouldClose(window) == 0) {
         glfwPollEvents()
         ImGui_ImplOpenGL3_NewFrame()
         ImGui_ImplGlfw_NewFrame()
@@ -37,17 +40,21 @@ def imgui_app ( title:string; blk : block )
         ImGui_ImplOpenGL3_RenderDrawData(GetDrawData())
         glfwMakeContextCurrent(window)
         glfwSwapBuffers(window)
+    }
     ImGui_ImplOpenGL3_Shutdown()
     ImGui_ImplGlfw_Shutdown()
     DestroyContext(null)
     glfwDestroyWindow(window)
     glfwTerminate()
+}
 
 [export]
-def main
-	var f = 0.0
-	imgui_app("Testing IMGUI") <|
+def main {
+    var f = 0.0
+    imgui_app("Testing IMGUI") <| $() {
         NewFrame()
         DasShowDemoWindow(null)
         Render()
+    }
+}
 
