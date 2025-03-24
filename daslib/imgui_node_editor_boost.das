@@ -13,32 +13,32 @@ typedef PinId = int
 typedef NodeId = int
 
 
-def Begin ( name:string; sz:float2; blk:block ) {
+def Begin(name : string; sz : float2; blk : block) {
     Begin(name, sz)
     invoke(blk)
     imgui_node_editor::End()
 }
 
-def BeginNode ( id:int; blk:block ) {
+def BeginNode(id : int; blk : block) {
     BeginNode(id)
     invoke(blk)
     EndNode()
 }
 
-def BeginPin ( id:int; kind:PinKind; blk:block ) {
-    BeginPin(id,kind)
+def BeginPin(id : int; kind : PinKind; blk : block) {
+    BeginPin(id, kind)
     invoke(blk)
     EndPin()
 }
 
-def BeginCreate ( color:float4 = float4(1); thickness:float = 1.0f; blk:block ) {
-    if (BeginCreate(color,thickness)) {
+def BeginCreate(color : float4 = float4(1); thickness : float = 1.0f; blk : block) {
+    if (BeginCreate(color, thickness)) {
         invoke(blk)
     }
     EndCreate()
 }
 
-def BeginDelete ( blk : block ) {
+def BeginDelete(blk : block) {
     if (BeginDelete()) {
         invoke(blk)
     }
@@ -51,7 +51,7 @@ def GetSelectedNodes : array<NodeId> {
         var sna : array<void?>
         sna |> resize(snc)
         unsafe {
-            snc = GetSelectedNodes(reinterpret<NodeId?> addr(sna[0]),snc)
+            snc = GetSelectedNodes(reinterpret<NodeId?> addr(sna[0]), snc)
         }
         return <- [for (x in range(snc)); NodeId(intptr(sna[x]))]
     } else {
@@ -66,7 +66,7 @@ def GetSelectedLinks : array<LinkId> {
         var sna : array<void?>
         sna |> resize(snc)
         unsafe {
-            snc = GetSelectedLinks(reinterpret<LinkId?> addr(sna[0]),snc)
+            snc = GetSelectedLinks(reinterpret<LinkId?> addr(sna[0]), snc)
         }
         return <- [for (x in range(snc)); LinkId(intptr(sna[x]))]
     } else {

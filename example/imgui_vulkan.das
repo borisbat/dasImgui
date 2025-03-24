@@ -15,7 +15,7 @@ require imgui_demo
 require imgui_vulkan
 
 
-def imgui_vulkan_app ( title:string; blk : block<(c:CommandBuffer)> )
+def imgui_vulkan_app(title : string; blk : block<(c : CommandBuffer)>)
     var app <- SimpleVulkanApp(title, 1920, 1080,
         VkPresentModeKHR VK_PRESENT_MODE_MAILBOX_KHR
         //VkPresentModeKHR VK_PRESENT_MODE_FIFO_KHR
@@ -27,7 +27,7 @@ def imgui_vulkan_app ( title:string; blk : block<(c:CommandBuffer)> )
     StyleColorsDark(null)
     ImGui_ImplGlfw_InitForVulkan(app |> glfw_window, true)
 
-    var init_info <- [[ ImGui_ImplVulkan_InitInfo
+    var init_info <- [[ImGui_ImplVulkan_InitInfo
         Instance        = app |> vk_instance,
         PhysicalDevice  = app |> vk_phys_dev,
         Device          = app |> vk_device,
@@ -62,7 +62,7 @@ def main()
     let heap_on_start = heap_bytes_allocated()
     let string_heap_on_start = string_heap_bytes_allocated()
 
-	imgui_vulkan_app("Testing IMGUI Vulkan") <| $(cmd : CommandBuffer)
+    imgui_vulkan_app("Testing IMGUI Vulkan") <| $(cmd : CommandBuffer)
         NewFrame()
         DasShowDemoWindow(null)
         Render()

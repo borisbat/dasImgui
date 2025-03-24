@@ -1,3 +1,4 @@
+options gen2
 options persistent_heap
 options persistent_string_heap
 
@@ -16,67 +17,82 @@ require daslib/safe_addr
 // basic node view
 
 
-class NodeView
-    def abstract editNodes ( assign_position : bool ) : void
+class NodeView {
+    def abstract editNodes(assign_position : bool) : void
     def abstract editLinks : void
+}
 
 /////////////////////
 // ast implementation
 
-struct AstIdHelper
+struct AstIdHelper {
     node_id : int = 1
     node2id : table<string; int>
     id2node : table<int; string>
+}
 
-def get_id ( var helper:AstIdHelper; uid:string )
-    if helper.node2id |> key_exists(uid)
-        return helper.node2id[uid]
-    else
+def get_id(var helper : AstIdHelper; uid : string) {
+    if (helper.node2id |> key_exists(uid)) {
+        return helper.node2id.get_value(uid)
+    } else {
         var id = helper.node_id ++
-        helper.node2id[uid] = id
-        helper.id2node[id] = uid
+        helper.node2id.insert(uid, id)
+        helper.id2node.insert(id, uid)
         return id
+    }
+}
 
-def get_function_id ( var helper:AstIdHelper; fun:FunctionPtr )
+def get_function_id(var helper : AstIdHelper; fun : FunctionPtr) {
     return helper |> get_id("function {get_mangled_name(fun)}")
+}
 
-def get_function_argument_id ( var helper:AstIdHelper; fun:FunctionPtr; arg:VariablePtr )
+def get_function_argument_id(var helper : AstIdHelper; fun : FunctionPtr; arg : VariablePtr) {
     return helper |> get_id("function {get_mangled_name(fun)} argument {arg.name}")
+}
 
 
-def get_function_result_id ( var helper:AstIdHelper; fun:FunctionPtr )
+def get_function_result_id(var helper : AstIdHelper; fun : FunctionPtr) {
     return helper |> get_id("function result {get_mangled_name(fun)}")
+}
 
-def intptr ( expr:ExpressionPtr )
+def intptr(expr : ExpressionPtr) {
     var p = intptr(null)
-    unsafe
+    unsafe {
         return intptr(reinterpret <void?> expr)
+    }
+}
 
-def get_node_id ( var helper:AstIdHelper; expr:ExpressionPtr )
+def get_node_id(var helper : AstIdHelper; expr : ExpressionPtr) {
     return helper |> get_id("{expr.__rtti} {intptr(expr)}")
+}
 
-def get_expr_eval_id ( var helper:AstIdHelper; expr:ExpressionPtr )
+def get_expr_eval_id(var helper : AstIdHelper; expr : ExpressionPtr) {
     return helper |> get_id("{expr.__rtti} eval {intptr(expr)}")
+}
 
-def get_expr_var_id ( var helper:AstIdHelper; expr:smart_ptr<ExprVar> )
+def get_expr_var_id(var helper : AstIdHelper; expr : smart_ptr<ExprVar>) {
     return helper |> get_id("{expr.__rtti} variable {intptr(expr)}")
+}
 
-def get_expr_field_id ( var helper:AstIdHelper; expr:ExpressionPtr; field:string )
+def get_expr_field_id(var helper : AstIdHelper; expr : ExpressionPtr; field : string) {
     return helper |> get_id("{expr.__rtti} field {field} {intptr(expr)}")
+}
 
-let
+let {
     FUNCTION_VPAD = 20.
     FUNCTION_HPAD = 20.
     BLOCK_VPAD = 20.
     BLOCK_HPAD = 40.
     EXPR_HPAD = 30.
+}
 
-struct AstNodeLink
+struct AstNodeLink {
     lid : int
     from : int
     to : int
+}
 
-class AstNodeViewVisitor : AstVisitor
+class AstNodeViewVisitor : AstVisitor {
     helper : AstIdHelper?
     assign_position : bool
     cursor : float2
@@ -84,168 +100,227 @@ class AstNodeViewVisitor : AstVisitor
     voffset : array<float>
     vmax : float
     links : array<AstNodeLink>
-    def AstNodeViewVisitor(var h:AstIdHelper)
+    def AstNodeViewVisitor(var h : AstIdHelper) {
         assign_position = false
-        unsafe
+        unsafe {
             helper = addr(h)
-    def override preVisitProgram(prog:ProgramPtr) : void
+        }
+    }
+    def override preVisitProgram(prog : ProgramPtr) : void {
         links |> clear()
-        if assign_position
-            cursor = float2(10,10)
+        if (assign_position) {
+            cursor = float2(10, 10)
             hoffset |> clear()
             voffset |> clear()
             vmax = 0.
-    def override preVisitFunction(fun:FunctionPtr)
+        }
+    }
+    def override preVisitFunction(fun : FunctionPtr) {
         let id = *helper |> get_function_id(fun)
-        BeginNode(id) <|
-            BeginNodeTitleBar() <|
+        BeginNode(id) <| $() {
+            BeginNodeTitleBar() <| $() {
                 Text("Function {fun.name}")
-            for arg in fun.arguments
-                let aid = *helper |> get_function_argument_id(fun,arg)
-                BeginOutputAttribute(aid) <|
+            }
+            for (arg in fun.arguments) {
+                let aid = *helper |> get_function_argument_id(fun, arg)
+                BeginOutputAttribute(aid) <| $() {
                     Text("{arg.name}")
-            if !fun.result.isVoid
+                }
+            }
+            if (!fun.result.isVoid) {
                 let rid = *helper |> get_function_result_id(fun)
-                BeginInputAttribute(rid) <|
+                BeginInputAttribute(rid) <| $() {
                     Text("Result")
-        if assign_position
+                }
+            }
+        }
+        if (assign_position) {
             SetNodeGridSpacePos(id, cursor)
             let dim = GetNodeDimensions(id)
             cursor.y += dim.y + BLOCK_VPAD
             cursor.x += FUNCTION_HPAD
-    def override visitFunction(fun:FunctionPtr)
-        if assign_position
+        }
+    }
+    def override visitFunction(fun : FunctionPtr) {
+        if (assign_position) {
             cursor.x -= FUNCTION_HPAD
             cursor.y += FUNCTION_VPAD
-        return fun
-    def override preVisitExprBlock(blk:smart_ptr<ExprBlock>)
+        }
+        unsafe {
+            return fun
+        }
+    }
+    def override preVisitExprBlock(blk : smart_ptr<ExprBlock>) {
         let id = *helper |> get_node_id(blk)
-        BeginNode (id) <|
-            BeginNodeTitleBar() <|
+        BeginNode(id) <| $() {
+            BeginNodeTitleBar() <| $() {
                 Text("ExprBlock")
-        if assign_position
+            }
+        }
+        if (assign_position) {
             SetNodeGridSpacePos(id, cursor)
             let dim = GetNodeDimensions(id)
             cursor.y += dim.y + BLOCK_VPAD
             hoffset |> push(cursor.x)
             cursor.x += BLOCK_HPAD
-    def override preVisitExprBlockExpression(blk:smart_ptr<ExprBlock>;expr:ExpressionPtr)
-        if assign_position
+        }
+    }
+    def override preVisitExprBlockExpression(blk : smart_ptr<ExprBlock>; expr : ExpressionPtr) {
+        if (assign_position) {
             hoffset |> push(cursor.x)
             voffset |> push(vmax)
             vmax = 0.
-    def override visitExprBlockExpression(blk:smart_ptr<ExprBlock>;expr:ExpressionPtr)
-        if assign_position
-            cursor.x = hoffset[length(hoffset)-1]
+        }
+    }
+    def override visitExprBlockExpression(blk : smart_ptr<ExprBlock>; expr : ExpressionPtr) {
+        if (assign_position) {
+            cursor.x = hoffset[length(hoffset) - 1]
             hoffset |> pop()
             cursor.y += vmax + BLOCK_VPAD
-            vmax = voffset[length(voffset)-1]
+            vmax = voffset[length(voffset) - 1]
             voffset |> pop()
-        return expr
-    def override visitExprBlock(blk:smart_ptr<ExprBlock>) : ExpressionPtr
-        if assign_position
-            cursor.x = hoffset[length(hoffset)-1]
+        }
+        unsafe {
+            return expr
+        }
+    }
+    def override visitExprBlock(var blk : smart_ptr<ExprBlock>) : ExpressionPtr {
+        if (assign_position) {
+            cursor.x = hoffset[length(hoffset) - 1]
             hoffset |> pop()
-        return blk
-    def nextExprEval(expr:ExpressionPtr):void
+        }
+        return <- blk
+    }
+    def nextExprEval(expr : ExpressionPtr) : void {
         let eid = *helper |> get_expr_eval_id(expr)
-        BeginOutputAttribute(eid) <|
+        BeginOutputAttribute(eid) <| $() {
             Text("eval")
-    def nextExprPos(id:int):void
-        if assign_position
+        }
+    }
+    def nextExprPos(id : int) : void {
+        if (assign_position) {
             SetNodeGridSpacePos(id, cursor)
             let dim = GetNodeDimensions(id)
             cursor.x += dim.x + EXPR_HPAD
             vmax = max(vmax, dim.y)
-    def exprFieldEvalPtr(expr:ExpressionPtr;field:string;node:ExpressionPtr):void
-        let pid = *helper |> get_expr_field_id(expr,field)
-        BeginInputAttribute(pid) <|
+        }
+    }
+    def exprFieldEvalPtr(expr : ExpressionPtr; field : string; node : ExpressionPtr) : void {
+        let pid = *helper |> get_expr_field_id(expr, field)
+        BeginInputAttribute(pid) <| $() {
             Text(field)
-        if node != null
+        }
+        if (node != null) {
             let nid = *helper |> get_expr_eval_id(node)
             let lid = *helper |> get_id("link {expr.__rtti} {intptr(expr)} => {node.__rtti} {intptr(node)}")
-            links |> push ([[AstNodeLink lid=lid, from=pid, to=nid]])
-    def override preVisitExprReturn(expr:smart_ptr<ExprReturn>) : void
+            links |> push(AstNodeLink(lid = lid, from = pid, to = nid))
+        }
+    }
+    def override preVisitExprReturn(expr : smart_ptr<ExprReturn>) : void {
         let id = *helper |> get_node_id(expr)
-        BeginNode (id) <|
-            BeginNodeTitleBar() <|
+        BeginNode(id) <| $() {
+            BeginNodeTitleBar() <| $() {
                 Text("ExprReturn")
-            self->exprFieldEvalPtr(expr,"subexpr",expr.subexpr)
+            }
+            self->exprFieldEvalPtr(expr, "subexpr", expr.subexpr)
+        }
         self->nextExprPos(id)
-    def override preVisitExprVar(expr:smart_ptr<ExprVar>)
+    }
+    def override preVisitExprVar(expr : smart_ptr<ExprVar>) {
         let id = *helper |> get_node_id(expr)
-        BeginNode (id) <|
-            BeginNodeTitleBar() <|
+        BeginNode(id) <| $() {
+            BeginNodeTitleBar() <| $() {
                 Text("ExprVar")
+            }
             let vid = *helper |> get_expr_var_id(expr)
-            BeginInputAttribute(vid) <|
+            BeginInputAttribute(vid) <| $() {
                 Text("{expr.name}")
+            }
             self->nextExprEval(expr)
+        }
         self->nextExprPos(id)
-    def override preVisitExprOp2(expr:smart_ptr<ExprOp2>)
+    }
+    def override preVisitExprOp2(expr : smart_ptr<ExprOp2>) {
         let id = *helper |> get_node_id(expr)
-        BeginNode (id) <|
-            BeginNodeTitleBar() <|
+        BeginNode(id) <| $() {
+            BeginNodeTitleBar() <| $() {
                 Text("ExprOp2 {expr.op}")
-            self->exprFieldEvalPtr(expr,"left",expr.left)
-            self->exprFieldEvalPtr(expr,"right",expr.right)
+            }
+            self->exprFieldEvalPtr(expr, "left", expr.left)
+            self->exprFieldEvalPtr(expr, "right", expr.right)
             self->nextExprEval(expr)
+        }
         self->nextExprPos(id)
+    }
+}
 
-class AstNodeView : NodeView
-    prog:ProgramPtr
-    access:FileAccessPtr
-    nvv:AstNodeViewVisitor?
-    nvva:smart_ptr<VisitorAdapter>
-    helper:AstIdHelper
-    def AstNodeView(fname:string)
+class AstNodeView : NodeView {
+    prog : ProgramPtr
+    access : FileAccessPtr
+    nvv : AstNodeViewVisitor?
+    nvva : smart_ptr<VisitorAdapter>
+    @safe_when_uninitialized helper : AstIdHelper
+    def AstNodeView(fname : string) {
         helper <- AstIdHelper()
         access := make_file_access("")
-        using <| $(var cop:CodeOfPolicies)
-            rtti::compile_file(fname,access,cop) <| $(ok,program,issues)
-                if ok
+        using <| $(var cop : CodeOfPolicies) {
+            compile_file(fname, access, cop) <| $(ok, program, issues) {
+                if (ok) {
                     prog := program
-                else
+                } else {
                     print("{fname} failed to compile\n{issues}\n")
+                }
+            }
+        }
         nvv = new AstNodeViewVisitor(helper)
-        unsafe
+        unsafe {
             nvva <- make_visitor(*nvv)
-    def finalize
+        }
+    }
+    def finalize {
         prog := null
         access := null
         nvva := null
-        unsafe
+        unsafe {
             delete nvv
-    def override editNodes ( assign_position : bool ) : void
+        }
+    }
+    def override editNodes(assign_position : bool) : void {
         nvv.assign_position = assign_position
         prog |> visit(nvva)
-    def override editLinks : void
+    }
+    def override editLinks : void {
         // print("\n\nlinking\n")
-        for lnk in nvv.links
-            imnodes::Link(lnk.lid,lnk.from,lnk.to)
+        for (lnk in nvv.links) {
+            imnodes::Link(lnk.lid, lnk.from, lnk.to)
+        }
+    }
+}
             // print("{helper.id2node[lnk.lid]}\n")
 
 var g_nodeView : NodeView?
 
 var window : GLFWwindow?
 
-def imgui_app ( title:string; blk : block )
-    if glfwInit()==0
-		panic("can't init glfw")
+def imgui_app(title : string; blk : block) {
+    if (glfwInit() == 0) {
+        panic("can't init glfw")
+    }
     window = glfwCreateWindow(1920, 1280, title, null, null)
-    if window==null
-  		panic("can't create window")
+    if (window == null) {
+          panic("can't create window")
+    }
     glfwMakeContextCurrent(window)
     glfwSwapInterval(1)
     CreateContext(null)
     imnodes::CreateContext()
     var io & = imgui::GetIO()
-    io.FontGlobalScale = 2.0;   // BBATKIN: note - my monitor is HUGE
+    io.FontGlobalScale = 2.0   // BBATKIN: note - my monitor is HUGE
     StyleColorsDark(null)
     ImGui_ImplGlfw_InitForOpenGL(window, true)
     ImGui_ImplOpenGL3_Init("#version 330")
     var clear_color = float4(0.45f, 0.55f, 0.60f, 1.00f)
-    while glfwWindowShouldClose(window)==0
+    while (glfwWindowShouldClose(window) == 0) {
         glfwPollEvents()
         ImGui_ImplOpenGL3_NewFrame()
         ImGui_ImplGlfw_NewFrame()
@@ -258,73 +333,96 @@ def imgui_app ( title:string; blk : block )
         ImGui_ImplOpenGL3_RenderDrawData(GetDrawData())
         glfwMakeContextCurrent(window)
         glfwSwapBuffers(window)
+    }
     imnodes::DestroyContext()
     ImGui_ImplOpenGL3_Shutdown()
     ImGui_ImplGlfw_Shutdown()
     imgui::DestroyContext(null)
     glfwDestroyWindow(window)
     glfwTerminate()
+}
 
-def MainMenu()
-    BeginMenuBar <|
-        BeginMenu("File") <|
+def MainMenu() {
+    BeginMenuBar <| $() {
+        BeginMenu("File") <| $() {
             pass
-        BeginMenu("Edit") <|
-            MenuItem("Undo", "CTRL+Z") <|
+        }
+        BeginMenu("Edit") <| $() {
+            MenuItem("Undo", "CTRL+Z") <| $() {
                 pass
-            MenuItem("Redo", "CTRL+Y", false, false) <|
+            }
+            MenuItem("Redo", "CTRL+Y", false, false) <| $() {
                 pass
+            }
             Separator()
-            MenuItem("Cut", "CTRL+X") <|
+            MenuItem("Cut", "CTRL+X") <| $() {
                 pass
-            MenuItem("Copy", "CTRL+C") <|
+            }
+            MenuItem("Copy", "CTRL+C") <| $() {
                 pass
-            MenuItem("Paste", "CTRL+V") <|
+            }
+            MenuItem("Paste", "CTRL+V") <| $() {
                 pass
+            }
+        }
+    }
+}
 
-def EditorDemo()
+def EditorDemo() {
     // creating editor context
-    static_let <|
+    static_let <| $() {
         var edc : EditorContext?
-    if edc==null
+    }
+    if (edc == null) {
         edc = imnodes::EditorContextCreate()
+    }
     // this is how we make sure node editor is full window and resizes
-    Begin("Node editor",null,ImGuiWindowFlags MenuBar | ImGuiWindowFlags NoTitleBar | ImGuiWindowFlags NoResize | ImGuiWindowFlags NoMove) <|
+    Begin("Node editor", null, ImGuiWindowFlags.MenuBar | ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove) <| $() {
         var IO & = imgui::GetIO()
-        SetWindowPos(float2(0.,0.), ImGuiCond Once)
-        SetWindowSize(float2(IO.DisplaySize.x,IO.DisplaySize.y), ImGuiCond Always)
+        SetWindowPos(float2(0., 0.), ImGuiCond.Once)
+        SetWindowSize(float2(IO.DisplaySize.x, IO.DisplaySize.y), ImGuiCond.Always)
         // main menu
         MainMenu()
         // editor
         imnodes::EditorContextSet(edc)
-        BeginNodeEditor() <|
+        BeginNodeEditor() <| $() {
             // this is how we do context menu for the node editor
-            if BeginPopupContextWindow("Node editor")
+            if (BeginPopupContextWindow("Node editor")) {
                 Text("Ok")
-                if BeginMenu("Sub-menu")
+                if (BeginMenu("Sub-menu")) {
                     MenuItem("Click me")
                     EndMenu()
+                }
                 EndPopup()
+            }
             // nodes
-            static_let <|
+            static_let <| $() {
                 var once = true
+            }
             g_nodeView->editNodes(once)
             once = false
             g_nodeView->editLinks()
+        }
+    }
     // link events
-    IsLinkCreated <| $ ( l_from, l_to )
+    IsLinkCreated <| $(l_from, l_to) {
         print("linked {l_from} {l_to}\n")
-    IsLinkDestroyed <| $ ( l_del )
+    }
+    IsLinkDestroyed <| $(l_del) {
         print("unlinked {l_del}\n")
+    }
+}
 
 
 [export]
-def main
+def main {
 
     g_nodeView = new AstNodeView("example.das")
 
-	var f = 0.0
-	imgui_app("Testing IMGUI") <|
+    var f = 0.0
+    imgui_app("Testing IMGUI") <| $() {
         NewFrame()
         EditorDemo()
         Render()
+    }
+}
