@@ -6,8 +6,6 @@ IF((NOT DAS_IMGUI_INCLUDED) AND ((NOT ${DAS_IMGUI_DISABLED}) OR (NOT DEFINED DAS
 
     LIST(APPEND CMAKE_MODULE_PATH ${DAS_IMGUI_DIR})
 
-    FIND_PACKAGE(Vulkan)
-
 	ADD_DEFINITIONS(-DIMGUI_DISABLE_OBSOLETE_FUNCTIONS=1)
 
 	SET(DAS_GLFW_DIR ${CMAKE_SOURCE_DIR}/modules/dasGlfw)
@@ -256,6 +254,10 @@ IF((NOT DAS_IMGUI_INCLUDED) AND ((NOT ${DAS_IMGUI_DISABLED}) OR (NOT DEFINED DAS
 			${GLFW_LIBRARIES}
 			${OPENGL_LIBRARIES}
 		)
+		IF(UNIX AND NOT APPLE)
+			target_link_libraries(libDasModuleImGuiApp X11) # glfw3 depends on X11 on linux (same as in dasGlfw module)
+		ENDIF()
+
 		# ADD_DEPENDENCIES(libDasModuleImGuiApp libDasModuleImGui)
 		TARGET_INCLUDE_DIRECTORIES(libDasModuleImGuiApp PUBLIC
 			${imgui_INCLUDE_DIR}
@@ -340,6 +342,7 @@ IF((NOT DAS_IMGUI_INCLUDED) AND ((NOT ${DAS_IMGUI_DISABLED}) OR (NOT DEFINED DAS
 	SETUP_LTO(Greyprint)
 	ADD_EXAMPLE(Greyprint)
 
+	FIND_PACKAGE(Vulkan)
 	IF ((NOT Vulkan_FOUND) OR (NOT EXISTS "${DAS_IMGUI_DIR}/../dasVulkan/include/dasVulkan/module.h"))
 		MESSAGE(STATUS "Vulkan not found. Not building dasImguiVulkan.")
 	ELSE()

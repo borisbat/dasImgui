@@ -29,25 +29,25 @@ def BeginNodeTitleBar(blk : block) {
 }
 
 def BeginInputAttribute(id : int; shape : ImNodesPinShape; blk : block) {
-    BeginInputAttribute(id, shape)
+    BeginInputAttribute(id, int(shape))
     invoke(blk)
     EndInputAttribute()
 }
 
 def BeginInputAttribute(id : int; blk : block) {
-    BeginInputAttribute(id, ImNodesPinShape.CircleFilled)
+    BeginInputAttribute(id, int(ImNodesPinShape.CircleFilled))
     invoke(blk)
     EndInputAttribute()
 }
 
 def BeginOutputAttribute(id : int; shape : ImNodesPinShape; blk : block) {
-    BeginOutputAttribute(id, shape)
+    BeginOutputAttribute(id, int(shape))
     invoke(blk)
     EndInputAttribute()
 }
 
 def BeginOutputAttribute(id : int; blk : block) {
-    BeginOutputAttribute(id, ImNodesPinShape.CircleFilled)
+    BeginOutputAttribute(id, int(ImNodesPinShape.CircleFilled))
     invoke(blk)
     EndInputAttribute()
 }
