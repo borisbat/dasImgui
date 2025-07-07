@@ -1,6 +1,5 @@
 options gen2
 options persistent_heap
-options persistent_string_heap
 
 require math
 require rtti
@@ -10,8 +9,10 @@ require imgui_app
 require glfw/glfw_boost
 require imgui/imgui_boost
 require daslib/static_let
-require daslib/imnodes_boost
+require imgui/imnodes_boost
 require daslib/safe_addr
+
+require opengl/opengl_boost
 
 //////////////////
 // basic node view
@@ -263,12 +264,14 @@ class AstNodeView : NodeView {
     def AstNodeView(fname : string) {
         helper <- AstIdHelper()
         access := make_file_access("")
-        using <| $(var cop : CodeOfPolicies) {
-            compile_file(fname, access, cop) <| $(ok, program, issues) {
-                if (ok) {
-                    prog := program
-                } else {
-                    print("{fname} failed to compile\n{issues}\n")
+        using <| $(var mg : ModuleGroup) {
+            using <| $(var cop : CodeOfPolicies) {
+                compile_file(fname, access, unsafe(addr(mg)), cop) <| $(ok, program, issues) {
+                    if (ok) {
+                        prog := program
+                    } else {
+                        panic("{fname} failed to compile\n{issues}\n")
+                    }
                 }
             }
         }
@@ -371,7 +374,7 @@ def MainMenu() {
 def EditorDemo() {
     // creating editor context
     static_let <| $() {
-        var edc : EditorContext?
+        var edc : ImNodesEditorContext?
     }
     if (edc == null) {
         edc = imnodes::EditorContextCreate()
