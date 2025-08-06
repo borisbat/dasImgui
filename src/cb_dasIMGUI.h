@@ -2,6 +2,8 @@
 
 #include "imgui_stub.h"
 
+#include "aot_dasIMGUI.h" // das_default_vector_size<ImVector>
+
 namespace das {
 
 template <> struct typeFactory<ImColor> {
@@ -60,6 +62,10 @@ template<> struct cast <ImVec2>  : cast_fVec_half<ImVec2> {};
 template<> struct cast <ImVec4>  : cast_fVec<ImVec4> {};
 template<> struct cast <ImColor> : cast_fVec<ImColor> {};
 
+// Let's wrap ImVec2/4 to support const T& in JIT using passing by value
+template <> struct WrapType<const ImVec2&> { enum { value = true }; typedef ImVec2 type; typedef ImVec2 rettype; };
+template <> struct WrapType<const ImVec4&> { enum { value = true }; typedef ImVec4 type; typedef ImVec4 rettype; };
+
 template <>
 struct typeName<char> {
     static string name() {
@@ -94,12 +100,7 @@ struct typeFactory<ImVector<TT>> {
             mod->addAnnotation(ann);
             addExtern<DAS_BIND_FUN(das_vector_length<VT>)>(*mod, library, "length",
                 SideEffects::none, "das_vector_length")->generated = true;
-            /*
-            registerVectorFunctions<VT,has_cast<TT>::value>::init(mod,library,
-                declT->canCopy(),
-                declT->canMove()
-            );
-            */
+            registerVectorJitFunctions<VT>::init(mod,library); // We don't have `emplace` for vector functions, jit only
         }
         return makeHandleType(library,declN.c_str());
     }
