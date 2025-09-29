@@ -1,6 +1,7 @@
 #pragma once
 
 #include "imgui_stub.h"
+#include "daScript/simulate/cast.h"
 
 namespace das {
 
@@ -60,6 +61,14 @@ template<> struct cast <ImVec2>  : cast_fVec_half<ImVec2> {};
 template<> struct cast <ImVec4>  : cast_fVec<ImVec4> {};
 template<> struct cast <ImColor> : cast_fVec<ImColor> {};
 
+template<> struct WrapType<ImVec2> { enum { value = true }; typedef vec4f type; typedef vec4f rettype; };
+template<> struct WrapType<ImVec4> { enum { value = true }; typedef vec4f type; typedef vec4f rettype; };
+template<> struct WrapArgType<ImVec2> { typedef WrapVec2Arg<ImVec2, float> type; };
+template<> struct WrapArgType<ImVec4> { typedef WrapVec4Arg<ImVec4, float> type; };
+template<> struct WrapRetType<ImVec2> { typedef WrapVec2Arg<ImVec2, float> type; };
+template<> struct WrapRetType<ImVec4> { typedef WrapVec4Arg<ImVec4, float> type; };
+
+
 template <>
 struct typeName<char> {
     static string name() {
@@ -92,14 +101,10 @@ struct typeFactory<ImVector<TT>> {
             ann->cppName = "ImVector<" + describeCppType(declT) + ">";
             auto mod = library.front();
             mod->addAnnotation(ann);
-            addExtern<DAS_BIND_FUN(das_vector_length<VT>)>(*mod, library, "length",
-                SideEffects::none, "das_vector_length")->generated = true;
-            /*
             registerVectorFunctions<VT,has_cast<TT>::value>::init(mod,library,
                 declT->canCopy(),
                 declT->canMove()
             );
-            */
         }
         return makeHandleType(library,declN.c_str());
     }
