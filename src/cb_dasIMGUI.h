@@ -92,14 +92,10 @@ struct typeFactory<ImVector<TT>> {
             ann->cppName = "ImVector<" + describeCppType(declT) + ">";
             auto mod = library.front();
             mod->addAnnotation(ann);
-            addExtern<DAS_BIND_FUN(das_vector_length<VT>)>(*mod, library, "length",
-                SideEffects::none, "das_vector_length")->generated = true;
-            /*
             registerVectorFunctions<VT,has_cast<TT>::value>::init(mod,library,
                 declT->canCopy(),
                 declT->canMove()
             );
-            */
         }
         return makeHandleType(library,declN.c_str());
     }
