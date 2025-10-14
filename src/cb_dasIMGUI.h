@@ -68,6 +68,10 @@ template<> struct WrapArgType<ImVec4> { typedef WrapVec4Arg<ImVec4, float> type;
 template<> struct WrapRetType<ImVec2> { typedef WrapVec2Arg<ImVec2, float> type; };
 template<> struct WrapRetType<ImVec4> { typedef WrapVec4Arg<ImVec4, float> type; };
 
+template <> struct JitConstRefByValue<const ImVec2&> { enum { value = true }; };
+template<> struct WrapArgType<const ImVec2&> { using type = const WrapArgType<ImVec2>::type&; };
+template <> struct JitConstRefByValue<const ImVec4&> { enum { value = true }; };
+template<> struct WrapArgType<const ImVec4&> { using type = const WrapArgType<ImVec4>::type&; };
 
 template <>
 struct typeName<char> {
