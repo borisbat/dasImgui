@@ -192,20 +192,27 @@ IF((NOT DAS_IMGUI_INCLUDED) AND ((NOT ${DAS_IMGUI_DISABLED}) OR (NOT DEFINED DAS
 		${DAS_IMGUI_NODE_EDITOR_BIND_DIR}/src/dasIMGUI_NODE_EDITOR.func_6.cpp
 	)
 
-	ADD_MODULE_LIB(libDasModuleImGui)
 	ADD_MODULE_CPP(dasIMGUI)
 	ADD_MODULE_CPP(dasIMNODES)
 	ADD_MODULE_CPP(dasIMGUI_NODE_EDITOR)
 	ADD_MODULE_DAS(imgui daslib imgui_boost)
 	ADD_MODULE_DAS(imgui daslib imnodes_boost)
 	ADD_MODULE_DAS(imgui daslib imgui_node_editor_boost)
-	ADD_LIBRARY(libDasModuleImGui
+	ADD_DAS_LIBRARY(libDasModuleImGui
 		${DAS_IMGUI_BIND_MODULE_SRC}
 		${DAS_IMNODES_BIND_MODULE_SRC}
 		${DAS_IMGUI_NODE_EDITOR_BIND_MODULE_SRC}
 		${DAS_IMGUI_SRC} ${DAS_IMNODES_SRC} ${DAS_IMGUI_NODE_EDITOR_SRC})
-	#TARGET_LINK_LIBRARIES(libDasModuleImGui ${imgui_LIBRARIES})
-	# ADD_DEPENDENCIES(libDasModuleImGui )
+    IF (${DAS_ENABLE_DLL})
+        IF(WIN32)
+	        SET(IMGUI_PUBLIC_ATTR "__declspec\(dllexport\)")
+        ELSE()
+            SET(IMGUI_PUBLIC_ATTR "__attribute__\(\(visibility\(\"default\"\)\)\)")
+        ENDIF()
+    ENDIF()
+
+    TARGET_COMPILE_DEFINITIONS(libDasModuleImGui PRIVATE IMGUI_API=${IMGUI_PUBLIC_ATTR})
+    TARGET_COMPILE_DEFINITIONS(libDasModuleImGui PRIVATE IMGUI_NODE_EDITOR_API=${IMGUI_PUBLIC_ATTR})
 	TARGET_INCLUDE_DIRECTORIES(libDasModuleImGui PUBLIC ${imgui_INCLUDE_DIR} ${imnodes_INCLUDE_DIR} ${imgui_node_editor_INCLUDE_DIR} ${DAS_IMGUI_BIND_DIR}/src)
 	SETUP_CPP11(libDasModuleImGui)
 
@@ -247,15 +254,16 @@ IF((NOT DAS_IMGUI_INCLUDED) AND ((NOT ${DAS_IMGUI_DISABLED}) OR (NOT DEFINED DAS
 			${DAS_IMGUI_DIR}/example/imgui_opengl2.das
 			${DAS_IMGUI_DIR}/example/imnode_editor.das
 		)
-		ADD_MODULE_LIB(libDasModuleImGuiApp)
+
 		ADD_MODULE_CPP(imgui_app)
-		ADD_LIBRARY(libDasModuleImGuiApp ${DAS_IMGUI_APP_MODULE_SRC})
-		TARGET_LINK_LIBRARIES(libDasModuleImGuiApp
-			${GLFW_LIBRARIES}
+        ADD_MODULE_LIB(libDasModuleImGuiApp ${DAS_IMGUI_APP_MODULE_SRC})
+        TARGET_COMPILE_DEFINITIONS(libDasModuleImGuiApp PRIVATE IMGUI_IMPL_API=${IMGUI_PUBLIC_ATTR})
+        TARGET_LINK_LIBRARIES(libDasModuleImGuiApp PUBLIC
+            libDasModuleImGui
 			${OPENGL_LIBRARIES}
 		)
 		IF(UNIX AND NOT APPLE)
-			target_link_libraries(libDasModuleImGuiApp X11) # glfw3 depends on X11 on linux (same as in dasGlfw module)
+            target_link_libraries(libDasModuleImGuiApp PUBLIC X11) # glfw3 depends on X11 on linux (same as in dasGlfw module)
 		ENDIF()
 
 		# ADD_DEPENDENCIES(libDasModuleImGuiApp libDasModuleImGui)
@@ -334,7 +342,7 @@ IF((NOT DAS_IMGUI_INCLUDED) AND ((NOT ${DAS_IMGUI_DISABLED}) OR (NOT DEFINED DAS
 	)
 	SOURCE_GROUP_FILES("main" GREYPRINT_SRC)
 	add_executable(Greyprint ${GREYPRINT_SRC} ${GREYPRINT_GENERATED_SRC})
-	TARGET_LINK_LIBRARIES(Greyprint libDaScript libDaScriptAot Threads::Threads)
+	TARGET_LINK_LIBRARIES(Greyprint libDasModuleImGui libDaScript libDaScriptAot Threads::Threads)
 	# ADD_DEPENDENCIES(Greyprint libDaScript)
 	ADD_DEPENDENCIES(Greyprint GREYPRINT_AOT libDaScriptAot)
 	TARGET_INCLUDE_DIRECTORIES(Greyprint PUBLIC ${imgui_INCLUDE_DIR} ${GLFW_INCLUDE_DIR} ${imnodes_INCLUDE_DIR} ${imgui_node_editor_INCLUDE_DIR})

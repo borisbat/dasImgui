@@ -20,11 +20,11 @@ MAKE_EXTERNAL_TYPE_FACTORY(ImDrawData,ImDrawData);
 
 #endif
 
-void glfw_error_callback(int error, const char* description) {
+DAS_MOD_API void glfw_error_callback(int error, const char* description) {
     printf("Glfw Error %d: %s\n", error, description);
 }
 
-void das_ImGui_ImplOpenGL3_Init ( const char * version ) {
+DAS_MOD_API void das_ImGui_ImplOpenGL3_Init ( const char * version ) {
     gl3wInit();
     ImGui_ImplOpenGL3_Init(version);
 }
