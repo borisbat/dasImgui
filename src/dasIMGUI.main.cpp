@@ -135,9 +135,7 @@ namespace das {
     }
 
     char * text_range_string( ImGuiTextFilter::ImGuiTextRange & r, das::Context *context, das::LineInfoArg * at ) {
-        auto res = context->allocateString(r.b, r.e - r.b, at);
-        if ( !res ) context->throw_out_of_memory(true, r.e - r.b, at );
-        return res;
+        return context->allocateString(r.b, r.e - r.b, at);
     }
 
     void AddText( ImDrawList & drawList, const ImVec2& pos, ImU32 col, const char* text ) {
@@ -177,9 +175,7 @@ namespace das {
         if ( len>buf.size() ) {
             context->throw_error_at(at, "can't get slice of ImGuiTextBuffer, slice too big");
         }
-        auto res = context->allocateString(buf.begin() + head,len+1,at);
-        if ( !res ) context->throw_out_of_memory(true, len+1, at );
-        return res;
+        return context->allocateString(buf.begin() + head,len+1,at);
     }
 
     // ImGuiInputTextCallbackData
