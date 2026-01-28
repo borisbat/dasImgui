@@ -261,12 +261,15 @@ IF((NOT DAS_IMGUI_INCLUDED) AND ((NOT ${DAS_IMGUI_DISABLED}) OR (NOT DEFINED DAS
 	# demo AOT
 	add_custom_target(dasImguiOpenGL_AOT)
 	SET(IMGUI_OPENGL_AOT_GENERATED_SRC)
-	DAS_AOT("${DAS_IMGUI_DIR}/example/imgui_demo.das" IMGUI_OPENGL_AOT_GENERATED_SRC dasImguiOpenGL_AOT daslang)
-	DAS_AOT("${DAS_IMGUI_DIR}/example/imgui_opengl2.das" IMGUI_OPENGL_AOT_GENERATED_SRC dasImguiOpenGL_AOT daslang)
-	DAS_AOT("${DAS_IMGUI_DIR}/daslib/imgui_boost.das" IMGUI_OPENGL_AOT_GENERATED_SRC dasImguiOpenGL_AOT daslang)
-	DAS_AOT("${DAS_IMGUI_DIR}/daslib/imgui_node_editor_boost.das" IMGUI_OPENGL_AOT_GENERATED_SRC dasImguiOpenGL_AOT daslang)
-	DAS_AOT("${DAS_IMGUI_DIR}/../dasGlfw/dasglfw/glfw_boost.das" IMGUI_OPENGL_AOT_GENERATED_SRC dasImguiOpenGL_AOT daslang)
-	DAS_AOT("${DAS_IMGUI_DIR}/../dasOpenGL/opengl/opengl_boost.das" IMGUI_OPENGL_AOT_GENERATED_SRC dasImguiOpenGL_AOT daslang)
+	SET(IMGUI_AOT_FILES
+		"${DAS_IMGUI_DIR}/example/imgui_demo.das"
+		"${DAS_IMGUI_DIR}/example/imgui_opengl2.das"
+		"${DAS_IMGUI_DIR}/daslib/imgui_boost.das"
+		"${DAS_IMGUI_DIR}/daslib/imgui_node_editor_boost.das"
+		"${DAS_IMGUI_DIR}/../dasGlfw/dasglfw/glfw_boost.das"
+		"${DAS_IMGUI_DIR}/../dasOpenGL/opengl/opengl_boost.das"
+	)
+	DAS_AOT("${IMGUI_AOT_FILES}" IMGUI_OPENGL_AOT_GENERATED_SRC dasImguiOpenGL_AOT daslang)
 	SOURCE_GROUP_FILES("aot stub" IMGUI_OPENGL_AOT_GENERATED_SRC)
 
 	# now, the demo
@@ -294,34 +297,37 @@ IF((NOT DAS_IMGUI_INCLUDED) AND ((NOT ${DAS_IMGUI_DISABLED}) OR (NOT DEFINED DAS
 	# GREYPRINT AOT
 	add_custom_target(GREYPRINT_AOT)
 	SET(GREYPRINT_GENERATED_SRC)
-	DAS_AOT("${DAS_IMGUI_DIR}/greyprint/command_que.das" GREYPRINT_GENERATED_SRC GREYPRINT_AOT daslang)
-	DAS_AOT("${DAS_IMGUI_DIR}/greyprint/greyprint.das" GREYPRINT_GENERATED_SRC GREYPRINT_AOT daslang)
-	DAS_AOT("${DAS_IMGUI_DIR}/greyprint/guid_2_id.das" GREYPRINT_GENERATED_SRC GREYPRINT_AOT daslang)
-	DAS_AOT("${DAS_IMGUI_DIR}/greyprint/instructions.das" GREYPRINT_GENERATED_SRC GREYPRINT_AOT daslang)
-	DAS_AOT("${DAS_IMGUI_DIR}/greyprint/instructions_math.das" GREYPRINT_GENERATED_SRC GREYPRINT_AOT daslang)
-	DAS_AOT("${DAS_IMGUI_DIR}/greyprint/instructions_model.das" GREYPRINT_GENERATED_SRC GREYPRINT_AOT daslang)
-	DAS_AOT("${DAS_IMGUI_DIR}/greyprint/instructions_ui.das" GREYPRINT_GENERATED_SRC GREYPRINT_AOT daslang)
-	DAS_AOT("${DAS_IMGUI_DIR}/greyprint/model.das" GREYPRINT_GENERATED_SRC GREYPRINT_AOT daslang)
-	DAS_AOT("${DAS_IMGUI_DIR}/greyprint/model_eval.das" GREYPRINT_GENERATED_SRC GREYPRINT_AOT daslang)
-	DAS_AOT("${DAS_IMGUI_DIR}/greyprint/preview.das" GREYPRINT_GENERATED_SRC GREYPRINT_AOT daslang)
-	DAS_AOT("${DAS_IMGUI_DIR}/greyprint/produce.das" GREYPRINT_GENERATED_SRC GREYPRINT_AOT daslang)
-	DAS_AOT("${DAS_IMGUI_DIR}/greyprint/undo_stack.das" GREYPRINT_GENERATED_SRC GREYPRINT_AOT daslang)
-	# imgui
-	DAS_AOT("${DAS_IMGUI_DIR}/daslib/imgui_boost.das" GREYPRINT_GENERATED_SRC GREYPRINT_AOT daslang)
-	DAS_AOT("${DAS_IMGUI_DIR}/daslib/imgui_node_editor_boost.das" GREYPRINT_GENERATED_SRC GREYPRINT_AOT daslang)
-	# glfw
-	DAS_AOT("${DAS_IMGUI_DIR}/../dasGlfw/dasglfw/glfw_boost.das" GREYPRINT_GENERATED_SRC GREYPRINT_AOT daslang)
-	# opengl
-	DAS_AOT("${DAS_IMGUI_DIR}/../dasOpenGL/opengl/opengl_boost.das" GREYPRINT_GENERATED_SRC GREYPRINT_AOT daslang)
-	DAS_AOT("${DAS_IMGUI_DIR}/../dasOpenGL/opengl/opengl_state.das" GREYPRINT_GENERATED_SRC GREYPRINT_AOT daslang)
-	DAS_AOT("${DAS_IMGUI_DIR}/../dasOpenGL/opengl/opengl_ttf.das" GREYPRINT_GENERATED_SRC GREYPRINT_AOT daslang)
-	DAS_AOT("${DAS_IMGUI_DIR}/../dasOpenGL/opengl/opengl_gen.das" GREYPRINT_GENERATED_SRC GREYPRINT_AOT daslang)
-	DAS_AOT("${DAS_IMGUI_DIR}/../dasOpenGL/opengl/opengl_cache.das" GREYPRINT_GENERATED_SRC GREYPRINT_AOT daslang)
-	# glsl
-	DAS_AOT("${DAS_IMGUI_DIR}/../dasGlsl/glsl/glsl_common.das" GREYPRINT_GENERATED_SRC GREYPRINT_AOT daslang)
-	DAS_AOT("${DAS_IMGUI_DIR}/../dasGlsl/glsl/geom_gen.das" GREYPRINT_GENERATED_SRC GREYPRINT_AOT daslang)
-	# ttf
-	DAS_AOT("${DAS_IMGUI_DIR}/../dasStbTrueType/ttf/stb_ttf_common.das" GREYPRINT_GENERATED_SRC GREYPRINT_AOT daslang)
+	SET(IMGUI_GREYPRINT_AOT_FILES
+		"${DAS_IMGUI_DIR}/greyprint/command_que.das"
+		"${DAS_IMGUI_DIR}/greyprint/greyprint.das"
+		"${DAS_IMGUI_DIR}/greyprint/guid_2_id.das"
+		"${DAS_IMGUI_DIR}/greyprint/instructions.das"
+		"${DAS_IMGUI_DIR}/greyprint/instructions_math.das"
+		"${DAS_IMGUI_DIR}/greyprint/instructions_model.das"
+		"${DAS_IMGUI_DIR}/greyprint/instructions_ui.das"
+		"${DAS_IMGUI_DIR}/greyprint/model.das"
+		"${DAS_IMGUI_DIR}/greyprint/model_eval.das"
+		"${DAS_IMGUI_DIR}/greyprint/preview.das"
+		"${DAS_IMGUI_DIR}/greyprint/produce.das"
+		"${DAS_IMGUI_DIR}/greyprint/undo_stack.das"
+		#imgui
+		"${DAS_IMGUI_DIR}/daslib/imgui_boost.das"
+		"${DAS_IMGUI_DIR}/daslib/imgui_node_editor_boost.das"
+		#glfw
+		"${DAS_IMGUI_DIR}/../dasGlfw/dasglfw/glfw_boost.das"
+		# opengl
+		"${DAS_IMGUI_DIR}/../dasOpenGL/opengl/opengl_boost.das"
+		"${DAS_IMGUI_DIR}/../dasOpenGL/opengl/opengl_state.das"
+		"${DAS_IMGUI_DIR}/../dasOpenGL/opengl/opengl_ttf.das"
+		"${DAS_IMGUI_DIR}/../dasOpenGL/opengl/opengl_gen.das"
+		"${DAS_IMGUI_DIR}/../dasOpenGL/opengl/opengl_cache.das"
+		# glsl
+		"${DAS_IMGUI_DIR}/../dasGlsl/glsl/glsl_common.das"
+		"${DAS_IMGUI_DIR}/../dasGlsl/glsl/geom_gen.das"
+		# ttf
+		"${DAS_IMGUI_DIR}/../dasStbTrueType/ttf/stb_ttf_common.das"
+	)
+	DAS_AOT("${IMGUI_GREYPRINT_AOT_FILES}" GREYPRINT_GENERATED_SRC GREYPRINT_AOT daslang)
 	SOURCE_GROUP_FILES("aot stub" GREYPRINT_GENERATED_SRC)
 
 	# now, the demo
