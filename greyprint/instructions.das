@@ -608,7 +608,7 @@ def generate_node_save(var str : StructurePtr) {
     let name = "{str.name}`save"
     var inscope fn <- compiling_module() |> find_unique_function(name)
     if (fn == null) {
-        fn := generate_serialize(name, str)
+        move_new(fn, generate_serialize(name, str))
         var blk <- new ExprBlock(at = str.at)
         for (fld in str.fields) {
             for (ann in fld.annotation) {
@@ -645,7 +645,7 @@ def generate_node_load(var str : StructurePtr) {
     let name = "{str.name}`load"
     var inscope fn <- compiling_module() |> find_unique_function(name)
     if (fn == null) {
-        fn := generate_serialize(name, str)
+        move_new(fn, generate_serialize(name, str))
         var blk <- new ExprBlock(at = str.at)
         for (fld in str.fields) {
             for (ann in fld.annotation) {
