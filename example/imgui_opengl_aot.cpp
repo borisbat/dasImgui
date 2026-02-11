@@ -54,7 +54,10 @@ int main(int argc, char * argv[]) {
     NEED_MODULE(Module_JobQue);
     NEED_MODULE(Module_FIO);
     NEED_MODULE(Module_DASBIND);
-    #include "modules/external_need.inc"
+    NEED_MODULE(Module_dasIMGUI);
+    NEED_MODULE(Module_dasIMNODES);
+    NEED_MODULE(Module_dasIMGUI_NODE_EDITOR);
+    NEED_MODULE(Module_imgui_app);
     Module::Initialize();
     // compile and run
     string demoName = getDasRoot() + "/modules/dasImgui/example/imgui_opengl2.das";

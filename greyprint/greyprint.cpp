@@ -61,7 +61,13 @@ int main( int, char * [] ) {
     NEED_ALL_DEFAULT_MODULES;
     NEED_MODULE(Module_UriParser);
     NEED_MODULE(Module_JobQue);
-    #include "modules/external_need.inc"
+    NEED_MODULE(Module_dasGLFW);
+    NEED_MODULE(Module_dasIMGUI);
+    NEED_MODULE(Module_dasIMGUI_NODE_EDITOR);
+    NEED_MODULE(Module_imgui_app);
+    NEED_MODULE(Module_StbImage);
+    NEED_MODULE(Module_StbTrueType);
+    NEED_MODULE(Module_StdDlg);
     Module::Initialize();
     application();
     Module::Shutdown();
