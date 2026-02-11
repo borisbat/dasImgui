@@ -36,6 +36,7 @@ bool Module_dasIMGUI_NODE_EDITOR::initDependencies() {
 	initMain();
 	return true;
 }
+REGISTER_DYN_MODULE(Module_dasIMGUI_NODE_EDITOR,Module_dasIMGUI_NODE_EDITOR);
 }
 REGISTER_MODULE_IN_NAMESPACE(Module_dasIMGUI_NODE_EDITOR,das);
 

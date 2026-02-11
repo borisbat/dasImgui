@@ -181,23 +181,26 @@ IF((NOT DAS_IMGUI_INCLUDED) AND ((NOT ${DAS_IMGUI_DISABLED}) OR (NOT DEFINED DAS
 	ADD_MODULE_DAS(imgui daslib imgui_boost)
 	ADD_MODULE_DAS(imgui daslib imnodes_boost)
 	ADD_MODULE_DAS(imgui daslib imgui_node_editor_boost)
-	ADD_MODULE_LIB(libDasModuleImGui
+	ADD_MODULE_LIB(libDasModuleImGui dasModuleImgui
 		${DAS_IMGUI_BIND_MODULE_SRC}
 		${DAS_IMNODES_BIND_MODULE_SRC}
 		${DAS_IMGUI_NODE_EDITOR_BIND_MODULE_SRC}
 		${DAS_IMGUI_SRC} ${DAS_IMNODES_SRC} ${DAS_IMGUI_NODE_EDITOR_SRC})
-    IF (${DAS_ENABLE_DLL})
-        IF(WIN32)
-	        SET(IMGUI_PUBLIC_ATTR "__declspec\(dllexport\)")
-        ELSE()
-            SET(IMGUI_PUBLIC_ATTR "__attribute__\(\(visibility\(\"default\"\)\)\)")
-        ENDIF()
-        TARGET_COMPILE_DEFINITIONS(libDasModuleImGui PRIVATE IMGUI_API=${IMGUI_PUBLIC_ATTR})
-        TARGET_COMPILE_DEFINITIONS(libDasModuleImGui PRIVATE IMGUI_NODE_EDITOR_API=${IMGUI_PUBLIC_ATTR})
-    ENDIF()
 
-	TARGET_INCLUDE_DIRECTORIES(libDasModuleImGui PUBLIC ${imgui_INCLUDE_DIR} ${imnodes_INCLUDE_DIR} ${imgui_node_editor_INCLUDE_DIR} ${DAS_IMGUI_BIND_DIR}/src)
-	SETUP_CPP11(libDasModuleImGui)
+	IF(WIN32)
+		SET(IMGUI_PUBLIC_ATTR "__declspec\(dllexport\)")
+	ELSE()
+		SET(IMGUI_PUBLIC_ATTR "__attribute__\(\(visibility\(\"default\"\)\)\)")
+	ENDIF()
+	TARGET_COMPILE_DEFINITIONS(dasModuleImgui PRIVATE IMGUI_API=${IMGUI_PUBLIC_ATTR})
+	TARGET_COMPILE_DEFINITIONS(dasModuleImgui PRIVATE IMGUI_NODE_EDITOR_API=${IMGUI_PUBLIC_ATTR})
+
+	MACRO(SETUP_IMGUI lib)
+		TARGET_INCLUDE_DIRECTORIES(${lib} PUBLIC ${imgui_INCLUDE_DIR} ${imnodes_INCLUDE_DIR} ${imgui_node_editor_INCLUDE_DIR} ${DAS_IMGUI_BIND_DIR}/src)
+		SETUP_CPP11(${lib})
+	ENDMACRO()
+	SETUP_IMGUI(libDasModuleImGui)
+	SETUP_IMGUI(dasModuleImgui)
 
     install(DIRECTORY ${PROJECT_SOURCE_DIR}/modules/dasImgui/daslib
         DESTINATION ${DAS_INSTALL_MODULESDIR}/dasImgui
@@ -239,23 +242,29 @@ IF((NOT DAS_IMGUI_INCLUDED) AND ((NOT ${DAS_IMGUI_DISABLED}) OR (NOT DEFINED DAS
 		)
 
 		ADD_MODULE_CPP(imgui_app)
-        ADD_MODULE_LIB(libDasModuleImGuiApp ${DAS_IMGUI_APP_MODULE_SRC})
+        ADD_MODULE_LIB(libDasModuleImGuiApp imguiApp ${DAS_IMGUI_APP_MODULE_SRC})
         TARGET_COMPILE_DEFINITIONS(libDasModuleImGuiApp PRIVATE IMGUI_IMPL_API=${IMGUI_PUBLIC_ATTR})
-        TARGET_LINK_LIBRARIES(libDasModuleImGuiApp PUBLIC
-            libDasModuleImGui libDasModuleGlfw ${COCOA_LIBRARY}
-			${OPENGL_LIBRARIES}
+		MACRO(SETUP_IMGUIAPP lib)
+			TARGET_LINK_LIBRARIES(${lib} PUBLIC ${COCOA_LIBRARY} ${OPENGL_LIBRARIES})
+			IF(UNIX AND NOT APPLE)
+				target_link_libraries(${lib} PUBLIC X11) # glfw3 depends on X11 on linux (same as in dasGlfw module)
+			ENDIF()
+			TARGET_INCLUDE_DIRECTORIES(${lib} PUBLIC
+				${imgui_INCLUDE_DIR}
+				${DAS_IMGUI_DIR}/gl3w
+			)
+			target_compile_definitions(${lib} PUBLIC IMGUI_IMPL_OPENGL_LOADER_GL3W)
+			SETUP_CPP11(${lib})
+		ENDMACRO()
+		SETUP_IMGUIAPP(libDasModuleImGuiApp)
+		TARGET_LINK_LIBRARIES(libDasModuleImGuiApp PUBLIC libDasModuleImGui libDasModuleGlfw)
+		SETUP_IMGUIAPP(imguiApp)
+		TARGET_LINK_LIBRARIES(imguiApp PUBLIC dasModuleImgui dasModuleGlfw)
+		set_target_properties(imguiApp PROPERTIES
+			INSTALL_RPATH "$ORIGIN/../dasImgui;$ORIGIN/../dasGlfw"
+			BUILD_WITH_INSTALL_RPATH TRUE
+			SKIP_BUILD_RPATH FALSE
 		)
-		IF(UNIX AND NOT APPLE)
-            target_link_libraries(libDasModuleImGuiApp PUBLIC X11) # glfw3 depends on X11 on linux (same as in dasGlfw module)
-		ENDIF()
-
-		# ADD_DEPENDENCIES(libDasModuleImGuiApp libDasModuleImGui)
-		TARGET_INCLUDE_DIRECTORIES(libDasModuleImGuiApp PUBLIC
-			${imgui_INCLUDE_DIR}
-			${DAS_IMGUI_DIR}/gl3w
-		)
-		target_compile_definitions(libDasModuleImGuiApp PUBLIC IMGUI_IMPL_OPENGL_LOADER_GL3W)
-		SETUP_CPP11(libDasModuleImGuiApp)
 	ENDIF()
 
 	# demo AOT

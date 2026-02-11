@@ -32,6 +32,8 @@ bool Module_dasIMGUI::initDependencies() {
 	initMain();
 	return true;
 }
+
+REGISTER_DYN_MODULE(Module_dasIMGUI,Module_dasIMGUI);
 }
 REGISTER_MODULE_IN_NAMESPACE(Module_dasIMGUI,das);
 
