@@ -4,8 +4,8 @@ require fio
 [export]
 def initialize(project_path : string) {
     if (das_is_dll_build()) {
-        register_dynamic_module("{project_path}/dasModuleImgui.mod", "Module_dasIMGUI")
-        register_dynamic_module("{project_path}/dasModuleImgui.mod", "Module_dasIMGUI_NODE_EDITOR")
-        register_dynamic_module("{project_path}/imguiApp.mod", "Module_imgui_app")
+        register_dynamic_module("{project_path}/dasModuleImgui.das_module", "Module_dasIMGUI")
+        register_dynamic_module("{project_path}/dasModuleImgui.das_module", "Module_dasIMGUI_NODE_EDITOR")
+        register_dynamic_module("{project_path}/imguiApp.das_module", "Module_imgui_app")
     }
 }
