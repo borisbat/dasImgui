@@ -103,7 +103,7 @@ struct typeFactory<ImVector<TT>> {
             auto declT = makeType<TT>(library);
             auto ann = make_smart<ManagedVectorAnnotation<VT>>(declN,const_cast<ModuleLibrary &>(library));
             ann->cppName = "ImVector<" + describeCppType(declT) + ">";
-            auto mod = library.front();
+            auto mod = library.back(); // lets try like this
             mod->addAnnotation(ann);
             registerVectorFunctions<VT,has_cast<TT>::value>::init(mod,library,
                 declT->canCopy(),

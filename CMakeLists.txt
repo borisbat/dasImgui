@@ -206,6 +206,7 @@ IF((NOT DAS_IMGUI_INCLUDED) AND ((NOT ${DAS_IMGUI_DISABLED}) OR (NOT DEFINED DAS
         DESTINATION ${DAS_INSTALL_MODULESDIR}/dasImgui
         FILES_MATCHING
         PATTERN "*.das"
+        PATTERN "_aot_generated" EXCLUDE
     )
     install(FILES
 			${PROJECT_SOURCE_DIR}/modules/dasImgui/example/imgui_opengl2.das
