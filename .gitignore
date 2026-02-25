@@ -1,3 +1,4 @@
+*.shared_module
 conan.lock
 conanbuildinfo.txt
 conaninfo.txt
