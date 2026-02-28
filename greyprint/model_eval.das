@@ -177,7 +177,7 @@ def produce_project_text {
         writer |> write("require math\n")
         writer |> write("\n")
         for (act, actname in keys(g_CurrentProject.actions), values(g_CurrentProject.actions)) {
-            if (true) {
+            {
                 var inscope pins <- collect_action_pins(g_CurrentProject, act)
                 write(writer, "// {actname}\n")
                 write(writer, "def fn_{decorate_name(act)}(")

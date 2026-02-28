@@ -1010,7 +1010,7 @@ def DasShowDemoWindowLayout {
         }
         Checkbox("Disable Mouse Wheel", safe_addr(disable_mouse_wheel));
         Checkbox("Disable Menu", safe_addr(disable_menu));
-        if (true) {
+        {
             var window_flags = ImGuiWindowFlags.HorizontalScrollbar;
             if (disable_mouse_wheel) {
                 window_flags |= ImGuiWindowFlags.NoScrollWithMouse;
@@ -1022,7 +1022,7 @@ def DasShowDemoWindowLayout {
             EndChild();
         }
         SameLine();
-        if (true) {
+        {
             var window_flags = ImGuiWindowFlags.None;
             if (disable_mouse_wheel) {
                 window_flags |= ImGuiWindowFlags.NoScrollWithMouse;
@@ -1050,7 +1050,7 @@ def DasShowDemoWindowLayout {
             PopStyleVar();
         }
         Separator();
-        if (true) {
+        {
             static_let <| $() {
                 var offset_x = 0;
             }
@@ -2648,7 +2648,7 @@ def DasShowExampleAppCustomRendering(p_open : bool? implicit) {
             var draw_list = GetWindowDrawList();
             Text("Gradients");
             var gradient_size = float2(CalcItemWidth(), GetFrameHeight());
-            if (true) {
+            {
                 let p0 = GetCursorScreenPos();
                 let p1 = float2(p0.x + gradient_size.x, p0.y + gradient_size.y);
                 let col_a = GetColorU32(IM_COL32(0, 0, 0, 255));
@@ -2656,7 +2656,7 @@ def DasShowExampleAppCustomRendering(p_open : bool? implicit) {
                 *draw_list |> AddRectFilledMultiColor(p0, p1, col_a, col_b, col_b, col_a);
                 InvisibleButton("##gradient1", gradient_size);
             }
-            if (true) {
+            {
                 let p0 = GetCursorScreenPos();
                 let p1 = float2(p0.x + gradient_size.x, p0.y + gradient_size.y);
                 let col_a = GetColorU32(IM_COL32(0, 255, 0, 255));
@@ -4802,7 +4802,7 @@ def DasShowDemoWindowWidgets() {
         }
         Separator();
         LabelText("label", "Value");
-        if (true) {
+        {
             var items = fixed_array<string>("AAAA", "BBBB", "CCCC", "DDDD", "EEEE", "FFFF", "GGGG", "HHHH", "IIIIIII", "JJJJ", "KKKKKKK");
             static_let <| $() {
                 var item_current = 0;
@@ -4812,7 +4812,7 @@ def DasShowDemoWindowWidgets() {
             DasHelpMarker("Using the simplified one-liner Combo API here.\nRefer to the \"Combo\" section below for" +
                 " an explanation of how to use the more flexible and general BeginCombo/EndCombo API.");
         }
-        if (true) {
+        {
             static_let <| $() {
                 var str0 <- ImGuiInputTextBuffer("Hello, world!", 128);
             }
@@ -4864,7 +4864,7 @@ def DasShowDemoWindowWidgets() {
             }
             InputFloat3("input float3", safe_addr(vec4a[0]));
         }
-        if (true) {
+        {
             static_let <| $() {
                 var i1 = 50;
                 var i2 = 42;
@@ -4883,7 +4883,7 @@ def DasShowDemoWindowWidgets() {
             DragFloat("drag float", safe_addr(f1), 0.005f);
             DragFloat("drag small float", safe_addr(f2), 0.0001f, 0.0f, 0.0f, "%.06f ns");
         }
-        if (true) {
+        {
             static_let <| $() {
                 var i1 = 0;
             }
@@ -4911,7 +4911,7 @@ def DasShowDemoWindowWidgets() {
             SameLine();
             DasHelpMarker("Using the format string parameter to display a name instead of the underlying integer.");
         }
-        if (true) {
+        {
             static_let <| $() {
                 var col1 = fixed_array<float>(1.0f, 0.0f, 0.2f);
                 var col2 = fixed_array<float>(0.4f, 0.7f, 0.0f, 0.5f);
@@ -4925,7 +4925,7 @@ def DasShowDemoWindowWidgets() {
                 "CTRL+click on individual component to input value.\n");
             ColorEdit4("color 2", safe_addr(col2[0]));
         }
-        if (true) {
+        {
             static_let <| $() {
                 let items = fixed_array<string>("Apple", "Banana", "Cherry", "Kiwi", "Mango", "Orange", "Pineapple", "Strawberry", "Watermelon");
             }
@@ -5127,7 +5127,7 @@ def DasShowDemoWindowWidgets() {
         var my_tex_id = io.Fonts.TexID;
         let my_tex_w = float(io.Fonts.TexWidth);
         let my_tex_h = float(io.Fonts.TexHeight);
-        if (true) {
+        {
             Text("{my_tex_w}x{my_tex_h}");
             var pos = GetCursorScreenPos();
             var uv_min = float2(0.0f, 0.0f);
@@ -5686,7 +5686,7 @@ def DasShowDemoWindowWidgets() {
             phase += 0.10f * float(values_offset);
             refresh_time += 1.0lf / 60.0lf;
         }
-        if (true) {
+        {
             var average = 0.0f;
             for (val in values) {
                 average += val;
@@ -5824,7 +5824,7 @@ def DasShowDemoWindowWidgets() {
                     color = float4(saved_palette[n].x, saved_palette[n].y, saved_palette[n].z, color.w);
                 }
                 if (BeginDragDropTarget()) {
-                    if (true) {
+                    {
                         var payload = AcceptDragDropPayload(IMGUI_PAYLOAD_TYPE_COLOR_3F);
                         if (payload != null) {
                             unsafe {
@@ -5832,7 +5832,7 @@ def DasShowDemoWindowWidgets() {
                             }
                         }
                     }
-                    if (true) {
+                    {
                         var payload = AcceptDragDropPayload(IMGUI_PAYLOAD_TYPE_COLOR_4F);
                         if (payload != null) {
                             unsafe {
