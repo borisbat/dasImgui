@@ -1,4 +1,5 @@
 *.shared_module
+_build/
 imgui/
 example/imgui.ini
 example/imgui_log.txt

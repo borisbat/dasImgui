@@ -10,3 +10,8 @@ def package() {
     package_tag("gui")
     package_tag("imgui")
 }
+
+[export]
+def build() {
+    cmake_build()
+}

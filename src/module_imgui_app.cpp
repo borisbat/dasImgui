@@ -14,7 +14,8 @@ using namespace das;
 #if USE_GENERATED
 
 // NOTE: this module requires GLFW module
-#include "../../dasGlfw/src/need_dasGLFW.h"
+#include "need_dasGLFW.h"
+IMPLEMENT_EXTERNAL_TYPE_FACTORY(GLFWwindow,GLFWwindow)
 
 MAKE_EXTERNAL_TYPE_FACTORY(ImDrawData,ImDrawData);
 
