@@ -99,7 +99,6 @@ public:
     }
     virtual ModuleAotType aotRequire ( TextWriter & tw ) const override {
         tw << "#include \"../modules/dasImgui/src/imgui_stub.h\"\n";
-        tw << "#include \"../modules/dasImgui/src/imnodes_stub.h\"\n";
         tw << "#include <backends/imgui_impl_glfw.h>\n";
         tw << "#include <backends/imgui_impl_opengl3.h>\n";
         tw << "void das_ImGui_ImplOpenGL3_Init ( const char * version );\n";
