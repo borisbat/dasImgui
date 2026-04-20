@@ -32,10 +32,10 @@ ENDIF()
 SET(imgui_INCLUDE_DIR ${DAS_IMGUI_DIR}/imgui)
 
 # GLFW (from main repo or sibling module)
-if(EXISTS ${DASLANG_DIR}/modules/dasGlfw/glfw/include)
-    SET(GLFW_INCLUDE_DIR ${DASLANG_DIR}/modules/dasGlfw/glfw/include)
+if(EXISTS ${DASLANG_DIR}/modules/dasGlfw/glfw)
+    SET(GLFW_INCLUDE_DIR ${DASLANG_DIR}/modules/dasGlfw/glfw/$<CONFIG>/include)
 else()
-    message(FATAL_ERROR "GLFW not found at ${DASLANG_DIR}/modules/dasGlfw/glfw/include")
+    message(FATAL_ERROR "GLFW not found at ${DASLANG_DIR}/modules/dasGlfw/glfw")
 endif()
 
 # imgui source files
@@ -115,10 +115,17 @@ target_include_directories(dasModuleImgui PRIVATE
 if(WIN32)
     target_link_libraries(dasModuleImgui PRIVATE
         ${DASLANG_DIR}/lib/Release/libDaScriptDyn.lib
+        ${DASLANG_DIR}/lib/Release/libDaScriptDyn_runtime.lib
+    )
+elseif(APPLE)
+    target_link_libraries(dasModuleImgui PRIVATE
+        ${DASLANG_DIR}/lib/liblibDaScriptDyn.dylib
+        ${DASLANG_DIR}/lib/liblibDaScriptDyn_runtime.dylib
     )
 else()
     target_link_libraries(dasModuleImgui PRIVATE
         ${DASLANG_DIR}/lib/liblibDaScriptDyn.so
+        ${DASLANG_DIR}/lib/liblibDaScriptDyn_runtime.so
     )
 endif()
 
@@ -173,22 +180,30 @@ IF(OPENGL_FOUND)
     )
     if(WIN32)
         target_link_libraries(imguiApp PRIVATE
-            ${DASLANG_DIR}/lib/Release/libDaScriptDyn.lib
-            ${DASLANG_DIR}/modules/dasGlfw/glfw_dyn/lib/glfw3dll.lib
+            ${DASLANG_DIR}/lib/$<CONFIG>/libDaScriptDyn.lib
+            ${DASLANG_DIR}/lib/$<CONFIG>/libDaScriptDyn_runtime.lib
+            ${DASLANG_DIR}/modules/dasGlfw/glfw_dyn/$<CONFIG>/lib/glfw3dll.lib
             ${OPENGL_LIBRARIES}
+        )
+    elseif(APPLE)
+        FIND_LIBRARY(COCOA_LIBRARY Cocoa REQUIRED)
+        FIND_LIBRARY(COREFOUNDATION_LIBRARY CoreFoundation REQUIRED)
+        target_link_libraries(imguiApp PRIVATE
+            ${DASLANG_DIR}/lib/liblibDaScriptDyn.dylib
+            ${DASLANG_DIR}/lib/liblibDaScriptDyn_runtime.dylib
+            ${DASLANG_DIR}/modules/dasGlfw/glfw_dyn/$<CONFIG>/lib/libglfw.dylib
+            ${OPENGL_LIBRARIES}
+            ${COCOA_LIBRARY}
+            ${COREFOUNDATION_LIBRARY}
         )
     else()
         target_link_libraries(imguiApp PRIVATE
             ${DASLANG_DIR}/lib/liblibDaScriptDyn.so
-            ${DASLANG_DIR}/modules/dasGlfw/glfw_dyn/lib/libglfw.so
+            ${DASLANG_DIR}/lib/liblibDaScriptDyn_runtime.so
+            ${DASLANG_DIR}/modules/dasGlfw/glfw_dyn/$<CONFIG>/lib/libglfw.so
             ${OPENGL_LIBRARIES}
         )
-        IF(UNIX AND NOT APPLE)
-            target_link_libraries(imguiApp PRIVATE X11)
-        ENDIF()
-        IF(APPLE)
-            target_link_libraries(imguiApp PRIVATE ${COCOA_LIBRARY})
-        ENDIF()
+        target_link_libraries(imguiApp PRIVATE X11)
     endif()
     SETUP_OPTIONS(imguiApp)
     set_target_properties(imguiApp PROPERTIES
