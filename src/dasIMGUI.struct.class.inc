@@ -1,7 +1,7 @@
-// this file is generated via daScript automatic C++ binder
+// this file is generated via Daslang automatic binder
 // all user modifications will be lost after this file is re-generated
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:1945:8
+// from imgui.h:1945:8
 struct ImGuiTableSortSpecs_GeneratedAnnotation : ManagedStructureAnnotation<ImGuiTableSortSpecs> {
 	ImGuiTableSortSpecs_GeneratedAnnotation(ModuleLibrary & ml) : ManagedStructureAnnotation ("ImGuiTableSortSpecs", ml, "ImGuiTableSortSpecs") {
 	}
@@ -12,7 +12,7 @@ struct ImGuiTableSortSpecs_GeneratedAnnotation : ManagedStructureAnnotation<ImGu
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:1955:8
+// from imgui.h:1955:8
 struct ImGuiTableColumnSortSpecs_GeneratedAnnotation : ManagedStructureAnnotation<ImGuiTableColumnSortSpecs> {
 	virtual bool isLocal() const override { return true; }
 	virtual bool canBePlacedInContainer() const override { return true; }
@@ -25,7 +25,7 @@ struct ImGuiTableColumnSortSpecs_GeneratedAnnotation : ManagedStructureAnnotatio
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:1975:8
+// from imgui.h:1975:8
 struct ImNewWrapper_GeneratedAnnotation : ManagedStructureAnnotation<ImNewWrapper> {
 	ImNewWrapper_GeneratedAnnotation(ModuleLibrary & ml) : ManagedStructureAnnotation ("ImNewWrapper", ml, "ImNewWrapper") {
 	}
@@ -33,7 +33,7 @@ struct ImNewWrapper_GeneratedAnnotation : ManagedStructureAnnotation<ImNewWrappe
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:2073:8
+// from imgui.h:2071:8
 struct ImGuiStyle_GeneratedAnnotation : ManagedStructureAnnotation<ImGuiStyle> {
 	ImGuiStyle_GeneratedAnnotation(ModuleLibrary & ml) : ManagedStructureAnnotation ("ImGuiStyle", ml, "ImGuiStyle") {
 	}
@@ -98,7 +98,7 @@ struct ImGuiStyle_GeneratedAnnotation : ManagedStructureAnnotation<ImGuiStyle> {
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:2148:8
+// from imgui.h:2146:8
 struct ImGuiKeyData_GeneratedAnnotation : ManagedStructureAnnotation<ImGuiKeyData> {
 	ImGuiKeyData_GeneratedAnnotation(ModuleLibrary & ml) : ManagedStructureAnnotation ("ImGuiKeyData", ml, "ImGuiKeyData") {
 	}
@@ -110,7 +110,7 @@ struct ImGuiKeyData_GeneratedAnnotation : ManagedStructureAnnotation<ImGuiKeyDat
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:2156:8
+// from imgui.h:2154:8
 struct ImGuiIO_GeneratedAnnotation : ManagedStructureAnnotation<ImGuiIO> {
 	ImGuiIO_GeneratedAnnotation(ModuleLibrary & ml) : ManagedStructureAnnotation ("ImGuiIO", ml, "ImGuiIO") {
 	}
@@ -216,7 +216,7 @@ struct ImGuiIO_GeneratedAnnotation : ManagedStructureAnnotation<ImGuiIO> {
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:2376:8
+// from imgui.h:2374:8
 struct ImGuiInputTextCallbackData_GeneratedAnnotation : ManagedStructureAnnotation<ImGuiInputTextCallbackData> {
 	ImGuiInputTextCallbackData_GeneratedAnnotation(ModuleLibrary & ml) : ManagedStructureAnnotation ("ImGuiInputTextCallbackData", ml, "ImGuiInputTextCallbackData") {
 	}
@@ -239,7 +239,7 @@ struct ImGuiInputTextCallbackData_GeneratedAnnotation : ManagedStructureAnnotati
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:2410:8
+// from imgui.h:2408:8
 struct ImGuiSizeCallbackData_GeneratedAnnotation : ManagedStructureAnnotation<ImGuiSizeCallbackData> {
 	ImGuiSizeCallbackData_GeneratedAnnotation(ModuleLibrary & ml) : ManagedStructureAnnotation ("ImGuiSizeCallbackData", ml, "ImGuiSizeCallbackData") {
 	}
@@ -251,7 +251,7 @@ struct ImGuiSizeCallbackData_GeneratedAnnotation : ManagedStructureAnnotation<Im
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:2425:8
+// from imgui.h:2423:8
 struct ImGuiWindowClass_GeneratedAnnotation : ManagedStructureAnnotation<ImGuiWindowClass> {
 	ImGuiWindowClass_GeneratedAnnotation(ModuleLibrary & ml) : ManagedStructureAnnotation ("ImGuiWindowClass", ml, "ImGuiWindowClass") {
 	}
@@ -271,7 +271,7 @@ struct ImGuiWindowClass_GeneratedAnnotation : ManagedStructureAnnotation<ImGuiWi
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:2441:8
+// from imgui.h:2439:8
 struct ImGuiPayload_GeneratedAnnotation : ManagedStructureAnnotation<ImGuiPayload> {
 	ImGuiPayload_GeneratedAnnotation(ModuleLibrary & ml) : ManagedStructureAnnotation ("ImGuiPayload", ml, "ImGuiPayload") {
 	}
@@ -287,7 +287,7 @@ struct ImGuiPayload_GeneratedAnnotation : ManagedStructureAnnotation<ImGuiPayloa
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:2476:8
+// from imgui.h:2474:8
 struct ImGuiOnceUponAFrame_GeneratedAnnotation : ManagedStructureAnnotation<ImGuiOnceUponAFrame> {
 	ImGuiOnceUponAFrame_GeneratedAnnotation(ModuleLibrary & ml) : ManagedStructureAnnotation ("ImGuiOnceUponAFrame", ml, "ImGuiOnceUponAFrame") {
 	}
@@ -296,7 +296,7 @@ struct ImGuiOnceUponAFrame_GeneratedAnnotation : ManagedStructureAnnotation<ImGu
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:2494:12
+// from imgui.h:2492:12
 struct ImGuiTextFilter_ImGuiTextRange_GeneratedAnnotation : ManagedStructureAnnotation<ImGuiTextFilter::ImGuiTextRange> {
 	ImGuiTextFilter_ImGuiTextRange_GeneratedAnnotation(ModuleLibrary & ml) : ManagedStructureAnnotation ("ImGuiTextRange", ml, "ImGuiTextFilter::ImGuiTextRange") {
 	}
@@ -306,7 +306,7 @@ struct ImGuiTextFilter_ImGuiTextRange_GeneratedAnnotation : ManagedStructureAnno
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:2484:8
+// from imgui.h:2482:8
 struct ImGuiTextFilter_GeneratedAnnotation : ManagedStructureAnnotation<ImGuiTextFilter> {
 	ImGuiTextFilter_GeneratedAnnotation(ModuleLibrary & ml) : ManagedStructureAnnotation ("ImGuiTextFilter", ml, "ImGuiTextFilter") {
 	}
@@ -317,7 +317,7 @@ struct ImGuiTextFilter_GeneratedAnnotation : ManagedStructureAnnotation<ImGuiTex
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:2511:8
+// from imgui.h:2509:8
 struct ImGuiTextBuffer_GeneratedAnnotation : ManagedStructureAnnotation<ImGuiTextBuffer> {
 	ImGuiTextBuffer_GeneratedAnnotation(ModuleLibrary & ml) : ManagedStructureAnnotation ("ImGuiTextBuffer", ml, "ImGuiTextBuffer") {
 	}
@@ -326,7 +326,7 @@ struct ImGuiTextBuffer_GeneratedAnnotation : ManagedStructureAnnotation<ImGuiTex
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:2541:12
+// from imgui.h:2539:12
 struct ImGuiStorage_ImGuiStoragePair_GeneratedAnnotation : ManagedStructureAnnotation<ImGuiStorage::ImGuiStoragePair> {
 	ImGuiStorage_ImGuiStoragePair_GeneratedAnnotation(ModuleLibrary & ml) : ManagedStructureAnnotation ("ImGuiStoragePair", ml, "ImGuiStorage::ImGuiStoragePair") {
 	}
@@ -335,7 +335,7 @@ struct ImGuiStorage_ImGuiStoragePair_GeneratedAnnotation : ManagedStructureAnnot
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:2538:8
+// from imgui.h:2536:8
 struct ImGuiStorage_GeneratedAnnotation : ManagedStructureAnnotation<ImGuiStorage> {
 	ImGuiStorage_GeneratedAnnotation(ModuleLibrary & ml) : ManagedStructureAnnotation ("ImGuiStorage", ml, "ImGuiStorage") {
 	}
@@ -344,7 +344,7 @@ struct ImGuiStorage_GeneratedAnnotation : ManagedStructureAnnotation<ImGuiStorag
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:2600:8
+// from imgui.h:2598:8
 struct ImGuiListClipper_GeneratedAnnotation : ManagedStructureAnnotation<ImGuiListClipper> {
 	ImGuiListClipper_GeneratedAnnotation(ModuleLibrary & ml) : ManagedStructureAnnotation ("ImGuiListClipper", ml, "ImGuiListClipper") {
 	}
@@ -359,7 +359,7 @@ struct ImGuiListClipper_GeneratedAnnotation : ManagedStructureAnnotation<ImGuiLi
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:2735:8
+// from imgui.h:2733:8
 struct ImDrawCmd_GeneratedAnnotation : ManagedStructureAnnotation<ImDrawCmd> {
 	ImDrawCmd_GeneratedAnnotation(ModuleLibrary & ml) : ManagedStructureAnnotation ("ImDrawCmd", ml, "ImDrawCmd") {
 	}
@@ -373,7 +373,7 @@ struct ImDrawCmd_GeneratedAnnotation : ManagedStructureAnnotation<ImDrawCmd> {
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:2753:8
+// from imgui.h:2751:8
 struct ImDrawVert_GeneratedAnnotation : ManagedStructureAnnotation<ImDrawVert> {
 	ImDrawVert_GeneratedAnnotation(ModuleLibrary & ml) : ManagedStructureAnnotation ("ImDrawVert", ml, "ImDrawVert") {
 	}
@@ -384,7 +384,7 @@ struct ImDrawVert_GeneratedAnnotation : ManagedStructureAnnotation<ImDrawVert> {
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:2768:8
+// from imgui.h:2766:8
 struct ImDrawCmdHeader_GeneratedAnnotation : ManagedStructureAnnotation<ImDrawCmdHeader> {
 	ImDrawCmdHeader_GeneratedAnnotation(ModuleLibrary & ml) : ManagedStructureAnnotation ("ImDrawCmdHeader", ml, "ImDrawCmdHeader") {
 	}
@@ -395,7 +395,7 @@ struct ImDrawCmdHeader_GeneratedAnnotation : ManagedStructureAnnotation<ImDrawCm
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:2776:8
+// from imgui.h:2774:8
 struct ImDrawChannel_GeneratedAnnotation : ManagedStructureAnnotation<ImDrawChannel> {
 	ImDrawChannel_GeneratedAnnotation(ModuleLibrary & ml) : ManagedStructureAnnotation ("ImDrawChannel", ml, "ImDrawChannel") {
 	}
@@ -405,7 +405,7 @@ struct ImDrawChannel_GeneratedAnnotation : ManagedStructureAnnotation<ImDrawChan
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:2785:8
+// from imgui.h:2783:8
 struct ImDrawListSplitter_GeneratedAnnotation : ManagedStructureAnnotation<ImDrawListSplitter> {
 	ImDrawListSplitter_GeneratedAnnotation(ModuleLibrary & ml) : ManagedStructureAnnotation ("ImDrawListSplitter", ml, "ImDrawListSplitter") {
 	}
@@ -416,7 +416,7 @@ struct ImDrawListSplitter_GeneratedAnnotation : ManagedStructureAnnotation<ImDra
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:2840:8
+// from imgui.h:2838:8
 struct ImDrawList_GeneratedAnnotation : ManagedStructureAnnotation<ImDrawList> {
 	ImDrawList_GeneratedAnnotation(ModuleLibrary & ml) : ManagedStructureAnnotation ("ImDrawList", ml, "ImDrawList") {
 	}
@@ -440,7 +440,7 @@ struct ImDrawList_GeneratedAnnotation : ManagedStructureAnnotation<ImDrawList> {
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:2980:8
+// from imgui.h:2978:8
 struct ImDrawData_GeneratedAnnotation : ManagedStructureAnnotation<ImDrawData> {
 	ImDrawData_GeneratedAnnotation(ModuleLibrary & ml) : ManagedStructureAnnotation ("ImDrawData", ml, "ImDrawData") {
 	}
@@ -457,7 +457,7 @@ struct ImDrawData_GeneratedAnnotation : ManagedStructureAnnotation<ImDrawData> {
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:3004:8
+// from imgui.h:3002:8
 struct ImFontConfig_GeneratedAnnotation : ManagedStructureAnnotation<ImFontConfig> {
 	ImFontConfig_GeneratedAnnotation(ModuleLibrary & ml) : ManagedStructureAnnotation ("ImFontConfig", ml, "ImFontConfig") {
 	}
@@ -485,7 +485,7 @@ struct ImFontConfig_GeneratedAnnotation : ManagedStructureAnnotation<ImFontConfi
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:3034:8
+// from imgui.h:3032:8
 struct ImFontGlyph_GeneratedAnnotation : ManagedStructureAnnotation<ImFontGlyph> {
 	ImFontGlyph_GeneratedAnnotation(ModuleLibrary & ml) : ManagedStructureAnnotation ("ImFontGlyph", ml, "ImFontGlyph") {
 	}
@@ -502,7 +502,7 @@ struct ImFontGlyph_GeneratedAnnotation : ManagedStructureAnnotation<ImFontGlyph>
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:3046:8
+// from imgui.h:3044:8
 struct ImFontGlyphRangesBuilder_GeneratedAnnotation : ManagedStructureAnnotation<ImFontGlyphRangesBuilder> {
 	ImFontGlyphRangesBuilder_GeneratedAnnotation(ModuleLibrary & ml) : ManagedStructureAnnotation ("ImFontGlyphRangesBuilder", ml, "ImFontGlyphRangesBuilder") {
 	}
@@ -511,7 +511,7 @@ struct ImFontGlyphRangesBuilder_GeneratedAnnotation : ManagedStructureAnnotation
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:3061:8
+// from imgui.h:3059:8
 struct ImFontAtlasCustomRect_GeneratedAnnotation : ManagedStructureAnnotation<ImFontAtlasCustomRect> {
 	ImFontAtlasCustomRect_GeneratedAnnotation(ModuleLibrary & ml) : ManagedStructureAnnotation ("ImFontAtlasCustomRect", ml, "ImFontAtlasCustomRect") {
 	}
@@ -527,7 +527,7 @@ struct ImFontAtlasCustomRect_GeneratedAnnotation : ManagedStructureAnnotation<Im
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:3099:8
+// from imgui.h:3097:8
 struct ImFontAtlas_GeneratedAnnotation : ManagedStructureAnnotation<ImFontAtlas> {
 	ImFontAtlas_GeneratedAnnotation(ModuleLibrary & ml) : ManagedStructureAnnotation ("ImFontAtlas", ml, "ImFontAtlas") {
 	}
@@ -558,7 +558,7 @@ struct ImFontAtlas_GeneratedAnnotation : ManagedStructureAnnotation<ImFontAtlas>
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:3203:8
+// from imgui.h:3201:8
 struct ImFont_GeneratedAnnotation : ManagedStructureAnnotation<ImFont> {
 	ImFont_GeneratedAnnotation(ModuleLibrary & ml) : ManagedStructureAnnotation ("ImFont", ml, "ImFont") {
 	}
@@ -586,7 +586,7 @@ struct ImFont_GeneratedAnnotation : ManagedStructureAnnotation<ImFont> {
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:3289:8
+// from imgui.h:3287:8
 struct ImGuiViewport_GeneratedAnnotation : ManagedStructureAnnotation<ImGuiViewport> {
 	ImGuiViewport_GeneratedAnnotation(ModuleLibrary & ml) : ManagedStructureAnnotation ("ImGuiViewport", ml, "ImGuiViewport") {
 	}
@@ -612,7 +612,7 @@ struct ImGuiViewport_GeneratedAnnotation : ManagedStructureAnnotation<ImGuiViewp
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:3373:8
+// from imgui.h:3371:8
 struct ImGuiPlatformIO_GeneratedAnnotation : ManagedStructureAnnotation<ImGuiPlatformIO> {
 	ImGuiPlatformIO_GeneratedAnnotation(ModuleLibrary & ml) : ManagedStructureAnnotation ("ImGuiPlatformIO", ml, "ImGuiPlatformIO") {
 	}
@@ -622,7 +622,7 @@ struct ImGuiPlatformIO_GeneratedAnnotation : ManagedStructureAnnotation<ImGuiPla
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:3436:8
+// from imgui.h:3434:8
 struct ImGuiPlatformMonitor_GeneratedAnnotation : ManagedStructureAnnotation<ImGuiPlatformMonitor> {
 	ImGuiPlatformMonitor_GeneratedAnnotation(ModuleLibrary & ml) : ManagedStructureAnnotation ("ImGuiPlatformMonitor", ml, "ImGuiPlatformMonitor") {
 	}
@@ -636,7 +636,7 @@ struct ImGuiPlatformMonitor_GeneratedAnnotation : ManagedStructureAnnotation<ImG
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:3446:8
+// from imgui.h:3444:8
 struct ImGuiPlatformImeData_GeneratedAnnotation : ManagedStructureAnnotation<ImGuiPlatformImeData> {
 	ImGuiPlatformImeData_GeneratedAnnotation(ModuleLibrary & ml) : ManagedStructureAnnotation ("ImGuiPlatformImeData", ml, "ImGuiPlatformImeData") {
 	}
