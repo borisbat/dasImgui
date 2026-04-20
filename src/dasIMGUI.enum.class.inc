@@ -1,13 +1,13 @@
-// this file is generated via daScript automatic C++ binder
+// this file is generated via Daslang automatic binder
 // all user modifications will be lost after this file is re-generated
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:1038:6
+// from imgui.h:1038:6
 class Enumeration_ImGuiWindowFlags_ : public das::Enumeration {
 public:
 	Enumeration_ImGuiWindowFlags_() : das::Enumeration("ImGuiWindowFlags") {
 		external = true;
 		cppName = "ImGuiWindowFlags_";
-		baseType = (das::Type) das::ToBasicType<int>::type;
+		baseType = (das::Type) das::ToBasicType<unsigned int>::type;
 		addIEx("None", "ImGuiWindowFlags_None", int64_t(ImGuiWindowFlags_::ImGuiWindowFlags_None), das::LineInfo());
 		addIEx("NoTitleBar", "ImGuiWindowFlags_NoTitleBar", int64_t(ImGuiWindowFlags_::ImGuiWindowFlags_NoTitleBar), das::LineInfo());
 		addIEx("NoResize", "ImGuiWindowFlags_NoResize", int64_t(ImGuiWindowFlags_::ImGuiWindowFlags_NoResize), das::LineInfo());
@@ -42,13 +42,13 @@ public:
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:1089:6
+// from imgui.h:1089:6
 class Enumeration_ImGuiChildFlags_ : public das::Enumeration {
 public:
 	Enumeration_ImGuiChildFlags_() : das::Enumeration("ImGuiChildFlags") {
 		external = true;
 		cppName = "ImGuiChildFlags_";
-		baseType = (das::Type) das::ToBasicType<int>::type;
+		baseType = (das::Type) das::ToBasicType<unsigned int>::type;
 		addIEx("None", "ImGuiChildFlags_None", int64_t(ImGuiChildFlags_::ImGuiChildFlags_None), das::LineInfo());
 		addIEx("Border", "ImGuiChildFlags_Border", int64_t(ImGuiChildFlags_::ImGuiChildFlags_Border), das::LineInfo());
 		addIEx("AlwaysUseWindowPadding", "ImGuiChildFlags_AlwaysUseWindowPadding", int64_t(ImGuiChildFlags_::ImGuiChildFlags_AlwaysUseWindowPadding), das::LineInfo());
@@ -61,13 +61,13 @@ public:
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:1104:6
+// from imgui.h:1104:6
 class Enumeration_ImGuiInputTextFlags_ : public das::Enumeration {
 public:
 	Enumeration_ImGuiInputTextFlags_() : das::Enumeration("ImGuiInputTextFlags") {
 		external = true;
 		cppName = "ImGuiInputTextFlags_";
-		baseType = (das::Type) das::ToBasicType<int>::type;
+		baseType = (das::Type) das::ToBasicType<unsigned int>::type;
 		addIEx("None", "ImGuiInputTextFlags_None", int64_t(ImGuiInputTextFlags_::ImGuiInputTextFlags_None), das::LineInfo());
 		addIEx("CharsDecimal", "ImGuiInputTextFlags_CharsDecimal", int64_t(ImGuiInputTextFlags_::ImGuiInputTextFlags_CharsDecimal), das::LineInfo());
 		addIEx("CharsHexadecimal", "ImGuiInputTextFlags_CharsHexadecimal", int64_t(ImGuiInputTextFlags_::ImGuiInputTextFlags_CharsHexadecimal), das::LineInfo());
@@ -93,13 +93,13 @@ public:
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:1134:6
+// from imgui.h:1134:6
 class Enumeration_ImGuiTreeNodeFlags_ : public das::Enumeration {
 public:
 	Enumeration_ImGuiTreeNodeFlags_() : das::Enumeration("ImGuiTreeNodeFlags") {
 		external = true;
 		cppName = "ImGuiTreeNodeFlags_";
-		baseType = (das::Type) das::ToBasicType<int>::type;
+		baseType = (das::Type) das::ToBasicType<unsigned int>::type;
 		addIEx("None", "ImGuiTreeNodeFlags_None", int64_t(ImGuiTreeNodeFlags_::ImGuiTreeNodeFlags_None), das::LineInfo());
 		addIEx("Selected", "ImGuiTreeNodeFlags_Selected", int64_t(ImGuiTreeNodeFlags_::ImGuiTreeNodeFlags_Selected), das::LineInfo());
 		addIEx("Framed", "ImGuiTreeNodeFlags_Framed", int64_t(ImGuiTreeNodeFlags_::ImGuiTreeNodeFlags_Framed), das::LineInfo());
@@ -121,13 +121,13 @@ public:
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:1169:6
+// from imgui.h:1169:6
 class Enumeration_ImGuiPopupFlags_ : public das::Enumeration {
 public:
 	Enumeration_ImGuiPopupFlags_() : das::Enumeration("ImGuiPopupFlags") {
 		external = true;
 		cppName = "ImGuiPopupFlags_";
-		baseType = (das::Type) das::ToBasicType<int>::type;
+		baseType = (das::Type) das::ToBasicType<unsigned int>::type;
 		addIEx("None", "ImGuiPopupFlags_None", int64_t(ImGuiPopupFlags_::ImGuiPopupFlags_None), das::LineInfo());
 		addIEx("MouseButtonLeft", "ImGuiPopupFlags_MouseButtonLeft", int64_t(ImGuiPopupFlags_::ImGuiPopupFlags_MouseButtonLeft), das::LineInfo());
 		addIEx("MouseButtonRight", "ImGuiPopupFlags_MouseButtonRight", int64_t(ImGuiPopupFlags_::ImGuiPopupFlags_MouseButtonRight), das::LineInfo());
@@ -143,13 +143,13 @@ public:
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:1187:6
+// from imgui.h:1187:6
 class Enumeration_ImGuiSelectableFlags_ : public das::Enumeration {
 public:
 	Enumeration_ImGuiSelectableFlags_() : das::Enumeration("ImGuiSelectableFlags") {
 		external = true;
 		cppName = "ImGuiSelectableFlags_";
-		baseType = (das::Type) das::ToBasicType<int>::type;
+		baseType = (das::Type) das::ToBasicType<unsigned int>::type;
 		addIEx("None", "ImGuiSelectableFlags_None", int64_t(ImGuiSelectableFlags_::ImGuiSelectableFlags_None), das::LineInfo());
 		addIEx("DontClosePopups", "ImGuiSelectableFlags_DontClosePopups", int64_t(ImGuiSelectableFlags_::ImGuiSelectableFlags_DontClosePopups), das::LineInfo());
 		addIEx("SpanAllColumns", "ImGuiSelectableFlags_SpanAllColumns", int64_t(ImGuiSelectableFlags_::ImGuiSelectableFlags_SpanAllColumns), das::LineInfo());
@@ -159,13 +159,13 @@ public:
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:1202:6
+// from imgui.h:1202:6
 class Enumeration_ImGuiComboFlags_ : public das::Enumeration {
 public:
 	Enumeration_ImGuiComboFlags_() : das::Enumeration("ImGuiComboFlags") {
 		external = true;
 		cppName = "ImGuiComboFlags_";
-		baseType = (das::Type) das::ToBasicType<int>::type;
+		baseType = (das::Type) das::ToBasicType<unsigned int>::type;
 		addIEx("None", "ImGuiComboFlags_None", int64_t(ImGuiComboFlags_::ImGuiComboFlags_None), das::LineInfo());
 		addIEx("PopupAlignLeft", "ImGuiComboFlags_PopupAlignLeft", int64_t(ImGuiComboFlags_::ImGuiComboFlags_PopupAlignLeft), das::LineInfo());
 		addIEx("HeightSmall", "ImGuiComboFlags_HeightSmall", int64_t(ImGuiComboFlags_::ImGuiComboFlags_HeightSmall), das::LineInfo());
@@ -179,13 +179,13 @@ public:
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:1217:6
+// from imgui.h:1217:6
 class Enumeration_ImGuiTabBarFlags_ : public das::Enumeration {
 public:
 	Enumeration_ImGuiTabBarFlags_() : das::Enumeration("ImGuiTabBarFlags") {
 		external = true;
 		cppName = "ImGuiTabBarFlags_";
-		baseType = (das::Type) das::ToBasicType<int>::type;
+		baseType = (das::Type) das::ToBasicType<unsigned int>::type;
 		addIEx("None", "ImGuiTabBarFlags_None", int64_t(ImGuiTabBarFlags_::ImGuiTabBarFlags_None), das::LineInfo());
 		addIEx("Reorderable", "ImGuiTabBarFlags_Reorderable", int64_t(ImGuiTabBarFlags_::ImGuiTabBarFlags_Reorderable), das::LineInfo());
 		addIEx("AutoSelectNewTabs", "ImGuiTabBarFlags_AutoSelectNewTabs", int64_t(ImGuiTabBarFlags_::ImGuiTabBarFlags_AutoSelectNewTabs), das::LineInfo());
@@ -200,13 +200,13 @@ public:
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:1233:6
+// from imgui.h:1233:6
 class Enumeration_ImGuiTabItemFlags_ : public das::Enumeration {
 public:
 	Enumeration_ImGuiTabItemFlags_() : das::Enumeration("ImGuiTabItemFlags") {
 		external = true;
 		cppName = "ImGuiTabItemFlags_";
-		baseType = (das::Type) das::ToBasicType<int>::type;
+		baseType = (das::Type) das::ToBasicType<unsigned int>::type;
 		addIEx("None", "ImGuiTabItemFlags_None", int64_t(ImGuiTabItemFlags_::ImGuiTabItemFlags_None), das::LineInfo());
 		addIEx("UnsavedDocument", "ImGuiTabItemFlags_UnsavedDocument", int64_t(ImGuiTabItemFlags_::ImGuiTabItemFlags_UnsavedDocument), das::LineInfo());
 		addIEx("SetSelected", "ImGuiTabItemFlags_SetSelected", int64_t(ImGuiTabItemFlags_::ImGuiTabItemFlags_SetSelected), das::LineInfo());
@@ -220,13 +220,13 @@ public:
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:1248:6
+// from imgui.h:1248:6
 class Enumeration_ImGuiFocusedFlags_ : public das::Enumeration {
 public:
 	Enumeration_ImGuiFocusedFlags_() : das::Enumeration("ImGuiFocusedFlags") {
 		external = true;
 		cppName = "ImGuiFocusedFlags_";
-		baseType = (das::Type) das::ToBasicType<int>::type;
+		baseType = (das::Type) das::ToBasicType<unsigned int>::type;
 		addIEx("None", "ImGuiFocusedFlags_None", int64_t(ImGuiFocusedFlags_::ImGuiFocusedFlags_None), das::LineInfo());
 		addIEx("ChildWindows", "ImGuiFocusedFlags_ChildWindows", int64_t(ImGuiFocusedFlags_::ImGuiFocusedFlags_ChildWindows), das::LineInfo());
 		addIEx("RootWindow", "ImGuiFocusedFlags_RootWindow", int64_t(ImGuiFocusedFlags_::ImGuiFocusedFlags_RootWindow), das::LineInfo());
@@ -237,13 +237,13 @@ public:
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:1262:6
+// from imgui.h:1262:6
 class Enumeration_ImGuiHoveredFlags_ : public das::Enumeration {
 public:
 	Enumeration_ImGuiHoveredFlags_() : das::Enumeration("ImGuiHoveredFlags") {
 		external = true;
 		cppName = "ImGuiHoveredFlags_";
-		baseType = (das::Type) das::ToBasicType<int>::type;
+		baseType = (das::Type) das::ToBasicType<unsigned int>::type;
 		addIEx("None", "ImGuiHoveredFlags_None", int64_t(ImGuiHoveredFlags_::ImGuiHoveredFlags_None), das::LineInfo());
 		addIEx("ChildWindows", "ImGuiHoveredFlags_ChildWindows", int64_t(ImGuiHoveredFlags_::ImGuiHoveredFlags_ChildWindows), das::LineInfo());
 		addIEx("RootWindow", "ImGuiHoveredFlags_RootWindow", int64_t(ImGuiHoveredFlags_::ImGuiHoveredFlags_RootWindow), das::LineInfo());
@@ -268,13 +268,13 @@ public:
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:1302:6
+// from imgui.h:1302:6
 class Enumeration_ImGuiDockNodeFlags_ : public das::Enumeration {
 public:
 	Enumeration_ImGuiDockNodeFlags_() : das::Enumeration("ImGuiDockNodeFlags") {
 		external = true;
 		cppName = "ImGuiDockNodeFlags_";
-		baseType = (das::Type) das::ToBasicType<int>::type;
+		baseType = (das::Type) das::ToBasicType<unsigned int>::type;
 		addIEx("None", "ImGuiDockNodeFlags_None", int64_t(ImGuiDockNodeFlags_::ImGuiDockNodeFlags_None), das::LineInfo());
 		addIEx("KeepAliveOnly", "ImGuiDockNodeFlags_KeepAliveOnly", int64_t(ImGuiDockNodeFlags_::ImGuiDockNodeFlags_KeepAliveOnly), das::LineInfo());
 		addIEx("NoDockingOverCentralNode", "ImGuiDockNodeFlags_NoDockingOverCentralNode", int64_t(ImGuiDockNodeFlags_::ImGuiDockNodeFlags_NoDockingOverCentralNode), das::LineInfo());
@@ -286,13 +286,13 @@ public:
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:1321:6
+// from imgui.h:1321:6
 class Enumeration_ImGuiDragDropFlags_ : public das::Enumeration {
 public:
 	Enumeration_ImGuiDragDropFlags_() : das::Enumeration("ImGuiDragDropFlags") {
 		external = true;
 		cppName = "ImGuiDragDropFlags_";
-		baseType = (das::Type) das::ToBasicType<int>::type;
+		baseType = (das::Type) das::ToBasicType<unsigned int>::type;
 		addIEx("None", "ImGuiDragDropFlags_None", int64_t(ImGuiDragDropFlags_::ImGuiDragDropFlags_None), das::LineInfo());
 		addIEx("SourceNoPreviewTooltip", "ImGuiDragDropFlags_SourceNoPreviewTooltip", int64_t(ImGuiDragDropFlags_::ImGuiDragDropFlags_SourceNoPreviewTooltip), das::LineInfo());
 		addIEx("SourceNoDisableHover", "ImGuiDragDropFlags_SourceNoDisableHover", int64_t(ImGuiDragDropFlags_::ImGuiDragDropFlags_SourceNoDisableHover), das::LineInfo());
@@ -307,13 +307,13 @@ public:
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:1343:6
+// from imgui.h:1343:6
 class Enumeration_ImGuiDataType_ : public das::Enumeration {
 public:
 	Enumeration_ImGuiDataType_() : das::Enumeration("ImGuiDataType") {
 		external = true;
 		cppName = "ImGuiDataType_";
-		baseType = (das::Type) das::ToBasicType<int>::type;
+		baseType = (das::Type) das::ToBasicType<unsigned int>::type;
 		addIEx("S8", "ImGuiDataType_S8", int64_t(ImGuiDataType_::ImGuiDataType_S8), das::LineInfo());
 		addIEx("U8", "ImGuiDataType_U8", int64_t(ImGuiDataType_::ImGuiDataType_U8), das::LineInfo());
 		addIEx("S16", "ImGuiDataType_S16", int64_t(ImGuiDataType_::ImGuiDataType_S16), das::LineInfo());
@@ -328,7 +328,7 @@ public:
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:1359:6
+// from imgui.h:1359:6
 class Enumeration_ImGuiDir_ : public das::Enumeration {
 public:
 	Enumeration_ImGuiDir_() : das::Enumeration("ImGuiDir") {
@@ -344,20 +344,20 @@ public:
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:1370:6
+// from imgui.h:1370:6
 class Enumeration_ImGuiSortDirection_ : public das::Enumeration {
 public:
 	Enumeration_ImGuiSortDirection_() : das::Enumeration("ImGuiSortDirection") {
 		external = true;
 		cppName = "ImGuiSortDirection_";
-		baseType = (das::Type) das::ToBasicType<int>::type;
+		baseType = (das::Type) das::ToBasicType<unsigned int>::type;
 		addIEx("None", "ImGuiSortDirection_None", int64_t(ImGuiSortDirection_::ImGuiSortDirection_None), das::LineInfo());
 		addIEx("Ascending", "ImGuiSortDirection_Ascending", int64_t(ImGuiSortDirection_::ImGuiSortDirection_Ascending), das::LineInfo());
 		addIEx("Descending", "ImGuiSortDirection_Descending", int64_t(ImGuiSortDirection_::ImGuiSortDirection_Descending), das::LineInfo());
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:1388:6
+// from imgui.h:1388:6
 class Enumeration_ImGuiKey : public das::Enumeration {
 public:
 	Enumeration_ImGuiKey() : das::Enumeration("ImGuiKey") {
@@ -535,13 +535,13 @@ public:
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:1530:6
+// from imgui.h:1530:6
 class Enumeration_ImGuiConfigFlags_ : public das::Enumeration {
 public:
 	Enumeration_ImGuiConfigFlags_() : das::Enumeration("ImGuiConfigFlags") {
 		external = true;
 		cppName = "ImGuiConfigFlags_";
-		baseType = (das::Type) das::ToBasicType<int>::type;
+		baseType = (das::Type) das::ToBasicType<unsigned int>::type;
 		addIEx("None", "ImGuiConfigFlags_None", int64_t(ImGuiConfigFlags_::ImGuiConfigFlags_None), das::LineInfo());
 		addIEx("NavEnableKeyboard", "ImGuiConfigFlags_NavEnableKeyboard", int64_t(ImGuiConfigFlags_::ImGuiConfigFlags_NavEnableKeyboard), das::LineInfo());
 		addIEx("NavEnableGamepad", "ImGuiConfigFlags_NavEnableGamepad", int64_t(ImGuiConfigFlags_::ImGuiConfigFlags_NavEnableGamepad), das::LineInfo());
@@ -558,13 +558,13 @@ public:
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:1555:6
+// from imgui.h:1555:6
 class Enumeration_ImGuiBackendFlags_ : public das::Enumeration {
 public:
 	Enumeration_ImGuiBackendFlags_() : das::Enumeration("ImGuiBackendFlags") {
 		external = true;
 		cppName = "ImGuiBackendFlags_";
-		baseType = (das::Type) das::ToBasicType<int>::type;
+		baseType = (das::Type) das::ToBasicType<unsigned int>::type;
 		addIEx("None", "ImGuiBackendFlags_None", int64_t(ImGuiBackendFlags_::ImGuiBackendFlags_None), das::LineInfo());
 		addIEx("HasGamepad", "ImGuiBackendFlags_HasGamepad", int64_t(ImGuiBackendFlags_::ImGuiBackendFlags_HasGamepad), das::LineInfo());
 		addIEx("HasMouseCursors", "ImGuiBackendFlags_HasMouseCursors", int64_t(ImGuiBackendFlags_::ImGuiBackendFlags_HasMouseCursors), das::LineInfo());
@@ -576,13 +576,13 @@ public:
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:1570:6
+// from imgui.h:1570:6
 class Enumeration_ImGuiCol_ : public das::Enumeration {
 public:
 	Enumeration_ImGuiCol_() : das::Enumeration("ImGuiCol") {
 		external = true;
 		cppName = "ImGuiCol_";
-		baseType = (das::Type) das::ToBasicType<int>::type;
+		baseType = (das::Type) das::ToBasicType<unsigned int>::type;
 		addIEx("Text", "ImGuiCol_Text", int64_t(ImGuiCol_::ImGuiCol_Text), das::LineInfo());
 		addIEx("TextDisabled", "ImGuiCol_TextDisabled", int64_t(ImGuiCol_::ImGuiCol_TextDisabled), das::LineInfo());
 		addIEx("WindowBg", "ImGuiCol_WindowBg", int64_t(ImGuiCol_::ImGuiCol_WindowBg), das::LineInfo());
@@ -642,13 +642,13 @@ public:
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:1638:6
+// from imgui.h:1638:6
 class Enumeration_ImGuiStyleVar_ : public das::Enumeration {
 public:
 	Enumeration_ImGuiStyleVar_() : das::Enumeration("ImGuiStyleVar") {
 		external = true;
 		cppName = "ImGuiStyleVar_";
-		baseType = (das::Type) das::ToBasicType<int>::type;
+		baseType = (das::Type) das::ToBasicType<unsigned int>::type;
 		addIEx("Alpha", "ImGuiStyleVar_Alpha", int64_t(ImGuiStyleVar_::ImGuiStyleVar_Alpha), das::LineInfo());
 		addIEx("DisabledAlpha", "ImGuiStyleVar_DisabledAlpha", int64_t(ImGuiStyleVar_::ImGuiStyleVar_DisabledAlpha), das::LineInfo());
 		addIEx("WindowPadding", "ImGuiStyleVar_WindowPadding", int64_t(ImGuiStyleVar_::ImGuiStyleVar_WindowPadding), das::LineInfo());
@@ -686,13 +686,13 @@ public:
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:1678:6
+// from imgui.h:1678:6
 class Enumeration_ImGuiButtonFlags_ : public das::Enumeration {
 public:
 	Enumeration_ImGuiButtonFlags_() : das::Enumeration("ImGuiButtonFlags") {
 		external = true;
 		cppName = "ImGuiButtonFlags_";
-		baseType = (das::Type) das::ToBasicType<int>::type;
+		baseType = (das::Type) das::ToBasicType<unsigned int>::type;
 		addIEx("None", "ImGuiButtonFlags_None", int64_t(ImGuiButtonFlags_::ImGuiButtonFlags_None), das::LineInfo());
 		addIEx("MouseButtonLeft", "ImGuiButtonFlags_MouseButtonLeft", int64_t(ImGuiButtonFlags_::ImGuiButtonFlags_MouseButtonLeft), das::LineInfo());
 		addIEx("MouseButtonRight", "ImGuiButtonFlags_MouseButtonRight", int64_t(ImGuiButtonFlags_::ImGuiButtonFlags_MouseButtonRight), das::LineInfo());
@@ -702,13 +702,13 @@ public:
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:1691:6
+// from imgui.h:1691:6
 class Enumeration_ImGuiColorEditFlags_ : public das::Enumeration {
 public:
 	Enumeration_ImGuiColorEditFlags_() : das::Enumeration("ImGuiColorEditFlags") {
 		external = true;
 		cppName = "ImGuiColorEditFlags_";
-		baseType = (das::Type) das::ToBasicType<int>::type;
+		baseType = (das::Type) das::ToBasicType<unsigned int>::type;
 		addIEx("None", "ImGuiColorEditFlags_None", int64_t(ImGuiColorEditFlags_::ImGuiColorEditFlags_None), das::LineInfo());
 		addIEx("NoAlpha", "ImGuiColorEditFlags_NoAlpha", int64_t(ImGuiColorEditFlags_::ImGuiColorEditFlags_NoAlpha), das::LineInfo());
 		addIEx("NoPicker", "ImGuiColorEditFlags_NoPicker", int64_t(ImGuiColorEditFlags_::ImGuiColorEditFlags_NoPicker), das::LineInfo());
@@ -741,13 +741,13 @@ public:
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:1737:6
+// from imgui.h:1737:6
 class Enumeration_ImGuiSliderFlags_ : public das::Enumeration {
 public:
 	Enumeration_ImGuiSliderFlags_() : das::Enumeration("ImGuiSliderFlags") {
 		external = true;
 		cppName = "ImGuiSliderFlags_";
-		baseType = (das::Type) das::ToBasicType<int>::type;
+		baseType = (das::Type) das::ToBasicType<unsigned int>::type;
 		addIEx("None", "ImGuiSliderFlags_None", int64_t(ImGuiSliderFlags_::ImGuiSliderFlags_None), das::LineInfo());
 		addIEx("AlwaysClamp", "ImGuiSliderFlags_AlwaysClamp", int64_t(ImGuiSliderFlags_::ImGuiSliderFlags_AlwaysClamp), das::LineInfo());
 		addIEx("Logarithmic", "ImGuiSliderFlags_Logarithmic", int64_t(ImGuiSliderFlags_::ImGuiSliderFlags_Logarithmic), das::LineInfo());
@@ -757,13 +757,13 @@ public:
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:1752:6
+// from imgui.h:1752:6
 class Enumeration_ImGuiMouseButton_ : public das::Enumeration {
 public:
 	Enumeration_ImGuiMouseButton_() : das::Enumeration("ImGuiMouseButton") {
 		external = true;
 		cppName = "ImGuiMouseButton_";
-		baseType = (das::Type) das::ToBasicType<int>::type;
+		baseType = (das::Type) das::ToBasicType<unsigned int>::type;
 		addIEx("Left", "ImGuiMouseButton_Left", int64_t(ImGuiMouseButton_::ImGuiMouseButton_Left), das::LineInfo());
 		addIEx("Right", "ImGuiMouseButton_Right", int64_t(ImGuiMouseButton_::ImGuiMouseButton_Right), das::LineInfo());
 		addIEx("Middle", "ImGuiMouseButton_Middle", int64_t(ImGuiMouseButton_::ImGuiMouseButton_Middle), das::LineInfo());
@@ -771,7 +771,7 @@ public:
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:1762:6
+// from imgui.h:1762:6
 class Enumeration_ImGuiMouseCursor_ : public das::Enumeration {
 public:
 	Enumeration_ImGuiMouseCursor_() : das::Enumeration("ImGuiMouseCursor") {
@@ -792,7 +792,7 @@ public:
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:1781:6
+// from imgui.h:1781:6
 class Enumeration_ImGuiMouseSource : public das::Enumeration {
 public:
 	Enumeration_ImGuiMouseSource() : das::Enumeration("ImGuiMouseSource") {
@@ -806,13 +806,13 @@ public:
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:1792:6
+// from imgui.h:1792:6
 class Enumeration_ImGuiCond_ : public das::Enumeration {
 public:
 	Enumeration_ImGuiCond_() : das::Enumeration("ImGuiCond") {
 		external = true;
 		cppName = "ImGuiCond_";
-		baseType = (das::Type) das::ToBasicType<int>::type;
+		baseType = (das::Type) das::ToBasicType<unsigned int>::type;
 		addIEx("None", "ImGuiCond_None", int64_t(ImGuiCond_::ImGuiCond_None), das::LineInfo());
 		addIEx("Always", "ImGuiCond_Always", int64_t(ImGuiCond_::ImGuiCond_Always), das::LineInfo());
 		addIEx("Once", "ImGuiCond_Once", int64_t(ImGuiCond_::ImGuiCond_Once), das::LineInfo());
@@ -821,13 +821,13 @@ public:
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:1827:6
+// from imgui.h:1827:6
 class Enumeration_ImGuiTableFlags_ : public das::Enumeration {
 public:
 	Enumeration_ImGuiTableFlags_() : das::Enumeration("ImGuiTableFlags") {
 		external = true;
 		cppName = "ImGuiTableFlags_";
-		baseType = (das::Type) das::ToBasicType<int>::type;
+		baseType = (das::Type) das::ToBasicType<unsigned int>::type;
 		addIEx("None", "ImGuiTableFlags_None", int64_t(ImGuiTableFlags_::ImGuiTableFlags_None), das::LineInfo());
 		addIEx("Resizable", "ImGuiTableFlags_Resizable", int64_t(ImGuiTableFlags_::ImGuiTableFlags_Resizable), das::LineInfo());
 		addIEx("Reorderable", "ImGuiTableFlags_Reorderable", int64_t(ImGuiTableFlags_::ImGuiTableFlags_Reorderable), das::LineInfo());
@@ -868,13 +868,13 @@ public:
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:1880:6
+// from imgui.h:1880:6
 class Enumeration_ImGuiTableColumnFlags_ : public das::Enumeration {
 public:
 	Enumeration_ImGuiTableColumnFlags_() : das::Enumeration("ImGuiTableColumnFlags") {
 		external = true;
 		cppName = "ImGuiTableColumnFlags_";
-		baseType = (das::Type) das::ToBasicType<int>::type;
+		baseType = (das::Type) das::ToBasicType<unsigned int>::type;
 		addIEx("None", "ImGuiTableColumnFlags_None", int64_t(ImGuiTableColumnFlags_::ImGuiTableColumnFlags_None), das::LineInfo());
 		addIEx("Disabled", "ImGuiTableColumnFlags_Disabled", int64_t(ImGuiTableColumnFlags_::ImGuiTableColumnFlags_Disabled), das::LineInfo());
 		addIEx("DefaultHide", "ImGuiTableColumnFlags_DefaultHide", int64_t(ImGuiTableColumnFlags_::ImGuiTableColumnFlags_DefaultHide), das::LineInfo());
@@ -906,25 +906,25 @@ public:
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:1918:6
+// from imgui.h:1918:6
 class Enumeration_ImGuiTableRowFlags_ : public das::Enumeration {
 public:
 	Enumeration_ImGuiTableRowFlags_() : das::Enumeration("ImGuiTableRowFlags") {
 		external = true;
 		cppName = "ImGuiTableRowFlags_";
-		baseType = (das::Type) das::ToBasicType<int>::type;
+		baseType = (das::Type) das::ToBasicType<unsigned int>::type;
 		addIEx("None", "ImGuiTableRowFlags_None", int64_t(ImGuiTableRowFlags_::ImGuiTableRowFlags_None), das::LineInfo());
 		addIEx("Headers", "ImGuiTableRowFlags_Headers", int64_t(ImGuiTableRowFlags_::ImGuiTableRowFlags_Headers), das::LineInfo());
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:1933:6
+// from imgui.h:1933:6
 class Enumeration_ImGuiTableBgTarget_ : public das::Enumeration {
 public:
 	Enumeration_ImGuiTableBgTarget_() : das::Enumeration("ImGuiTableBgTarget") {
 		external = true;
 		cppName = "ImGuiTableBgTarget_";
-		baseType = (das::Type) das::ToBasicType<int>::type;
+		baseType = (das::Type) das::ToBasicType<unsigned int>::type;
 		addIEx("None", "ImGuiTableBgTarget_None", int64_t(ImGuiTableBgTarget_::ImGuiTableBgTarget_None), das::LineInfo());
 		addIEx("RowBg0", "ImGuiTableBgTarget_RowBg0", int64_t(ImGuiTableBgTarget_::ImGuiTableBgTarget_RowBg0), das::LineInfo());
 		addIEx("RowBg1", "ImGuiTableBgTarget_RowBg1", int64_t(ImGuiTableBgTarget_::ImGuiTableBgTarget_RowBg1), das::LineInfo());
@@ -932,13 +932,13 @@ public:
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:2802:6
+// from imgui.h:2800:6
 class Enumeration_ImDrawFlags_ : public das::Enumeration {
 public:
 	Enumeration_ImDrawFlags_() : das::Enumeration("ImDrawFlags") {
 		external = true;
 		cppName = "ImDrawFlags_";
-		baseType = (das::Type) das::ToBasicType<int>::type;
+		baseType = (das::Type) das::ToBasicType<unsigned int>::type;
 		addIEx("None", "ImDrawFlags_None", int64_t(ImDrawFlags_::ImDrawFlags_None), das::LineInfo());
 		addIEx("Closed", "ImDrawFlags_Closed", int64_t(ImDrawFlags_::ImDrawFlags_Closed), das::LineInfo());
 		addIEx("RoundCornersTopLeft", "ImDrawFlags_RoundCornersTopLeft", int64_t(ImDrawFlags_::ImDrawFlags_RoundCornersTopLeft), das::LineInfo());
@@ -956,13 +956,13 @@ public:
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:2822:6
+// from imgui.h:2820:6
 class Enumeration_ImDrawListFlags_ : public das::Enumeration {
 public:
 	Enumeration_ImDrawListFlags_() : das::Enumeration("ImDrawListFlags") {
 		external = true;
 		cppName = "ImDrawListFlags_";
-		baseType = (das::Type) das::ToBasicType<int>::type;
+		baseType = (das::Type) das::ToBasicType<unsigned int>::type;
 		addIEx("None", "ImDrawListFlags_None", int64_t(ImDrawListFlags_::ImDrawListFlags_None), das::LineInfo());
 		addIEx("AntiAliasedLines", "ImDrawListFlags_AntiAliasedLines", int64_t(ImDrawListFlags_::ImDrawListFlags_AntiAliasedLines), das::LineInfo());
 		addIEx("AntiAliasedLinesUseTex", "ImDrawListFlags_AntiAliasedLinesUseTex", int64_t(ImDrawListFlags_::ImDrawListFlags_AntiAliasedLinesUseTex), das::LineInfo());
@@ -971,13 +971,13 @@ public:
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:3074:6
+// from imgui.h:3072:6
 class Enumeration_ImFontAtlasFlags_ : public das::Enumeration {
 public:
 	Enumeration_ImFontAtlasFlags_() : das::Enumeration("ImFontAtlasFlags") {
 		external = true;
 		cppName = "ImFontAtlasFlags_";
-		baseType = (das::Type) das::ToBasicType<int>::type;
+		baseType = (das::Type) das::ToBasicType<unsigned int>::type;
 		addIEx("None", "ImFontAtlasFlags_None", int64_t(ImFontAtlasFlags_::ImFontAtlasFlags_None), das::LineInfo());
 		addIEx("NoPowerOfTwoHeight", "ImFontAtlasFlags_NoPowerOfTwoHeight", int64_t(ImFontAtlasFlags_::ImFontAtlasFlags_NoPowerOfTwoHeight), das::LineInfo());
 		addIEx("NoMouseCursors", "ImFontAtlasFlags_NoMouseCursors", int64_t(ImFontAtlasFlags_::ImFontAtlasFlags_NoMouseCursors), das::LineInfo());
@@ -985,13 +985,13 @@ public:
 	}
 };
 
-// from D:\daScript\github\daScript/Modules/dasImgui/imgui/imgui.h:3261:6
+// from imgui.h:3259:6
 class Enumeration_ImGuiViewportFlags_ : public das::Enumeration {
 public:
 	Enumeration_ImGuiViewportFlags_() : das::Enumeration("ImGuiViewportFlags") {
 		external = true;
 		cppName = "ImGuiViewportFlags_";
-		baseType = (das::Type) das::ToBasicType<int>::type;
+		baseType = (das::Type) das::ToBasicType<unsigned int>::type;
 		addIEx("None", "ImGuiViewportFlags_None", int64_t(ImGuiViewportFlags_::ImGuiViewportFlags_None), das::LineInfo());
 		addIEx("IsPlatformWindow", "ImGuiViewportFlags_IsPlatformWindow", int64_t(ImGuiViewportFlags_::ImGuiViewportFlags_IsPlatformWindow), das::LineInfo());
 		addIEx("IsPlatformMonitor", "ImGuiViewportFlags_IsPlatformMonitor", int64_t(ImGuiViewportFlags_::ImGuiViewportFlags_IsPlatformMonitor), das::LineInfo());

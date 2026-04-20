@@ -1,9 +1,5 @@
-// this file is generated via daScript automatic C++ binder
+// this file is generated via Daslang automatic binder
 // all user modifications will be lost after this file is re-generated
-
-DAS_BASE_BIND_ENUM_GEN(ImGuiKey,ImGuiKey);
-
-DAS_BASE_BIND_ENUM_GEN(ImGuiMouseSource,ImGuiMouseSource);
 
 DAS_BASE_BIND_ENUM_GEN(ImGuiWindowFlags_,ImGuiWindowFlags);
 
@@ -37,6 +33,8 @@ DAS_BASE_BIND_ENUM_GEN(ImGuiDir_,ImGuiDir);
 
 DAS_BASE_BIND_ENUM_GEN(ImGuiSortDirection_,ImGuiSortDirection);
 
+DAS_BASE_BIND_ENUM_GEN(ImGuiKey,ImGuiKey);
+
 DAS_BASE_BIND_ENUM_GEN(ImGuiConfigFlags_,ImGuiConfigFlags);
 
 DAS_BASE_BIND_ENUM_GEN(ImGuiBackendFlags_,ImGuiBackendFlags);
@@ -54,6 +52,8 @@ DAS_BASE_BIND_ENUM_GEN(ImGuiSliderFlags_,ImGuiSliderFlags);
 DAS_BASE_BIND_ENUM_GEN(ImGuiMouseButton_,ImGuiMouseButton);
 
 DAS_BASE_BIND_ENUM_GEN(ImGuiMouseCursor_,ImGuiMouseCursor);
+
+DAS_BASE_BIND_ENUM_GEN(ImGuiMouseSource,ImGuiMouseSource);
 
 DAS_BASE_BIND_ENUM_GEN(ImGuiCond_,ImGuiCond);
 

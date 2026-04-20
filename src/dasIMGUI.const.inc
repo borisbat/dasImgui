@@ -1,4 +1,4 @@
-// this file is generated via daScript automatic C++ binder
+// this file is generated via Daslang automatic binder
 // all user modifications will be lost after this file is re-generated
 
 addConstant<uint32_t>(*this,"IM_UNICODE_CODEPOINT_INVALID",uint32_t(0xFFFDu));

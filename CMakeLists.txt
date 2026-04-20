@@ -118,12 +118,27 @@ if(WIN32)
     )
 else()
     target_link_libraries(dasModuleImgui PRIVATE
-        ${DASLANG_DIR}/lib/libDaScriptDyn.so
+        ${DASLANG_DIR}/lib/liblibDaScriptDyn.so
     )
 endif()
-if(MSVC)
-    target_compile_options(dasModuleImgui PRIVATE /wd4005 /bigobj)
-endif()
+
+MACRO(SETUP_OPTIONS target)
+    if(MSVC)
+        target_compile_options(${target} PRIVATE /wd4005 /bigobj
+            $<$<CONFIG:Release>:/GR->
+            $<$<CONFIG:MinSizeRel>:/GR->
+            $<$<CONFIG:RelWithDebInfo>:/GR->)
+    else()
+        # runtime libs are built with -fno-rtti for optimized configs (see CMakeCommon.txt); match ABI
+        target_compile_options(${target} PRIVATE
+            $<$<CONFIG:Release>:-fno-rtti>
+            $<$<CONFIG:MinSizeRel>:-fno-rtti>
+            $<$<CONFIG:RelWithDebInfo>:-fno-rtti>)
+    endif()
+ENDMACRO()
+
+SETUP_OPTIONS(dasModuleImgui)
+
 set_target_properties(dasModuleImgui PROPERTIES
     SUFFIX ".shared_module"
     PREFIX ""
@@ -164,7 +179,8 @@ IF(OPENGL_FOUND)
         )
     else()
         target_link_libraries(imguiApp PRIVATE
-            ${DASLANG_DIR}/lib/libDaScriptDyn.so
+            ${DASLANG_DIR}/lib/liblibDaScriptDyn.so
+            ${DASLANG_DIR}/modules/dasGlfw/glfw_dyn/lib/libglfw.so
             ${OPENGL_LIBRARIES}
         )
         IF(UNIX AND NOT APPLE)
@@ -174,9 +190,7 @@ IF(OPENGL_FOUND)
             target_link_libraries(imguiApp PRIVATE ${COCOA_LIBRARY})
         ENDIF()
     endif()
-    if(MSVC)
-        target_compile_options(imguiApp PRIVATE /wd4005)
-    endif()
+    SETUP_OPTIONS(imguiApp)
     set_target_properties(imguiApp PROPERTIES
         SUFFIX ".shared_module"
         PREFIX ""
