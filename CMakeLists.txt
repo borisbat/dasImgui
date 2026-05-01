@@ -113,10 +113,17 @@ target_include_directories(dasModuleImgui PRIVATE
     ${DAS_IMGUI_DIR}/src
 )
 if(WIN32)
-    target_link_libraries(dasModuleImgui PRIVATE
-        ${DASLANG_DIR}/lib/Release/libDaScriptDyn.lib
-        ${DASLANG_DIR}/lib/Release/libDaScriptDyn_runtime.lib
-    )
+    if(EXISTS "${DASLANG_DIR}/lib/Release/libDaScriptDyn.lib")
+        target_link_libraries(dasModuleImgui PRIVATE
+            ${DASLANG_DIR}/lib/Release/libDaScriptDyn.lib
+            ${DASLANG_DIR}/lib/Release/libDaScriptDyn_runtime.lib
+        )
+    else()
+        target_link_libraries(dasModuleImgui PRIVATE
+            ${DASLANG_DIR}/lib/libDaScriptDyn.lib
+            ${DASLANG_DIR}/lib/libDaScriptDyn_runtime.lib
+        )
+    endif()
 elseif(APPLE)
     target_link_libraries(dasModuleImgui PRIVATE
         ${DASLANG_DIR}/lib/liblibDaScriptDyn.dylib
@@ -179,12 +186,21 @@ IF(OPENGL_FOUND)
         ${DASLANG_DIR}/modules/dasGlfw/src
     )
     if(WIN32)
-        target_link_libraries(imguiApp PRIVATE
-            ${DASLANG_DIR}/lib/$<CONFIG>/libDaScriptDyn.lib
-            ${DASLANG_DIR}/lib/$<CONFIG>/libDaScriptDyn_runtime.lib
-            ${DASLANG_DIR}/modules/dasGlfw/glfw_dyn/$<CONFIG>/lib/glfw3dll.lib
-            ${OPENGL_LIBRARIES}
-        )
+        if(EXISTS "${DASLANG_DIR}/lib/Release/libDaScriptDyn.lib")
+            target_link_libraries(imguiApp PRIVATE
+                ${DASLANG_DIR}/lib/$<CONFIG>/libDaScriptDyn.lib
+                ${DASLANG_DIR}/lib/$<CONFIG>/libDaScriptDyn_runtime.lib
+                ${DASLANG_DIR}/modules/dasGlfw/glfw_dyn/$<CONFIG>/lib/glfw3dll.lib
+                ${OPENGL_LIBRARIES}
+            )
+        else()
+            target_link_libraries(imguiApp PRIVATE
+                ${DASLANG_DIR}/lib/libDaScriptDyn.lib
+                ${DASLANG_DIR}/lib/libDaScriptDyn_runtime.lib
+                ${DASLANG_DIR}/modules/dasGlfw/glfw_dyn/$<CONFIG>/lib/glfw3dll.lib
+                ${OPENGL_LIBRARIES}
+            )
+        endif()
     elseif(APPLE)
         FIND_LIBRARY(COCOA_LIBRARY Cocoa REQUIRED)
         FIND_LIBRARY(COREFOUNDATION_LIBRARY CoreFoundation REQUIRED)
