@@ -33,9 +33,13 @@ struct ButtonState {
     active        : bool
     focus         : bool
     clicked       : bool
-    pending_click : bool   // L2 short-circuit flag (set by imgui_click cmd)
+    pending_click : bool   // queued by imgui_click cmd, consumed next frame
     click_count   : int    // survives reload via @live
 }
+// NOTE — @live serializes the WHOLE struct: per-frame fields (pending_click,
+// clicked, hover/active/focus, bbox_*, hex_id) survive reload too. Harmless
+// for the read-back fields (overwritten next frame) but pending_click can
+// re-fire across reload. Phase 0a should split persistent / transient state.
 
 var private @live DEMO_BTN : ButtonState
 
@@ -70,9 +74,9 @@ def render_demo_btn() {
     DEMO_BTN.hover    = IsItemHovered(ImGuiHoveredFlags.None)
     DEMO_BTN.active   = IsItemActive()
     DEMO_BTN.focus    = IsItemFocused()
-    DEMO_BTN.hex_id   = GetID("Click me")
+    DEMO_BTN.hex_id   = GetID("Click me")    // Phase 0a derives id from identifier ("DEMO_BTN"), not label
 
-    // resolve clicked: real input OR L2-queued pending_click
+    // resolve clicked: real input OR queued via imgui_click command
     var clicked = imgui_clicked
     if (DEMO_BTN.pending_click) {
         DEMO_BTN.pending_click = false
@@ -131,15 +135,20 @@ def imgui_snapshot(input : JsonValue?) : JsonValue? {
     for (k, v in keys(g_registry), values(g_registry)) {
         globals |> insert(k, JV(v))
     }
-    var top : table<string; JsonValue?>
-    top |> insert("frame",   JV(g_frame))
-    top |> insert("globals", JV(globals))
-    return JV(top)
+    return JV({ "frame" => JV(g_frame), "globals" => JV(globals) })
 }
 
 // ---- imgui context lifecycle. Phase 00 tears down + reinits on every reload
 // (plan R1 mitigation): cheap, robust, accepts a per-reload font-atlas rebuild.
 // Preserving imgui state across reload via MemSerializer is Phase 0a's job.
+//
+// PHASE 0a TODO — verify daslang-live's reload contract actually calls user
+// shutdown() before re-running init(). If it doesn't, the second init() leaks
+// the prior ImGui context (CreateContext on top of a live ctx). Mirror the
+// glfw_live `if (!is_reload())` guard, OR wire [before_reload]/[after_reload]
+// to call shutdown_imgui/init_imgui explicitly. Also: imgui_click writes
+// pending_click from the live-command handler; if dispatch isn't main-thread-
+// queued, that's a data race with render_demo_btn — confirm before macro-emitting.
 
 def init_imgui() {
     CreateContext(null)
