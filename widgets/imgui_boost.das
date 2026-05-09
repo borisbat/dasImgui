@@ -16,13 +16,15 @@ require daslib/templates_boost
 //! Mark a function `[widget]` to register it as a custom imgui widget kind.
 //! The function name becomes the kind name; the first parameter must be the
 //! state struct (passed `var`). The macro:
-//!   - inserts a leading `name : string` parameter (the daslang identifier
-//!     used at the call site)
-//!   - wraps the body with `widget_prelude(name)` ... `widget_postlude(name, snap)`
-//!   - renames the function to `__widget_render_<kind>` and marks it private
-//!   - dynamically registers a per-kind call macro that rewrites
-//!     `kind(IDENT, args...)` to `__widget_render_<kind>("IDENT", IDENT, args...)`
-//!     and emits the IDENT global at module scope on first use.
+//!   - wraps the body with `widget_prelude(label)` + a finalList postlude
+//!     that captures bbox/hex_id/hover/active/focus into the per-frame registry
+//!   - dynamically registers a per-kind call_macro that intercepts user calls
+//!     of the form `kind(IDENT, args...)`, idempotently emits `IDENT` as a
+//!     module-scope state global on first use, and rewrites the call to a
+//!     plain `kind(IDENT, args...)` that the typer resolves normally.
+//!
+//! Auto-emit is module-scope only (see `find_variable` gate inside
+//! `WidgetCallMacro.visit`); UPPER_SNAKE_CASE identifiers by convention.
 
 [function_macro(name = "widget")]
 class WidgetFunctionMacro : AstFunctionAnnotation {
@@ -115,24 +117,18 @@ class WidgetCallMacro : AstCallMacro {
         }
         let identName = string((identExpr as ExprVar).name)
 
-        // Idempotently ensure the module global exists. The check uses the
-        // module the call site is in (mod), not the macro's own module.
-        var existing = false
-        mod |> for_each_global() $(g) {
-            if (g.name == identName) {
-                existing = true
-            }
-        }
-        if (!existing) {
+        // Gate auto-emit on a module-global lookup. find_variable is
+        // module-scope ONLY — it won't catch a same-named local in the
+        // caller's lexical scope, so calling `<kind>(local_var, ...)` from
+        // inside another function still injects a phantom global. UPPER_SNAKE_CASE
+        // by convention (API_REWORK §4.5) keeps that case rare in practice;
+        // a stricter gate (or killing auto-emit and requiring pre-declaration)
+        // is Phase 0a.1's call.
+        if (find_variable(mod, identName) == null) {
             var v = new Variable(at = expr.at,
                 name := identName,
                 _type <- new TypeDecl(baseType = Type.alias, alias := state_type_name, at = expr.at))
             v.flags |= VariableFlags.generated | VariableFlags.private_variable
-            // The global is intentionally NOT tagged @live. Per Chunk A's
-            // per-field machinery, leaving the global unmarked lets each
-            // state struct's @live fields (e.g. click_count) preserve
-            // independently while the per-frame transient fields (bbox/hover/
-            // pending_click) reset on every reload — exactly what §9.1 wants.
             mod |> add_variable(v)
         }
 

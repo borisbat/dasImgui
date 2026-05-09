@@ -10,6 +10,7 @@ require live/live_commands
 require live/live_vars
 require live/opengl_live
 require live_host
+require imgui/imgui_live
 require daslib/json
 require daslib/json_boost
 
@@ -138,39 +139,18 @@ def imgui_snapshot(input : JsonValue?) : JsonValue? {
     return JV({ "frame" => JV(g_frame), "globals" => JV(globals) })
 }
 
-// ---- imgui context lifecycle. Phase 00 tears down + reinits on every reload
-// (plan R1 mitigation): cheap, robust, accepts a per-reload font-atlas rebuild.
-// Preserving imgui state across reload via MemSerializer is Phase 0a's job.
-//
-// PHASE 0a TODO — verify daslang-live's reload contract actually calls user
-// shutdown() before re-running init(). If it doesn't, the second init() leaks
-// the prior ImGui context (CreateContext on top of a live ctx). Mirror the
-// glfw_live `if (!is_reload())` guard, OR wire [before_reload]/[after_reload]
-// to call shutdown_imgui/init_imgui explicitly. Also: imgui_click writes
-// pending_click from the live-command handler; if dispatch isn't main-thread-
-// queued, that's a data race with render_demo_btn — confirm before macro-emitting.
-
-def init_imgui() {
-    CreateContext(null)
-    var io & = unsafe(GetIO())
-    io.FontGlobalScale = 2.0    // BBATKIN — match imgui_opengl2.das
-    StyleColorsDark(null)
-    ImGui_ImplGlfw_InitForOpenGL(live_window, true)
-    ImGui_ImplOpenGL3_Init("#version 330")
-}
-
-def shutdown_imgui() {
-    ImGui_ImplOpenGL3_Shutdown()
-    ImGui_ImplGlfw_Shutdown()
-    DestroyContext(null)
-}
-
-// ---- lifecycle
+// ---- lifecycle. ImGui ctx lifecycle delegated to imgui/imgui_live —
+// the ctx pointer is roundtripped via [before_reload]/[after_reload] so
+// the font atlas, window state, and active-widget state survive reload.
+// `live_imgui_init` is idempotent (cold start vs. reload), `live_imgui_shutdown`
+// guards `is_reload()` so it only tears down on process exit.
 
 [export]
 def init() {
     live_create_window("Phase 00 — DEMO_BTN", 800, 600)
-    init_imgui()
+    live_imgui_init(live_window)
+    var io & = unsafe(GetIO())
+    io.FontGlobalScale = 2.0
     print("phase00: init reload={is_reload()} clicks={DEMO_BTN.click_count}\n")
 }
 
@@ -207,7 +187,7 @@ def update() {
 
 [export]
 def shutdown() {
-    shutdown_imgui()
+    live_imgui_shutdown()
     live_destroy_window()
     print("phase00: shutdown reload={is_reload()} clicks={DEMO_BTN.click_count}\n")
 }

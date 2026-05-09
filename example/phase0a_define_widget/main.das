@@ -10,6 +10,7 @@ require live/live_commands
 require live/live_vars
 require live/opengl_live
 require live_host
+require imgui/imgui_live
 require imgui/imgui_boost_runtime
 require imgui/imgui_boost_v2
 require imgui/imgui_widgets_builtin
@@ -35,25 +36,15 @@ var VOLUME  : SliderStateFloat = SliderStateFloat(value = 0.5f, init_value = 0.5
 //        localhost:9090/command
 // =============================================================================
 
-def init_imgui() {
-    CreateContext(null)
-    var io & = unsafe(GetIO())
-    io.FontGlobalScale = 2.0
-    StyleColorsDark(null)
-    ImGui_ImplGlfw_InitForOpenGL(live_window, true)
-    ImGui_ImplOpenGL3_Init("#version 330")
-}
-
-def shutdown_imgui() {
-    ImGui_ImplOpenGL3_Shutdown()
-    ImGui_ImplGlfw_Shutdown()
-    DestroyContext(null)
-}
-
 [export]
 def init() {
+    //! Reload-aware. `live_imgui_init` is idempotent: cold start runs
+    //! CreateContext + ImGui_Impl* setup; reload reuses the preserved
+    //! ctx pointer (restored by imgui_live's [after_reload]).
     live_create_window("Phase 0a — define_widget", 800, 600)
-    init_imgui()
+    live_imgui_init(live_window)
+    var io & = unsafe(GetIO())
+    io.FontGlobalScale = 2.0
 }
 
 [export]
@@ -100,7 +91,9 @@ def update() {
 
 [export]
 def shutdown() {
-    shutdown_imgui()
+    //! Reload-aware. `live_imgui_shutdown` skips during reload; tears
+    //! down only on process exit.
+    live_imgui_shutdown()
     live_destroy_window()
 }
 

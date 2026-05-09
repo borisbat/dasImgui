@@ -12,4 +12,6 @@ def initialize(project_path : string) {
     register_native_path("imgui", "imgui_boost_v2", "{project_path}/widgets/imgui_boost.das")
     register_native_path("imgui", "imgui_boost_runtime", "{project_path}/widgets/imgui_boost_runtime.das")
     register_native_path("imgui", "imgui_widgets_builtin", "{project_path}/widgets/imgui_widgets_builtin.das")
+    // Reload-aware ImGui ctx lifecycle (mirror of live/glfw_live for ImGui).
+    register_native_path("imgui", "imgui_live", "{project_path}/widgets/imgui_live.das")
 }

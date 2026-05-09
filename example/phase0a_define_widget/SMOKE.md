@@ -67,6 +67,21 @@ Expected (truncated):
 - Per-frame registry populates correctly — `imgui_snapshot` returns geometry
   + kind tag + hex_id for every rendered widget.
 - All 3 widget kinds (button, slider float, slider_int) work in one program.
+- **ImGui ctx survives reload.** `require imgui/imgui_live` plus
+  `live_imgui_init(live_window)` / `live_imgui_shutdown()` in `init`/`shutdown`
+  preserves the C++ context across daslang-live reloads (mirrors
+  `live/glfw_live`'s pattern). Font atlas, ImGui window positions, and
+  active-widget state all persist.
+
+## Threading
+
+`imgui_click` and `imgui_set` write `pending_click` / `pending_value` on the
+state global from the live-command handler. `daslang-live`'s
+`live_dispatch_command` drains queued commands on the GLFW main thread (the
+same context that runs `update`), so these writes do **not** race with the
+render path that reads them. Confirmed against `utils/daslang-live/main.cpp`
+lifecycle + Boris's prior knowledge; no main-thread queue marshaling needed
+in the macro layer.
 
 ## Known v0a gaps (follow-up chunks)
 
