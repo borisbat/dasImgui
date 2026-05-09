@@ -9,139 +9,215 @@ require imgui public
 require imgui/imgui_boost_runtime public
 require daslib/ast
 require daslib/ast_boost
+require daslib/strings_boost
 require daslib/templates_boost
 
-//! Phase 0a — `define_widget` core (function-annotation form).
+//! `[widget]` function annotation.
 //!
-//! Mark a function `[widget]` to register it as a custom imgui widget kind.
-//! The function name becomes the kind name; the first parameter must be the
-//! state struct (passed `var`). The macro:
-//!   - wraps the body with `widget_prelude(label)` + a finalList postlude
-//!     that captures bbox/hex_id/hover/active/focus into the per-frame registry
-//!   - dynamically registers a per-kind call_macro that intercepts user calls
-//!     of the form `kind(IDENT, args...)`, idempotently emits `IDENT` as a
-//!     module-scope state global on first use, and rewrites the call to a
-//!     plain `kind(IDENT, args...)` that the typer resolves normally.
+//! Mark `def myWidget(var state : MyState; <args>) : <ret>` with `[widget]`
+//! to register it. The macro:
+//!   1. Injects `widget_ident : string` between the state arg and the rest
+//!      so the body can call `widget_finalize(widget_ident, ...)`.
+//!   2. Injects `widget_prelude(widget_ident)` at the body's top (`PushID`).
+//!   3. Registers a per-kind call_macro that intercepts user-side
+//!      `myWidget(IDENT, ...)` calls, parses the dotted-suffix flag chain
+//!      (`SAVE_BTN.PUBLIC` / `RPS.NOTLIVE` etc.), idempotently emits IDENT
+//!      as a module-scope state global, and rewrites the call to
+//!      `myWidget(IDENT, "IDENT", ...)`.
 //!
-//! Auto-emit is module-scope only (see `find_variable` gate inside
-//! `WidgetCallMacro.visit`); UPPER_SNAKE_CASE identifiers by convention.
+//! Auto-emit is module-scope only (find_variable gate). UPPER_SNAKE_CASE
+//! identifiers by convention (API_REWORK §4.5).
+
+let private VALID_FLAGS : array<string> = ["PUBLIC", "PRIVATE", "NOTLIVE"]
 
 [function_macro(name = "widget")]
 class WidgetFunctionMacro : AstFunctionAnnotation {
     def override apply(var func : FunctionPtr; var group : ModuleGroup;
                        args : AnnotationArgumentList; var errors : das_string) : bool {
-        if (length(func.arguments) < 1) {
+        if (empty(func.arguments)) {
+            errors := "[widget] requires at least one parameter (state struct)"
             return false
         }
         let kind = string(func.name)
         let stateArg = func.arguments[0]
-        let stateTypeName = describe(stateArg._type)
-        // The function stays public (callable as `<kind>(state, args...)`).
-        // The call_macro intercepts the user's `<kind>(IDENT, ...)` shape and
-        // rewrites it to `<kind>(IDENT_global, ...)`, which the typer then
-        // resolves to this function via normal lookup.
-        func.flags |= FunctionFlags.generated
-        // Wrap the body: prepend prelude, append postlude to finalList. Phase
-        // 0a uses the second parameter's name (conventionally `text`) as the
-        // registry key — same as ImGui's label-based GetID. Phase 0a.1 will
-        // thread the call-site IDENT through so the registry key matches the
-        // daslang identifier (cleaner for telemetry).
-        if (length(func.arguments) >= 2) {
-            let labelParamName = string(func.arguments[1].name)
-            var fblk = new ExprBlock(at = func.body.at)
-            fblk.list |> push(qmacro(widget_prelude($i(labelParamName))))
-            fblk.list |> push <| qmacro_expr(${
-                var widget_snap : WidgetSnapshot
-            })
-            fblk.list |> push <| qmacro_expr(${
-                widget_snap.kind = $v(kind)
-            })
-            let oldBody = func.body as ExprBlock
-            for (el in oldBody.list) {
-                fblk.list |> push(clone_expression(el))
-            }
-            for (ef in oldBody.finalList) {
-                fblk.finalList |> push(clone_expression(ef))
-            }
-            fblk.finalList |> push(qmacro(widget_postlude($i(labelParamName), widget_snap)))
-            func.body = fblk
+        if (stateArg._type == null || stateArg._type.structType == null) {
+            errors := "[widget] first parameter must be a struct (state)"
+            return false
         }
-        // Register the per-kind call macro instance. Duplicate-name collisions
-        // (e.g. two `[widget] def slider(...)` overloads on different state
-        // types) trigger a C++-side panic with a clean error from add_call_macro
-        // ("can't add call macro <name> to module <mod>"). Phase 0a sticks to
-        // distinct kind names per state type (button, slider, slider_int);
-        // overload dispatch is deferred. Note: find_call_macro can't be used
-        // for a soft pre-check — its C++ binding crashes when the name is
-        // absent. Daslang issue worth reporting separately.
+        let stateTypeName = describe(stateArg._type)
+        let stateStruct = stateArg._type.structType
+        func.flags |= FunctionFlags.generated
+        // Inject widget_ident : string at index 1 (between state and rest).
+        // The user's body code references `widget_ident` literally when
+        // calling widget_finalize — this param makes it in scope.
+        var widthIdentVar = new Variable(at = func.at,
+            name := "widget_ident",
+            _type <- new TypeDecl(baseType = Type.tString, at = func.at))
+        widthIdentVar.flags |= VariableFlags.generated
+        func.arguments |> emplace(widthIdentVar, 1)
+        // Wrap the body: prepend widget_prelude(widget_ident). The
+        // matching PopID lives in widget_finalize at the body's bottom
+        // (user-written, since the lambda construction is per-widget).
+        var fblk = new ExprBlock(at = func.body.at)
+        fblk.list |> push(qmacro(widget_prelude($i("widget_ident"))))
+        let oldBody = func.body as ExprBlock
+        for (el in oldBody.list) {
+            fblk.list |> push(clone_expression(el))
+        }
+        for (ef in oldBody.finalList) {
+            fblk.finalList |> push(clone_expression(ef))
+        }
+        func.body = fblk
+        // Register the per-kind call macro instance. Duplicate-name
+        // collisions trigger a C++-side panic in add_call_macro.
         var inst = new WidgetCallMacro(
             kind_name = kind,
             state_type_name = stateTypeName,
+            state_struct = stateStruct,
             render_fn_name = kind)
         compiling_module() |> add_call_macro(make_call_macro(kind, inst))
         return true
     }
 }
 
-//! Per-kind call dispatcher. One instance per `[widget]` declaration; created
-//! by `WidgetFunctionMacro` and registered via `add_call_macro`. Intercepts
-//! every `<kind>(IDENT, ...)` call and:
-//!   1. Parses the dotted identifier (`SAVE_BTN.PUBLIC` etc.) into name + flags
-//!   2. Ensures the module-scope state global exists (idempotent — re-uses
-//!      the existing decl if already there)
-//!   3. Rewrites the call to `__widget_render_<kind>("IDENT", IDENT, args...)`
-
 class WidgetCallMacro : AstCallMacro {
     kind_name : string
     state_type_name : string
+    state_struct : Structure const?
     render_fn_name : string
 
     def override canVisitArgument(expr : ExprCallMacro?; argIndex : int) : bool {
         // The first argument is the IDENT (which doesn't yet exist as a
         // global); telling the typer not to pre-resolve it lets us see the
-        // raw ExprVar in visit(), emit the global, and rewrite. Other args
-        // are resolved normally before we see them.
+        // raw ExprVar in visit(), parse the dotted-flag chain, emit the
+        // global, and rewrite. Other args resolve normally before we see them.
         return argIndex != 0
     }
 
     def override visit(prog : ProgramPtr; mod : Module?; var expr : ExprCallMacro?) : ExpressionPtr {
-        if (length(expr.arguments) < 1) {
+        if (empty(expr.arguments)) {
             macro_error(prog, expr.at, "{kind_name}(IDENT, ...): missing widget identifier")
             return <- default<ExpressionPtr>
         }
-
-        let identExpr = expr.arguments[0]
-        if (!(identExpr is ExprVar)) {
-            macro_error(prog, expr.at, "{kind_name}(IDENT, ...): first argument must be an identifier (got {describe(identExpr)})")
+        // Walk the leading-arg AST to extract `BARE.FLAG1.FLAG2...`. Plain
+        // `BARE` is a single ExprVar; dotted forms like `SAVE_BTN.PUBLIC` parse
+        // as nested ExprField (field accesses), outermost-to-innermost. Walk
+        // down, collecting field names as flag tokens, until the leaf ExprVar.
+        var bareName : string
+        var rawName : string
+        var flagsReversed : array<string>
+        var cursor : Expression const? = expr.arguments[0]
+        while (cursor is ExprField) {
+            let fld = cursor as ExprField
+            flagsReversed |> push(string(fld.name))
+            cursor = fld.value
+        }
+        if (cursor is ExprVar) {
+            bareName = string((cursor as ExprVar).name)
+        } else {
+            macro_error(prog, expr.at, "{kind_name}(IDENT...): first argument must be an identifier or `IDENT.FLAG[.FLAG...]`, got {describe(expr.arguments[0])}")
             return <- default<ExpressionPtr>
         }
-        let identName = string((identExpr as ExprVar).name)
-
-        // Gate auto-emit on a module-global lookup. find_variable is
-        // module-scope ONLY — it won't catch a same-named local in the
-        // caller's lexical scope, so calling `<kind>(local_var, ...)` from
-        // inside another function still injects a phantom global. UPPER_SNAKE_CASE
-        // by convention (API_REWORK §4.5) keeps that case rare in practice;
-        // a stricter gate (or killing auto-emit and requiring pre-declaration)
-        // is Phase 0a.1's call.
-        if (find_variable(mod, identName) == null) {
+        // Reconstruct rawName for error messages (source order).
+        rawName = build_string() $(var w) {
+            w |> write(bareName)
+            for (i in range(0, length(flagsReversed))) {
+                w |> write(".")
+                w |> write(flagsReversed[length(flagsReversed) - 1 - i])
+            }
+        }
+        if (empty(bareName)) {
+            macro_error(prog, expr.at, "{kind_name}(IDENT...): identifier must not be empty: '{rawName}'")
+            return <- default<ExpressionPtr>
+        }
+        // Validate + record flags.
+        var flagPublic = false
+        var flagPrivate = false
+        var flagNotLive = false
+        for (token in flagsReversed) {
+            if (empty(token)) {
+                macro_error(prog, expr.at, "{kind_name}(IDENT...): empty flag in '{rawName}'")
+                return <- default<ExpressionPtr>
+            }
+            var known = false
+            for (vf in VALID_FLAGS) {
+                if (token == vf) {
+                    known = true
+                }
+            }
+            if (!known) {
+                macro_error(prog, expr.at, "{kind_name}(IDENT...): unknown flag '{token}' in '{rawName}'; valid: PUBLIC, PRIVATE, NOTLIVE")
+                return <- default<ExpressionPtr>
+            }
+            if (token == "PUBLIC") {
+                if (flagPublic) {
+                    macro_error(prog, expr.at, "{kind_name}(IDENT...): duplicate flag 'PUBLIC' in '{rawName}'")
+                    return <- default<ExpressionPtr>
+                }
+                flagPublic = true
+            } elif (token == "PRIVATE") {
+                if (flagPrivate) {
+                    macro_error(prog, expr.at, "{kind_name}(IDENT...): duplicate flag 'PRIVATE' in '{rawName}'")
+                    return <- default<ExpressionPtr>
+                }
+                flagPrivate = true
+            } elif (token == "NOTLIVE") {
+                if (flagNotLive) {
+                    macro_error(prog, expr.at, "{kind_name}(IDENT...): duplicate flag 'NOTLIVE' in '{rawName}'")
+                    return <- default<ExpressionPtr>
+                }
+                flagNotLive = true
+            }
+        }
+        if (flagPublic && flagPrivate) {
+            macro_error(prog, expr.at, "{kind_name}(IDENT...): cannot combine PUBLIC and PRIVATE in '{rawName}'")
+            return <- default<ExpressionPtr>
+        }
+        // Auto-emit gate: only emit if not already declared at module scope.
+        // find_variable is module-scope ONLY — re-uses existing globals.
+        // Type built from the captured Structure pointer (NOT Type.alias on
+        // the qualified name — that doesn't resolve at the caller's scope
+        // when the state struct lives in another module).
+        if (find_variable(mod, bareName) == null) {
             var v = new Variable(at = expr.at,
-                name := identName,
-                _type <- new TypeDecl(baseType = Type.alias, alias := state_type_name, at = expr.at))
-            v.flags |= VariableFlags.generated | VariableFlags.private_variable
+                name := bareName,
+                _type <- new TypeDecl(baseType = Type.tStructure,
+                                      structType = unsafe(reinterpret<Structure?>(state_struct)),
+                                      at = expr.at))
+            v.flags |= VariableFlags.generated
+            if (!flagPublic) {
+                v.flags |= VariableFlags.private_variable
+            }
+            if (!flagNotLive) {
+                v.annotation |> add_annotation_argument("live", true)
+            }
             mod |> add_variable(v)
         }
-
-        // Rewrite to `<kind>(IDENT, args...)`. The function lives in the
-        // imgui_widgets_builtin module (shared, public). The same call_macro
-        // that brought us here intercepts only top-level `<kind>(...)` calls
-        // at the parser level — once we replace the ExprCallMacro with a
-        // regular ExprCall, the typer resolves it via normal lookup and finds
-        // the underlying function.
+        // Rewrite to `<kind>(IDENT, "IDENT", args...)`. The function lives
+        // in imgui_widgets_builtin (or user module). After macro expansion
+        // the typer resolves the call against the (macro-expanded) signature
+        // `def kind(var state : T; widget_ident : string; ...)`.
+        //
+        // Named-tuple args `(name = val, ...)` carry the call's named-arg
+        // ergonomic; daslang's square-bracket `[name = val]` form builds an
+        // ExprNamedCall and bypasses call_macro dispatch entirely. Destructure
+        // named tuples into positional args (in source order — matches the
+        // user-facing parameter order).
         var newCall = new ExprCall(at = expr.at, name := render_fn_name)
-        newCall.arguments |> push(new ExprVar(at = expr.at, name := identName))
+        newCall.arguments |> push(new ExprVar(at = expr.at, name := bareName))
+        newCall.arguments |> push(new ExprConstString(at = expr.at, value := bareName))
         for (i in range(1, length(expr.arguments))) {
-            newCall.arguments |> push(clone_expression(expr.arguments[i]))
+            let a = expr.arguments[i]
+            if (a is ExprMakeTuple) {
+                let mt = a as ExprMakeTuple
+                if (length(mt.recordNames) == length(mt.values) && !empty(mt.recordNames)) {
+                    for (v in mt.values) {
+                        newCall.arguments |> push(clone_expression(v))
+                    }
+                    continue
+                }
+            }
+            newCall.arguments |> push(clone_expression(a))
         }
         return <- newCall
     }

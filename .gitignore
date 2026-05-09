@@ -1,4 +1,7 @@
 *.shared_module
+*.exp
+*.lib
+.daspkg_standalone
 _build/
 imgui/
 example/imgui.ini

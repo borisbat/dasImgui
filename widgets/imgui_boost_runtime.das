@@ -12,103 +12,94 @@ require live_host
 require daslib/json public
 require daslib/json_boost
 
-//! Runtime data layer for the dasImgui boost (Phase 0a). Holds widget state
-//! struct types, the per-frame registry, and the ``[live_command]`` handlers
-//! that the macro layer's emitted code feeds into.
+//! Runtime data layer for the dasImgui boost.
+//!
+//! Three things live here:
+//!   1. State structs the user-facing `[widget] def` blocks consume.
+//!   2. The per-frame registry (`g_registry : table<string; WidgetEntry>`)
+//!      and its on-demand snapshot serializer (`JV(WidgetEntry)`).
+//!   3. The unified L2/L3 dispatcher table (`g_dispatchers`) plus the
+//!      `imgui_click` / `imgui_set` live_command handlers that drain it.
+//!
+//! Per-kind detail (click_count for buttons, value/bounds for sliders) lives
+//! ONLY in the per-kind state struct; the registry stores a per-widget
+//! serializer lambda that reflects the state struct on demand at snapshot
+//! time. Per-frame cost is one struct copy + one lambda capture; JSON only
+//! materializes when `imgui_snapshot` actually fires.
 
-// ===== State structs =====
+// ===== Per-kind state structs =====
 //
-// Each widget kind owns one struct. Mixed @live / non-@live fields:
-//   - @live  → preserved across hot-reload (per Chunk A's per-field @live).
-//   - plain → fresh on every reload (per-frame transient or pending-command flag).
+// Mixed @live (preserved across hot-reload) and @optional (transient,
+// dropped from JV when zero-valued). Common per-frame imgui state — hex_id,
+// bbox, hover/active/focus — lives in WidgetEntry, not here, so the structs
+// stay small per kind.
 
-struct ButtonState {
-    @live click_count : int     //! cumulative clicks across reloads
-
-    pending_click : bool        // queued by imgui_click L2 cmd, consumed next frame
-    clicked : bool              // captured this frame
-
-    hex_id : uint               // ImGui::GetID at render time
-    bbox_min : ImVec2
-    bbox_max : ImVec2
-    hover : bool
-    active : bool
-    focus : bool
+struct ClickState {
+    @live click_count : int                      //! cumulative across reloads
+    @optional pending_click : bool               // queued by imgui_click L2; consumed next frame
+    @optional clicked : bool                     // true on the frame the button fired
 }
 
 struct SliderStateFloat {
-    @live value : float                 //! user-touched value, preserved across reload
-    @live bounds : tuple<float; float>  //! (min, max) — re-init from source on reload
-    @live init_value : float            //! initial value — re-init from source on reload
-
-    has_pending : bool                  // imgui_set L3 sets this; render fn applies + clears
-    pending_value : float
-
-    hex_id : uint
-    bbox_min : ImVec2
-    bbox_max : ImVec2
-    hover : bool
-    active : bool
-    focus : bool
-    changed : bool
+    @live value : float                          //! preserved across reload
+    @live bounds : tuple<float; float>           //! (min, max)
+    @live init_value : float                     //! initial value at first cold-start
+    @optional has_pending : bool                 // imgui_set L3 sets; render fn consumes
+    @optional pending_value : float
+    @optional changed : bool
 }
 
 struct SliderStateInt {
     @live value : int
     @live bounds : tuple<int; int>
     @live init_value : int
-
-    has_pending : bool
-    pending_value : int
-
-    hex_id : uint
-    bbox_min : ImVec2
-    bbox_max : ImVec2
-    hover : bool
-    active : bool
-    focus : bool
-    changed : bool
+    @optional has_pending : bool
+    @optional pending_value : int
+    @optional changed : bool
 }
 
 // ===== Per-frame registry =====
 //
 // One entry per render of any boost-wrapped widget, keyed by the widget's
-// daslang identifier (e.g. "SAVE_BTN"). Cleared at the start of each frame.
-// Phase 1 adds an RTTI walk over module globals; in Phase 0a the registry is
-// the only source of truth for the snapshot command.
+// daslang identifier ("SAVE_BTN" / "SPEED" / "VOLUME" / ...). Cleared at
+// the start of each frame.
 
-struct WidgetSnapshot {
-    //! Per-frame snapshot of one rendered widget. The struct is fat —
-    //! kind-specific fields (clicked/click_count for buttons, value_*/bounds_*
-    //! for sliders) coexist; each kind fills only what applies and zero-init
-    //! covers the rest. Phase 1 will swap to a per-kind variant.
+struct WidgetEntry {
+    //! Per-frame snapshot of one rendered widget. Common fields populated
+    //! every frame; per-kind detail is materialized on demand by the
+    //! `serializer` lambda when `imgui_snapshot` fires.
     kind : string
     hex_id : uint
-
-    bbox_x0 : float
-    bbox_y0 : float
-    bbox_x1 : float
-    bbox_y1 : float
-
-    hover : bool
-    active : bool
-    focus : bool
-
-    // button-specific
-    clicked : bool
-    click_count : int
-
-    // slider-specific
-    value_float : float
-    value_int : int
-    bounds_min_float : float
-    bounds_max_float : float
-    bounds_min_int : int
-    bounds_max_int : int
-    changed : bool
+    bbox : float4                                // packed [x0, y0, x1, y1]
+    @optional hover : bool
+    @optional active : bool
+    @optional focus : bool
+    serializer : lambda<() : JsonValue?>
 }
 
-var g_registry : table<string; WidgetSnapshot>
+def public JV(entry : WidgetEntry) : JsonValue? {
+    //! Custom JV overload for WidgetEntry — the generic JV() can't reflect a
+    //! lambda field, and we want per-kind detail to land under "payload"
+    //! produced by invoking the serializer. One overload covers every widget
+    //! kind; per-widget code never assembles JsonValue trees by hand.
+    var tab : table<string; JsonValue?>
+    tab |> insert("kind", JV(entry.kind))
+    tab |> insert("hex_id", JV(entry.hex_id))
+    tab |> insert("bbox", JV(entry.bbox))
+    if (entry.hover) {
+        tab |> insert("hover", JV(true))
+    }
+    if (entry.active) {
+        tab |> insert("active", JV(true))
+    }
+    if (entry.focus) {
+        tab |> insert("focus", JV(true))
+    }
+    tab |> insert("payload", invoke(entry.serializer))
+    return JV(tab)
+}
+
+var g_registry : table<string; WidgetEntry>
 var g_frame : int = 0
 
 def begin_frame() {
@@ -120,29 +111,62 @@ def begin_frame() {
 
 // ===== Render helpers =====
 //
-// The macro-emitted render functions sandwich the user body between these.
-// `widget_prelude` pushes the widget's identity onto the ImGui id stack so
-// `GetID(label)` is uniquely scoped to the widget. `widget_postlude` captures
-// post-call frame state into the snapshot and pushes it into the registry.
+// `widget_prelude` runs at the top of every macro-wrapped widget body
+// (PushID for unique imgui scoping). `widget_finalize` runs at the bottom
+// — captures the common per-frame fields, registers the lazy serializer
+// + dispatcher on the first render of each ident, and balances the PushID.
 
-def widget_prelude(name : string) {
-    PushID(name)
+def public widget_prelude(widget_ident : string) {
+    PushID(widget_ident)
 }
 
-def widget_postlude(name : string; var snap : WidgetSnapshot) {
-    snap.hex_id = GetID(name)
+var private g_dispatcher_seen : table<string; bool>
+
+def public widget_finalize(widget_ident : string;
+                           kind : string;
+                           var entry : WidgetEntry;
+                           var serializer : lambda<() : JsonValue?>;
+                           var dispatcher : lambda<(action : string; payload : JsonValue?) : void>) {
+    //! Capture common per-frame fields, register the lazy serializer +
+    //! L2/L3 dispatcher closures on first sight of `widget_ident`. Subsequent
+    //! frames reuse the original closures (the captured `addr(state)` is
+    //! stable across frames). Hot-reload clears `g_dispatcher_seen` (it is
+    //! NOT @live), so the first post-reload frame re-registers fresh
+    //! closures bound to the post-reload state addresses.
+    entry.kind = kind
+    entry.hex_id = GetID(widget_ident)
     let rmin = GetItemRectMin()
     let rmax = GetItemRectMax()
-    snap.bbox_x0 = rmin.x
-    snap.bbox_y0 = rmin.y
-    snap.bbox_x1 = rmax.x
-    snap.bbox_y1 = rmax.y
-    snap.hover = IsItemHovered(ImGuiHoveredFlags.None)
-    snap.active = IsItemActive()
-    snap.focus = IsItemFocused()
-    g_registry[name] = snap
+    entry.bbox = float4(rmin.x, rmin.y, rmax.x, rmax.y)
+    entry.hover = IsItemHovered(ImGuiHoveredFlags.None)
+    entry.active = IsItemActive()
+    entry.focus = IsItemFocused()
+    if (!key_exists(g_dispatcher_seen, widget_ident)) {
+        unsafe {
+            entry.serializer <- serializer
+            g_dispatchers[widget_ident] <- dispatcher
+        }
+        g_dispatcher_seen[widget_ident] = true
+    } else {
+        // Already registered. Re-use the original serializer; the per-frame
+        // serializer/dispatcher lambdas the caller built are dropped.
+        unsafe {
+            var existing <- g_registry[widget_ident].serializer
+            entry.serializer <- existing
+        }
+    }
+    g_registry[widget_ident] <- entry
     PopID()
 }
+
+// ===== L2/L3 dispatcher table =====
+//
+// One closure per registered widget. The closure switches on `action`
+// ("click", "set", "open", "close") and applies the payload to the
+// captured state global. Lazy first-frame registration via widget_finalize
+// above keeps the boost's macro layer free of per-kind init emission.
+
+var private g_dispatchers : table<string; lambda<(action : string; payload : JsonValue?) : void>>
 
 // ===== [live_command] handlers =====
 
@@ -161,7 +185,6 @@ struct CmdResultErr {
 }
 
 def private extract_string_field(obj : JsonValue?; name : string) : string {
-    //! Pull a string field out of a JSON object; returns "" if absent or not a string.
     let v = obj?[name]
     if (v == null || !(v.value is _string)) {
         return ""
@@ -169,7 +192,7 @@ def private extract_string_field(obj : JsonValue?; name : string) : string {
     return string(v.value as _string)
 }
 
-[live_command(description = "Phase 0a: full snapshot of the per-frame widget registry")]
+[live_command(description = "Snapshot the per-frame widget registry as JSON")]
 def imgui_snapshot(input : JsonValue?) : JsonValue? {
     var globals : table<string; JsonValue?>
     for (k, v in keys(g_registry), values(g_registry)) {
@@ -178,54 +201,34 @@ def imgui_snapshot(input : JsonValue?) : JsonValue? {
     return JV({"frame" => JV(g_frame), "globals" => JV(globals)})
 }
 
-// L2 click — sets pending_click on a ButtonState global. Resolution from
-// target name to global happens via __imgui_click_<name> dispatch functions
-// emitted per widget by the macro layer (see find_function lookup below).
+def private dispatch_or_err(action : string; input : JsonValue?) : JsonValue? {
+    let target = extract_string_field(input, "target")
+    if (target == "") {
+        return JV(CmdResultErr(error = "missing 'target'"))
+    }
+    if (!key_exists(g_dispatchers, target)) {
+        return JV(CmdResultErr(error = "unknown target: {target}"))
+    }
+    invoke(g_dispatchers[target], action, input)
+    return JV(CmdResultOk(queued = target))
+}
 
-[live_command(description = "Phase 0a: queue an L2 click on a button identified by 'target'")]
+[live_command(description = "Queue an L2 click on a widget identified by 'target'")]
 def imgui_click(input : JsonValue?) : JsonValue? {
-    let target = extract_string_field(input, "target")
-    if (target == "") {
-        return JV(CmdResultErr(error = "missing 'target'"))
-    }
-    if (!key_exists(g_button_dispatchers, target)) {
-        return JV(CmdResultErr(error = "unknown button target: {target}"))
-    }
-    invoke(g_button_dispatchers[target])
-    return JV(CmdResultOk(queued = target))
+    return dispatch_or_err("click", input)
 }
 
-// L3 set — writes pending value on a slider state global. Render fn applies
-// next frame.
-
-[live_command(description = "Phase 0a: set a slider value via L3 ('target' name + 'value')")]
+[live_command(description = "Queue an L3 value set on a widget ('target' name + 'value')")]
 def imgui_set(input : JsonValue?) : JsonValue? {
-    let target = extract_string_field(input, "target")
-    if (target == "") {
-        return JV(CmdResultErr(error = "missing 'target'"))
-    }
-    if (!key_exists(g_slider_dispatchers, target)) {
-        return JV(CmdResultErr(error = "unknown slider target: {target}"))
-    }
-    let value = input?["value"]
-    invoke(g_slider_dispatchers[target], value)
-    return JV(CmdResultOk(queued = target))
+    return dispatch_or_err("set", input)
 }
 
-// ===== Widget dispatcher tables =====
-//
-// At module init, each widget registers a closure that knows how to apply a
-// command to its own state global. The macro layer emits `[init]` functions
-// that populate these tables. Keeping the indirection out of the live_command
-// handler lets us add new widget kinds without touching this file.
-
-var g_button_dispatchers : table<string; lambda<() : void>>
-var g_slider_dispatchers : table<string; lambda<(value : JsonValue?) : void>>
-
-def register_button_dispatcher(name : string; var fn : lambda<() : void>) {
-    g_button_dispatchers[name] <- fn
+[live_command(description = "Queue an open command on a container widget ('target' name)")]
+def imgui_open(input : JsonValue?) : JsonValue? {
+    return dispatch_or_err("open", input)
 }
 
-def register_slider_dispatcher(name : string; var fn : lambda<(value : JsonValue?) : void>) {
-    g_slider_dispatchers[name] <- fn
+[live_command(description = "Queue a close command on a container widget ('target' name)")]
+def imgui_close(input : JsonValue?) : JsonValue? {
+    return dispatch_or_err("close", input)
 }

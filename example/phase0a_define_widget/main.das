@@ -15,20 +15,18 @@ require imgui/imgui_boost_runtime
 require imgui/imgui_boost_v2
 require imgui/imgui_widgets_builtin
 
-// Phase 0a v0 — globals pre-declared manually. Once the macro's emit-on-first-use
-// path is sorted, these can come back out and live-emit from the call_macro.
-var SAVE_BTN : ButtonState
-var SPEED   : SliderStateInt = SliderStateInt(value = 5, init_value = 5, bounds = (0, 10))
-var VOLUME  : SliderStateFloat = SliderStateFloat(value = 0.5f, init_value = 0.5f, bounds = (0.0f, 1.0f))
-
 // =============================================================================
-// Phase 0a — define_widget core: declarative widgets via [widget].
-// Side-by-side with phase00_button/, this demo trades ~220 lines of
-// hand-rolled state + render + live-command code for ~30 lines of widget
-// invocations. The macros (in widgets/imgui_boost.das) handle global
-// emission, prelude/postlude wrapping, and per-kind dispatcher registration.
+// Phase 0b — define_widget with auto-emit + dotted-suffix flags.
+// No pre-declared globals: the [widget] call_macro emits SAVE_BTN/SPEED/VOLUME
+// as module-scope globals on first use (state type inferred from the function
+// signature). Sliders default to bounds (0,0) post-emit — locked range is fine
+// for the foundation gate; per-call init knobs land in a later phase.
 //
-// Drive it from a second terminal:
+// Dotted-suffix flags exercised here (API_REWORK §4.5):
+//   - SPEED.PUBLIC   — cross-module-readable (drops the implicit private flag).
+//   - VOLUME.NOTLIVE — skips the @live annotation; source-side default wins on reload.
+//
+// Drive it from a second terminal (only meaningful under daslang-live):
 //   curl -X POST -d '{"name":"imgui_snapshot"}' localhost:9090/command
 //   curl -X POST -d '{"name":"imgui_click","args":{"target":"SAVE_BTN"}}' \
 //        localhost:9090/command
@@ -63,17 +61,23 @@ def update() {
         Text("define_widget demo — every widget below comes from a [widget] decl.")
 
         // Button — return form, identifier becomes the daslang global SAVE_BTN.
-        if (button(SAVE_BTN, [text = "Save"])) {
+        // Note `(text = "Save")` (parens, not square brackets): named-tuple
+        // form, which the [widget] call_macro destructures into positional
+        // args. Square-bracket `[name=val]` builds an ExprNamedCall and
+        // bypasses call_macro dispatch — see API_REWORK §4.5.
+        if (button(SAVE_BTN, (text = "Save"))) {
             print("save clicked, count={SAVE_BTN.click_count}\n")
         }
         Text("save clicks: {SAVE_BTN.click_count}")
 
-        // Slider int — emits SliderStateInt SPEED at module scope.
-        slider_int(SPEED, [text = "Speed (int)"])
+        // Slider int — emits SliderStateInt SPEED, marked PUBLIC so a
+        // sibling test module can read SPEED.value across the module boundary.
+        slider_int(SPEED.PUBLIC, (text = "Speed (int)"))
         Text("speed = {SPEED.value}")
 
-        // Slider float — emits SliderStateFloat VOLUME at module scope.
-        slider(VOLUME, [text = "Volume (float)"])
+        // Slider float — emits SliderStateFloat VOLUME without @live; the
+        // source-side initial value wins on reload (no preservation).
+        slider(VOLUME.NOTLIVE, (text = "Volume (float)"))
         Text("volume = {VOLUME.value}")
     }
     End()
