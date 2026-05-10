@@ -815,6 +815,25 @@ def private widget_meta_jv(path_key : string; meta : WidgetMeta) : JsonValue? {
     return JV(tab)
 }
 
+def private io_jv() : JsonValue? {
+    //! Snapshot of public ImGuiIO state at the moment imgui_snapshot
+    //! fired. Mouse position via GetMousePos(); button state via
+    //! IsMouseDown for left/middle/right (3-element bool array, mirrors
+    //! ImGui's standard ordering). Deferred: active_widget — needs
+    //! ImGui::GetActiveID() bound on the C++ side (it's a public symbol
+    //! but isn't currently in dasIMGUI.func_*.cpp).
+    let pos = GetMousePos()
+    var buttons <- [
+        JV(IsMouseDown(ImGuiMouseButton.Left)),
+        JV(IsMouseDown(ImGuiMouseButton.Middle)),
+        JV(IsMouseDown(ImGuiMouseButton.Right))
+    ]
+    var tab : table<string; JsonValue?>
+    tab |> insert("mouse_pos", JV(float2(pos.x, pos.y)))
+    tab |> insert("mouse_buttons", JV(buttons))
+    return JV(tab)
+}
+
 [live_command(description = "Snapshot of all registered widgets, with per-frame state joined when rendered")]
 def imgui_snapshot(input : JsonValue?) : JsonValue? {
     var globals : table<string; JsonValue?>
@@ -834,7 +853,7 @@ def imgui_snapshot(input : JsonValue?) : JsonValue? {
             globals |> insert(k, widget_entry_jv(k, v))
         }
     }
-    return JV({"frame" => JV(g_frame), "globals" => JV(globals)})
+    return JV({"frame" => JV(g_frame), "globals" => JV(globals), "io" => io_jv()})
 }
 
 def private dispatch_or_err(action : string; input : JsonValue?) : JsonValue? {
