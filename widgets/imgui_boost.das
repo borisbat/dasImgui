@@ -34,50 +34,99 @@ let private VALID_FLAGS : array<string> = ["PUBLIC", "PRIVATE", "NOTLIVE"]
 class WidgetFunctionMacro : AstFunctionAnnotation {
     def override apply(var func : FunctionPtr; var group : ModuleGroup;
                        args : AnnotationArgumentList; var errors : das_string) : bool {
-        if (empty(func.arguments)) {
-            errors := "[widget] requires at least one parameter (state struct)"
-            return false
-        }
-        let kind = string(func.name)
-        let stateArg = func.arguments[0]
-        if (stateArg._type == null || stateArg._type.structType == null) {
-            errors := "[widget] first parameter must be a struct (state)"
-            return false
-        }
-        let stateTypeName = describe(stateArg._type)
-        let stateStruct = stateArg._type.structType
-        func.flags |= FunctionFlags.generated
-        // Inject widget_ident : string at index 1 (between state and rest).
-        // The user's body code references `widget_ident` literally when
-        // calling widget_finalize — this param makes it in scope.
-        var widthIdentVar = new Variable(at = func.at,
-            name := "widget_ident",
-            _type <- new TypeDecl(baseType = Type.tString, at = func.at))
-        widthIdentVar.flags |= VariableFlags.generated
-        func.arguments |> emplace(widthIdentVar, 1)
-        // Wrap the body: prepend widget_prelude(widget_ident). The
-        // matching PopID lives in widget_finalize at the body's bottom
-        // (user-written, since the lambda construction is per-widget).
-        var fblk = new ExprBlock(at = func.body.at)
-        fblk.list |> push(qmacro(widget_prelude($i("widget_ident"))))
-        let oldBody = func.body as ExprBlock
-        for (el in oldBody.list) {
-            fblk.list |> push(clone_expression(el))
-        }
-        for (ef in oldBody.finalList) {
-            fblk.finalList |> push(clone_expression(ef))
-        }
-        func.body = fblk
-        // Register the per-kind call macro instance. Duplicate-name
-        // collisions trigger a C++-side panic in add_call_macro.
-        var inst = new WidgetCallMacro(
-            kind_name = kind,
-            state_type_name = stateTypeName,
-            state_struct = stateStruct,
-            render_fn_name = kind)
-        compiling_module() |> add_call_macro(make_call_macro(kind, inst))
-        return true
+        return apply_widget_or_container(func, errors, false)
     }
+}
+
+//! `[container]` function annotation — block-arg sibling of `[widget]`.
+//!
+//! Mark `def myContainer(var state : MyState; <args>; blk : block)` with
+//! `[container]` to register a Begin/End-shaped wrapper. The macro:
+//!   1. Same widget_ident injection + auto-emit + dotted-flag handling as
+//!      `[widget]`.
+//!   2. Prepends `container_path_push(widget_ident)` to the body so leaf
+//!      widgets rendered inside `invoke(blk)` see this container in
+//!      `g_container_path`.
+//!   3. Appends `container_path_pop()` to body.finalList so the path is
+//!      popped even when the user body returns early.
+//!
+//! Begin/End semantics — which paint always vs only-on-true — are NOT
+//! abstracted. Each container def authors its own Begin → invoke(blk) → End
+//! sequence so the imgui-irregular pairing rules stay visible at the call
+//! site (Begin/End and BeginChild/EndChild always-pair; everything else
+//! End-only-on-true).
+
+[function_macro(name = "container")]
+class ContainerFunctionMacro : AstFunctionAnnotation {
+    def override apply(var func : FunctionPtr; var group : ModuleGroup;
+                       args : AnnotationArgumentList; var errors : das_string) : bool {
+        if (empty(func.arguments) || func.arguments[length(func.arguments) - 1]._type == null
+            || func.arguments[length(func.arguments) - 1]._type.baseType != Type.tBlock) {
+            errors := "[container] requires the last parameter to be `blk : block`"
+            return false
+        }
+        return apply_widget_or_container(func, errors, true)
+    }
+}
+
+def private apply_widget_or_container(var func : FunctionPtr; var errors : das_string;
+                                      is_container : bool) : bool {
+    if (empty(func.arguments)) {
+        errors := "[widget]/[container] requires at least one parameter (state struct)"
+        return false
+    }
+    let kind = string(func.name)
+    let stateArg = func.arguments[0]
+    if (stateArg._type == null || stateArg._type.structType == null) {
+        errors := "[widget]/[container] first parameter must be a struct (state)"
+        return false
+    }
+    let stateTypeName = describe(stateArg._type)
+    let stateStruct = stateArg._type.structType
+    func.flags |= FunctionFlags.generated
+    // Inject widget_ident : string at index 1 (between state and rest).
+    // The user's body code references `widget_ident` literally when
+    // calling widget_finalize / container_finalize — this param makes it in scope.
+    var widthIdentVar = new Variable(at = func.at,
+        name := "widget_ident",
+        _type <- new TypeDecl(baseType = Type.tString, at = func.at))
+    widthIdentVar.flags |= VariableFlags.generated
+    func.arguments |> emplace(widthIdentVar, 1)
+    // Wrap the body: prepend widget_prelude(widget_ident) and, for containers,
+    // container_path_push(widget_ident). The container path push runs every
+    // frame BEFORE the user body so `invoke(blk)` sees self in g_container_path
+    // and any leaves rendered inside get hierarchical registry keys. The
+    // matching pop lives in body.finalList (always-runs on normal return).
+    // PopID lives in widget_finalize / container_finalize at the bottom.
+    var fblk = new ExprBlock(at = func.body.at)
+    fblk.list |> push(qmacro(widget_prelude($i("widget_ident"))))
+    if (is_container) {
+        fblk.list |> push(qmacro(container_path_push($i("widget_ident"))))
+    }
+    let oldBody = func.body as ExprBlock
+    for (el in oldBody.list) {
+        fblk.list |> push(clone_expression(el))
+    }
+    for (ef in oldBody.finalList) {
+        fblk.finalList |> push(clone_expression(ef))
+    }
+    if (is_container) {
+        fblk.finalList |> push(qmacro(container_path_pop()))
+    }
+    func.body = fblk
+    // Register the per-kind call macro instance. The same WidgetCallMacro
+    // class works for both widgets and containers: it rewrites `kind(IDENT, ...)`
+    // to `kind(IDENT, "IDENT", ...)` and auto-emits the global. The body
+    // wrapping (path push/pop) is the only macro-side difference between the
+    // two annotations. Duplicate-name collisions trigger a C++-side panic in
+    // add_call_macro.
+    var inst = new WidgetCallMacro(
+        kind_name = kind,
+        state_type_name = stateTypeName,
+        state_struct = stateStruct,
+        render_fn_name = kind)
+    compiling_module() |> add_call_macro(make_call_macro(kind, inst))
+    return true
 }
 
 class WidgetCallMacro : AstCallMacro {

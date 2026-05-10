@@ -11,6 +11,7 @@ require live/live_commands
 require live_host
 require daslib/json public
 require daslib/json_boost
+require strings
 
 //! Runtime data layer for the dasImgui boost.
 //!
@@ -349,6 +350,115 @@ struct InputTextState {
     @optional buffer : array<uint8>                       // working buffer; mirrors `value`, recreated each first frame / post-reload
 }
 
+// ===== Container family (Phase 0b.3) =====
+//
+// `[container]` widgets wrap a daslang block argument and push themselves onto
+// `g_container_path` so leaf children get hierarchical registry keys. Per-kind
+// state captures only what's worth remembering across frames + reloads — open
+// state for togglable containers, layout dims for windows / children, flags
+// for everything that takes them. Stateless containers (group, menu_bar,
+// tooltip, item_tooltip) get an empty struct so the [widget] auto-emit gate
+// still has something to instantiate.
+
+struct WindowState {
+    //! Backs the `window` container. `open` is `@live` so the X-button click
+    //! survives reload; everything else is per-frame observed (pos/size/
+    //! collapsed) or echoed from per-call args (flags). ImGui persists
+    //! window pos itself via imgui.ini, so duplicating it as `@live` would
+    //! only fight that. `imgui_open` / `imgui_close` flow through
+    //! pending_open/close; the renderer applies them at the top of the next
+    //! frame. Per-call config (closable, flags) is supplied via the named-
+    //! tuple at the call site — same convention as `[widget]`.
+    @live open : bool
+    @optional flags : ImGuiWindowFlags
+    @optional pos : float2
+    @optional size : float2
+    @optional collapsed : bool
+    @optional pending_open : bool
+    @optional pending_close : bool
+}
+
+struct ChildState {
+    //! Backs the `child` container. All fields are observed (scroll); per-
+    //! call config (size, child_flags, window_flags) is supplied via the
+    //! named-tuple at the call site.
+    @optional size : float2
+    @optional child_flags : ImGuiChildFlags
+    @optional window_flags : ImGuiWindowFlags
+    @optional scroll : float2
+}
+
+struct GroupState {
+    //! Backs the `group` container. Pure layout grouping — no persistent or
+    //! observable state, but the [container] macro still needs a struct to
+    //! hang the auto-emitted global on. The `_placeholder` field stays
+    //! @optional so JV(state) emits `{}` when the group is rendered.
+    @optional _placeholder : bool
+}
+
+struct MenuBarState {
+    //! Backs the `menu_bar` container. Stateless wrapper.
+    @optional _placeholder : bool
+}
+
+struct MenuState {
+    //! Backs the `menu` container — a single drop-down inside a menu bar.
+    //! `enabled` is per-call; `opened` is per-frame observed.
+    @optional enabled : bool
+    @optional opened : bool
+}
+
+struct PopupState {
+    //! Shared by `popup` and `popup_modal`. `open` is @live so the user-driven
+    //! state survives reload. `imgui_open` / `imgui_close` route through
+    //! pending_open/close; the renderer issues OpenPopup/CloseCurrentPopup
+    //! on the next frame in response.
+    @live open : bool
+    @optional flags : ImGuiWindowFlags
+    @optional pending_open : bool
+    @optional pending_close : bool
+}
+
+struct TabBarState {
+    //! Backs the `tab_bar` container. ImGui drives active-tab selection
+    //! itself; we just observe.
+    @optional flags : ImGuiTabBarFlags
+}
+
+struct TabItemState {
+    //! Backs the `tab_item` container. `open` survives reload when the tab
+    //! carries an X-button (closable=true).
+    @live open : bool
+    @optional flags : ImGuiTabItemFlags
+    @optional pending_open : bool
+    @optional pending_close : bool
+}
+
+struct TooltipState {
+    //! Backs both `tooltip` and `item_tooltip`. Tooltips don't persist —
+    //! they're a per-frame chrome pop.
+    @optional _placeholder : bool
+}
+
+struct TreeNodeState {
+    //! Backs the `tree_node` container. ImGui owns the open/close state
+    //! internally; we mirror what's observable so snapshots reflect truth,
+    //! and the dispatcher routes open/close through SetNextItemOpen.
+    @optional flags : ImGuiTreeNodeFlags
+    @optional opened : bool                       // observed per-frame: TreeNode returned true
+    @optional pending_open : bool
+    @optional pending_close : bool
+}
+
+struct CollapsingHeaderState {
+    //! Backs the `collapsing_header` container. Same shape as TreeNodeState
+    //! since the imgui call structurally mirrors it (returns bool, no End()).
+    @optional flags : ImGuiTreeNodeFlags
+    @optional opened : bool
+    @optional pending_open : bool
+    @optional pending_close : bool
+}
+
 // ===== Per-frame registry =====
 //
 // One entry per render of any boost-wrapped widget, keyed by the widget's
@@ -398,11 +508,82 @@ def private widget_entry_jv(ident : string; entry : WidgetEntry) : JsonValue? {
 var g_registry : table<string; WidgetEntry>
 var g_frame : int = 0
 
+// ===== Container path stack =====
+//
+// `g_container_path` is the chain of currently-open `[container]` idents,
+// outermost-first. Pushed on container body entry, popped on body exit. Leaf
+// widgets read the chain at finalize time to build hierarchical registry +
+// dispatcher keys ("MAIN_WIN/SETTINGS_TAB/RPS"). Containers themselves push
+// before invoking their block, so by the time their body calls
+// container_finalize, self is already at the chain's tail.
+//
+// `g_container_path_str` is the cached "/"-joined form, kept in sync by
+// push/pop so leaf finalize is one string interpolation rather than an
+// O(depth) join per leaf per frame.
+
+var g_container_path : array<string>
+var private g_container_path_str : string
+
+def public container_path_push(widget_ident : string) {
+    //! Append `widget_ident` to the open-container chain. Called by the
+    //! `[container]` macro at the top of every wrapped body. The matching
+    //! `container_path_pop` lives in body.finalList so it runs even on early
+    //! return (panic still skips it — same risk surface as widget_finalize).
+    g_container_path |> push(widget_ident)
+    if (length(g_container_path) == 1) {
+        g_container_path_str = widget_ident
+    } else {
+        g_container_path_str = "{g_container_path_str}/{widget_ident}"
+    }
+}
+
+def public container_path_pop() {
+    //! Pop the tail container ident. Idempotent on empty (defensive — a panic
+    //! mid-frame followed by a recovery would otherwise leak).
+    return if (empty(g_container_path))
+    g_container_path |> pop()
+    if (empty(g_container_path)) {
+        g_container_path_str = ""
+    } else {
+        // Rebuild via build_string — pop is O(depth) anyway; avoid the O(depth^2)
+        // allocation churn of a chain of `s = "{s}/.."` interpolations.
+        g_container_path_str = build_string() $(var w) {
+            for (i in range(length(g_container_path))) {
+                if (i > 0) {
+                    w |> write("/")
+                }
+                w |> write(g_container_path[i])
+            }
+        }
+    }
+}
+
+def public widget_path_key(widget_ident : string) : string {
+    //! Build the registry/dispatcher key for a leaf widget: the open container
+    //! chain joined by "/" then the leaf's own ident. Empty container path
+    //! degrades to bare ident — preserves pre-0b.3 behavior for unnested widgets.
+    return widget_ident if (empty(g_container_path_str))
+    return "{g_container_path_str}/{widget_ident}"
+}
+
+def public container_path_key() : string {
+    //! Build the registry/dispatcher key for a container's own entry. The
+    //! container has already pushed itself onto `g_container_path`, so the
+    //! cached path string is the answer directly.
+    return g_container_path_str
+}
+
 def begin_frame() {
     //! Call once per frame BEFORE rendering any widgets. Bumps the frame
-    //! counter and clears the per-frame registry.
+    //! counter and clears the per-frame registry. Also defensively clears
+    //! the container path — a panic mid-frame the previous tick would
+    //! otherwise leave a stale chain.
     g_frame++
     g_registry |> clear()
+    if (!empty(g_container_path)) {
+        g_container_path |> clear()
+        g_container_path_str = ""
+    }
 }
 
 // ===== Render helpers =====
@@ -425,12 +606,15 @@ def public widget_finalize(widget_ident : string;
                            var serializer : lambda<() : JsonValue?>;
                            var dispatcher : lambda<(action : string; payload : JsonValue?) : void>) {
     //! Capture common per-frame fields, register the L2/L3 dispatcher closure
-    //! on first sight of `widget_ident`, and overwrite the serializer every
+    //! on first sight of the path key, and overwrite the serializer every
     //! frame. The serializer captures `& state` of the per-widget global —
     //! addresses are stable across frames so the lambda is rebuilt cheaply
     //! and the latest one is always correct. Hot-reload clears
     //! `g_dispatcher_seen` (NOT @live), so the first post-reload frame
     //! re-registers a fresh dispatcher bound to the post-reload state.
+    //! Path key includes any open `[container]` ancestors (0b.3) — sibling
+    //! idents under different containers map to distinct addresses.
+    let path_key = widget_path_key(widget_ident)
     entry.kind = kind
     entry.hex_id = GetID(widget_ident)
     let rmin = GetItemRectMin()
@@ -440,15 +624,44 @@ def public widget_finalize(widget_ident : string;
     entry.active = IsItemActive()
     entry.focus = IsItemFocused()
     unsafe {
-        g_serializers[widget_ident] <- serializer
+        g_serializers[path_key] <- serializer
     }
-    if (!key_exists(g_dispatcher_seen, widget_ident)) {
+    if (!key_exists(g_dispatcher_seen, path_key)) {
         unsafe {
-            g_dispatchers[widget_ident] <- dispatcher
+            g_dispatchers[path_key] <- dispatcher
         }
-        g_dispatcher_seen[widget_ident] = true
+        g_dispatcher_seen[path_key] = true
     }
-    g_registry[widget_ident] <- entry
+    g_registry[path_key] <- entry
+    PopID()
+}
+
+def public container_finalize(widget_ident : string;
+                              kind : string;
+                              var entry : WidgetEntry;
+                              var serializer : lambda<() : JsonValue?>;
+                              var dispatcher : lambda<(action : string; payload : JsonValue?) : void>) {
+    //! Container counterpart of widget_finalize. Self is already at the tail
+    //! of g_container_path (the [container] macro's prelude pushed it before
+    //! the user body ran), so the path key is the cached chain string itself.
+    //! Containers don't capture bbox/hover/active/focus — those imgui
+    //! introspection calls aren't meaningful at the End-pair scope (the
+    //! "current item" is whatever ran last inside the body, not the
+    //! container). Per-kind state (window pos/size, popup open, …) lives in
+    //! the state struct and is reflected through `serializer`.
+    let path_key = container_path_key()
+    entry.kind = kind
+    entry.hex_id = GetID(widget_ident)
+    unsafe {
+        g_serializers[path_key] <- serializer
+    }
+    if (!key_exists(g_dispatcher_seen, path_key)) {
+        unsafe {
+            g_dispatchers[path_key] <- dispatcher
+        }
+        g_dispatcher_seen[path_key] = true
+    }
+    g_registry[path_key] <- entry
     PopID()
 }
 
