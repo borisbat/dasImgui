@@ -330,6 +330,25 @@ struct ListBoxState {
     @optional changed : bool
 }
 
+// Text-input family. The buffer is the canonical storage; `value` is the
+// extracted (clone-on-change) string presented to user code. String fields
+// need @safe_when_uninitialized because the [widget] auto-emit zero-inits
+// the global without calling the constructor (see mouse card
+// dasimgui-widget-auto-emit-skips-struct-field-defaults). `capacity` zero-
+// inits to 0 for the same reason; the widget body promotes 0 to the
+// requested default on the first frame and resizes the buffer to match.
+// `input_text_growable` reuses this struct; its CallbackResize lambda
+// updates `capacity` + `buffer` in place.
+
+struct InputTextState {
+    @safe_when_uninitialized @live value : string         //! current text content (clone of buffer)
+    @live capacity : int                                  //! buffer.size; widget body inits to 256 if 0
+    @optional has_pending : bool
+    @safe_when_uninitialized @optional pending_value : string
+    @optional changed : bool
+    @optional buffer : array<uint8>                       // working buffer; mirrors `value`, recreated each first frame / post-reload
+}
+
 // ===== Per-frame registry =====
 //
 // One entry per render of any boost-wrapped widget, keyed by the widget's

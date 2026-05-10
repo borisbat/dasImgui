@@ -128,6 +128,84 @@ namespace das {
         }
     }
 
+    // ===== Phase 0b.4 — buffer-as-pointer InputText path =====
+    // The legacy DasImguiInputText path above stays as the daslib/imgui_boost.das
+    // v1 surface. The widgets in imgui_widgets_builtin.das instead own
+    // `state.buffer : array<uint8>` and pass `addr(buffer[0])` directly. The
+    // _basic forwarders are 1-line overload pickers; the _cb forwarders
+    // stack-allocate a thunk holding (Context*, LineInfo*, Lambda) for the
+    // duration of the ImGui call. ImGui's InputText/Combo callbacks fire
+    // synchronously inside that call, so the thunk's lifetime is one C frame —
+    // no ABI pinning, no struct field, no per-widget mirror struct.
+
+    bool InputTextBasic ( uint8_t * buf, int buf_size, const char * label, ImGuiInputTextFlags_ flags ) {
+        return ImGui::InputText(label, (char *)buf, buf_size, flags);
+    }
+    bool InputTextWithHintBasic ( uint8_t * buf, int buf_size, const char * label, const char * hint, ImGuiInputTextFlags_ flags ) {
+        return ImGui::InputTextWithHint(label, hint, (char *)buf, buf_size, flags);
+    }
+    bool InputTextMultilineBasic ( uint8_t * buf, int buf_size, const char * label, const ImVec2 & size, ImGuiInputTextFlags_ flags ) {
+        return ImGui::InputTextMultiline(label, (char *)buf, buf_size, size, flags);
+    }
+
+    struct InputTextLambdaThunk {
+        Context *  context;
+        LineInfo * at;
+        Lambda     lambda;
+    };
+
+    int InputTextLambdaTrampoline ( ImGuiInputTextCallbackData * data ) {
+        auto t = (InputTextLambdaThunk *) data->UserData;
+        if ( !t->lambda.capture ) {
+            t->context->throw_error_at(t->at, "InputText callback: lambda has no capture");
+        }
+        return das_invoke_lambda<int>::invoke<ImGuiInputTextCallbackData *>(
+            t->context, t->at, t->lambda, data);
+    }
+
+    bool InputTextCb ( uint8_t * buf, int buf_size, const char * label, ImGuiInputTextFlags_ flags,
+                       Lambda cb, Context * context, LineInfoArg * at ) {
+        InputTextLambdaThunk thunk { context, at, cb };
+        return ImGui::InputText(label, (char *)buf, buf_size, flags,
+                                &InputTextLambdaTrampoline, &thunk);
+    }
+    bool InputTextWithHintCb ( uint8_t * buf, int buf_size, const char * label, const char * hint, ImGuiInputTextFlags_ flags,
+                               Lambda cb, Context * context, LineInfoArg * at ) {
+        InputTextLambdaThunk thunk { context, at, cb };
+        return ImGui::InputTextWithHint(label, hint, (char *)buf, buf_size, flags,
+                                        &InputTextLambdaTrampoline, &thunk);
+    }
+    bool InputTextMultilineCb ( uint8_t * buf, int buf_size, const char * label, const ImVec2 & size, ImGuiInputTextFlags_ flags,
+                                Lambda cb, Context * context, LineInfoArg * at ) {
+        InputTextLambdaThunk thunk { context, at, cb };
+        return ImGui::InputTextMultiline(label, (char *)buf, buf_size, size, flags,
+                                         &InputTextLambdaTrampoline, &thunk);
+    }
+
+    struct ComboGetterLambdaThunk {
+        Context *  context;
+        LineInfo * at;
+        Lambda     lambda;
+    };
+
+    const char * ComboGetterLambdaTrampoline ( void * data, int idx ) {
+        auto t = (ComboGetterLambdaThunk *) data;
+        if ( !t->lambda.capture ) {
+            t->context->throw_error_at(t->at, "Combo getter: lambda has no capture");
+        }
+        char * out = nullptr;
+        das_invoke_lambda<bool>::invoke<int, char **>(
+            t->context, t->at, t->lambda, idx, (char **)&out);
+        return out ? out : "";
+    }
+
+    bool ComboCb ( int * current_item, const char * label, int items_count, int popup_max_height_in_items,
+                   Lambda cb, Context * context, LineInfoArg * at ) {
+        ComboGetterLambdaThunk thunk { context, at, cb };
+        return ImGui::Combo(label, current_item, &ComboGetterLambdaTrampoline, &thunk,
+                            items_count, popup_max_height_in_items);
+    }
+
     // ImGui::ImGuiTextFilter::PassFilter
 
     bool PassFilter ( ImGuiTextFilter & filter, const char* text ) {
@@ -336,6 +414,19 @@ namespace das {
             SideEffects::worstDefault, "das::InputTextWithHint");
         addExtern<DAS_BIND_FUN(das::InputTextMultiline), SimNode_ExtFuncCall, imguiTempFn>(*this, lib, "_builtin_InputTextMultiline",
             SideEffects::worstDefault, "das::InputTextMultiline");
+        // Phase 0b.4 — buffer-as-pointer InputText path (no DasImguiInputText mirror).
+        addExtern<DAS_BIND_FUN(das::InputTextBasic)>(*this, lib, "_builtin_InputText_basic",
+            SideEffects::worstDefault, "das::InputTextBasic");
+        addExtern<DAS_BIND_FUN(das::InputTextWithHintBasic)>(*this, lib, "_builtin_InputTextWithHint_basic",
+            SideEffects::worstDefault, "das::InputTextWithHintBasic");
+        addExtern<DAS_BIND_FUN(das::InputTextMultilineBasic), SimNode_ExtFuncCall, imguiTempFn>(*this, lib, "_builtin_InputTextMultiline_basic",
+            SideEffects::worstDefault, "das::InputTextMultilineBasic");
+        addExtern<DAS_BIND_FUN(das::InputTextCb)>(*this, lib, "_builtin_InputText_cb",
+            SideEffects::worstDefault, "das::InputTextCb");
+        addExtern<DAS_BIND_FUN(das::InputTextWithHintCb)>(*this, lib, "_builtin_InputTextWithHint_cb",
+            SideEffects::worstDefault, "das::InputTextWithHintCb");
+        addExtern<DAS_BIND_FUN(das::InputTextMultilineCb), SimNode_ExtFuncCall, imguiTempFn>(*this, lib, "_builtin_InputTextMultiline_cb",
+            SideEffects::worstDefault, "das::InputTextMultilineCb");
         // imgui text buffer
         addExtern<DAS_BIND_FUN(das::ImGTB_Append)>(*this,lib,"append",
             SideEffects::worstDefault,"das::ImGTB_Append");
@@ -365,6 +456,9 @@ namespace das {
         // combo
         addExtern<DAS_BIND_FUN(das::Combo)>(*this, lib, "_builtin_Combo",
             SideEffects::worstDefault, "das::Combo");
+        // Phase 0b.4 — Combo with per-call lambda getter (no ImGuiComboGetter mirror).
+        addExtern<DAS_BIND_FUN(das::ComboCb)>(*this, lib, "_builtin_Combo_cb",
+            SideEffects::worstDefault, "das::ComboCb");
         // plot lines and historgram
         addExtern<DAS_BIND_FUN(das::PlotLines)>(*this, lib, "_builtin_PlotLines",
             SideEffects::worstDefault, "das::PlotLines");

@@ -11,6 +11,7 @@ require imgui/imgui_boost_v2 public
 require daslib/json public
 require daslib/json_boost
 require strings
+require math
 
 //! Built-in widgets defined via `[widget]` — the same mechanism users get.
 //! Each def constructs two short closures (serializer + dispatcher) and
@@ -88,8 +89,11 @@ def private pending_value_finalize(widget_ident : string; kind : string; var sta
     //! fields, dispatched on action "set". Generic on the state struct;
     //! `typedecl(state.pending_value)` drives the from_JV decode so one
     //! body covers all of Drag* (10 kinds) / Slider* (incl. VSlider, 10
-    //! kinds) / Input numeric / Color / Combo / ListBox / InputText
-    //! without per-type duplication.
+    //! kinds) / Input numeric / Color / Combo / ListBox
+    //! without per-type duplication. InputText goes through
+    //! `text_value_finalize` instead — it needs `:=` to clone the
+    //! JV-owned string bytes into the widget context heap before the JV
+    //! drops on dispatcher return.
     var entry : WidgetEntry
     unsafe {
         let ser <- @ capture(& state) () : JsonValue ? {
@@ -100,6 +104,26 @@ def private pending_value_finalize(widget_ident : string; kind : string; var sta
                 state.pending_value = from_JV(payload?["value"],
                                               type<typedecl(state.pending_value)>,
                                               default<typedecl(state.pending_value)>)
+                state.has_pending = true
+            }
+        }
+        widget_finalize(widget_ident, kind, entry, ser, disp)
+    }
+}
+
+def private text_value_finalize(widget_ident : string; kind : string; var state : InputTextState) {
+    // String-typed cousin of pending_value_finalize. The JsonValue payload's
+    // underlying bytes drop when the dispatcher returns; we `:=` clone into
+    // the widget context heap so `state.pending_value` is still valid when
+    // the next widget body frame consumes it.
+    var entry : WidgetEntry
+    unsafe {
+        let ser <- @ capture(& state) () : JsonValue ? {
+            return JV(state)
+        }
+        let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
+            if (action == "set") {
+                state.pending_value := from_JV(payload?["value"], type<string>, "")
                 state.has_pending = true
             }
         }
@@ -880,4 +904,184 @@ def color_button(var state : ClickState; desc_id : string;
     }
     click_finalize(widget_ident, "color_button", state)
     return clicked
+}
+
+// ===== Text-input family (Phase 0b.4) =====
+//
+// The buffer-as-pointer path: state owns `array<uint8> buffer`, the widget
+// passes `addr(buffer[0])` to the C extern, and ImGui mutates it in place.
+// First-frame init lazily allocates capacity (256 by default; @optional
+// buffer is dropped on hot-reload, so this also covers post-reload restore).
+// `value` mirrors the buffer; we re-clone after every frame ImGui reports
+// `changed`.
+//
+// `input_text_growable` is the one callback variant we ship — uses
+// `_builtin_InputText_cb` with a CallbackResize lambda that grows
+// `state.buffer` past the initial capacity. All other ImGui callback
+// flavors (history / completion / always / char-filter) stay in the v1
+// `daslib/imgui_boost` surface.
+
+let private DEFAULT_INPUT_TEXT_CAPACITY = 256
+
+def private input_text_buffer_init(var state : InputTextState) {
+    // Promote zero-init capacity to the default and (re)allocate the
+    // working buffer. Runs every frame but only does work on first frame
+    // and after hot-reload (buffer is @optional, doesn't survive reload).
+    if (state.capacity == 0) {
+        state.capacity = DEFAULT_INPUT_TEXT_CAPACITY
+    }
+    if (length(state.buffer) != state.capacity) {
+        state.buffer |> resize(state.capacity)
+        sync_buffer_from_value(state)
+    }
+}
+
+def private sync_buffer_from_value(var state : InputTextState) {
+    // Zero the buffer then copy bytes-of-`value` (clamped to capacity-1
+    // so the trailing null is preserved). `length(string)` is byte count.
+    for (i in range(state.capacity)) {
+        state.buffer[i] = 0u8
+    }
+    let want = length(state.value)
+    if (want > 0) {
+        let n = min(want, state.capacity - 1)
+        unsafe {
+            memcpy(addr(state.buffer[0]), reinterpret<void?>(state.value), n)
+        }
+    }
+}
+
+def private sync_value_from_buffer(var state : InputTextState) {
+    unsafe {
+        let pbuf = addr(state.buffer[0])
+        state.value := clone_string(reinterpret<string>(pbuf))
+    }
+}
+
+def private apply_pending_text(var state : InputTextState) {
+    if (state.has_pending) {
+        state.value := state.pending_value
+        state.has_pending = false
+        sync_buffer_from_value(state)
+    }
+}
+
+[widget]
+def input_text(var state : InputTextState; text : string;
+               flags : ImGuiInputTextFlags = ImGuiInputTextFlags.None) : bool {
+    //! Single-line text input. `imgui_set {"value":"…"}` overwrites the
+    //! buffer next frame. Buffer is fixed-size (`state.capacity`, default
+    //! 256). For grow-on-overflow use `input_text_growable`.
+    input_text_buffer_init(state)
+    apply_pending_text(state)
+    let changed = _builtin_InputText_basic(unsafe(addr(state.buffer[0])), state.capacity, text, flags)
+    state.changed = changed
+    if (changed) {
+        sync_value_from_buffer(state)
+    }
+    text_value_finalize(widget_ident, "input_text", state)
+    return changed
+}
+
+[widget]
+def input_text_with_hint(var state : InputTextState; text : string; hint : string;
+                         flags : ImGuiInputTextFlags = ImGuiInputTextFlags.None) : bool {
+    //! Same as `input_text` but renders `hint` as a placeholder when the
+    //! buffer is empty.
+    input_text_buffer_init(state)
+    apply_pending_text(state)
+    let changed = _builtin_InputTextWithHint_basic(unsafe(addr(state.buffer[0])), state.capacity, text, hint, flags)
+    state.changed = changed
+    if (changed) {
+        sync_value_from_buffer(state)
+    }
+    text_value_finalize(widget_ident, "input_text_with_hint", state)
+    return changed
+}
+
+[widget]
+def input_text_multiline(var state : InputTextState; text : string;
+                         size : float2 = float2(0.0f, 0.0f);
+                         flags : ImGuiInputTextFlags = ImGuiInputTextFlags.None) : bool {
+    //! Multi-line text input (CR/LF-tolerant). `size = (0, 0)` lets ImGui
+    //! pick a default rect — typically wide-but-short. Pass an explicit
+    //! size for editor-style panels.
+    input_text_buffer_init(state)
+    apply_pending_text(state)
+    let changed = _builtin_InputTextMultiline_basic(unsafe(addr(state.buffer[0])), state.capacity, text, size, flags)
+    state.changed = changed
+    if (changed) {
+        sync_value_from_buffer(state)
+    }
+    text_value_finalize(widget_ident, "input_text_multiline", state)
+    return changed
+}
+
+[widget]
+def input_text_growable(var state : InputTextState; text : string;
+                        flags : ImGuiInputTextFlags = ImGuiInputTextFlags.None) : bool {
+    //! Single-line input that grows `state.buffer` whenever the user types
+    //! past `state.capacity`. Plumbs ImGui's CallbackResize through a daslang
+    //! lambda that resizes the array and re-points `data.Buf`. The thunk
+    //! holding (Context*, LineInfo*, lambda) lives on the C call stack —
+    //! ImGui invokes the callback synchronously inside InputText, so no
+    //! ABI pin needed. `imgui_set` with a value larger than `state.capacity`
+    //! also grows — without that the user-visible "growable" promise leaks.
+    input_text_buffer_init(state)
+    if (state.has_pending) {
+        state.value := state.pending_value
+        state.has_pending = false
+        let want = length(state.value) + 1
+        if (want > state.capacity) {
+            state.capacity = want
+            state.buffer |> resize(state.capacity)
+        }
+        sync_buffer_from_value(state)
+    }
+    let cb_flags = flags | ImGuiInputTextFlags.CallbackResize
+    var changed : bool
+    unsafe {
+        let resize_cb <- @ capture(& state) (var data : ImGuiInputTextCallbackData) : int {
+            if (data.EventFlag == ImGuiInputTextFlags.CallbackResize) {
+                let new_size = data.BufSize
+                state.buffer |> resize(new_size)
+                state.capacity = new_size
+                unsafe {
+                    data.Buf = reinterpret<string>(addr(state.buffer[0]))
+                }
+            }
+            return 0
+        }
+        changed = _builtin_InputText_cb(addr(state.buffer[0]), state.capacity, text, cb_flags, resize_cb)
+    }
+    state.changed = changed
+    if (changed) {
+        sync_value_from_buffer(state)
+    }
+    text_value_finalize(widget_ident, "input_text_growable", state)
+    return changed
+}
+
+// ===== Combo (callback-getter) =====
+
+[widget]
+def combo_getter(var state : ComboState; text : string;
+                 items_count : int;
+                 getter : lambda<(idx : int; var result : string&) : bool>;
+                 popup_max_height_in_items : int = -1) : bool {
+    //! Procedural combo — the dropdown items are produced by a per-frame
+    //! lambda instead of an `array<string>`. Useful when the list is
+    //! large, virtualized, or computed (filter results, RTTI enums).
+    //! `getter(idx, result)` should set `result` to the idx-th item label
+    //! and return true; return false to stop. The lambda fires
+    //! synchronously inside the ImGui call.
+    if (state.has_pending) {
+        state.value = state.pending_value
+        state.has_pending = false
+    }
+    let changed = _builtin_Combo_cb(unsafe(addr(state.value)), text, items_count,
+                                    popup_max_height_in_items, getter)
+    state.changed = changed
+    pending_value_finalize(widget_ident, "combo_getter", state)
+    return changed
 }
