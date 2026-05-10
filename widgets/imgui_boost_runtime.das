@@ -78,6 +78,97 @@ struct RadioIntState {
     @optional changed : bool
 }
 
+// Drag* family. One state struct per scalar-or-vector value type the imgui
+// API exposes; `bounds` is the only persistent config (zero-init = unclamped
+// per ImGui's v_min==v_max semantics). `speed`, `format`, `flags` are passed
+// at the call site — globals can't apply struct field defaults (they're
+// zero-init), and string defaults trip the uninit-safety check. `pending_value`
+// matches `value`'s type so the generic `drag_set_finalize` helper in
+// imgui_widgets_builtin can capture state and steer it from imgui_set.
+
+struct DragStateFloat {
+    @live value : float
+    @live bounds : tuple<float; float>           //! (min, max); zero-init = unclamped
+    @optional has_pending : bool
+    @optional pending_value : float
+    @optional changed : bool
+}
+
+struct DragStateFloat2 {
+    @live value : float2
+    @live bounds : tuple<float; float>
+    @optional has_pending : bool
+    @optional pending_value : float2
+    @optional changed : bool
+}
+
+struct DragStateFloat3 {
+    @live value : float3
+    @live bounds : tuple<float; float>
+    @optional has_pending : bool
+    @optional pending_value : float3
+    @optional changed : bool
+}
+
+struct DragStateFloat4 {
+    @live value : float4
+    @live bounds : tuple<float; float>
+    @optional has_pending : bool
+    @optional pending_value : float4
+    @optional changed : bool
+}
+
+struct DragStateInt {
+    @live value : int
+    @live bounds : tuple<int; int>
+    @optional has_pending : bool
+    @optional pending_value : int
+    @optional changed : bool
+}
+
+struct DragStateInt2 {
+    @live value : int2
+    @live bounds : tuple<int; int>
+    @optional has_pending : bool
+    @optional pending_value : int2
+    @optional changed : bool
+}
+
+struct DragStateInt3 {
+    @live value : int3
+    @live bounds : tuple<int; int>
+    @optional has_pending : bool
+    @optional pending_value : int3
+    @optional changed : bool
+}
+
+struct DragStateInt4 {
+    @live value : int4
+    @live bounds : tuple<int; int>
+    @optional has_pending : bool
+    @optional pending_value : int4
+    @optional changed : bool
+}
+
+struct DragStateRangeFloat {
+    //! `value.x` = current_min, `value.y` = current_max. Bounds clamp both.
+    //! `imgui_set {"value":[lo,hi]}` writes the whole range atomically.
+    @live value : float2
+    @live bounds : tuple<float; float>
+    @optional has_pending : bool
+    @optional pending_value : float2
+    @optional changed : bool
+}
+
+struct DragStateRangeInt {
+    //! `value.x` = current_min, `value.y` = current_max.
+    @live value : int2
+    @live bounds : tuple<int; int>
+    @optional has_pending : bool
+    @optional pending_value : int2
+    @optional changed : bool
+}
+
 // ===== Per-frame registry =====
 //
 // One entry per render of any boost-wrapped widget, keyed by the widget's

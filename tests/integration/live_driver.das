@@ -213,6 +213,21 @@ def public wait_for_string_value(d : LiveDriver;
     } != null
 }
 
+def public wait_for_payload_value(d : LiveDriver;
+                                  target : string;
+                                  field : string;
+                                  expected : auto(T);
+                                  timeout_sec : float = 5.0f) : bool {
+    //! Generic poll: snapshot until `globals[target].payload[field] == expected`.
+    //! T is inferred from `expected` and drives both the from_JV decode and the
+    //! equality check. Use for any roundtrippable type — float, float2/3/4,
+    //! int2/3/4, etc. — where the typed sugars above don't already apply.
+    return wait_until(d, timeout_sec) $(var snap) {
+        let v = widget_payload_field(snap, target, field)
+        return v != null && from_JV(v, type<typedecl(expected)>, default<typedecl(expected)>) == expected
+    } != null
+}
+
 def public wait_for_widget(d : LiveDriver; widget_ident : string; timeout_sec : float = DEFAULT_FRAME_WAIT_SEC) : JsonValue? {
     //! Poll snapshot until `globals.<widget_ident>` is present (i.e. at least
     //! one frame has rendered the widget). Returns the snapshot, or null on

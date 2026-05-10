@@ -243,6 +243,194 @@ def radio_button_int(var state : RadioIntState; text : string; v_button : int) :
     return changed
 }
 
+// ===== Stateful inputs (drag family) =====
+
+def private drag_set_finalize(widget_ident : string; kind : string; var state : auto(StateT)) {
+    //! Lambda + dispatcher install for the Drag* family. Generic on the
+    //! state struct: `state.pending_value`'s type drives the from_JV
+    //! parse so one helper covers DragStateFloat / Float2/3/4 / Int /
+    //! Int2/3/4 / RangeFloat / RangeInt without per-type duplication.
+    var entry : WidgetEntry
+    unsafe {
+        let ser <- @ capture(& state) () : JsonValue ? {
+            return JV(state)
+        }
+        let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
+            if (action == "set") {
+                state.pending_value = from_JV(payload?["value"],
+                                              type<typedecl(state.pending_value)>,
+                                              default<typedecl(state.pending_value)>)
+                state.has_pending = true
+            }
+        }
+        widget_finalize(widget_ident, kind, entry, ser, disp)
+    }
+}
+
+[widget]
+def drag_float(var state : DragStateFloat; text : string;
+               speed : float = 1.0f;
+               format : string = "%.3f";
+               flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    if (state.has_pending) {
+        state.value = state.pending_value
+        state.has_pending = false
+    }
+    let (mn, mx) = state.bounds
+    let changed = DragFloat(text, unsafe(addr(state.value)), speed, mn, mx, format, flags)
+    state.changed = changed
+    drag_set_finalize(widget_ident, "drag_float", state)
+    return changed
+}
+
+[widget]
+def drag_float2(var state : DragStateFloat2; text : string;
+                speed : float = 1.0f;
+                format : string = "%.3f";
+                flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    if (state.has_pending) {
+        state.value = state.pending_value
+        state.has_pending = false
+    }
+    let (mn, mx) = state.bounds
+    let changed = DragFloat2(text, unsafe(addr(state.value.x)), speed, mn, mx, format, flags)
+    state.changed = changed
+    drag_set_finalize(widget_ident, "drag_float2", state)
+    return changed
+}
+
+[widget]
+def drag_float3(var state : DragStateFloat3; text : string;
+                speed : float = 1.0f;
+                format : string = "%.3f";
+                flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    if (state.has_pending) {
+        state.value = state.pending_value
+        state.has_pending = false
+    }
+    let (mn, mx) = state.bounds
+    let changed = DragFloat3(text, unsafe(addr(state.value.x)), speed, mn, mx, format, flags)
+    state.changed = changed
+    drag_set_finalize(widget_ident, "drag_float3", state)
+    return changed
+}
+
+[widget]
+def drag_float4(var state : DragStateFloat4; text : string;
+                speed : float = 1.0f;
+                format : string = "%.3f";
+                flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    if (state.has_pending) {
+        state.value = state.pending_value
+        state.has_pending = false
+    }
+    let (mn, mx) = state.bounds
+    let changed = DragFloat4(text, unsafe(addr(state.value.x)), speed, mn, mx, format, flags)
+    state.changed = changed
+    drag_set_finalize(widget_ident, "drag_float4", state)
+    return changed
+}
+
+[widget]
+def drag_int(var state : DragStateInt; text : string;
+             speed : float = 1.0f;
+             format : string = "%d";
+             flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    if (state.has_pending) {
+        state.value = state.pending_value
+        state.has_pending = false
+    }
+    let (mn, mx) = state.bounds
+    let changed = DragInt(text, unsafe(addr(state.value)), speed, mn, mx, format, flags)
+    state.changed = changed
+    drag_set_finalize(widget_ident, "drag_int", state)
+    return changed
+}
+
+[widget]
+def drag_int2(var state : DragStateInt2; text : string;
+              speed : float = 1.0f;
+              format : string = "%d";
+              flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    if (state.has_pending) {
+        state.value = state.pending_value
+        state.has_pending = false
+    }
+    let (mn, mx) = state.bounds
+    let changed = DragInt2(text, unsafe(addr(state.value.x)), speed, mn, mx, format, flags)
+    state.changed = changed
+    drag_set_finalize(widget_ident, "drag_int2", state)
+    return changed
+}
+
+[widget]
+def drag_int3(var state : DragStateInt3; text : string;
+              speed : float = 1.0f;
+              format : string = "%d";
+              flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    if (state.has_pending) {
+        state.value = state.pending_value
+        state.has_pending = false
+    }
+    let (mn, mx) = state.bounds
+    let changed = DragInt3(text, unsafe(addr(state.value.x)), speed, mn, mx, format, flags)
+    state.changed = changed
+    drag_set_finalize(widget_ident, "drag_int3", state)
+    return changed
+}
+
+[widget]
+def drag_int4(var state : DragStateInt4; text : string;
+              speed : float = 1.0f;
+              format : string = "%d";
+              flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    if (state.has_pending) {
+        state.value = state.pending_value
+        state.has_pending = false
+    }
+    let (mn, mx) = state.bounds
+    let changed = DragInt4(text, unsafe(addr(state.value.x)), speed, mn, mx, format, flags)
+    state.changed = changed
+    drag_set_finalize(widget_ident, "drag_int4", state)
+    return changed
+}
+
+[widget]
+def drag_float_range2(var state : DragStateRangeFloat; text : string;
+                      speed : float = 1.0f;
+                      format : string = "%.3f";
+                      flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    //! Two-handle drag. `state.value.x` = current_min, `.y` = current_max;
+    //! `state.bounds` clamps both. ImGui internally enforces lo <= hi each frame.
+    if (state.has_pending) {
+        state.value = state.pending_value
+        state.has_pending = false
+    }
+    let (mn, mx) = state.bounds
+    let changed = DragFloatRange2(text, unsafe(addr(state.value.x)), unsafe(addr(state.value.y)),
+                                  speed, mn, mx, format, format, flags)
+    state.changed = changed
+    drag_set_finalize(widget_ident, "drag_float_range2", state)
+    return changed
+}
+
+[widget]
+def drag_int_range2(var state : DragStateRangeInt; text : string;
+                    speed : float = 1.0f;
+                    format : string = "%d";
+                    flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    if (state.has_pending) {
+        state.value = state.pending_value
+        state.has_pending = false
+    }
+    let (mn, mx) = state.bounds
+    let changed = DragIntRange2(text, unsafe(addr(state.value.x)), unsafe(addr(state.value.y)),
+                                speed, mn, mx, format, format, flags)
+    state.changed = changed
+    drag_set_finalize(widget_ident, "drag_int_range2", state)
+    return changed
+}
+
 // ===== Stateful inputs (slider family) =====
 
 [widget]
