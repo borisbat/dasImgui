@@ -75,7 +75,7 @@ def update() {
 
         // Slider float — emits SliderStateFloat VOLUME without @live; the
         // source-side initial value wins on reload (no preservation).
-        slider(VOLUME.NOTLIVE, (text = "Volume (float)"))
+        slider_float(VOLUME.NOTLIVE, (text = "Volume (float)"))
         Text("volume = {VOLUME.value}")
     }
     End()

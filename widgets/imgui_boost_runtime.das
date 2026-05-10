@@ -43,18 +43,64 @@ struct ClickState {
 struct SliderStateFloat {
     @live value : float                          //! preserved across reload
     @live bounds : tuple<float; float>           //! (min, max)
-    @live init_value : float                     //! initial value at first cold-start
     @optional has_pending : bool                 // imgui_set L3 sets; render fn consumes
     @optional pending_value : float
+    @optional changed : bool
+}
+
+struct SliderStateFloat2 {
+    @live value : float2
+    @live bounds : tuple<float; float>
+    @optional has_pending : bool
+    @optional pending_value : float2
+    @optional changed : bool
+}
+
+struct SliderStateFloat3 {
+    @live value : float3
+    @live bounds : tuple<float; float>
+    @optional has_pending : bool
+    @optional pending_value : float3
+    @optional changed : bool
+}
+
+struct SliderStateFloat4 {
+    @live value : float4
+    @live bounds : tuple<float; float>
+    @optional has_pending : bool
+    @optional pending_value : float4
     @optional changed : bool
 }
 
 struct SliderStateInt {
     @live value : int
     @live bounds : tuple<int; int>
-    @live init_value : int
     @optional has_pending : bool
     @optional pending_value : int
+    @optional changed : bool
+}
+
+struct SliderStateInt2 {
+    @live value : int2
+    @live bounds : tuple<int; int>
+    @optional has_pending : bool
+    @optional pending_value : int2
+    @optional changed : bool
+}
+
+struct SliderStateInt3 {
+    @live value : int3
+    @live bounds : tuple<int; int>
+    @optional has_pending : bool
+    @optional pending_value : int3
+    @optional changed : bool
+}
+
+struct SliderStateInt4 {
+    @live value : int4
+    @live bounds : tuple<int; int>
+    @optional has_pending : bool
+    @optional pending_value : int4
     @optional changed : bool
 }
 

@@ -17,10 +17,14 @@ require daslib/json_boost
 //! hover/active/focus) are captured inside widget_finalize; per-kind state
 //! lives in the state struct alone.
 //!
-//! Three private *_finalize helpers below collapse the repetitive
+//! Four private *_finalize helpers below collapse the repetitive
 //! lambda-construction + widget_finalize call shared across click /
-//! toggle / radio_int widget families. Each widget def stays focused on
-//! the imgui call + per-frame state mutation.
+//! toggle / radio_int / pending-value widget families. Each widget def
+//! stays focused on the imgui call + per-frame state mutation. The
+//! `pending_value_finalize` helper is generic on the state struct and
+//! drives `from_JV` off `typedecl(state.pending_value)` — one body
+//! covers every Drag* / Slider* / Input* family without per-type
+//! duplication.
 
 // ===== Common finalize helpers =====
 
@@ -71,6 +75,31 @@ def private radio_int_finalize(widget_ident : string; kind : string; var state :
             if (action == "set") {
                 state.pending_value = from_JV(payload?["value"], type<int>, 0)
                 state.pending_set = true
+            }
+        }
+        widget_finalize(widget_ident, kind, entry, ser, disp)
+    }
+}
+
+def private pending_value_finalize(widget_ident : string; kind : string; var state : auto) {
+    //! Lambda + dispatcher install for the pending-value family — every
+    //! state shape with `has_pending` / `pending_value` / `changed`
+    //! fields, dispatched on action "set". Generic on the state struct;
+    //! `typedecl(state.pending_value)` drives the from_JV decode so one
+    //! body covers all of Drag* (10 kinds) / Slider* (incl. VSlider, 10
+    //! kinds) / Input numeric / Color / Combo / ListBox / InputText
+    //! without per-type duplication.
+    var entry : WidgetEntry
+    unsafe {
+        let ser <- @ capture(& state) () : JsonValue ? {
+            return JV(state)
+        }
+        let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
+            if (action == "set") {
+                state.pending_value = from_JV(payload?["value"],
+                                              type<typedecl(state.pending_value)>,
+                                              default<typedecl(state.pending_value)>)
+                state.has_pending = true
             }
         }
         widget_finalize(widget_ident, kind, entry, ser, disp)
@@ -245,28 +274,6 @@ def radio_button_int(var state : RadioIntState; text : string; v_button : int) :
 
 // ===== Stateful inputs (drag family) =====
 
-def private drag_set_finalize(widget_ident : string; kind : string; var state : auto(StateT)) {
-    //! Lambda + dispatcher install for the Drag* family. Generic on the
-    //! state struct: `state.pending_value`'s type drives the from_JV
-    //! parse so one helper covers DragStateFloat / Float2/3/4 / Int /
-    //! Int2/3/4 / RangeFloat / RangeInt without per-type duplication.
-    var entry : WidgetEntry
-    unsafe {
-        let ser <- @ capture(& state) () : JsonValue ? {
-            return JV(state)
-        }
-        let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
-            if (action == "set") {
-                state.pending_value = from_JV(payload?["value"],
-                                              type<typedecl(state.pending_value)>,
-                                              default<typedecl(state.pending_value)>)
-                state.has_pending = true
-            }
-        }
-        widget_finalize(widget_ident, kind, entry, ser, disp)
-    }
-}
-
 [widget]
 def drag_float(var state : DragStateFloat; text : string;
                speed : float = 1.0f;
@@ -279,7 +286,7 @@ def drag_float(var state : DragStateFloat; text : string;
     let (mn, mx) = state.bounds
     let changed = DragFloat(text, unsafe(addr(state.value)), speed, mn, mx, format, flags)
     state.changed = changed
-    drag_set_finalize(widget_ident, "drag_float", state)
+    pending_value_finalize(widget_ident, "drag_float", state)
     return changed
 }
 
@@ -295,7 +302,7 @@ def drag_float2(var state : DragStateFloat2; text : string;
     let (mn, mx) = state.bounds
     let changed = DragFloat2(text, unsafe(addr(state.value.x)), speed, mn, mx, format, flags)
     state.changed = changed
-    drag_set_finalize(widget_ident, "drag_float2", state)
+    pending_value_finalize(widget_ident, "drag_float2", state)
     return changed
 }
 
@@ -311,7 +318,7 @@ def drag_float3(var state : DragStateFloat3; text : string;
     let (mn, mx) = state.bounds
     let changed = DragFloat3(text, unsafe(addr(state.value.x)), speed, mn, mx, format, flags)
     state.changed = changed
-    drag_set_finalize(widget_ident, "drag_float3", state)
+    pending_value_finalize(widget_ident, "drag_float3", state)
     return changed
 }
 
@@ -327,7 +334,7 @@ def drag_float4(var state : DragStateFloat4; text : string;
     let (mn, mx) = state.bounds
     let changed = DragFloat4(text, unsafe(addr(state.value.x)), speed, mn, mx, format, flags)
     state.changed = changed
-    drag_set_finalize(widget_ident, "drag_float4", state)
+    pending_value_finalize(widget_ident, "drag_float4", state)
     return changed
 }
 
@@ -343,7 +350,7 @@ def drag_int(var state : DragStateInt; text : string;
     let (mn, mx) = state.bounds
     let changed = DragInt(text, unsafe(addr(state.value)), speed, mn, mx, format, flags)
     state.changed = changed
-    drag_set_finalize(widget_ident, "drag_int", state)
+    pending_value_finalize(widget_ident, "drag_int", state)
     return changed
 }
 
@@ -359,7 +366,7 @@ def drag_int2(var state : DragStateInt2; text : string;
     let (mn, mx) = state.bounds
     let changed = DragInt2(text, unsafe(addr(state.value.x)), speed, mn, mx, format, flags)
     state.changed = changed
-    drag_set_finalize(widget_ident, "drag_int2", state)
+    pending_value_finalize(widget_ident, "drag_int2", state)
     return changed
 }
 
@@ -375,7 +382,7 @@ def drag_int3(var state : DragStateInt3; text : string;
     let (mn, mx) = state.bounds
     let changed = DragInt3(text, unsafe(addr(state.value.x)), speed, mn, mx, format, flags)
     state.changed = changed
-    drag_set_finalize(widget_ident, "drag_int3", state)
+    pending_value_finalize(widget_ident, "drag_int3", state)
     return changed
 }
 
@@ -391,7 +398,7 @@ def drag_int4(var state : DragStateInt4; text : string;
     let (mn, mx) = state.bounds
     let changed = DragInt4(text, unsafe(addr(state.value.x)), speed, mn, mx, format, flags)
     state.changed = changed
-    drag_set_finalize(widget_ident, "drag_int4", state)
+    pending_value_finalize(widget_ident, "drag_int4", state)
     return changed
 }
 
@@ -410,7 +417,7 @@ def drag_float_range2(var state : DragStateRangeFloat; text : string;
     let changed = DragFloatRange2(text, unsafe(addr(state.value.x)), unsafe(addr(state.value.y)),
                                   speed, mn, mx, format, format, flags)
     state.changed = changed
-    drag_set_finalize(widget_ident, "drag_float_range2", state)
+    pending_value_finalize(widget_ident, "drag_float_range2", state)
     return changed
 }
 
@@ -427,58 +434,164 @@ def drag_int_range2(var state : DragStateRangeInt; text : string;
     let changed = DragIntRange2(text, unsafe(addr(state.value.x)), unsafe(addr(state.value.y)),
                                 speed, mn, mx, format, format, flags)
     state.changed = changed
-    drag_set_finalize(widget_ident, "drag_int_range2", state)
+    pending_value_finalize(widget_ident, "drag_int_range2", state)
     return changed
 }
 
 // ===== Stateful inputs (slider family) =====
 
 [widget]
-def slider(var state : SliderStateFloat; text : string) : bool {
+def slider_float(var state : SliderStateFloat; text : string;
+                 format : string = "%.3f";
+                 flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
     if (state.has_pending) {
         state.value = state.pending_value
         state.has_pending = false
     }
     let (mn, mx) = state.bounds
-    let changed = SliderFloat(text, unsafe(addr(state.value)), mn, mx, "%.3f", ImGuiSliderFlags.None)
+    let changed = SliderFloat(text, unsafe(addr(state.value)), mn, mx, format, flags)
     state.changed = changed
-    var entry : WidgetEntry
-    unsafe {
-        let ser <- @ capture(& state) () : JsonValue ? {
-            return JV(state)
-        }
-        let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
-            if (action == "set") {
-                state.pending_value = from_JV(payload?["value"], type<float>, 0.0f)
-                state.has_pending = true
-            }
-        }
-        widget_finalize(widget_ident, "slider", entry, ser, disp)
-    }
+    pending_value_finalize(widget_ident, "slider_float", state)
     return changed
 }
 
 [widget]
-def slider_int(var state : SliderStateInt; text : string) : bool {
+def slider_float2(var state : SliderStateFloat2; text : string;
+                  format : string = "%.3f";
+                  flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
     if (state.has_pending) {
         state.value = state.pending_value
         state.has_pending = false
     }
     let (mn, mx) = state.bounds
-    let changed = SliderInt(text, unsafe(addr(state.value)), mn, mx, "%d", ImGuiSliderFlags.None)
+    let changed = SliderFloat2(text, unsafe(addr(state.value.x)), mn, mx, format, flags)
     state.changed = changed
-    var entry : WidgetEntry
-    unsafe {
-        let ser <- @ capture(& state) () : JsonValue ? {
-            return JV(state)
-        }
-        let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
-            if (action == "set") {
-                state.pending_value = from_JV(payload?["value"], type<int>, 0)
-                state.has_pending = true
-            }
-        }
-        widget_finalize(widget_ident, "slider_int", entry, ser, disp)
+    pending_value_finalize(widget_ident, "slider_float2", state)
+    return changed
+}
+
+[widget]
+def slider_float3(var state : SliderStateFloat3; text : string;
+                  format : string = "%.3f";
+                  flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    if (state.has_pending) {
+        state.value = state.pending_value
+        state.has_pending = false
     }
+    let (mn, mx) = state.bounds
+    let changed = SliderFloat3(text, unsafe(addr(state.value.x)), mn, mx, format, flags)
+    state.changed = changed
+    pending_value_finalize(widget_ident, "slider_float3", state)
+    return changed
+}
+
+[widget]
+def slider_float4(var state : SliderStateFloat4; text : string;
+                  format : string = "%.3f";
+                  flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    if (state.has_pending) {
+        state.value = state.pending_value
+        state.has_pending = false
+    }
+    let (mn, mx) = state.bounds
+    let changed = SliderFloat4(text, unsafe(addr(state.value.x)), mn, mx, format, flags)
+    state.changed = changed
+    pending_value_finalize(widget_ident, "slider_float4", state)
+    return changed
+}
+
+[widget]
+def slider_int(var state : SliderStateInt; text : string;
+               format : string = "%d";
+               flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    if (state.has_pending) {
+        state.value = state.pending_value
+        state.has_pending = false
+    }
+    let (mn, mx) = state.bounds
+    let changed = SliderInt(text, unsafe(addr(state.value)), mn, mx, format, flags)
+    state.changed = changed
+    pending_value_finalize(widget_ident, "slider_int", state)
+    return changed
+}
+
+[widget]
+def slider_int2(var state : SliderStateInt2; text : string;
+                format : string = "%d";
+                flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    if (state.has_pending) {
+        state.value = state.pending_value
+        state.has_pending = false
+    }
+    let (mn, mx) = state.bounds
+    let changed = SliderInt2(text, unsafe(addr(state.value.x)), mn, mx, format, flags)
+    state.changed = changed
+    pending_value_finalize(widget_ident, "slider_int2", state)
+    return changed
+}
+
+[widget]
+def slider_int3(var state : SliderStateInt3; text : string;
+                format : string = "%d";
+                flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    if (state.has_pending) {
+        state.value = state.pending_value
+        state.has_pending = false
+    }
+    let (mn, mx) = state.bounds
+    let changed = SliderInt3(text, unsafe(addr(state.value.x)), mn, mx, format, flags)
+    state.changed = changed
+    pending_value_finalize(widget_ident, "slider_int3", state)
+    return changed
+}
+
+[widget]
+def slider_int4(var state : SliderStateInt4; text : string;
+                format : string = "%d";
+                flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    if (state.has_pending) {
+        state.value = state.pending_value
+        state.has_pending = false
+    }
+    let (mn, mx) = state.bounds
+    let changed = SliderInt4(text, unsafe(addr(state.value.x)), mn, mx, format, flags)
+    state.changed = changed
+    pending_value_finalize(widget_ident, "slider_int4", state)
+    return changed
+}
+
+[widget]
+def vslider_float(var state : SliderStateFloat; text : string;
+                  size : float2 = float2(40.0f, 200.0f);
+                  format : string = "%.3f";
+                  flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    //! Vertical slider; reuses SliderStateFloat. `size` is per-call (typical
+    //! ~40×200 px); zero-size produces a 0×0 widget so caller-default beats
+    //! struct-field-default which never fires on auto-emitted globals.
+    if (state.has_pending) {
+        state.value = state.pending_value
+        state.has_pending = false
+    }
+    let (mn, mx) = state.bounds
+    let changed = VSliderFloat(text, size, unsafe(addr(state.value)), mn, mx, format, flags)
+    state.changed = changed
+    pending_value_finalize(widget_ident, "vslider_float", state)
+    return changed
+}
+
+[widget]
+def vslider_int(var state : SliderStateInt; text : string;
+                size : float2 = float2(40.0f, 200.0f);
+                format : string = "%d";
+                flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    //! Vertical slider; reuses SliderStateInt. See vslider_float for `size` rationale.
+    if (state.has_pending) {
+        state.value = state.pending_value
+        state.has_pending = false
+    }
+    let (mn, mx) = state.bounds
+    let changed = VSliderInt(text, size, unsafe(addr(state.value)), mn, mx, format, flags)
+    state.changed = changed
+    pending_value_finalize(widget_ident, "vslider_int", state)
     return changed
 }

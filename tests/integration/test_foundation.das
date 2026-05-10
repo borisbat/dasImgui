@@ -52,7 +52,7 @@ def test_foundation_smoke(t : T?) {
         t |> success(speed?["payload"]?["bounds"] != null, "SliderStateInt payload.bounds")
 
         var volume = find_widget(snap0, "VOLUME")
-        t |> equal(from_JV(volume?["kind"], type<string>, ""), "slider", "VOLUME.kind")
+        t |> equal(from_JV(volume?["kind"], type<string>, ""), "slider_float", "VOLUME.kind")
         t |> success(volume?["payload"]?["value"] != null, "SliderStateFloat payload.value")
 
         // Gate 4: unified dispatch — imgui_click and imgui_set both work.
