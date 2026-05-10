@@ -58,6 +58,26 @@ struct SliderStateInt {
     @optional changed : bool
 }
 
+struct ToggleState {
+    //! Shared across Checkbox / RadioButton (bool form) / Selectable / MenuItem.
+    //! `pending_toggle` + `pending_value` let imgui_set steer the next frame's
+    //! value deterministically; the renderer consumes-then-clears.
+    @live value : bool
+    @optional pending_toggle : bool                  // imgui_set L3 sets; consumed next frame
+    @optional pending_value : bool
+    @optional changed : bool                         // true on the frame the widget fired
+}
+
+struct RadioIntState {
+    //! Backs RadioButton(int form). `value` is the currently-selected button
+    //! id; the widget def takes the per-call `v_button` and writes value=v_button
+    //! when the user clicks. `imgui_set {"value":N}` steers the selection.
+    @live value : int
+    @optional pending_set : bool
+    @optional pending_value : int
+    @optional changed : bool
+}
+
 // ===== Per-frame registry =====
 //
 // One entry per render of any boost-wrapped widget, keyed by the widget's

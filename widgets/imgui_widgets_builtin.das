@@ -16,6 +16,68 @@ require daslib/json_boost
 //! hands them to widget_finalize. Common per-frame fields (hex_id/bbox/
 //! hover/active/focus) are captured inside widget_finalize; per-kind state
 //! lives in the state struct alone.
+//!
+//! Three private *_finalize helpers below collapse the repetitive
+//! lambda-construction + widget_finalize call shared across click /
+//! toggle / radio_int widget families. Each widget def stays focused on
+//! the imgui call + per-frame state mutation.
+
+// ===== Common finalize helpers =====
+
+def private click_finalize(widget_ident : string; kind : string; var state : ClickState) {
+    //! Lambda + dispatcher install for click-style widgets (Button family).
+    //! Dispatcher action: "click" → state.pending_click = true (consumed next frame).
+    var entry : WidgetEntry
+    unsafe {
+        let ser <- @ capture(& state) () : JsonValue ? {
+            return JV(state)
+        }
+        let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
+            if (action == "click") {
+                state.pending_click = true
+            }
+        }
+        widget_finalize(widget_ident, kind, entry, ser, disp)
+    }
+}
+
+def private toggle_finalize(widget_ident : string; kind : string; var state : ToggleState) {
+    //! Lambda + dispatcher install for bool-toggle widgets (Checkbox, RadioButton-bool,
+    //! Selectable, MenuItem). Dispatcher action: "set" with bool payload.
+    var entry : WidgetEntry
+    unsafe {
+        let ser <- @ capture(& state) () : JsonValue ? {
+            return JV(state)
+        }
+        let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
+            if (action == "set") {
+                state.pending_value = from_JV(payload?["value"], type<bool>, false)
+                state.pending_toggle = true
+            }
+        }
+        widget_finalize(widget_ident, kind, entry, ser, disp)
+    }
+}
+
+def private radio_int_finalize(widget_ident : string; kind : string; var state : RadioIntState) {
+    //! Lambda + dispatcher install for the int-form RadioButton.
+    //! Dispatcher action: "set" with int payload; renderer applies before the imgui call.
+    var entry : WidgetEntry
+    unsafe {
+        let ser <- @ capture(& state) () : JsonValue ? {
+            return JV(state)
+        }
+        let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
+            if (action == "set") {
+                state.pending_value = from_JV(payload?["value"], type<int>, 0)
+                state.pending_set = true
+            }
+        }
+        widget_finalize(widget_ident, kind, entry, ser, disp)
+    }
+}
+
+// ===== Triggers (click family) =====
 
 [widget]
 def button(var state : ClickState; text : string) : bool {
@@ -29,20 +91,159 @@ def button(var state : ClickState; text : string) : bool {
     if (clicked) {
         state.click_count++
     }
-    var entry : WidgetEntry
-    unsafe {
-        let ser <- @ capture(& state) () : JsonValue? {
-            return JV(state)
-        }
-        let disp <- @ capture(& state) (action : string; payload : JsonValue?) {
-            if (action == "click") {
-                state.pending_click = true
-            }
-        }
-        widget_finalize(widget_ident, "button", entry, ser, disp)
-    }
+    click_finalize(widget_ident, "button", state)
     return clicked
 }
+
+[widget]
+def small_button(var state : ClickState; text : string) : bool {
+    let im_clicked = SmallButton(text)
+    var clicked = im_clicked
+    if (state.pending_click) {
+        state.pending_click = false
+        clicked = true
+    }
+    state.clicked = clicked
+    if (clicked) {
+        state.click_count++
+    }
+    click_finalize(widget_ident, "small_button", state)
+    return clicked
+}
+
+[widget]
+def arrow_button(var state : ClickState; text : string; dir : ImGuiDir) : bool {
+    let im_clicked = ArrowButton(text, dir)
+    var clicked = im_clicked
+    if (state.pending_click) {
+        state.pending_click = false
+        clicked = true
+    }
+    state.clicked = clicked
+    if (clicked) {
+        state.click_count++
+    }
+    click_finalize(widget_ident, "arrow_button", state)
+    return clicked
+}
+
+[widget]
+def invisible_button(var state : ClickState; text : string; size : float2;
+                     flags : ImGuiButtonFlags = ImGuiButtonFlags.None) : bool {
+    let im_clicked = InvisibleButton(text, size, flags)
+    var clicked = im_clicked
+    if (state.pending_click) {
+        state.pending_click = false
+        clicked = true
+    }
+    state.clicked = clicked
+    if (clicked) {
+        state.click_count++
+    }
+    click_finalize(widget_ident, "invisible_button", state)
+    return clicked
+}
+
+[widget]
+def image_button(var state : ClickState; text : string; user_texture_id : void?; size : float2;
+                 uv0 : float2 = float2(0.0f, 0.0f);
+                 uv1 : float2 = float2(1.0f, 1.0f);
+                 bg_col : float4 = float4(0.0f, 0.0f, 0.0f, 0.0f);
+                 tint_col : float4 = float4(1.0f, 1.0f, 1.0f, 1.0f)) : bool {
+    let im_clicked = ImageButton(text, user_texture_id, size, uv0, uv1, bg_col, tint_col)
+    var clicked = im_clicked
+    if (state.pending_click) {
+        state.pending_click = false
+        clicked = true
+    }
+    state.clicked = clicked
+    if (clicked) {
+        state.click_count++
+    }
+    click_finalize(widget_ident, "image_button", state)
+    return clicked
+}
+
+// ===== Toggles (bool family) =====
+
+[widget]
+def checkbox(var state : ToggleState; text : string) : bool {
+    if (state.pending_toggle) {
+        state.value = state.pending_value
+        state.pending_toggle = false
+    }
+    let changed = Checkbox(text, unsafe(addr(state.value)))
+    state.changed = changed
+    toggle_finalize(widget_ident, "checkbox", state)
+    return changed
+}
+
+[widget]
+def radio_button(var state : ToggleState; text : string) : bool {
+    //! Bool-form RadioButton — single toggle. ImGui's RadioButton(label,bool)
+    //! does NOT mutate the bool, only returns true on click; daslang side
+    //! flips state.value on click to give "single radio = checkbox shaped
+    //! like a radio" semantics. Grouped radios use radio_button_int.
+    if (state.pending_toggle) {
+        state.value = state.pending_value
+        state.pending_toggle = false
+    }
+    let im_clicked = RadioButton(text, state.value)
+    if (im_clicked) {
+        state.value = !state.value
+    }
+    state.changed = im_clicked
+    toggle_finalize(widget_ident, "radio_button", state)
+    return im_clicked
+}
+
+[widget]
+def selectable(var state : ToggleState; text : string;
+               flags : ImGuiSelectableFlags = ImGuiSelectableFlags.None;
+               size : float2 = float2(0.0f, 0.0f)) : bool {
+    if (state.pending_toggle) {
+        state.value = state.pending_value
+        state.pending_toggle = false
+    }
+    let changed = Selectable(text, unsafe(addr(state.value)), flags, size)
+    state.changed = changed
+    toggle_finalize(widget_ident, "selectable", state)
+    return changed
+}
+
+[widget]
+def menu_item(var state : ToggleState; text : string; shortcut : string = "") : bool {
+    //! Non-block MenuItem with toggle semantics. The block-arg form (menu
+    //! container) lands in 0b.3. `enabled = true` always; the disabled
+    //! variant is a future per-call knob if real users hit it.
+    if (state.pending_toggle) {
+        state.value = state.pending_value
+        state.pending_toggle = false
+    }
+    let changed = MenuItem(text, shortcut, unsafe(addr(state.value)), true)
+    state.changed = changed
+    toggle_finalize(widget_ident, "menu_item", state)
+    return changed
+}
+
+// ===== Radio (int family) =====
+
+[widget]
+def radio_button_int(var state : RadioIntState; text : string; v_button : int) : bool {
+    //! Grouped-radio form. Each call site picks `v_button`; click writes
+    //! state.value = v_button. Multiple radio_button_int calls sharing the
+    //! same RadioIntState ident form one logical group.
+    if (state.pending_set) {
+        state.value = state.pending_value
+        state.pending_set = false
+    }
+    let changed = RadioButton(text, unsafe(addr(state.value)), v_button)
+    state.changed = changed
+    radio_int_finalize(widget_ident, "radio_button_int", state)
+    return changed
+}
+
+// ===== Stateful inputs (slider family) =====
 
 [widget]
 def slider(var state : SliderStateFloat; text : string) : bool {
@@ -55,10 +256,10 @@ def slider(var state : SliderStateFloat; text : string) : bool {
     state.changed = changed
     var entry : WidgetEntry
     unsafe {
-        let ser <- @ capture(& state) () : JsonValue? {
+        let ser <- @ capture(& state) () : JsonValue ? {
             return JV(state)
         }
-        let disp <- @ capture(& state) (action : string; payload : JsonValue?) {
+        let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
             if (action == "set") {
                 state.pending_value = from_JV(payload?["value"], type<float>, 0.0f)
                 state.has_pending = true
@@ -80,10 +281,10 @@ def slider_int(var state : SliderStateInt; text : string) : bool {
     state.changed = changed
     var entry : WidgetEntry
     unsafe {
-        let ser <- @ capture(& state) () : JsonValue? {
+        let ser <- @ capture(& state) () : JsonValue ? {
             return JV(state)
         }
-        let disp <- @ capture(& state) (action : string; payload : JsonValue?) {
+        let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
             if (action == "set") {
                 state.pending_value = from_JV(payload?["value"], type<int>, 0)
                 state.has_pending = true
