@@ -87,21 +87,24 @@ struct RadioIntState {
 struct WidgetEntry {
     //! Per-frame snapshot of one rendered widget. Common fields populated
     //! every frame; per-kind detail is materialized on demand by the
-    //! `serializer` lambda when `imgui_snapshot` fires.
+    //! serializer lambda stored in `g_serializers[ident]` (parallel table)
+    //! when `imgui_snapshot` fires. The lambda lives outside the entry
+    //! because `g_registry` is cleared every frame and we need the
+    //! serializer (which captures `& state` of the per-widget global) to
+    //! survive that clear.
     kind : string
     hex_id : uint
     bbox : float4                                // packed [x0, y0, x1, y1]
     @optional hover : bool
     @optional active : bool
     @optional focus : bool
-    serializer : lambda<() : JsonValue?>
 }
 
-def public JV(entry : WidgetEntry) : JsonValue? {
-    //! Custom JV overload for WidgetEntry — the generic JV() can't reflect a
-    //! lambda field, and we want per-kind detail to land under "payload"
-    //! produced by invoking the serializer. One overload covers every widget
-    //! kind; per-widget code never assembles JsonValue trees by hand.
+def private widget_entry_jv(ident : string; entry : WidgetEntry) : JsonValue? {
+    //! One JsonValue blob per widget. Common fields come from `entry`; the
+    //! per-kind `payload` comes from `g_serializers[ident]` (the lambda the
+    //! widget def registered). Same shape every kind; per-widget code never
+    //! assembles JsonValue trees by hand.
     var tab : table<string; JsonValue?>
     tab |> insert("kind", JV(entry.kind))
     tab |> insert("hex_id", JV(entry.hex_id))
@@ -115,7 +118,9 @@ def public JV(entry : WidgetEntry) : JsonValue? {
     if (entry.focus) {
         tab |> insert("focus", JV(true))
     }
-    tab |> insert("payload", invoke(entry.serializer))
+    if (key_exists(g_serializers, ident)) {
+        tab |> insert("payload", invoke(g_serializers[ident]))
+    }
     return JV(tab)
 }
 
@@ -140,6 +145,7 @@ def public widget_prelude(widget_ident : string) {
     PushID(widget_ident)
 }
 
+var private g_serializers : table<string; lambda<() : JsonValue?>>
 var private g_dispatcher_seen : table<string; bool>
 
 def public widget_finalize(widget_ident : string;
@@ -147,12 +153,13 @@ def public widget_finalize(widget_ident : string;
                            var entry : WidgetEntry;
                            var serializer : lambda<() : JsonValue?>;
                            var dispatcher : lambda<(action : string; payload : JsonValue?) : void>) {
-    //! Capture common per-frame fields, register the lazy serializer +
-    //! L2/L3 dispatcher closures on first sight of `widget_ident`. Subsequent
-    //! frames reuse the original closures (the captured `addr(state)` is
-    //! stable across frames). Hot-reload clears `g_dispatcher_seen` (it is
-    //! NOT @live), so the first post-reload frame re-registers fresh
-    //! closures bound to the post-reload state addresses.
+    //! Capture common per-frame fields, register the L2/L3 dispatcher closure
+    //! on first sight of `widget_ident`, and overwrite the serializer every
+    //! frame. The serializer captures `& state` of the per-widget global —
+    //! addresses are stable across frames so the lambda is rebuilt cheaply
+    //! and the latest one is always correct. Hot-reload clears
+    //! `g_dispatcher_seen` (NOT @live), so the first post-reload frame
+    //! re-registers a fresh dispatcher bound to the post-reload state.
     entry.kind = kind
     entry.hex_id = GetID(widget_ident)
     let rmin = GetItemRectMin()
@@ -161,19 +168,14 @@ def public widget_finalize(widget_ident : string;
     entry.hover = IsItemHovered(ImGuiHoveredFlags.None)
     entry.active = IsItemActive()
     entry.focus = IsItemFocused()
+    unsafe {
+        g_serializers[widget_ident] <- serializer
+    }
     if (!key_exists(g_dispatcher_seen, widget_ident)) {
         unsafe {
-            entry.serializer <- serializer
             g_dispatchers[widget_ident] <- dispatcher
         }
         g_dispatcher_seen[widget_ident] = true
-    } else {
-        // Already registered. Re-use the original serializer; the per-frame
-        // serializer/dispatcher lambdas the caller built are dropped.
-        unsafe {
-            var existing <- g_registry[widget_ident].serializer
-            entry.serializer <- existing
-        }
     }
     g_registry[widget_ident] <- entry
     PopID()
@@ -216,7 +218,7 @@ def private extract_string_field(obj : JsonValue?; name : string) : string {
 def imgui_snapshot(input : JsonValue?) : JsonValue? {
     var globals : table<string; JsonValue?>
     for (k, v in keys(g_registry), values(g_registry)) {
-        globals |> insert(k, JV(v))
+        globals |> insert(k, widget_entry_jv(k, v))
     }
     return JV({"frame" => JV(g_frame), "globals" => JV(globals)})
 }
