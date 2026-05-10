@@ -357,6 +357,18 @@ struct TextShowState {
     @live value : string = ""
 }
 
+struct PlotState {
+    //! Backs the `plot_lines` / `plot_histogram` display widgets. The
+    //! plotted values are passed per-frame as a parameter (not stored in
+    //! state) — same shape as the imgui_test_engine and daslib v1
+    //! conventions. State carries last-frame's call args for telemetry:
+    //! the visible label, the (scale_min, scale_max) range, and the
+    //! sample count. Read-only — no dispatcher.
+    @optional title : string                           // overlay text
+    @optional bounds : tuple<float; float>             // (scale_min, scale_max)
+    @optional samples : int                            // length(values) last frame
+}
+
 // ===== Container family (Phase 0b.3) =====
 //
 // `[container]` widgets wrap a daslang block argument and push themselves onto

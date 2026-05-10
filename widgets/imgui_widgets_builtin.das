@@ -1116,3 +1116,71 @@ def text_show(var state : TextShowState; value : string = "") {
     Text(state.value)
     text_show_finalize(widget_ident, "text_show", state)
 }
+
+// ===== Plot lines / histogram (array form) =====
+//
+// Display widgets backed by `PlotState`. Plotted values come per-frame as
+// an `array<float>` parameter (not stored on state) — same shape as
+// daslib v1 and imgui_test_engine. State tracks last-frame's call args
+// (title, bounds, sample count) for telemetry. No dispatcher.
+//
+// Lambda-driven getter form (plot_lines_getter / plot_histogram_getter)
+// is deferred — the existing `_builtin_PlotLines` C++ binding takes the
+// older vec4f-of-ImGuiPlotGetter pattern. Migrating it to the lambda-thunk
+// shape (à la 0b.4 `_builtin_Combo_cb`) is a 1.6 follow-up alongside the
+// ImGuiPlotGetter shim audit.
+
+def private plot_finalize(widget_ident : string; kind : string; var state : PlotState) {
+    var entry : WidgetEntry
+    unsafe {
+        let ser <- @ capture(& state) () : JsonValue ? {
+            return JV(state)
+        }
+        let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
+            // Plot is read-only; no L2/L3 actions. Dispatcher is a no-op.
+        }
+        widget_finalize(widget_ident, kind, entry, ser, disp)
+    }
+}
+
+[widget]
+def plot_lines(var state : PlotState; text : string;
+               values : array<float>;
+               scale_min : float = 3.40282347e38f;       // FLT_MAX → auto-fit
+               scale_max : float = 3.40282347e38f;
+               graph_size : float2 = float2(0.0f, 0.0f)) {
+    state.title = text
+    state.bounds = (scale_min, scale_max)
+    state.samples = length(values)
+    if (!empty(values)) {
+        unsafe {
+            imgui::PlotLines(text, addr(values[0]), length(values), 0,
+                             "", scale_min, scale_max, graph_size,
+                             typeinfo sizeof(type<float>))
+        }
+    } else {
+        Text("(empty: {text})")
+    }
+    plot_finalize(widget_ident, "plot_lines", state)
+}
+
+[widget]
+def plot_histogram(var state : PlotState; text : string;
+                   values : array<float>;
+                   scale_min : float = 3.40282347e38f;
+                   scale_max : float = 3.40282347e38f;
+                   graph_size : float2 = float2(0.0f, 0.0f)) {
+    state.title = text
+    state.bounds = (scale_min, scale_max)
+    state.samples = length(values)
+    if (!empty(values)) {
+        unsafe {
+            imgui::PlotHistogram(text, addr(values[0]), length(values), 0,
+                                 "", scale_min, scale_max, graph_size,
+                                 typeinfo sizeof(type<float>))
+        }
+    } else {
+        Text("(empty: {text})")
+    }
+    plot_finalize(widget_ident, "plot_histogram", state)
+}
