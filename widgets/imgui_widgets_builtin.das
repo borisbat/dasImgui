@@ -910,10 +910,10 @@ def color_button(var state : ClickState; desc_id : string;
 //
 // The buffer-as-pointer path: state owns `array<uint8> buffer`, the widget
 // passes `addr(buffer[0])` to the C extern, and ImGui mutates it in place.
-// First-frame init lazily allocates capacity (256 by default; @optional
-// buffer is dropped on hot-reload, so this also covers post-reload restore).
 // `value` mirrors the buffer; we re-clone after every frame ImGui reports
-// `changed`.
+// `changed`. `state.buffer` is `@optional`, so it's dropped on hot-reload —
+// the (re)allocate-and-sync below covers both first-frame init and post-
+// reload restore.
 //
 // `input_text_growable` is the one callback variant we ship — uses
 // `_builtin_InputText_cb` with a CallbackResize lambda that grows
@@ -921,15 +921,7 @@ def color_button(var state : ClickState; desc_id : string;
 // flavors (history / completion / always / char-filter) stay in the v1
 // `daslib/imgui_boost` surface.
 
-let private DEFAULT_INPUT_TEXT_CAPACITY = 256
-
 def private input_text_buffer_init(var state : InputTextState) {
-    // Promote zero-init capacity to the default and (re)allocate the
-    // working buffer. Runs every frame but only does work on first frame
-    // and after hot-reload (buffer is @optional, doesn't survive reload).
-    if (state.capacity == 0) {
-        state.capacity = DEFAULT_INPUT_TEXT_CAPACITY
-    }
     if (length(state.buffer) != state.capacity) {
         state.buffer |> resize(state.capacity)
         sync_buffer_from_value(state)

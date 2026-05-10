@@ -100,9 +100,8 @@ def window(var state : WindowState; text : string; closable : bool;
     //! drawn once the X-button or imgui_close fires; the application is
     //! expected to stop calling Begin, not continue with `*p_open=false`).
     //! `imgui_open` / `imgui_close` route through pending_open/close.
-    //! Initial state.open is false (auto-emit zero) — a closable window
-    //! starts hidden until the user enqueues an open or sets `state.open
-    //! = true` in init.
+    //! `state.open` defaults to true (see WindowState) so closable windows
+    //! render from frame 1.
     if (state.pending_open) {
         state.open = true
         state.pending_open = false
@@ -282,9 +281,8 @@ def tab_item(var state : TabItemState; text : string; closable : bool;
              flags : ImGuiTabItemFlags; blk : block) {
     //! `BeginTabItem(label, p_open, flags)` / `EndTabItem()` — only-on-true.
     //! With `closable=true` the X-button toggles `state.open`; we skip
-    //! BeginTabItem entirely once `state.open` is false. As with window, a
-    //! closable tab starts hidden (auto-emit zero); enqueue an open or set
-    //! state.open=true once.
+    //! BeginTabItem entirely once `state.open` is false. `state.open` defaults
+    //! to true (see TabItemState) so closable tabs render from frame 1.
     if (state.pending_open) {
         state.open = true
         state.pending_open = false

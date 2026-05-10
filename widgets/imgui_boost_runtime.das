@@ -317,7 +317,7 @@ struct ColorState4 {
 // into 0b.3 with the rest of the [container] family.
 
 struct ComboState {
-    @live value : int                            //! selected index, -1 = none
+    @live value : int = -1                       //! selected index, -1 = none
     @optional has_pending : bool
     @optional pending_value : int
     @optional changed : bool
@@ -325,29 +325,24 @@ struct ComboState {
 }
 
 struct ListBoxState {
-    @live value : int                            //! selected index, -1 = none
+    @live value : int = -1                       //! selected index, -1 = none
     @optional has_pending : bool
     @optional pending_value : int
     @optional changed : bool
 }
 
 // Text-input family. The buffer is the canonical storage; `value` is the
-// extracted (clone-on-change) string presented to user code. String fields
-// need @safe_when_uninitialized because the [widget] auto-emit zero-inits
-// the global without calling the constructor (see mouse card
-// dasimgui-widget-auto-emit-skips-struct-field-defaults). `capacity` zero-
-// inits to 0 for the same reason; the widget body promotes 0 to the
-// requested default on the first frame and resizes the buffer to match.
+// extracted (clone-on-change) string presented to user code.
 // `input_text_growable` reuses this struct; its CallbackResize lambda
 // updates `capacity` + `buffer` in place.
 
 struct InputTextState {
-    @safe_when_uninitialized @live value : string         //! current text content (clone of buffer)
-    @live capacity : int                                  //! buffer.size; widget body inits to 256 if 0
+    @live value : string = ""                             //! current text content (clone of buffer)
+    @live capacity : int = 256                            //! working buffer size in bytes (incl. trailing null)
     @optional has_pending : bool
-    @safe_when_uninitialized @optional pending_value : string
+    @optional pending_value : string = ""
     @optional changed : bool
-    @optional buffer : array<uint8>                       // working buffer; mirrors `value`, recreated each first frame / post-reload
+    @optional buffer : array<uint8>                       // working buffer; mirrors `value`, allocated to capacity on first frame / post-reload
 }
 
 // ===== Container family (Phase 0b.3) =====
@@ -361,15 +356,17 @@ struct InputTextState {
 // still has something to instantiate.
 
 struct WindowState {
-    //! Backs the `window` container. `open` is `@live` so the X-button click
-    //! survives reload; everything else is per-frame observed (pos/size/
-    //! collapsed) or echoed from per-call args (flags). ImGui persists
-    //! window pos itself via imgui.ini, so duplicating it as `@live` would
-    //! only fight that. `imgui_open` / `imgui_close` flow through
-    //! pending_open/close; the renderer applies them at the top of the next
-    //! frame. Per-call config (closable, flags) is supplied via the named-
-    //! tuple at the call site — same convention as `[widget]`.
-    @live open : bool
+    //! Backs the `window` container. `open` defaults to true so a closable
+    //! window renders from frame 1; the X-button or `imgui_close` flips it
+    //! false. `@live` carries that across reload. Everything else is per-
+    //! frame observed (pos/size/collapsed) or echoed from per-call args
+    //! (flags). ImGui persists window pos itself via imgui.ini, so
+    //! duplicating it as `@live` would only fight that. `imgui_open` /
+    //! `imgui_close` flow through pending_open/close; the renderer applies
+    //! them at the top of the next frame. Per-call config (closable, flags)
+    //! is supplied via the named-tuple at the call site — same convention
+    //! as `[widget]`.
+    @live open : bool = true
     @optional flags : ImGuiWindowFlags
     @optional pos : float2
     @optional size : float2
@@ -426,9 +423,10 @@ struct TabBarState {
 }
 
 struct TabItemState {
-    //! Backs the `tab_item` container. `open` survives reload when the tab
-    //! carries an X-button (closable=true).
-    @live open : bool
+    //! Backs the `tab_item` container. `open` defaults to true so a closable
+    //! tab renders from frame 1; the X-button or `imgui_close` flips it false.
+    //! `@live` carries that across reload.
+    @live open : bool = true
     @optional flags : ImGuiTabItemFlags
     @optional pending_open : bool
     @optional pending_close : bool
