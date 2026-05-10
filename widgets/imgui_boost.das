@@ -227,12 +227,19 @@ class WidgetCallMacro : AstCallMacro {
         // Type built from the captured Structure pointer (NOT Type.alias on
         // the qualified name — that doesn't resolve at the caller's scope
         // when the state struct lives in another module).
+        // Initializer = `T()` so struct field defaults fire (without it the
+        // global is bare zero-init and `field : T = default` declarations are
+        // silently lost — see useInitializer flag, equivalent to gen2 `T()`).
         if (find_variable(mod, bareName) == null) {
+            var typeRef <- new TypeDecl(baseType = Type.tStructure,
+                                        structType = unsafe(reinterpret<Structure?>(state_struct)),
+                                        at = expr.at)
+            var initCall = new ExprMakeStruct(at = expr.at, makeType = clone_type(typeRef))
+            initCall.makeStructFlags |= ExprMakeStructFlags.useInitializer
             var v = new Variable(at = expr.at,
                 name := bareName,
-                _type <- new TypeDecl(baseType = Type.tStructure,
-                                      structType = unsafe(reinterpret<Structure?>(state_struct)),
-                                      at = expr.at))
+                _type <- typeRef,
+                init = initCall)
             v.flags |= VariableFlags.generated
             if (!flagPublic) {
                 v.flags |= VariableFlags.private_variable
