@@ -10,6 +10,7 @@ require imgui/imgui_boost_runtime public
 require imgui/imgui_boost_v2 public
 require daslib/json public
 require daslib/json_boost
+require strings
 
 //! Built-in widgets defined via `[widget]` — the same mechanism users get.
 //! Each def constructs two short closures (serializer + dispatcher) and
@@ -797,6 +798,62 @@ def color_picker4(var state : ColorState4; text : string;
     let changed = ColorPicker4(text, unsafe(addr(state.value.x)), flags, ref_ptr)
     state.changed = changed
     pending_value_finalize(widget_ident, "color_picker4", state)
+    return changed
+}
+
+// ===== Stateful inputs (choice family) =====
+//
+// Both widgets take `items : array<string>` and marshal it C-side without
+// a shim. `combo` packs a zero-separated buffer on `state.items_buf`
+// (capacity reuses across frames) and reinterprets the byte addr as
+// `string#` for ImGui's null-separated Combo overload — daslang `string`
+// can't itself carry embedded nulls (heap is sized via strlen), but a raw
+// pointer into an `array<uint8>` bypasses that entirely. `list_box` passes
+// the daslang array storage directly: each `array<string>` element IS a
+// `char *`, so `addr(items[0])` already matches `const char* const items[]`.
+// Block-arg surfaces (BeginCombo + manual Selectable loop, BeginListBox)
+// are container-shaped and land in 0b.3.
+
+[widget]
+def combo(var state : ComboState; text : string; items : array<string>;
+          popup_max_height_in_items : int = -1) : bool {
+    //! `imgui_set {"value": N}` selects the N-th item next frame.
+    //! `popup_max_height_in_items = -1` lets ImGui pick a default.
+    if (state.has_pending) {
+        state.value = state.pending_value
+        state.has_pending = false
+    }
+    state.items_buf |> clear()
+    for (s in items) {
+        peek_data(s) $(arr) {
+            for (b in arr) {
+                state.items_buf |> push(b)
+            }
+        }
+        state.items_buf |> push(0u8)
+    }
+    state.items_buf |> push(0u8)            // ImGui scans for double-null = end of list
+    let zsv = unsafe(reinterpret<string#>(unsafe(addr(state.items_buf[0]))))
+    let changed = Combo(text, unsafe(addr(state.value)),
+                        zsv, popup_max_height_in_items)
+    state.changed = changed
+    pending_value_finalize(widget_ident, "combo", state)
+    return changed
+}
+
+[widget]
+def list_box(var state : ListBoxState; text : string; items : array<string>;
+             height_in_items : int = -1) : bool {
+    //! `imgui_set {"value": N}` selects the N-th item next frame.
+    //! `height_in_items = -1` lets ImGui pick a default; positive caps the visible rows.
+    if (state.has_pending) {
+        state.value = state.pending_value
+        state.has_pending = false
+    }
+    let changed = ListBox(text, unsafe(addr(state.value)),
+                          unsafe(addr(items[0])), length(items), height_in_items)
+    state.changed = changed
+    pending_value_finalize(widget_ident, "list_box", state)
     return changed
 }
 

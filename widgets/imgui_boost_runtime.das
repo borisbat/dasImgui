@@ -304,6 +304,32 @@ struct ColorState4 {
     @optional changed : bool
 }
 
+// Choice family. `value` is the selected item index; `imgui_set {"value":N}`
+// steers the next-frame selection. The user passes `items : array<string>`
+// per-frame; combo/list_box marshal it C-side without a shim:
+//   - combo packs a zero-separated `array<uint8>` (kept on state for capacity
+//     reuse) and reinterprets `addr(buf[0])` as `string#` for ImGui's
+//     null-separated overload.
+//   - list_box passes `addr(items[0])` directly — daslang `array<string>`
+//     storage is `char **`, which matches ImGui's `const char* const items[]`.
+// BeginCombo/EndCombo + BeginListBox/EndListBox (block-arg manual loop) roll
+// into 0b.3 with the rest of the [container] family.
+
+struct ComboState {
+    @live value : int                            //! selected index, -1 = none
+    @optional has_pending : bool
+    @optional pending_value : int
+    @optional changed : bool
+    @optional items_buf : array<uint8>           // transient zero-separated buffer; rebuilt each frame
+}
+
+struct ListBoxState {
+    @live value : int                            //! selected index, -1 = none
+    @optional has_pending : bool
+    @optional pending_value : int
+    @optional changed : bool
+}
+
 // ===== Per-frame registry =====
 //
 // One entry per render of any boost-wrapped widget, keyed by the widget's
