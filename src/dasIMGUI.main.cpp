@@ -322,7 +322,21 @@ namespace das {
         return ImGui::Combo(label,current_item,&ComboGetterCallback,getter,items_count,popup_max_height_in_items);
     }
 
-    // Plot lines or historgrams
+    // Plot lines or historgrams.
+    //
+    // ABI-paired struct: the daslang-side `ImGuiPlotGetter` in
+    // `daslib/imgui_boost.das` matches this layout byte-for-byte
+    // (Context* / Lambda / LineInfo*). Callers stack-allocate the
+    // daslang struct and pass its address as `vec4f igpg`; the wrappers
+    // below reinterpret_cast back. This is the older pattern, preserved
+    // for v1 compatibility (daslib/imgui_boost.das + example/imgui_demo.das).
+    //
+    // The new boost (Phase 1+) plot widgets in
+    // widgets/imgui_widgets_builtin.das use the array form
+    // (ImGui::PlotLines direct binding via dasIMGUI.func_11.cpp) and
+    // don't touch this struct. A lambda-thunk form mirroring 0b.4's
+    // ComboCb (see ComboGetterLambdaThunk above) is deferred to Phase 2
+    // alongside the public boost API for transports / playwright.
 
     struct ImGuiPlotGetter {
         Context *   context;

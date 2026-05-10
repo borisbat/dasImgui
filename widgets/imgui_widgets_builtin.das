@@ -1124,11 +1124,16 @@ def text_show(var state : TextShowState; value : string = "") {
 // daslib v1 and imgui_test_engine. State tracks last-frame's call args
 // (title, bounds, sample count) for telemetry. No dispatcher.
 //
-// Lambda-driven getter form (plot_lines_getter / plot_histogram_getter)
-// is deferred — the existing `_builtin_PlotLines` C++ binding takes the
-// older vec4f-of-ImGuiPlotGetter pattern. Migrating it to the lambda-thunk
-// shape (à la 0b.4 `_builtin_Combo_cb`) is a 1.6 follow-up alongside the
-// ImGuiPlotGetter shim audit.
+// Lambda-driven getter form (plot_lines_getter / plot_histogram_getter):
+// deferred to Phase 2. Audit outcome (1.6): the existing C++
+// ImGuiPlotGetter struct in src/dasIMGUI.main.cpp is still wired into
+// the v1 daslib/imgui_boost.das + example/imgui_demo.das via the
+// older `vec4f igpg` reinterpret pattern, and per master plan §9.4 we
+// keep v1 installable until users migrate. So the right move is NOT to
+// rewrite the existing struct but to add a parallel lambda-thunk
+// binding (mirroring 0b.4 ComboCb) when the new public API surface
+// lands in Phase 2 — at which point the new boost gets its own
+// _builtin_PlotLines_cb / _builtin_PlotHistogram_cb forwarders.
 
 def private plot_finalize(widget_ident : string; kind : string; var state : PlotState) {
     var entry : WidgetEntry
