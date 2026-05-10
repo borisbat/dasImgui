@@ -345,6 +345,18 @@ struct InputTextState {
     @optional buffer : array<uint8>                       // working buffer; mirrors `value`, allocated to capacity on first frame / post-reload
 }
 
+struct TextShowState {
+    //! Backs the `text_show` display widget (master plan §4.3a). Read-only
+    //! from the user's perspective — `value` is set either by an
+    //! initializer at the call site (`text_show(STATUS, value="saved")`)
+    //! or programmatically (`STATUS.value = compute_status()`). The
+    //! standard serializer surfaces `value` for telemetry / playwright
+    //! `expect_value(app, STATUS, "saved")`. Tests can also drive the
+    //! value externally via `imgui_set` — the dispatcher writes
+    //! `state.value` directly.
+    @live value : string = ""
+}
+
 // ===== Container family (Phase 0b.3) =====
 //
 // `[container]` widgets wrap a daslang block argument and push themselves onto

@@ -1077,3 +1077,42 @@ def combo_getter(var state : ComboState; text : string;
     pending_value_finalize(widget_ident, "combo_getter", state)
     return changed
 }
+
+// ===== Display: text_show =====
+//
+// Read-only display widget (master plan §4.3a). The standard serializer
+// surfaces `state.value`, so playwright tests can `expect_value(STATUS,
+// "saved")` without any extra plumbing. The dispatcher accepts "set" so
+// tests can also drive the value externally — handy for setting up
+// fixtures programmatically.
+
+def private text_show_finalize(widget_ident : string; kind : string; var state : TextShowState) {
+    var entry : WidgetEntry
+    unsafe {
+        let ser <- @ capture(& state) () : JsonValue ? {
+            return JV(state)
+        }
+        let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
+            if (action == "set") {
+                state.value := from_JV(payload?["value"], type<string>, "")
+            }
+        }
+        widget_finalize(widget_ident, kind, entry, ser, disp)
+    }
+}
+
+[widget]
+def text_show(var state : TextShowState; value : string = "") {
+    //! Display-only widget surfaced through telemetry. Two forms:
+    //!   1. `text_show(STATUS, value="saved")` — sets state.value to the
+    //!      argument every frame (call-site is the source of truth).
+    //!   2. `text_show(STATUS)` — displays whatever's in state.value
+    //!      (set programmatically by `STATUS.value = compute()` or
+    //!      remotely via `imgui_set`).
+    //! Either form serializes `state.value` for `expect_value` assertions.
+    if (!empty(value)) {
+        state.value := value
+    }
+    Text(state.value)
+    text_show_finalize(widget_ident, "text_show", state)
+}
