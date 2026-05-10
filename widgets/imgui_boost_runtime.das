@@ -215,6 +215,74 @@ struct DragStateRangeInt {
     @optional changed : bool
 }
 
+// Input* numeric family. No bounds — InputFloat/Int/Double don't clamp;
+// step / step_fast / format are per-call args (uniform with Drag/Slider).
+// Only `value` persists. Same has_pending/pending_value/changed shape so
+// `pending_value_finalize` covers the dispatch.
+
+struct InputStateFloat {
+    @live value : float
+    @optional has_pending : bool
+    @optional pending_value : float
+    @optional changed : bool
+}
+
+struct InputStateFloat2 {
+    @live value : float2
+    @optional has_pending : bool
+    @optional pending_value : float2
+    @optional changed : bool
+}
+
+struct InputStateFloat3 {
+    @live value : float3
+    @optional has_pending : bool
+    @optional pending_value : float3
+    @optional changed : bool
+}
+
+struct InputStateFloat4 {
+    @live value : float4
+    @optional has_pending : bool
+    @optional pending_value : float4
+    @optional changed : bool
+}
+
+struct InputStateInt {
+    @live value : int
+    @optional has_pending : bool
+    @optional pending_value : int
+    @optional changed : bool
+}
+
+struct InputStateInt2 {
+    @live value : int2
+    @optional has_pending : bool
+    @optional pending_value : int2
+    @optional changed : bool
+}
+
+struct InputStateInt3 {
+    @live value : int3
+    @optional has_pending : bool
+    @optional pending_value : int3
+    @optional changed : bool
+}
+
+struct InputStateInt4 {
+    @live value : int4
+    @optional has_pending : bool
+    @optional pending_value : int4
+    @optional changed : bool
+}
+
+struct InputStateDouble {
+    @live value : double
+    @optional has_pending : bool
+    @optional pending_value : double
+    @optional changed : bool
+}
+
 // ===== Per-frame registry =====
 //
 // One entry per render of any boost-wrapped widget, keyed by the widget's

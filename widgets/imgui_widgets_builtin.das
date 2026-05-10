@@ -595,3 +595,140 @@ def vslider_int(var state : SliderStateInt; text : string;
     pending_value_finalize(widget_ident, "vslider_int", state)
     return changed
 }
+
+// ===== Stateful inputs (input numeric family) =====
+//
+// InputFloat/Int/Double don't clamp — no bounds field. Scalar forms
+// expose step / step_fast (imgui's keyboard +/- buttons); vector forms
+// don't (imgui doesn't support them on 2/3/4-component inputs). Int
+// vectors don't take format either (imgui hardcodes "%d"). All flags
+// are ImGuiInputTextFlags (NOT ImGuiSliderFlags) — Input* shares the
+// text-edit widget machinery with InputText.
+
+[widget]
+def input_float(var state : InputStateFloat; text : string;
+                step : float = 0.0f;
+                step_fast : float = 0.0f;
+                format : string = "%.3f";
+                flags : ImGuiInputTextFlags = ImGuiInputTextFlags.None) : bool {
+    if (state.has_pending) {
+        state.value = state.pending_value
+        state.has_pending = false
+    }
+    let changed = InputFloat(text, unsafe(addr(state.value)), step, step_fast, format, flags)
+    state.changed = changed
+    pending_value_finalize(widget_ident, "input_float", state)
+    return changed
+}
+
+[widget]
+def input_float2(var state : InputStateFloat2; text : string;
+                 format : string = "%.3f";
+                 flags : ImGuiInputTextFlags = ImGuiInputTextFlags.None) : bool {
+    if (state.has_pending) {
+        state.value = state.pending_value
+        state.has_pending = false
+    }
+    let changed = InputFloat2(text, unsafe(addr(state.value.x)), format, flags)
+    state.changed = changed
+    pending_value_finalize(widget_ident, "input_float2", state)
+    return changed
+}
+
+[widget]
+def input_float3(var state : InputStateFloat3; text : string;
+                 format : string = "%.3f";
+                 flags : ImGuiInputTextFlags = ImGuiInputTextFlags.None) : bool {
+    if (state.has_pending) {
+        state.value = state.pending_value
+        state.has_pending = false
+    }
+    let changed = InputFloat3(text, unsafe(addr(state.value.x)), format, flags)
+    state.changed = changed
+    pending_value_finalize(widget_ident, "input_float3", state)
+    return changed
+}
+
+[widget]
+def input_float4(var state : InputStateFloat4; text : string;
+                 format : string = "%.3f";
+                 flags : ImGuiInputTextFlags = ImGuiInputTextFlags.None) : bool {
+    if (state.has_pending) {
+        state.value = state.pending_value
+        state.has_pending = false
+    }
+    let changed = InputFloat4(text, unsafe(addr(state.value.x)), format, flags)
+    state.changed = changed
+    pending_value_finalize(widget_ident, "input_float4", state)
+    return changed
+}
+
+[widget]
+def input_int(var state : InputStateInt; text : string;
+              step : int = 1;
+              step_fast : int = 100;
+              flags : ImGuiInputTextFlags = ImGuiInputTextFlags.None) : bool {
+    if (state.has_pending) {
+        state.value = state.pending_value
+        state.has_pending = false
+    }
+    let changed = InputInt(text, unsafe(addr(state.value)), step, step_fast, flags)
+    state.changed = changed
+    pending_value_finalize(widget_ident, "input_int", state)
+    return changed
+}
+
+[widget]
+def input_int2(var state : InputStateInt2; text : string;
+               flags : ImGuiInputTextFlags = ImGuiInputTextFlags.None) : bool {
+    if (state.has_pending) {
+        state.value = state.pending_value
+        state.has_pending = false
+    }
+    let changed = InputInt2(text, unsafe(addr(state.value.x)), flags)
+    state.changed = changed
+    pending_value_finalize(widget_ident, "input_int2", state)
+    return changed
+}
+
+[widget]
+def input_int3(var state : InputStateInt3; text : string;
+               flags : ImGuiInputTextFlags = ImGuiInputTextFlags.None) : bool {
+    if (state.has_pending) {
+        state.value = state.pending_value
+        state.has_pending = false
+    }
+    let changed = InputInt3(text, unsafe(addr(state.value.x)), flags)
+    state.changed = changed
+    pending_value_finalize(widget_ident, "input_int3", state)
+    return changed
+}
+
+[widget]
+def input_int4(var state : InputStateInt4; text : string;
+               flags : ImGuiInputTextFlags = ImGuiInputTextFlags.None) : bool {
+    if (state.has_pending) {
+        state.value = state.pending_value
+        state.has_pending = false
+    }
+    let changed = InputInt4(text, unsafe(addr(state.value.x)), flags)
+    state.changed = changed
+    pending_value_finalize(widget_ident, "input_int4", state)
+    return changed
+}
+
+[widget]
+def input_double(var state : InputStateDouble; text : string;
+                 step : double = 0.0lf;
+                 step_fast : double = 0.0lf;
+                 format : string = "%.6f";
+                 flags : ImGuiInputTextFlags = ImGuiInputTextFlags.None) : bool {
+    if (state.has_pending) {
+        state.value = state.pending_value
+        state.has_pending = false
+    }
+    let changed = InputDouble(text, unsafe(addr(state.value)), step, step_fast, format, flags)
+    state.changed = changed
+    pending_value_finalize(widget_ident, "input_double", state)
+    return changed
+}
