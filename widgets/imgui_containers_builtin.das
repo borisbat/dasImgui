@@ -125,7 +125,11 @@ def window(var state : WindowState; text : string; closable : bool;
             state.pos = float2(pos.x, pos.y)
             state.size = float2(size.x, size.y)
             state.collapsed = IsWindowCollapsed()
+            state.scroll = float2(GetScrollX(), GetScrollY())
             invoke(blk)
+            // scroll_max derives from the content extent — must be read
+            // AFTER the body emits items, before End() pops the window.
+            state.scroll_max = float2(GetScrollMaxX(), GetScrollMaxY())
         }
         End()
     }
@@ -144,10 +148,10 @@ def child(var state : ChildState; text : string; size : float2;
     state.window_flags = window_flags
     let im_open = BeginChild(text, size, child_flags, window_flags)
     if (im_open) {
-        let sx = GetScrollX()
-        let sy = GetScrollY()
-        state.scroll = float2(sx, sy)
+        state.scroll = float2(GetScrollX(), GetScrollY())
         invoke(blk)
+        // scroll_max derives from the content extent — read AFTER invoke.
+        state.scroll_max = float2(GetScrollMaxX(), GetScrollMaxY())
     }
     EndChild()
     stateless_finalize(widget_ident, "child", state)

@@ -359,8 +359,8 @@ struct WindowState {
     //! Backs the `window` container. `open` defaults to true so a closable
     //! window renders from frame 1; the X-button or `imgui_close` flips it
     //! false. `@live` carries that across reload. Everything else is per-
-    //! frame observed (pos/size/collapsed) or echoed from per-call args
-    //! (flags). ImGui persists window pos itself via imgui.ini, so
+    //! frame observed (pos/size/collapsed/scroll) or echoed from per-call
+    //! args (flags). ImGui persists window pos itself via imgui.ini, so
     //! duplicating it as `@live` would only fight that. `imgui_open` /
     //! `imgui_close` flow through pending_open/close; the renderer applies
     //! them at the top of the next frame. Per-call config (closable, flags)
@@ -371,6 +371,8 @@ struct WindowState {
     @optional pos : float2
     @optional size : float2
     @optional collapsed : bool
+    @optional scroll : float2                 // (GetScrollX, GetScrollY) of the window
+    @optional scroll_max : float2             // (GetScrollMaxX, GetScrollMaxY)
     @optional pending_open : bool
     @optional pending_close : bool
 }
@@ -382,7 +384,8 @@ struct ChildState {
     @optional size : float2
     @optional child_flags : ImGuiChildFlags
     @optional window_flags : ImGuiWindowFlags
-    @optional scroll : float2
+    @optional scroll : float2                 // (GetScrollX, GetScrollY)
+    @optional scroll_max : float2             // (GetScrollMaxX, GetScrollMaxY)
 }
 
 struct GroupState {
@@ -534,6 +537,18 @@ struct WidgetMeta {
 }
 
 var g_widgets : table<string; WidgetMeta>
+
+// Deferred (Phase 4 / on-demand): a separate `extras` channel for
+// transient per-frame data that doesn't belong in the persistent state
+// struct (text-input cursor / selection, tooltip content). Phase 1.2
+// initially planned a `lambda<() : JsonValue?> extras` field on
+// WidgetMeta — dropped after a clean-room read of imgui_test_engine
+// confirmed cursor/selection isn't worth public-API gymnastics (test
+// engine reads InputText via clipboard, never exposes cursor/selection).
+// All current "transient observed state" fits inline in the kind's state
+// struct (ChildState.scroll / WindowState.collapsed / TreeNodeState.opened).
+// Reintroduce the extras channel only when a real consumer (e.g. Phase 4
+// visual aids) needs data that doesn't fit a state-struct field.
 
 // ===== Container path stack =====
 //
