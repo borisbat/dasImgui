@@ -732,3 +732,95 @@ def input_double(var state : InputStateDouble; text : string;
     pending_value_finalize(widget_ident, "input_double", state)
     return changed
 }
+
+// ===== Stateful inputs (color family) =====
+//
+// ColorEdit3/ColorPicker3 share ColorState3 (RGB float3); ColorEdit4 /
+// ColorPicker4 share ColorState4 (RGBA float4). ColorButton is a click
+// trigger — caller passes the swatch color per-frame, state holds only
+// click bookkeeping (reuses ClickState).
+
+[widget]
+def color_edit3(var state : ColorState3; text : string;
+                flags : ImGuiColorEditFlags = ImGuiColorEditFlags.None) : bool {
+    if (state.has_pending) {
+        state.value = state.pending_value
+        state.has_pending = false
+    }
+    let changed = ColorEdit3(text, unsafe(addr(state.value.x)), flags)
+    state.changed = changed
+    pending_value_finalize(widget_ident, "color_edit3", state)
+    return changed
+}
+
+[widget]
+def color_edit4(var state : ColorState4; text : string;
+                flags : ImGuiColorEditFlags = ImGuiColorEditFlags.None) : bool {
+    if (state.has_pending) {
+        state.value = state.pending_value
+        state.has_pending = false
+    }
+    let changed = ColorEdit4(text, unsafe(addr(state.value.x)), flags)
+    state.changed = changed
+    pending_value_finalize(widget_ident, "color_edit4", state)
+    return changed
+}
+
+[widget]
+def color_picker3(var state : ColorState3; text : string;
+                  flags : ImGuiColorEditFlags = ImGuiColorEditFlags.None) : bool {
+    if (state.has_pending) {
+        state.value = state.pending_value
+        state.has_pending = false
+    }
+    let changed = ColorPicker3(text, unsafe(addr(state.value.x)), flags)
+    state.changed = changed
+    pending_value_finalize(widget_ident, "color_picker3", state)
+    return changed
+}
+
+[widget]
+def color_picker4(var state : ColorState4; text : string;
+                  flags : ImGuiColorEditFlags = ImGuiColorEditFlags.None;
+                  ref_col : float4 = float4(0.0f, 0.0f, 0.0f, 0.0f);
+                  has_ref_col : bool = false) : bool {
+    //! Optional reference color. Pass `has_ref_col=true` plus `ref_col`
+    //! to surface ImGui's "[ref]" swatch alongside the picker; default is
+    //! null (no reference). Local copy gives the addr a frame-stable
+    //! address; ImGui reads ref_col synchronously inside ColorPicker4.
+    if (state.has_pending) {
+        state.value = state.pending_value
+        state.has_pending = false
+    }
+    var ref_local = ref_col
+    let ref_ptr = has_ref_col ? unsafe(addr(ref_local.x)) : null
+    let changed = ColorPicker4(text, unsafe(addr(state.value.x)), flags, ref_ptr)
+    state.changed = changed
+    pending_value_finalize(widget_ident, "color_picker4", state)
+    return changed
+}
+
+[widget]
+def color_button(var state : ClickState; desc_id : string;
+                 col : float4;
+                 size : float2 = float2(0.0f, 0.0f);
+                 flags : ImGuiColorEditFlags = ImGuiColorEditFlags.None) : bool {
+    //! Click-trigger swatch. The displayed color is per-call (caller
+    //! controls it externally — typical use is a row of style swatches);
+    //! state holds only click bookkeeping. `size = (0, 0)` lets ImGui
+    //! pick a default square. Param order puts size before flags so
+    //! callers can pass `(desc_id, col, size = …)` without an explicit
+    //! `flags = None` middle arg (named-tuple positional dispatch).
+    let im_clicked = ColorButton(desc_id, col, flags, size)
+    var clicked = im_clicked
+    if (state.pending_click) {
+        state.pending_click = false
+        clicked = true
+    }
+    state.clicked = clicked
+    if (clicked) {
+        state.click_count++
+    }
+    click_finalize(widget_ident, "color_button", state)
+    return clicked
+}

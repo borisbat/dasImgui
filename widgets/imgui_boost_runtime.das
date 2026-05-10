@@ -283,6 +283,27 @@ struct InputStateDouble {
     @optional changed : bool
 }
 
+// Color* family. ColorEdit3/ColorPicker3 share ColorState3 (RGB);
+// ColorEdit4/ColorPicker4 share ColorState4 (RGBA). ColorButton is
+// click-only (no value stored — caller passes the color per-frame),
+// so it reuses ClickState (mirrors `button` / `small_button`). `flags`
+// is per-call; ImGui's color flags (DisplayHSV, Float, NoInputs, …)
+// are call-site config, not persistent state.
+
+struct ColorState3 {
+    @live value : float3                         //! RGB in [0..1]
+    @optional has_pending : bool
+    @optional pending_value : float3
+    @optional changed : bool
+}
+
+struct ColorState4 {
+    @live value : float4                         //! RGBA in [0..1]
+    @optional has_pending : bool
+    @optional pending_value : float4
+    @optional changed : bool
+}
+
 // ===== Per-frame registry =====
 //
 // One entry per render of any boost-wrapped widget, keyed by the widget's
