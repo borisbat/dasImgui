@@ -49,7 +49,7 @@ def test_containers_overlay_smoke(t : T?) {
         // OPT_VSYNC appears in the snapshot.
         open_widget(d, "OVERLAY_WIN/OPTIONS_POPUP")
         var snap_popup_open = wait_until(d, 5.0f) $(var snap) {
-            return widget_exists(snap, "OVERLAY_WIN/OPTIONS_POPUP/OPT_VSYNC")
+            return widget_rendered(snap, "OVERLAY_WIN/OPTIONS_POPUP/OPT_VSYNC")
         }
         t |> success(snap_popup_open != null,
                      "imgui_open OPTIONS_POPUP renders popup body (OPT_VSYNC visible)")
@@ -57,7 +57,7 @@ def test_containers_overlay_smoke(t : T?) {
         // ----- imgui_close on the open popup closes it -----
         close_widget(d, "OVERLAY_WIN/OPTIONS_POPUP")
         var snap_popup_closed = wait_until(d, 5.0f) $(var snap) {
-            return !widget_exists(snap, "OVERLAY_WIN/OPTIONS_POPUP/OPT_VSYNC")
+            return !widget_rendered(snap, "OVERLAY_WIN/OPTIONS_POPUP/OPT_VSYNC")
         }
         t |> success(snap_popup_closed != null,
                      "imgui_close OPTIONS_POPUP hides popup body next frame")
@@ -65,7 +65,7 @@ def test_containers_overlay_smoke(t : T?) {
         // ----- imgui_open on popup_modal -----
         open_widget(d, "OVERLAY_WIN/CONFIRM_MODAL")
         var snap_modal = wait_until(d, 5.0f) $(var snap) {
-            return widget_exists(snap, "OVERLAY_WIN/CONFIRM_MODAL/CONFIRM_YES")
+            return widget_rendered(snap, "OVERLAY_WIN/CONFIRM_MODAL/CONFIRM_YES")
         }
         t |> success(snap_modal != null,
                      "imgui_open CONFIRM_MODAL renders modal body")
@@ -73,7 +73,7 @@ def test_containers_overlay_smoke(t : T?) {
         // Modal stays up until pending_close fires; close it via imgui_close.
         close_widget(d, "OVERLAY_WIN/CONFIRM_MODAL")
         var snap_modal_closed = wait_until(d, 5.0f) $(var snap) {
-            return !widget_exists(snap, "OVERLAY_WIN/CONFIRM_MODAL/CONFIRM_YES")
+            return !widget_rendered(snap, "OVERLAY_WIN/CONFIRM_MODAL/CONFIRM_YES")
         }
         t |> success(snap_modal_closed != null,
                      "imgui_close CONFIRM_MODAL closes the modal")

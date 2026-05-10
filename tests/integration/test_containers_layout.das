@@ -73,14 +73,14 @@ def test_containers_layout_smoke(t : T?) {
         // a UI-driving test actually cares about.
         close_widget(d, "LAYOUT_WIN/MAIN_TABS/SETTINGS_TAB/PHYSICS_TREE")
         var snap_closed = wait_until(d, 5.0f) $(var snap) {
-            return !widget_exists(snap, "LAYOUT_WIN/MAIN_TABS/SETTINGS_TAB/PHYSICS_TREE/GRAVITY")
+            return !widget_rendered(snap, "LAYOUT_WIN/MAIN_TABS/SETTINGS_TAB/PHYSICS_TREE/GRAVITY")
         }
         t |> success(snap_closed != null,
                      "imgui_close on tree_node hides its nested leaves next frame")
 
         // ----- imgui_open re-opens it -----
         open_widget(d, "LAYOUT_WIN/MAIN_TABS/SETTINGS_TAB/PHYSICS_TREE")
-        t |> success(wait_for_widget(d,
+        t |> success(wait_for_render(d,
                         "LAYOUT_WIN/MAIN_TABS/SETTINGS_TAB/PHYSICS_TREE/GRAVITY",
                         5.0f) != null,
                      "imgui_open on tree_node re-renders its leaves")

@@ -248,6 +248,36 @@ class WidgetCallMacro : AstCallMacro {
                 v.annotation |> add_annotation_argument("live", true)
             }
             mod |> add_variable(v)
+            // Phase 1: append a register_widget call into the per-module
+            // shared [init] function. setup_call_list creates the function
+            // on first call and returns its body block on subsequent ones,
+            // so all widgets in this module funnel into a single init
+            // function. Pattern from daslib/decs_boost.das:585.
+            //
+            // First widget in this module: prepend a clear_module_widgets
+            // call so reload re-fires the init and replaces stale entries
+            // (including removed widgets and stale captured lambdas) with
+            // fresh ones. Other modules' entries stay untouched.
+            var reg <- setup_call_list("register`imgui`widgets", expr.at, true, true)
+            let kindLit = kind_name
+            let identLit = bareName
+            let modLit = string(mod.name)
+            if (empty(reg.list)) {
+                reg.list |> push(qmacro(
+                    imgui_boost_runtime::clear_module_widgets($v(modLit))
+                ))
+            }
+            reg.list |> push(qmacro(
+                imgui_boost_runtime::register_widget(
+                    $v(modLit),
+                    $v(identLit),
+                    $v(kindLit),
+                    unsafe(addr($i(identLit))),
+                    @() : JsonValue? {
+                        return JV($i(identLit))
+                    }
+                )
+            ))
         }
         // Rewrite to `<kind>(IDENT, "IDENT", args...)`. The function lives
         // in imgui_widgets_builtin (or user module). After macro expansion

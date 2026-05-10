@@ -71,20 +71,23 @@ def test_containers_window_smoke(t : T?) {
 
         // ----- imgui_open on a closable window flips state.open -----
         // DETAIL_WIN starts closed (state.open zero-init). Open it, expect
-        // its first leaf (PING) to appear in subsequent snapshots.
+        // its first leaf (PING) to start rendering. Phase 1 moved long-lived
+        // existence into `widget_exists` (registered at module [init]) so
+        // we test for paint via `widget_rendered` instead.
         open_widget(d, "DETAIL_WIN")
         var snap_open = wait_until(d, 5.0f) $(var snap) {
-            return widget_exists(snap, "DETAIL_WIN/PING")
+            return widget_rendered(snap, "DETAIL_WIN/PING")
         }
         t |> success(snap_open != null,
                      "imgui_open DETAIL_WIN flips state.open and renders nested leaves")
 
         // ----- imgui_close hides the window again -----
+        // PING stays in g_widgets (rendered:false) but stops painting.
         close_widget(d, "DETAIL_WIN")
         var snap_closed = wait_until(d, 5.0f) $(var snap) {
-            return !widget_exists(snap, "DETAIL_WIN/PING")
+            return !widget_rendered(snap, "DETAIL_WIN/PING")
         }
         t |> success(snap_closed != null,
-                     "imgui_close DETAIL_WIN hides nested leaves on next frame")
+                     "imgui_close DETAIL_WIN stops nested leaves from painting next frame")
     }
 }

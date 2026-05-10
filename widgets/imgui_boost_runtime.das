@@ -10,7 +10,7 @@ require live/live_vars public
 require live/live_commands
 require live_host
 require daslib/json public
-require daslib/json_boost
+require daslib/json_boost public
 require strings
 
 //! Runtime data layer for the dasImgui boost.
@@ -506,6 +506,35 @@ def private widget_entry_jv(ident : string; entry : WidgetEntry) : JsonValue? {
 var g_registry : table<string; WidgetEntry>
 var g_frame : int = 0
 
+// ===== Long-lived widget registry (Phase 1) =====
+//
+// `g_widgets` is the long-lived twin of `g_registry`. The [widget] macro
+// emits a `register_widget(...)` call into a per-module shared `[init]`
+// function (see daslib/decs_boost.das:583-589 for the setup_call_list
+// pattern), so every widget appears here at module load — even before its
+// containing window/tab is opened.
+//
+// `imgui_snapshot` walks `g_widgets` for the full widget enumeration and
+// joins each entry with `g_registry[k]` for this frame's bbox / hover /
+// active / focus when present. Closed-window widgets surface with
+// `rendered: false` and the state struct's serializer payload.
+//
+// Keying: registration uses the widget's bare ident (the macro can't
+// know the container chain at expansion time when the user's container
+// is hidden behind helpers). On first render `widget_finalize` migrates
+// the entry from `bareName` to `path_key` (container-aware) so siblings
+// across containers stay distinct.
+
+struct WidgetMeta {
+    module_name : string
+    kind : string
+    state_addr : void?
+    serializer : lambda<() : JsonValue?>
+    last_seen_frame : int
+}
+
+var g_widgets : table<string; WidgetMeta>
+
 // ===== Container path stack =====
 //
 // `g_container_path` is the chain of currently-open `[container]` idents,
@@ -595,6 +624,47 @@ def public widget_prelude(widget_ident : string) {
     PushID(widget_ident)
 }
 
+def public clear_module_widgets(module_name : string) {
+    //! Erase every g_widgets entry tagged with this module. Called as the
+    //! first line of each user module's `register`imgui`widgets()` [init]
+    //! function (prepended by the [widget] macro on first widget per
+    //! module). On hot-reload, the [init] re-fires → clear-then-refill
+    //! drops widgets removed from source AND replaces lambdas with fresh
+    //! closures bound to post-reload state addresses. Entries from other
+    //! modules are untouched.
+    var to_remove : array<string>
+    for (k, m in keys(g_widgets), values(g_widgets)) {
+        if (m.module_name == module_name) {
+            to_remove |> push(k)
+        }
+    }
+    for (k in to_remove) {
+        g_widgets |> erase(k)
+    }
+}
+
+def public register_widget(module_name : string;
+                           bare_ident : string;
+                           kind : string;
+                           state_addr : void?;
+                           var serializer : lambda<() : JsonValue?>) {
+    //! Module-init registration into the long-lived `g_widgets` table.
+    //! Called from the per-module `[init]` function the [widget] macro
+    //! builds via setup_call_list. Keyed on bare ident; on first render
+    //! `widget_finalize` migrates the entry to its container-aware
+    //! path_key. The entry is tagged with `module_name` so reloads can
+    //! clear-then-refill via `clear_module_widgets` (see above).
+    unsafe {
+        g_widgets[bare_ident] <- WidgetMeta(
+            module_name = module_name,
+            kind = kind,
+            state_addr = state_addr,
+            serializer <- serializer,
+            last_seen_frame = -1
+        )
+    }
+}
+
 var private g_serializers : table<string; lambda<() : JsonValue?>>
 var private g_dispatcher_seen : table<string; bool>
 
@@ -631,7 +701,27 @@ def public widget_finalize(widget_ident : string;
         g_dispatcher_seen[path_key] = true
     }
     g_registry[path_key] <- entry
+    widgets_mark_seen(widget_ident, path_key)
     PopID()
+}
+
+def private widgets_mark_seen(bare_ident : string; path_key : string) {
+    //! Phase 1: the [widget] macro registered this widget under its bare
+    //! ident at module init. On first render we know the container-aware
+    //! path_key and migrate the entry. Subsequent renders just bump
+    //! last_seen_frame. If neither key is present (user wrote a [widget]
+    //! body without going through the macro — e.g. tests calling
+    //! widget_finalize directly), do nothing.
+    if (bare_ident != path_key && key_exists(g_widgets, bare_ident)) {
+        var moved <- g_widgets[bare_ident]
+        g_widgets |> erase(bare_ident)
+        unsafe {
+            g_widgets[path_key] <- moved
+        }
+    }
+    if (key_exists(g_widgets, path_key)) {
+        g_widgets[path_key].last_seen_frame = g_frame
+    }
 }
 
 def public container_finalize(widget_ident : string;
@@ -660,6 +750,7 @@ def public container_finalize(widget_ident : string;
         g_dispatcher_seen[path_key] = true
     }
     g_registry[path_key] <- entry
+    widgets_mark_seen(widget_ident, path_key)
     PopID()
 }
 
@@ -696,11 +787,37 @@ def private extract_string_field(obj : JsonValue?; name : string) : string {
     return string(v.value as _string)
 }
 
-[live_command(description = "Snapshot the per-frame widget registry as JSON")]
+def private widget_meta_jv(path_key : string; meta : WidgetMeta) : JsonValue? {
+    //! Snapshot blob for a widget that's registered in `g_widgets` but did
+    //! NOT render this frame — no per-frame entry to join. State payload
+    //! comes from the meta's serializer; bbox/hover/active/focus are
+    //! absent. `rendered: false` lets clients distinguish "in the source
+    //! but currently hidden" from "doesn't exist".
+    var tab : table<string; JsonValue?>
+    tab |> insert("kind", JV(meta.kind))
+    tab |> insert("rendered", JV(false))
+    tab |> insert("payload", invoke(meta.serializer))
+    return JV(tab)
+}
+
+[live_command(description = "Snapshot of all registered widgets, with per-frame state joined when rendered")]
 def imgui_snapshot(input : JsonValue?) : JsonValue? {
     var globals : table<string; JsonValue?>
+    // Walk long-lived registry first — covers unrendered widgets too.
+    for (k, meta in keys(g_widgets), values(g_widgets)) {
+        if (key_exists(g_registry, k)) {
+            globals |> insert(k, widget_entry_jv(k, g_registry[k]))
+        } else {
+            globals |> insert(k, widget_meta_jv(k, meta))
+        }
+    }
+    // Fold in any per-frame entry not in g_widgets — e.g. containers
+    // (which still write g_registry but don't go through register_widget
+    // yet). Keeps existing 0b behavior intact while the macro is migrated.
     for (k, v in keys(g_registry), values(g_registry)) {
-        globals |> insert(k, widget_entry_jv(k, v))
+        if (!key_exists(g_widgets, k)) {
+            globals |> insert(k, widget_entry_jv(k, v))
+        }
     }
     return JV({"frame" => JV(g_frame), "globals" => JV(globals)})
 }

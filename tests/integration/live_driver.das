@@ -156,6 +156,17 @@ def public widget_payload_field(var snap : JsonValue?; ident : string; field : s
     return snap?["globals"]?[ident]?["payload"]?[field]
 }
 
+def public widget_rendered(var snap : JsonValue?; ident : string) : bool {
+    //! True iff `globals[ident]` is for a widget that rendered this frame.
+    //! Phase 1 widgets registered at module init but not yet painted (closed
+    //! window, untaken branch) carry an explicit `"rendered": false`;
+    //! rendered widgets omit the field. `from_JV(... default=true)` reads
+    //! the absent-field path as rendered. Don't use raw `?[]` != null —
+    //! the daslib/json ?[] quirk returns a JV(null) pointer for missing
+    //! keys, not literal null.
+    return from_JV(snap?["globals"]?[ident]?["rendered"], type<bool>, true)
+}
+
 def public wait_until(d : LiveDriver;
                       timeout_sec : float;
                       pred : block<(var snap : JsonValue?) : bool>) : JsonValue? {
@@ -229,19 +240,34 @@ def public wait_for_payload_value(d : LiveDriver;
 }
 
 def public wait_for_widget(d : LiveDriver; widget_ident : string; timeout_sec : float = DEFAULT_FRAME_WAIT_SEC) : JsonValue? {
-    //! Poll snapshot until `globals.<widget_ident>` is present (i.e. at least
-    //! one frame has rendered the widget). Returns the snapshot, or null on
-    //! timeout. /status going 200 OK means HV is up but doesn't guarantee the
-    //! GLFW window has rendered a frame yet — this is the right gate for any
-    //! test asserting on widget state.
+    //! Poll snapshot until `globals.<widget_ident>` is present in the registry.
+    //! Phase 1: "present" means registered at module [init] OR rendered at
+    //! least once. Use this to wait for subprocess startup (any widget
+    //! visible == compile+load done). For "wait until the widget is actually
+    //! painting this frame" use `wait_for_render` instead.
     let deadline = ref_time_ticks() + int64(timeout_sec * 1000000.0f)
     while (ref_time_ticks() < deadline) {
         var snap = snapshot(d)
-        if (snap != null) {
-            let globals = snap?["globals"]
-            if (globals != null && globals?[widget_ident] != null) {
-                return snap
-            }
+        if (snap != null && widget_exists(snap, widget_ident)) {
+            return snap
+        }
+        sleep(FRAME_POLL_INTERVAL_MS)
+    }
+    return null
+}
+
+def public wait_for_render(d : LiveDriver; widget_ident : string; timeout_sec : float = DEFAULT_FRAME_WAIT_SEC) : JsonValue? {
+    //! Poll snapshot until `globals.<widget_ident>` reports `rendered:true`
+    //! (i.e. the widget actually painted this frame). For tests asserting
+    //! that imgui_open / state.open flips re-paint a previously-hidden
+    //! widget. Phase 1.1: registered-but-not-rendered widgets carry
+    //! `rendered:false` and pass `wait_for_widget` immediately, so use this
+    //! variant when you specifically need first-paint semantics.
+    let deadline = ref_time_ticks() + int64(timeout_sec * 1000000.0f)
+    while (ref_time_ticks() < deadline) {
+        var snap = snapshot(d)
+        if (snap != null && widget_rendered(snap, widget_ident)) {
+            return snap
         }
         sleep(FRAME_POLL_INTERVAL_MS)
     }
