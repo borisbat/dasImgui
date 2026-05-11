@@ -68,9 +68,7 @@ def public await_imgui(transport : Transport;
     //! Poll `imgui_await` until `value.quiescent` flips true (or timeout).
     //! Returns true on quiescence, false on timeout.
     let deadline = ref_time_ticks() + int64(double(timeout_sec) * 1000000.0lf)
-    var args : table<string; JsonValue?>
-    args |> insert("until", JV(until))
-    var args_jv = JV(args)
+    var args_jv = JV((until = until))
     while (ref_time_ticks() < deadline) {
         let r = invoke(transport, "imgui_await", args_jv)
         if (r?["value"]?["quiescent"] ?? false) {
@@ -88,9 +86,7 @@ def public await_imgui_frame(transport : Transport;
     //! Reuses imgui_await's `frame:` arg, which sets `quiescent = (g_frame
     //! >= target_frame)` server-side — saves a separate frame-number probe.
     let deadline = ref_time_ticks() + int64(double(timeout_sec) * 1000000.0lf)
-    var args : table<string; JsonValue?>
-    args |> insert("frame", JV(target_frame))
-    var args_jv = JV(args)
+    var args_jv = JV((frame = target_frame))
     while (ref_time_ticks() < deadline) {
         let r = invoke(transport, "imgui_await", args_jv)
         if (r?["value"]?["quiescent"] ?? false) {

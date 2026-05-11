@@ -43,9 +43,8 @@ def test_transport_lambda_round_trip(t : T?) {
         t |> success(snap?["globals"] != null, "snapshot has globals")
 
         // Gate 3: send a click via the transport; verify Result wire shape.
-        var click_args : table<string; JsonValue?>
-        click_args |> insert("target", JV("DEMO_BTN"))
-        var click_resp = send_imgui_command(transport, "imgui_click", JV(click_args))
+        var click_resp = send_imgui_command(transport, "imgui_click",
+                                            JV((target = "DEMO_BTN")))
         t |> success(click_resp != null, "click via transport non-null")
         t |> equal(click_resp?["ok"] ?? false, true,
                    "transport click response.ok = true")

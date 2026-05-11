@@ -35,10 +35,8 @@ def test_imgui_type_text_buffer_fills(t : T?) {
                    "DEMO_INPUT starts with empty buffer")
 
         // Gate 2: error path — empty text rejected.
-        var empty_args : table<string; JsonValue?>
-        empty_args |> insert("target", JV("DEMO_INPUT"))
-        empty_args |> insert("text", JV(""))
-        let empty_resp = post_command(d, "imgui_type_text", JV(empty_args))
+        let empty_resp = post_command(d, "imgui_type_text",
+                                      JV((target = "DEMO_INPUT", text = "")))
         t |> equal(empty_resp?["ok"] ?? true, false,
                    "empty text → response.ok = false")
 

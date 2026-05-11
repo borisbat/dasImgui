@@ -324,28 +324,19 @@ def public await_quiescent(app : ImguiApp;
 // ===== Command verbs =====
 
 def public click(app : ImguiApp; target : string) : JsonValue? {
-    var args : table<string; JsonValue?>
-    args |> insert("target", JV(target))
-    return send_imgui_command(app.transport, "imgui_click", JV(args))
+    return send_imgui_command(app.transport, "imgui_click", JV((target = target)))
 }
 
 def public set_value(app : ImguiApp; target : string; var value : JsonValue?) : JsonValue? {
-    var args : table<string; JsonValue?>
-    args |> insert("target", JV(target))
-    args |> insert("value", value)
-    return send_imgui_command(app.transport, "imgui_set", JV(args))
+    return send_imgui_command(app.transport, "imgui_set", JV((target = target, value = value)))
 }
 
 def public open_widget(app : ImguiApp; target : string) : JsonValue? {
-    var args : table<string; JsonValue?>
-    args |> insert("target", JV(target))
-    return send_imgui_command(app.transport, "imgui_open", JV(args))
+    return send_imgui_command(app.transport, "imgui_open", JV((target = target)))
 }
 
 def public close_widget(app : ImguiApp; target : string) : JsonValue? {
-    var args : table<string; JsonValue?>
-    args |> insert("target", JV(target))
-    return send_imgui_command(app.transport, "imgui_close", JV(args))
+    return send_imgui_command(app.transport, "imgui_close", JV((target = target)))
 }
 
 def public drag(app : ImguiApp; target : string;
@@ -354,13 +345,8 @@ def public drag(app : ImguiApp; target : string;
     //! Synthesize an L1 mouse-drag on `target`'s bbox center: press → `steps`
     //! interpolated moves → release. Coroutine on the host advances one
     //! event per frame, so observable settle is `steps + 2` frames.
-    var args : table<string; JsonValue?>
-    args |> insert("target", JV(target))
-    args |> insert("dx", JV(dx))
-    args |> insert("dy", JV(dy))
-    args |> insert("steps", JV(steps))
-    args |> insert("button", JV(button))
-    return send_imgui_command(app.transport, "imgui_drag", JV(args))
+    return send_imgui_command(app.transport, "imgui_drag",
+                              JV((target = target, dx = dx, dy = dy, steps = steps, button = button)))
 }
 
 def public focus(app : ImguiApp; target : string) : JsonValue? {
@@ -369,18 +355,14 @@ def public focus(app : ImguiApp; target : string) : JsonValue? {
     //! widget_prelude runs for that path, it calls SetKeyboardFocusHere(0)
     //! and clears the entry. Display-only widgets (text_show, plot)
     //! return Result.err("not focusable").
-    var args : table<string; JsonValue?>
-    args |> insert("target", JV(target))
-    return send_imgui_command(app.transport, "imgui_focus", JV(args))
+    return send_imgui_command(app.transport, "imgui_focus", JV((target = target)))
 }
 
 def public await_probe(app : ImguiApp; until : string = "quiescent") : JsonValue? {
     //! Single imgui_await POST. Server replies with a `Result<AwaitResult,
     //! string>` — the AwaitResult lives under `response.value`. This is a
     //! one-shot probe; for poll-until-quiescent use `await_quiescent`.
-    var args : table<string; JsonValue?>
-    args |> insert("until", JV(until))
-    return send_imgui_command(app.transport, "imgui_await", JV(args))
+    return send_imgui_command(app.transport, "imgui_await", JV((until = until)))
 }
 
 def public type_text(app : ImguiApp; target : string; text : string;
@@ -402,10 +384,7 @@ def public type_text(app : ImguiApp; target : string; text : string;
     wait_until(app, focus_timeout_sec) $(var snap) {
         return snap?["globals"]?[target]?["focus"] ?? false
     }
-    var args : table<string; JsonValue?>
-    args |> insert("target", JV(target))
-    args |> insert("text", JV(text))
-    return send_imgui_command(app.transport, "imgui_type_text", JV(args))
+    return send_imgui_command(app.transport, "imgui_type_text", JV((target = target, text = text)))
 }
 
 def public reload(app : ImguiApp; timeout_sec : float = DEFAULT_RELOAD_TIMEOUT_SEC) : void {

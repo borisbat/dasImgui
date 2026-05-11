@@ -74,12 +74,10 @@ def test_active_widget_foundation(t : T?) {
                    "with_await merges timeout_sec=5.0 by default")
 
         // Gate 6: fire_and_forget=true skips the await merge — bare Result.
-        var ff_args : table<string; JsonValue?>
-        ff_args |> insert("target", JV("DEMO_BTN"))
-        var ff_await : table<string; JsonValue?>
-        ff_await |> insert("fire_and_forget", JV(true))
-        ff_args |> insert("await", JV(ff_await))
-        let ff_resp = post_command(d, "imgui_click", JV(ff_args))
+        let ff_resp = post_command(d, "imgui_click", JV((
+            target = "DEMO_BTN",
+            await = JV((fire_and_forget = true))
+        )))
         t |> success(ff_resp != null, "fire_and_forget click returned a response")
         t |> equal(ff_resp?["timeout_sec"] ?? 0.0f, 0.0f,
                    "fire_and_forget suppresses timeout_sec merge (reads as default 0.0)")

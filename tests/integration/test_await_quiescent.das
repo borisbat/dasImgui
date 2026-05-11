@@ -65,15 +65,13 @@ def test_imgui_await(t : T?) {
         t |> success(settled != null, "post-drag: quiescent recovers")
 
         // Gate 4: per-command await modifier surfaces in response wrap.
-        var args : table<string; JsonValue?>
-        args |> insert("target", JV("DEMO_SLIDER"))
-        args |> insert("dx", JV(10.0f))
-        args |> insert("dy", JV(0.0f))
-        args |> insert("steps", JV(2))
-        var await_mod : table<string; JsonValue?>
-        await_mod |> insert("await_frames", JV(7))
-        args |> insert("await", JV(await_mod))
-        let resp = post_command(d, "imgui_drag", JV(args))
+        let resp = post_command(d, "imgui_drag", JV((
+            target = "DEMO_SLIDER",
+            dx = 10.0f,
+            dy = 0.0f,
+            steps = 2,
+            await = JV((await_frames = 7))
+        )))
         t |> equal(resp?["await_frames"] ?? -1, 7,
                    "with_await merges await_frames=7 from per-command modifier")
     }
