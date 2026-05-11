@@ -26,7 +26,7 @@ def imgui_app(title : string; blk : block) {
     StyleColorsDark(null)
     ImGui_ImplGlfw_InitForOpenGL(window, true)
     ImGui_ImplOpenGL3_Init("#version 330")
-    var clear_color = float4(0.45f, 0.55f, 0.60f, 1.00f)
+    let clear_color = float4(0.45f, 0.55f, 0.60f, 1.00f)
     while (glfwWindowShouldClose(window) == 0) {
         glfwPollEvents()
         ImGui_ImplOpenGL3_NewFrame()
@@ -50,8 +50,7 @@ def imgui_app(title : string; blk : block) {
 
 [export]
 def main {
-    var f = 0.0
-    imgui_app("Testing IMGUI") <| $() {
+    imgui_app("Testing IMGUI") {
         NewFrame()
         DasShowDemoWindow(null)
         Render()

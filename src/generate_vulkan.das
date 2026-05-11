@@ -15,6 +15,6 @@ def main {
 
     // generate
 
-    var args <- get_command_line_arguments()
+    let args <- get_command_line_arguments()
     bindHeaders(args[3], args[4])
 }

@@ -130,7 +130,7 @@ def PlotLines(
               overlay_text : string = "";
               scale_min : float = FLT_MAX; scale_max : float = FLT_MAX;
               graph_size : float2 = float2()) {
-    var gsize = graph_size
+    let gsize = graph_size
     unsafe {
         _builtin_PlotLines(getter, lab, values_count, values_offset, overlay_text, scale_min, scale_max, gsize)
     }
@@ -141,7 +141,7 @@ def PlotHistogram(
                   overlay_text : string = "";
                   scale_min : float = FLT_MAX; scale_max : float = FLT_MAX;
                   graph_size : float2 = float2()) {
-    var gsize = graph_size
+    let gsize = graph_size
     unsafe {
         _builtin_PlotHistogram(getter, lab, values_count, values_offset, overlay_text, scale_min, scale_max, gsize)
     }
@@ -199,7 +199,7 @@ def PlotLines(
               scale_min : float = FLT_MAX; scale_max : float = FLT_MAX;
               graph_size : float2 = float2();
               stride : int = typeinfo sizeof(type<float>)) {
-    var gsize = graph_size
+    let gsize = graph_size
     unsafe {
         imgui::PlotLines(lab, addr(values[0]), length(values), values_offset, overlay_text, scale_min, scale_max, gsize, stride)
     }
@@ -211,7 +211,7 @@ def PlotLines(
               scale_min : float = FLT_MAX; scale_max : float = FLT_MAX;
               graph_size : float2 = float2();
               stride : int = typeinfo sizeof(type<float>)) {
-    var gsize = graph_size
+    let gsize = graph_size
     unsafe {
         imgui::PlotLines(lab, addr(values[0]), length(values), values_offset, overlay_text, scale_min, scale_max, gsize, stride)
     }
@@ -223,7 +223,7 @@ def PlotHistogram(
                   scale_min : float = FLT_MAX; scale_max : float = FLT_MAX;
                   graph_size : float2 = float2();
                   stride : int = typeinfo sizeof(type<float>)) {
-    var gsize = graph_size
+    let gsize = graph_size
     unsafe {
         imgui::PlotHistogram(lab, addr(values[0]), length(values), values_offset, overlay_text, scale_min, scale_max, gsize, stride)
     }
@@ -235,7 +235,7 @@ def PlotHistogram(
                   scale_min : float = FLT_MAX; scale_max : float = FLT_MAX;
                   graph_size : float2 = float2();
                   stride : int = typeinfo sizeof(type<float>)) {
-    var gsize = graph_size
+    let gsize = graph_size
     unsafe {
         imgui::PlotHistogram(lab, addr(values[0]), length(values), values_offset, overlay_text, scale_min, scale_max, gsize, stride)
     }
@@ -470,7 +470,7 @@ def GetBR(rect : float4) {
 }
 
 def VerticalSeparator(name : string; var PANNEL_WIDTH : float&; inverted : float = 1.; min_width : float = 200.; max_width : float = 100500.0) {
-    var IO & = unsafe(imgui::GetIO())
+    let IO & = unsafe(imgui::GetIO())
     PushStyleVar(ImGuiStyleVar.ItemSpacing, float2(0.))
     static_let <| $() {
         var resizing_vertical = false
