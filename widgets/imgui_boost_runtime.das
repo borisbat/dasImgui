@@ -714,6 +714,24 @@ def end_of_frame() {
     }
 }
 
+var private g_post_command_hooks : table<string; function<(command : string; target : string) : void>>
+
+def public register_post_command_hook(name : string; hook : function<(command : string; target : string) : void>) {
+    //! Symmetric to register_end_of_frame_hook. Each hook fires after a
+    //! successful imgui_* command (click / set / focus / open / close /
+    //! drag / type_text) with `(command_name, resolved_target)`. Used by
+    //! imgui_visual_aids to auto-flash the touched widget. Same name-keyed
+    //! idempotent semantics — re-registering replaces, so daslang-live
+    //! reload doesn't accumulate hooks.
+    g_post_command_hooks[name] = hook
+}
+
+def private dispatch_post_command_hooks(command : string; target : string) {
+    for (h in values(g_post_command_hooks)) {
+        invoke(h, command, target)
+    }
+}
+
 def public advance_coroutines() {
     //! Step every active L1 coroutine one frame, using the `next/empty`
     //! pattern from daslib's `cr_run_all`. `next(c, t)` advances the
@@ -1118,27 +1136,37 @@ def private dispatch_or_err(action : string; input : JsonValue?) : Result<string
 
 [live_command(description = "Queue an L2 click on a widget identified by 'target'")]
 def imgui_click(input : JsonValue?) : JsonValue? {
-    return with_await(input, dispatch_or_err("click", input))
+    let r = dispatch_or_err("click", input)
+    if (r._is_ok) dispatch_post_command_hooks("click", r._value)
+    return with_await(input, r)
 }
 
 [live_command(description = "Queue an L3 value set on a widget ('target' name + 'value')")]
 def imgui_set(input : JsonValue?) : JsonValue? {
-    return with_await(input, dispatch_or_err("set", input))
+    let r = dispatch_or_err("set", input)
+    if (r._is_ok) dispatch_post_command_hooks("set", r._value)
+    return with_await(input, r)
 }
 
 [live_command(description = "Queue an open command on a container widget ('target' name)")]
 def imgui_open(input : JsonValue?) : JsonValue? {
-    return with_await(input, dispatch_or_err("open", input))
+    let r = dispatch_or_err("open", input)
+    if (r._is_ok) dispatch_post_command_hooks("open", r._value)
+    return with_await(input, r)
 }
 
 [live_command(description = "Queue a close command on a container widget ('target' name)")]
 def imgui_close(input : JsonValue?) : JsonValue? {
-    return with_await(input, dispatch_or_err("close", input))
+    let r = dispatch_or_err("close", input)
+    if (r._is_ok) dispatch_post_command_hooks("close", r._value)
+    return with_await(input, r)
 }
 
 [live_command(description = "Force keyboard focus to a widget identified by 'target' (path or hex_id)")]
 def imgui_focus(input : JsonValue?) : JsonValue? {
-    return with_await(input, dispatch_or_err("focus", input))
+    let r = dispatch_or_err("focus", input)
+    if (r._is_ok) dispatch_post_command_hooks("focus", r._value)
+    return with_await(input, r)
 }
 
 // ===== Phase 2.5 — Quiescence probe =====
@@ -1282,6 +1310,7 @@ def imgui_drag(input : JsonValue?) : JsonValue? {
     if (!found) return with_await(input, err("drag target unresolved: {args.target}", type<string>))
     let endp = start + float2(args.dx, args.dy)
     spawn_coroutine(drag_coro(start, endp, max(args.steps, 1), args.button))
+    dispatch_post_command_hooks("drag", args.target)
     return with_await(input, ok(args.target, type<string>))
 }
 
@@ -1290,5 +1319,6 @@ def imgui_type_text(input : JsonValue?) : JsonValue? {
     let args = from_JV(input, default<TypeTextArgs>)
     if (empty(args.text)) return with_await(input, err("missing 'text'", type<string>))
     spawn_coroutine(type_text_coro(args.text))
+    if (!empty(args.target)) dispatch_post_command_hooks("type_text", args.target)
     return with_await(input, ok(args.target, type<string>))
 }

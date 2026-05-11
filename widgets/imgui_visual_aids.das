@@ -210,9 +210,23 @@ def private paint_all {
     paint_narrates()
 }
 
+let AUTO_HIGHLIGHT_FRAMES = 180
+
+def private on_command(command : string; target : string) {
+    //! Post-command hook: auto-flash the touched widget when the user has
+    //! opted in via `imgui_auto_highlight_on_command`. Called from
+    //! imgui_boost_runtime's command handlers after a successful resolve.
+    //! 180-frame flash (~2s at 90fps) — longer than the 60-frame default so
+    //! it's actually visible to the user/viewer driving the command stream.
+    if (imgui_auto_highlight_on_command && !empty(target)) {
+        highlight(target, AUTO_HIGHLIGHT_FRAMES)
+    }
+}
+
 [init]
 def visual_aids_init {
     register_end_of_frame_hook("imgui_visual_aids", @@ paint_all)
+    register_post_command_hook("imgui_visual_aids", @@ on_command)
 }
 
 // ===== Live commands =====
@@ -254,4 +268,15 @@ def imgui_narrate(input : JsonValue?) : JsonValue? {
     let args = from_JV(input, type<NarrateArgs>)
     narrate(args.text, args.target, args.frames)
     return JV((ok = true))
+}
+
+struct AutoHighlightArgs {
+    @optional enabled : bool = true
+}
+
+[live_command(description="Toggle the imgui_auto_highlight_on_command flag — when on, every accepted command auto-flashes its target.")]
+def imgui_auto_highlight(input : JsonValue?) : JsonValue? {
+    let args = from_JV(input, type<AutoHighlightArgs>)
+    imgui_auto_highlight_on_command = args.enabled
+    return JV((ok = true, enabled = args.enabled))
 }
