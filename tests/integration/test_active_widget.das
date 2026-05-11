@@ -54,9 +54,9 @@ def test_active_widget_foundation(t : T?) {
         // JV(null) placeholder for missing object keys (not literal null),
         // so we use the from_JV-with-default idiom that imgui_playwright's
         // widget_rendered helper uses too.
-        t |> equal(from_JV(snap0?["io"]?["active_id"], type<uint>, 0u), 0u,
+        t |> equal(snap0?["io"]?["active_id"] ?? 0u, 0u,
                    "io.active_id reads 0 when nothing is active")
-        t |> success(empty(from_JV(snap0?["io"]?["active_widget"], type<string>, "")),
+        t |> success(empty(snap0?["io"]?["active_widget"] ?? ""),
                      "io.active_widget reads empty when nothing is active")
 
         // Gate 4: imgui_click response wire format is Result<string, string>.
@@ -64,13 +64,13 @@ def test_active_widget_foundation(t : T?) {
         // {"ok": true, "queued": "DEMO_BTN"}.
         let click_resp = click(d, "DEMO_BTN")
         t |> success(click_resp != null, "imgui_click returned a response")
-        t |> equal(from_JV(click_resp?["ok"], type<bool>, false), true,
+        t |> equal(click_resp?["ok"] ?? false, true,
                    "click response.ok = true on hit")
-        t |> equal(from_JV(click_resp?["value"], type<string>, ""), "DEMO_BTN",
+        t |> equal(click_resp?["value"] ?? "", "DEMO_BTN",
                    "click response.value = target ident (Result wire)")
 
         // Gate 5: with_await default merges timeout_sec (5.0) into the response.
-        t |> equal(from_JV(click_resp?["timeout_sec"], type<float>, 0.0f), 5.0f,
+        t |> equal(click_resp?["timeout_sec"] ?? 0.0f, 5.0f,
                    "with_await merges timeout_sec=5.0 by default")
 
         // Gate 6: fire_and_forget=true skips the await merge — bare Result.
@@ -81,16 +81,16 @@ def test_active_widget_foundation(t : T?) {
         ff_args |> insert("await", JV(ff_await))
         let ff_resp = post_command(d, "imgui_click", JV(ff_args))
         t |> success(ff_resp != null, "fire_and_forget click returned a response")
-        t |> equal(from_JV(ff_resp?["timeout_sec"], type<float>, 0.0f), 0.0f,
+        t |> equal(ff_resp?["timeout_sec"] ?? 0.0f, 0.0f,
                    "fire_and_forget suppresses timeout_sec merge (reads as default 0.0)")
-        t |> equal(from_JV(ff_resp?["value"], type<string>, ""), "DEMO_BTN",
+        t |> equal(ff_resp?["value"] ?? "", "DEMO_BTN",
                    "fire_and_forget still carries the Result.value")
 
         // Gate 7: error path — unknown target produces Result.err shape.
         let err_resp = click(d, "DOES_NOT_EXIST")
-        t |> equal(from_JV(err_resp?["ok"], type<bool>, true), false,
+        t |> equal(err_resp?["ok"] ?? true, false,
                    "unknown target → response.ok = false")
-        t |> success(!empty(from_JV(err_resp?["error"], type<string>, "")),
+        t |> success(!empty(err_resp?["error"] ?? ""),
                      "unknown target → response.error populated")
     }
 }

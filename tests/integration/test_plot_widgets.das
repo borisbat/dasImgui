@@ -29,10 +29,10 @@ def test_plot_widgets_smoke(t : T?) {
 
         // Gate 1: kinds and presence.
         var sine = find_widget(snap, "MAIN_WIN/SINE_WAVE")
-        t |> equal(from_JV(sine?["kind"], type<string>, ""), "plot_lines",
+        t |> equal(sine?["kind"] ?? "", "plot_lines",
                    "SINE_WAVE.kind = plot_lines")
         var hist = find_widget(snap, "MAIN_WIN/HISTOGRAM")
-        t |> equal(from_JV(hist?["kind"], type<string>, ""), "plot_histogram",
+        t |> equal(hist?["kind"] ?? "", "plot_histogram",
                    "HISTOGRAM.kind = plot_histogram")
 
         // Gate 2: payload fields.

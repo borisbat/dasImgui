@@ -41,12 +41,12 @@ def test_imgui_drag_value_changes(t : T?) {
         if (snap0 == null) {
             return
         }
-        let v0 = from_JV(snap0?["globals"]?["DEMO_SLIDER"]?["payload"]?["value"], type<float>, -1.0f)
+        let v0 = snap0?["globals"]?["DEMO_SLIDER"]?["payload"]?["value"] ?? -1.0f
         t |> equal(v0, 0.0f, "DEMO_SLIDER starts at 0.0")
 
         // Gate 2: error path — unknown target produces Result.err.
         let err_resp = drag(d, "DOES_NOT_EXIST", 100.0f, 0.0f)
-        t |> equal(from_JV(err_resp?["ok"], type<bool>, true), false,
+        t |> equal(err_resp?["ok"] ?? true, false,
                    "unknown drag target → response.ok = false")
 
         // Gate 3: imgui_drag with known target returns ok-Result. 8 steps over
@@ -54,16 +54,16 @@ def test_imgui_drag_value_changes(t : T?) {
         // value bump (bounds 0..1000, default slider width ~200 px).
         let drag_resp = drag(d, "DEMO_SLIDER", 120.0f, 0.0f, 8)
         t |> success(drag_resp != null, "imgui_drag returned a response")
-        t |> equal(from_JV(drag_resp?["ok"], type<bool>, false), true,
+        t |> equal(drag_resp?["ok"] ?? false, true,
                    "drag response.ok = true on hit")
-        t |> equal(from_JV(drag_resp?["value"], type<string>, ""), "DEMO_SLIDER",
+        t |> equal(drag_resp?["value"] ?? "", "DEMO_SLIDER",
                    "drag response.value = target ident (Result wire)")
 
         // Gate 4: after the drag completes (mouse released), the slider
         // value should have moved away from 0. End-to-end proof that L1
         // mouse-down → moves → mouse-up reached the widget and drove its
         // interactive logic. Poll up to 5s for value > 0.
-        let moved = wait_until(d, 5.0f) $(snap) => from_JV(snap?["globals"]?["DEMO_SLIDER"]?["payload"]?["value"], type<float>, 0.0f) > 0.0f
+        let moved = wait_until(d, 5.0f) $(snap) => (snap?["globals"]?["DEMO_SLIDER"]?["payload"]?["value"] ?? 0.0f) > 0.0f
         t |> success(moved != null, "DEMO_SLIDER value moved off 0 after L1 drag")
     }
 }

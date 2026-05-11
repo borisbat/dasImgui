@@ -32,17 +32,17 @@ def test_triggers_smoke(t : T?) {
 
         // ----- Snapshot shape contract -----
         var save0 = find_widget(snap0, "SAVE_BTN")
-        t |> equal(from_JV(save0?["kind"], type<string>, ""), "button", "SAVE_BTN.kind == 'button'")
+        t |> equal(save0?["kind"] ?? "", "button", "SAVE_BTN.kind == 'button'")
         t |> success(save0?["payload"] != null, "SAVE_BTN.payload present")
 
         // ----- Click family — count++ on imgui_click -----
-        let count_before = from_JV(save0?["payload"]?["click_count"], type<int>, 0)
+        let count_before = save0?["payload"]?["click_count"] ?? 0
         click(d, "SAVE_BTN")
         t |> success(wait_for_int_value(d, "SAVE_BTN", "click_count", count_before + 1, 5.0f),
                      "click bumps SAVE_BTN.click_count")
 
         // ----- Toggle family — imgui_set flips the bool -----
-        let wf_before = from_JV(widget_payload_field(snap0, "WIREFRAME", "value"), type<bool>, false)
+        let wf_before = widget_payload_field(snap0, "WIREFRAME", "value") ?? false
         set_value(d, "WIREFRAME", JV(!wf_before))
         t |> success(wait_for_bool_value(d, "WIREFRAME", "value", !wf_before, 5.0f),
                      "imgui_set toggles WIREFRAME.value")
@@ -55,7 +55,7 @@ def test_triggers_smoke(t : T?) {
         // ----- Snapshot envelope — required common fields per widget -----
         var snap_final = snapshot(d)
         var menu = find_widget(snap_final, "QUICK_SAVE")
-        t |> equal(from_JV(menu?["kind"], type<string>, ""), "menu_item", "QUICK_SAVE.kind == 'menu_item'")
+        t |> equal(menu?["kind"] ?? "", "menu_item", "QUICK_SAVE.kind == 'menu_item'")
         t |> success(menu?["hex_id"] != null, "QUICK_SAVE.hex_id present")
         t |> success(menu?["bbox"] != null, "QUICK_SAVE.bbox present")
     }

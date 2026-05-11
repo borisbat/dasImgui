@@ -31,7 +31,7 @@ def test_inputs_drag_smoke(t : T?) {
 
         // ----- Snapshot shape -----
         var op0 = find_widget(snap0, "OPACITY")
-        t |> equal(from_JV(op0?["kind"], type<string>, ""), "drag_float", "OPACITY.kind == 'drag_float'")
+        t |> equal(op0?["kind"] ?? "", "drag_float", "OPACITY.kind == 'drag_float'")
         t |> success(op0?["payload"] != null, "OPACITY.payload present")
 
         // ----- Float scalar — imgui_set on a single float -----
@@ -82,7 +82,7 @@ def test_inputs_drag_smoke(t : T?) {
         // ----- Snapshot envelope -----
         var snap_final = snapshot(d)
         var price = find_widget(snap_final, "PRICE")
-        t |> equal(from_JV(price?["kind"], type<string>, ""), "drag_int_range2", "PRICE.kind == 'drag_int_range2'")
+        t |> equal(price?["kind"] ?? "", "drag_int_range2", "PRICE.kind == 'drag_int_range2'")
         t |> success(price?["hex_id"] != null, "PRICE.hex_id present")
         t |> success(price?["bbox"] != null, "PRICE.bbox present")
     }

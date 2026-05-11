@@ -42,9 +42,9 @@ def test_io_mirror_smoke(t : T?) {
         var buttons = snap?["io"]?["mouse_buttons"]
         t |> success(buttons != null, "io.mouse_buttons present")
         // No widget interaction yet, so all three should be false.
-        let b_left = from_JV(snap?["io"]?["mouse_buttons"]?[0], type<bool>, true)
-        let b_mid = from_JV(snap?["io"]?["mouse_buttons"]?[1], type<bool>, true)
-        let b_right = from_JV(snap?["io"]?["mouse_buttons"]?[2], type<bool>, true)
+        let b_left = snap?["io"]?["mouse_buttons"]?[0] ?? true
+        let b_mid = snap?["io"]?["mouse_buttons"]?[1] ?? true
+        let b_right = snap?["io"]?["mouse_buttons"]?[2] ?? true
         t |> equal(b_left, false, "mouse_buttons[0] (left) idle is false")
         t |> equal(b_mid, false, "mouse_buttons[1] (middle) idle is false")
         t |> equal(b_right, false, "mouse_buttons[2] (right) idle is false")

@@ -34,7 +34,7 @@ def test_unrendered_widget_visible(t : T?) {
         t |> success(widget_rendered(snap, "VISIBLE_VAL"),
                      "VISIBLE_VAL has bbox — rendered this frame")
         var visible = find_widget(snap, "VISIBLE_VAL")
-        t |> equal(from_JV(visible?["kind"], type<string>, ""), "slider_float",
+        t |> equal(visible?["kind"] ?? "", "slider_float",
                    "VISIBLE_VAL.kind")
         t |> success(visible?["payload"]?["value"] != null,
                      "VISIBLE_VAL.payload.value present")
@@ -48,9 +48,9 @@ def test_unrendered_widget_visible(t : T?) {
         var hidden = find_widget(snap, "NEVER_RENDERED")
         t |> success(!widget_rendered(snap, "NEVER_RENDERED"),
                      "NEVER_RENDERED has rendered:false — not rendered this frame")
-        t |> equal(from_JV(hidden?["rendered"], type<bool>, true), false,
+        t |> equal(hidden?["rendered"] ?? true, false,
                    "NEVER_RENDERED.rendered == false")
-        t |> equal(from_JV(hidden?["kind"], type<string>, ""), "slider_float",
+        t |> equal(hidden?["kind"] ?? "", "slider_float",
                    "NEVER_RENDERED.kind preserved through serializer")
         t |> success(hidden?["payload"]?["value"] != null,
                      "NEVER_RENDERED.payload.value still readable via captured serializer")

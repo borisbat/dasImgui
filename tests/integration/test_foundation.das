@@ -43,20 +43,20 @@ def test_foundation_smoke(t : T?) {
 
         // Gate 3: lazy serializer — payload shapes match per kind.
         var save = find_widget(snap0, "SAVE_BTN")
-        t |> equal(from_JV(save?["kind"], type<string>, ""), "button", "SAVE_BTN.kind")
+        t |> equal(save?["kind"] ?? "", "button", "SAVE_BTN.kind")
         t |> success(save?["payload"]?["click_count"] != null, "ClickState payload.click_count")
 
         var speed = find_widget(snap0, "SPEED")
-        t |> equal(from_JV(speed?["kind"], type<string>, ""), "slider_int", "SPEED.kind")
+        t |> equal(speed?["kind"] ?? "", "slider_int", "SPEED.kind")
         t |> success(speed?["payload"]?["value"] != null, "SliderStateInt payload.value")
         t |> success(speed?["payload"]?["bounds"] != null, "SliderStateInt payload.bounds")
 
         var volume = find_widget(snap0, "VOLUME")
-        t |> equal(from_JV(volume?["kind"], type<string>, ""), "slider_float", "VOLUME.kind")
+        t |> equal(volume?["kind"] ?? "", "slider_float", "VOLUME.kind")
         t |> success(volume?["payload"]?["value"] != null, "SliderStateFloat payload.value")
 
         // Gate 4: unified dispatch — imgui_click and imgui_set both work.
-        let count_before = from_JV(save?["payload"]?["click_count"], type<int>, 0)
+        let count_before = save?["payload"]?["click_count"] ?? 0
         click(d, "SAVE_BTN")
         t |> success(wait_for_int_value(d, "SAVE_BTN", "click_count", count_before + 1, 5.0f),
                      "imgui_click bumps SAVE_BTN.click_count")

@@ -25,7 +25,7 @@ def test_inputs_slider_smoke(t : T?) {
 
         // ----- Snapshot shape -----
         var gain0 = find_widget(snap0, "GAIN")
-        t |> equal(from_JV(gain0?["kind"], type<string>, ""), "slider_float", "GAIN.kind == 'slider_float'")
+        t |> equal(gain0?["kind"] ?? "", "slider_float", "GAIN.kind == 'slider_float'")
         t |> success(gain0?["payload"] != null, "GAIN.payload present")
 
         // ----- Float scalar -----
@@ -75,8 +75,8 @@ def test_inputs_slider_smoke(t : T?) {
         // ----- Snapshot envelope -----
         var snap_final = snapshot(d)
         var vsl = find_widget(snap_final, "VOL_L")
-        t |> equal(from_JV(vsl?["kind"], type<string>, ""), "vslider_float", "VOL_L.kind == 'vslider_float'")
+        t |> equal(vsl?["kind"] ?? "", "vslider_float", "VOL_L.kind == 'vslider_float'")
         var vsi = find_widget(snap_final, "BUS_GAIN")
-        t |> equal(from_JV(vsi?["kind"], type<string>, ""), "vslider_int", "BUS_GAIN.kind == 'vslider_int'")
+        t |> equal(vsi?["kind"] ?? "", "vslider_int", "BUS_GAIN.kind == 'vslider_int'")
     }
 }

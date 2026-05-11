@@ -131,7 +131,7 @@ def public widget_exists(var snap : JsonValue?; ident : string) : bool {
     //! than a literal-null pointer — a non-null pointer to the null variant
     //! still passes `!= null`. Test for the `kind` field instead, which is
     //! always a non-empty string on a real entry.
-    let kind = from_JV(snap?["globals"]?[ident]?["kind"], type<string>, "")
+    let kind = snap?["globals"]?[ident]?["kind"] ?? ""
     return !empty(kind)
 }
 
@@ -145,11 +145,11 @@ def public widget_rendered(var snap : JsonValue?; ident : string) : bool {
     //! True iff `globals[ident]` is for a widget that rendered this frame.
     //! Phase 1 widgets registered at module init but not yet painted (closed
     //! window, untaken branch) carry an explicit `"rendered": false`;
-    //! rendered widgets omit the field. `from_JV(... default=true)` reads
-    //! the absent-field path as rendered. Don't use raw `?[]` != null —
-    //! the daslib/json ?[] quirk returns a JV(null) pointer for missing
-    //! keys, not literal null.
-    return from_JV(snap?["globals"]?[ident]?["rendered"], type<bool>, true)
+    //! rendered widgets omit the field. The `?? true` default reads the
+    //! absent-field path as rendered. Don't use raw `?[]` != null — the
+    //! daslib/json ?[] quirk returns a JV(null) pointer for missing keys,
+    //! not literal null.
+    return snap?["globals"]?[ident]?["rendered"] ?? true
 }
 
 // ===== Poll-until family =====
@@ -219,8 +219,7 @@ def public wait_for_int_value(app : ImguiApp;
     //! Poll snapshot until `globals[target].payload[field] == expected` (typed int).
     //! Returns true on match, false on timeout.
     return wait_until(app, timeout_sec) $(var snap) {
-        let v = widget_payload_field(snap, target, field)
-        return v != null && from_JV(v, type<int>, expected ^ 1) == expected
+        return (widget_payload_field(snap, target, field) ?? (expected ^ 1)) == expected
     } != null
 }
 
@@ -231,8 +230,7 @@ def public wait_for_bool_value(app : ImguiApp;
                                timeout_sec : float = 5.0f) : bool {
     //! Poll snapshot until `globals[target].payload[field] == expected` (typed bool).
     return wait_until(app, timeout_sec) $(var snap) {
-        let v = widget_payload_field(snap, target, field)
-        return v != null && from_JV(v, type<bool>, !expected) == expected
+        return (widget_payload_field(snap, target, field) ?? !expected) == expected
     } != null
 }
 
@@ -243,8 +241,7 @@ def public wait_for_string_value(app : ImguiApp;
                                  timeout_sec : float = 5.0f) : bool {
     //! Poll snapshot until `globals[target].payload[field] == expected` (typed string).
     return wait_until(app, timeout_sec) $(var snap) {
-        let v = widget_payload_field(snap, target, field)
-        return v != null && from_JV(v, type<string>, "") == expected
+        return (widget_payload_field(snap, target, field) ?? "") == expected
     } != null
 }
 
@@ -282,7 +279,7 @@ def public expect_value(app : ImguiApp;
     var snap = snapshot(app)
     let got_jv = widget_payload_field(snap, target, field)
     let got_str = got_jv != null ? write_json(got_jv) : "<missing>"
-    let kind = from_JV(snap?["globals"]?[target]?["kind"], type<string>, "<unknown>")
+    let kind = snap?["globals"]?[target]?["kind"] ?? "<unknown>"
     let exists = widget_exists(snap, target)
     let rendered = exists && widget_rendered(snap, target)
     let want_str = write_json(JV(expected))
@@ -403,7 +400,7 @@ def public type_text(app : ImguiApp; target : string; text : string;
     //! `expect_value` afterward to surface "the value never landed."
     focus(app, target)
     wait_until(app, focus_timeout_sec) $(var snap) {
-        return from_JV(snap?["globals"]?[target]?["focus"], type<bool>, false)
+        return snap?["globals"]?[target]?["focus"] ?? false
     }
     var args : table<string; JsonValue?>
     args |> insert("target", JV(target))
@@ -423,7 +420,7 @@ def public reload(app : ImguiApp; timeout_sec : float = DEFAULT_RELOAD_TIMEOUT_S
             var err : string
             let parsed = read_json(raw, err)
             if (parsed != null) {
-                let has_err = from_JV(parsed?["has_error"], type<bool>, false)
+                let has_err = parsed?["has_error"] ?? false
                 if (!has_err) {
                     return
                 }

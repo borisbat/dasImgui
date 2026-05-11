@@ -26,10 +26,10 @@ def test_containers_overlay_smoke(t : T?) {
 
         // ----- combo_select is registered under the window's path -----
         var combo_entry = find_widget(snap0, "OVERLAY_WIN/PALETTE_COMBO")
-        t |> equal(from_JV(combo_entry?["kind"], type<string>, ""), "combo_select",
+        t |> equal(combo_entry?["kind"] ?? "", "combo_select",
                    "combo_select registers under nested path")
         var listbox_entry = find_widget(snap0, "OVERLAY_WIN/TASK_LIST")
-        t |> equal(from_JV(listbox_entry?["kind"], type<string>, ""), "list_box_select",
+        t |> equal(listbox_entry?["kind"] ?? "", "list_box_select",
                    "list_box_select registers under nested path")
 
         // ----- imgui_set on combo_select index -----

@@ -31,13 +31,13 @@ def test_widget_init_defaults(t : T?) {
         // default in DefaultsState. Pre-fix, the macro emitted `var DEFAULTS :
         // DefaultsState` (no init); these all came back as zero/empty. Post-fix
         // they round-trip through JV(state) -> snapshot.
-        let count = from_JV(widget_payload_field(snap0, "DEFAULTS", "count"), type<int>, 0)
+        let count = widget_payload_field(snap0, "DEFAULTS", "count") ?? 0
         t |> equal(count, 42, "count default fires (int = 42)")
 
-        let ratio = from_JV(widget_payload_field(snap0, "DEFAULTS", "ratio"), type<float>, 0.0f)
+        let ratio = widget_payload_field(snap0, "DEFAULTS", "ratio") ?? 0.0f
         t |> equal(ratio, 1.5f, "ratio default fires (float = 1.5)")
 
-        let caption = from_JV(widget_payload_field(snap0, "DEFAULTS", "caption"), type<string>, "")
+        let caption = widget_payload_field(snap0, "DEFAULTS", "caption") ?? ""
         t |> equal(caption, "default-label", "caption default fires (string = 'default-label')")
 
         let color = from_JV(widget_payload_field(snap0, "DEFAULTS", "color"), type<float3>, float3(0.0f, 0.0f, 0.0f))

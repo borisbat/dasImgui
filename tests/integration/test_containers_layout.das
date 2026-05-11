@@ -28,13 +28,13 @@ def test_containers_layout_smoke(t : T?) {
         }
 
         // ----- Each container registers under its own path key -----
-        t |> equal(from_JV(find_widget(snap0, "LAYOUT_WIN")?["kind"], type<string>, ""),
+        t |> equal(find_widget(snap0, "LAYOUT_WIN")?["kind"] ?? "",
                    "window", "LAYOUT_WIN.kind == window")
-        t |> equal(from_JV(find_widget(snap0, "LAYOUT_WIN/MAIN_TABS")?["kind"], type<string>, ""),
+        t |> equal(find_widget(snap0, "LAYOUT_WIN/MAIN_TABS")?["kind"] ?? "",
                    "tab_bar", "tab_bar registers under window's path")
-        t |> equal(from_JV(find_widget(snap0, "LAYOUT_WIN/MAIN_TABS/SETTINGS_TAB")?["kind"], type<string>, ""),
+        t |> equal(find_widget(snap0, "LAYOUT_WIN/MAIN_TABS/SETTINGS_TAB")?["kind"] ?? "",
                    "tab_item", "tab_item registers under tab_bar's path")
-        t |> equal(from_JV(find_widget(snap0, "LAYOUT_WIN/MAIN_TABS/SETTINGS_TAB/PHYSICS_TREE")?["kind"], type<string>, ""),
+        t |> equal(find_widget(snap0, "LAYOUT_WIN/MAIN_TABS/SETTINGS_TAB/PHYSICS_TREE")?["kind"] ?? "",
                    "tree_node", "tree_node registers under tab_item's path")
 
         // ----- Sibling tab is also registered (tab_bar paints all tab_item
@@ -43,12 +43,12 @@ def test_containers_layout_smoke(t : T?) {
                      "sibling AUDIO_TAB also registered alongside SETTINGS_TAB")
 
         // ----- Menu bar + menus are part of the path too -----
-        t |> equal(from_JV(find_widget(snap0, "LAYOUT_WIN/MAIN_BAR")?["kind"], type<string>, ""),
+        t |> equal(find_widget(snap0, "LAYOUT_WIN/MAIN_BAR")?["kind"] ?? "",
                    "menu_bar", "menu_bar registers")
         // FILE_MENU's body only renders when the user clicks open the menu,
         // so its content nesting (FILE_MENU/FILE_NEW etc.) is tested
         // implicitly only — the menu container itself registers every frame.
-        t |> equal(from_JV(find_widget(snap0, "LAYOUT_WIN/MAIN_BAR/FILE_MENU")?["kind"], type<string>, ""),
+        t |> equal(find_widget(snap0, "LAYOUT_WIN/MAIN_BAR/FILE_MENU")?["kind"] ?? "",
                    "menu", "menu registers under menu_bar's path")
 
         // ----- imgui_set steers a leaf nested inside tree_node -----
@@ -59,7 +59,7 @@ def test_containers_layout_smoke(t : T?) {
                      "imgui_set on 5-deep nested leaf works")
 
         // ----- collapsing_header path key -----
-        t |> equal(from_JV(find_widget(snap0, "LAYOUT_WIN/LOG_HEADER")?["kind"], type<string>, ""),
+        t |> equal(find_widget(snap0, "LAYOUT_WIN/LOG_HEADER")?["kind"] ?? "",
                    "collapsing_header", "collapsing_header registers")
         // It's flagged DefaultOpen so opened=true is expected on first frame.
         t |> success(wait_for_bool_value(d, "LAYOUT_WIN/LOG_HEADER", "opened", true, 5.0f),

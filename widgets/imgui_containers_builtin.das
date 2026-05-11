@@ -424,7 +424,7 @@ def combo_select(var state : ComboState; text : string; preview_value : string;
         }
         let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
             if (action == "set") {
-                state.pending_value = from_JV(payload?["value"], type<int>, 0)
+                state.pending_value = payload?["value"] ?? 0
                 state.has_pending = true
             }
         }
@@ -453,7 +453,7 @@ def list_box_select(var state : ListBoxState; text : string; size : float2; blk 
         }
         let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
             if (action == "set") {
-                state.pending_value = from_JV(payload?["value"], type<int>, 0)
+                state.pending_value = payload?["value"] ?? 0
                 state.has_pending = true
             }
         }

@@ -28,19 +28,19 @@ def test_inputs_text_smoke(t : T?) {
 
         // ----- Snapshot kinds -----
         var name0 = find_widget(snap0, "NAME")
-        t |> equal(from_JV(name0?["kind"], type<string>, ""), "input_text",
+        t |> equal(name0?["kind"] ?? "", "input_text",
                    "NAME.kind == 'input_text'")
         var email0 = find_widget(snap0, "EMAIL")
-        t |> equal(from_JV(email0?["kind"], type<string>, ""), "input_text_with_hint",
+        t |> equal(email0?["kind"] ?? "", "input_text_with_hint",
                    "EMAIL.kind == 'input_text_with_hint'")
         var bio0 = find_widget(snap0, "BIO")
-        t |> equal(from_JV(bio0?["kind"], type<string>, ""), "input_text_multiline",
+        t |> equal(bio0?["kind"] ?? "", "input_text_multiline",
                    "BIO.kind == 'input_text_multiline'")
         var grow0 = find_widget(snap0, "GROW")
-        t |> equal(from_JV(grow0?["kind"], type<string>, ""), "input_text_growable",
+        t |> equal(grow0?["kind"] ?? "", "input_text_growable",
                    "GROW.kind == 'input_text_growable'")
         var font0 = find_widget(snap0, "FONT")
-        t |> equal(from_JV(font0?["kind"], type<string>, ""), "combo_getter",
+        t |> equal(font0?["kind"] ?? "", "combo_getter",
                    "FONT.kind == 'combo_getter'")
 
         // ----- input_text — string round-trip -----
@@ -73,7 +73,7 @@ def test_inputs_text_smoke(t : T?) {
         t |> success(wait_for_string_value(d, "GROW", "value", long_text, 8.0f),
                      "imgui_set steers GROW.value past 256B (CallbackResize fired)")
         var snap_grew = snapshot(d)
-        let final_capacity = from_JV(widget_payload_field(snap_grew, "GROW", "capacity"), type<int>, 0)
+        let final_capacity = widget_payload_field(snap_grew, "GROW", "capacity") ?? 0
         t |> success(final_capacity > 256,
                      "GROW.capacity grew past 256 (got {final_capacity})")
 
@@ -87,10 +87,10 @@ def test_inputs_text_smoke(t : T?) {
 
         // ----- Final snapshot persistence -----
         var snap_final = snapshot(d)
-        t |> equal(from_JV(widget_payload_field(snap_final, "EMAIL", "value"), type<string>, ""),
+        t |> equal(widget_payload_field(snap_final, "EMAIL", "value") ?? "",
                    "bob@example.com",
                    "EMAIL.value persists final imgui_set")
-        t |> equal(from_JV(widget_payload_field(snap_final, "FONT", "value"), type<int>, -1),
+        t |> equal(widget_payload_field(snap_final, "FONT", "value") ?? -1,
                    4,
                    "FONT.value persists final imgui_set")
     }

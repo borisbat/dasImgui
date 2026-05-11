@@ -33,9 +33,9 @@ def test_plot_getters_render(t : T?) {
         if (snap0 == null) {
             return
         }
-        t |> equal(from_JV(snap0?["globals"]?["SINE_PLOT"]?["kind"], type<string>, ""), "plot_lines_getter",
+        t |> equal(snap0?["globals"]?["SINE_PLOT"]?["kind"] ?? "", "plot_lines_getter",
                    "SINE_PLOT.kind = plot_lines_getter")
-        t |> equal(from_JV(snap0?["globals"]?["SINE_PLOT"]?["payload"]?["samples"], type<int>, -1), 64,
+        t |> equal(snap0?["globals"]?["SINE_PLOT"]?["payload"]?["samples"] ?? -1, 64,
                    "SINE_PLOT.payload.samples = 64")
 
         var snap1 = wait_for_widget(d, "BARS_PLOT", 15.0f)
@@ -43,9 +43,9 @@ def test_plot_getters_render(t : T?) {
         if (snap1 == null) {
             return
         }
-        t |> equal(from_JV(snap1?["globals"]?["BARS_PLOT"]?["kind"], type<string>, ""), "plot_histogram_getter",
+        t |> equal(snap1?["globals"]?["BARS_PLOT"]?["kind"] ?? "", "plot_histogram_getter",
                    "BARS_PLOT.kind = plot_histogram_getter")
-        t |> equal(from_JV(snap1?["globals"]?["BARS_PLOT"]?["payload"]?["samples"], type<int>, -1), 64,
+        t |> equal(snap1?["globals"]?["BARS_PLOT"]?["payload"]?["samples"] ?? -1, 64,
                    "BARS_PLOT.payload.samples = 64")
     }
 }

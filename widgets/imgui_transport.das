@@ -73,7 +73,7 @@ def public await_imgui(transport : Transport;
     var args_jv = JV(args)
     while (ref_time_ticks() < deadline) {
         let r = invoke(transport, "imgui_await", args_jv)
-        if (r != null && from_JV(r?["value"]?["quiescent"], type<bool>, false)) {
+        if (r?["value"]?["quiescent"] ?? false) {
             return true
         }
         sleep(DEFAULT_AWAIT_POLL_MS)
@@ -93,7 +93,7 @@ def public await_imgui_frame(transport : Transport;
     var args_jv = JV(args)
     while (ref_time_ticks() < deadline) {
         let r = invoke(transport, "imgui_await", args_jv)
-        if (r != null && from_JV(r?["value"]?["quiescent"], type<bool>, false)) {
+        if (r?["value"]?["quiescent"] ?? false) {
             return true
         }
         sleep(DEFAULT_AWAIT_POLL_MS)
@@ -118,13 +118,13 @@ def public send_with_await(transport : Transport;
     }
     let af = r?["await_frames"]
     if (af != null) {
-        let n = from_JV(af, type<int>, 0)
-        let base_frame = from_JV(r?["value"]?["frame"], type<int>, 0)
+        let n = af ?? 0
+        let base_frame = r?["value"]?["frame"] ?? 0
         let _ = await_imgui_frame(transport, base_frame + n, timeout_sec)
         return r
     }
     let au = r?["await_until"]
-    if (au != null && from_JV(au, type<string>, "") == "quiescent") {
+    if ((au ?? "") == "quiescent") {
         let _ = await_imgui(transport, "quiescent", timeout_sec)
         return r
     }

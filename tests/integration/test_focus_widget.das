@@ -34,27 +34,27 @@ def test_imgui_focus_keyboard(t : T?) {
         }
         // @optional focus drops false values from JV; default false ensures
         // absent-key reads as not-focused.
-        t |> equal(from_JV(snap0?["globals"]?["DEMO_INPUT"]?["focus"], type<bool>, false), false,
+        t |> equal(snap0?["globals"]?["DEMO_INPUT"]?["focus"] ?? false, false,
                    "DEMO_INPUT.focus initially false")
 
         // Gate 2: focus dispatch returns ok-Result.
         let resp = focus(d, "DEMO_INPUT")
         t |> success(resp != null, "focus returned a response")
-        t |> equal(from_JV(resp?["ok"], type<bool>, false), true,
+        t |> equal(resp?["ok"] ?? false, true,
                    "focus response.ok = true on focusable target")
-        t |> equal(from_JV(resp?["value"], type<string>, ""), "DEMO_INPUT",
+        t |> equal(resp?["value"] ?? "", "DEMO_INPUT",
                    "focus response.value = target")
 
         // Gate 3: after focus dispatch, snapshot.focus flips true within a
         // few frames (widget_prelude consumes g_pending_focus on next render).
-        let focused = wait_until(d, 5.0f) $(snap) => from_JV(snap?["globals"]?["DEMO_INPUT"]?["focus"], type<bool>, false)
+        let focused = wait_until(d, 5.0f) $(snap) => snap?["globals"]?["DEMO_INPUT"]?["focus"] ?? false
         t |> success(focused != null, "DEMO_INPUT.focus becomes true after imgui_focus dispatch")
 
         // Gate 4: display-only widget rejects focus dispatch.
         let bad_resp = focus(d, "DEMO_TEXT")
-        t |> equal(from_JV(bad_resp?["ok"], type<bool>, true), false,
+        t |> equal(bad_resp?["ok"] ?? true, false,
                    "display-only target → response.ok = false")
-        t |> success(!empty(from_JV(bad_resp?["error"], type<string>, "")),
+        t |> success(!empty(bad_resp?["error"] ?? ""),
                      "display-only target → response.error populated")
     }
 }

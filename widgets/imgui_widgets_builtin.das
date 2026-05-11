@@ -58,7 +58,7 @@ def private toggle_finalize(widget_ident : string; kind : string; var state : To
         }
         let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
             if (action == "set") {
-                state.pending_value = from_JV(payload?["value"], type<bool>, false)
+                state.pending_value = payload?["value"] ?? false
                 state.pending_toggle = true
             }
         }
@@ -77,7 +77,7 @@ def private radio_int_finalize(widget_ident : string; kind : string; var state :
         }
         let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
             if (action == "set") {
-                state.pending_value = from_JV(payload?["value"], type<int>, 0)
+                state.pending_value = payload?["value"] ?? 0
                 state.pending_set = true
             }
         }
@@ -127,7 +127,7 @@ def private text_value_finalize(widget_ident : string; kind : string; var state 
         }
         let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
             if (action == "set") {
-                state.pending_value := from_JV(payload?["value"], type<string>, "")
+                state.pending_value := payload?["value"] ?? ""
                 state.has_pending = true
             }
         }
@@ -1099,7 +1099,7 @@ def private text_show_finalize(widget_ident : string; kind : string; var state :
         }
         let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
             if (action == "set") {
-                state.value := from_JV(payload?["value"], type<string>, "")
+                state.value := payload?["value"] ?? ""
             }
         }
         widget_finalize(widget_ident, kind, entry, ser, disp)

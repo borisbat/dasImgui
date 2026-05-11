@@ -25,11 +25,11 @@ def test_inputs_choice_smoke(t : T?) {
 
         // ----- Snapshot shape -----
         var fruit0 = find_widget(snap0, "FRUIT")
-        t |> equal(from_JV(fruit0?["kind"], type<string>, ""), "combo", "FRUIT.kind == 'combo'")
+        t |> equal(fruit0?["kind"] ?? "", "combo", "FRUIT.kind == 'combo'")
         t |> success(fruit0?["payload"] != null, "FRUIT.payload present")
 
         var size0 = find_widget(snap0, "SHIRT_SIZE")
-        t |> equal(from_JV(size0?["kind"], type<string>, ""), "list_box", "SHIRT_SIZE.kind == 'list_box'")
+        t |> equal(size0?["kind"] ?? "", "list_box", "SHIRT_SIZE.kind == 'list_box'")
 
         // ----- Combo — imgui_set jumps to N-th item -----
         set_value(d, "FRUIT", JV(2))
@@ -56,10 +56,10 @@ def test_inputs_choice_smoke(t : T?) {
         // ----- Final snapshot envelope -----
         var snap_final = snapshot(d)
         var fruit_final = find_widget(snap_final, "FRUIT")
-        t |> equal(from_JV(fruit_final?["payload"]?["value"], type<int>, -1), 4,
+        t |> equal(fruit_final?["payload"]?["value"] ?? -1, 4,
                    "FRUIT.payload.value persists final imgui_set")
         var size_final = find_widget(snap_final, "SHIRT_SIZE")
-        t |> equal(from_JV(size_final?["payload"]?["value"], type<int>, -1), 0,
+        t |> equal(size_final?["payload"]?["value"] ?? -1, 0,
                    "SHIRT_SIZE.payload.value persists final imgui_set")
     }
 }

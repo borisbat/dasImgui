@@ -47,9 +47,9 @@ def test_transport_lambda_round_trip(t : T?) {
         click_args |> insert("target", JV("DEMO_BTN"))
         var click_resp = send_imgui_command(transport, "imgui_click", JV(click_args))
         t |> success(click_resp != null, "click via transport non-null")
-        t |> equal(from_JV(click_resp?["ok"], type<bool>, false), true,
+        t |> equal(click_resp?["ok"] ?? false, true,
                    "transport click response.ok = true")
-        t |> equal(from_JV(click_resp?["value"], type<string>, ""), "DEMO_BTN",
+        t |> equal(click_resp?["value"] ?? "", "DEMO_BTN",
                    "transport click response.value = DEMO_BTN")
 
         // Gate 4: await_imgui converges on quiescence within the default

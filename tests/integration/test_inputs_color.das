@@ -25,7 +25,7 @@ def test_inputs_color_smoke(t : T?) {
 
         // ----- Snapshot shape -----
         var tint0 = find_widget(snap0, "TINT_RGB")
-        t |> equal(from_JV(tint0?["kind"], type<string>, ""), "color_edit3", "TINT_RGB.kind == 'color_edit3'")
+        t |> equal(tint0?["kind"] ?? "", "color_edit3", "TINT_RGB.kind == 'color_edit3'")
         t |> success(tint0?["payload"] != null, "TINT_RGB.payload present")
 
         // ----- Editors — float3 / float4 -----
@@ -48,8 +48,8 @@ def test_inputs_color_smoke(t : T?) {
 
         // ----- ColorButton swatches — fire-on-click via imgui_click -----
         var red_before = find_widget(snap0, "PALETTE_RED")
-        t |> equal(from_JV(red_before?["kind"], type<string>, ""), "color_button", "PALETTE_RED.kind == 'color_button'")
-        let red_count_before = from_JV(red_before?["payload"]?["click_count"], type<int>, 0)
+        t |> equal(red_before?["kind"] ?? "", "color_button", "PALETTE_RED.kind == 'color_button'")
+        let red_count_before = red_before?["payload"]?["click_count"] ?? 0
 
         click(d, "PALETTE_RED")
         t |> success(wait_for_int_value(d, "PALETTE_RED", "click_count", red_count_before + 1, 5.0f),
@@ -63,8 +63,8 @@ def test_inputs_color_smoke(t : T?) {
         // ----- Snapshot envelope -----
         var snap_final = snapshot(d)
         var pp4 = find_widget(snap_final, "SHIRT_COLOR")
-        t |> equal(from_JV(pp4?["kind"], type<string>, ""), "color_picker4", "SHIRT_COLOR.kind == 'color_picker4'")
+        t |> equal(pp4?["kind"] ?? "", "color_picker4", "SHIRT_COLOR.kind == 'color_picker4'")
         var pp3 = find_widget(snap_final, "SUN_RGB")
-        t |> equal(from_JV(pp3?["kind"], type<string>, ""), "color_picker3", "SUN_RGB.kind == 'color_picker3'")
+        t |> equal(pp3?["kind"] ?? "", "color_picker3", "SUN_RGB.kind == 'color_picker3'")
     }
 }

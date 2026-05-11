@@ -35,16 +35,16 @@ def test_hex_id_click_dispatches_via_path(t : T?) {
         if (snap0 == null) {
             return
         }
-        let hex_id = from_JV(snap0?["globals"]?["DEMO_BTN"]?["hex_id"], type<uint>, 0u)
+        let hex_id = snap0?["globals"]?["DEMO_BTN"]?["hex_id"] ?? 0u
         t |> success(hex_id != 0u, "DEMO_BTN.hex_id is non-zero")
         let hex_str = "0x{hex_id:x}"
 
         // Gate 2: hex_id click returns ok-Result with the RESOLVED path.
         let resp = click(d, hex_str)
         t |> success(resp != null, "hex_id click returned a response")
-        t |> equal(from_JV(resp?["ok"], type<bool>, false), true,
+        t |> equal(resp?["ok"] ?? false, true,
                    "hex_id click response.ok = true")
-        t |> equal(from_JV(resp?["value"], type<string>, ""), "DEMO_BTN",
+        t |> equal(resp?["value"] ?? "", "DEMO_BTN",
                    "hex_id click response.value = resolved path (DEMO_BTN)")
 
         // Gate 3: click_count actually incremented — proves the L2
@@ -55,9 +55,9 @@ def test_hex_id_click_dispatches_via_path(t : T?) {
         // Gate 4: garbage hex (well-formed prefix, but no widget at that id)
         // → unresolvable, both g_id_to_path and g_id_to_bbox miss.
         let bad_resp = click(d, "0xdeadbeef")
-        t |> equal(from_JV(bad_resp?["ok"], type<bool>, true), false,
+        t |> equal(bad_resp?["ok"] ?? true, false,
                    "garbage hex_id → response.ok = false")
-        t |> success(!empty(from_JV(bad_resp?["error"], type<string>, "")),
+        t |> success(!empty(bad_resp?["error"] ?? ""),
                      "garbage hex_id → response.error populated")
     }
 }

@@ -31,7 +31,7 @@ def test_imgui_type_text_buffer_fills(t : T?) {
         if (snap0 == null) {
             return
         }
-        t |> equal(from_JV(snap0?["globals"]?["DEMO_INPUT"]?["payload"]?["value"], type<string>, "?"), "",
+        t |> equal(snap0?["globals"]?["DEMO_INPUT"]?["payload"]?["value"] ?? "?", "",
                    "DEMO_INPUT starts with empty buffer")
 
         // Gate 2: error path — empty text rejected.
@@ -39,15 +39,15 @@ def test_imgui_type_text_buffer_fills(t : T?) {
         empty_args |> insert("target", JV("DEMO_INPUT"))
         empty_args |> insert("text", JV(""))
         let empty_resp = post_command(d, "imgui_type_text", JV(empty_args))
-        t |> equal(from_JV(empty_resp?["ok"], type<bool>, true), false,
+        t |> equal(empty_resp?["ok"] ?? true, false,
                    "empty text → response.ok = false")
 
         // Gate 3: payload accepted, ok-Result echoes target.
         let resp = type_text(d, "DEMO_INPUT", "hello")
         t |> success(resp != null, "imgui_type_text returned a response")
-        t |> equal(from_JV(resp?["ok"], type<bool>, false), true,
+        t |> equal(resp?["ok"] ?? false, true,
                    "type_text response.ok = true")
-        t |> equal(from_JV(resp?["value"], type<string>, ""), "DEMO_INPUT",
+        t |> equal(resp?["value"] ?? "", "DEMO_INPUT",
                    "type_text response.value = target ident")
 
         // Gate 4: poll until the buffer reflects the full payload — one char

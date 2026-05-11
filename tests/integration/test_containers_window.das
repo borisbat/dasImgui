@@ -29,12 +29,12 @@ def test_containers_window_smoke(t : T?) {
 
         // ----- Container itself appears in registry under path key -----
         var main_entry = find_widget(snap0, "MAIN_WIN")
-        t |> equal(from_JV(main_entry?["kind"], type<string>, ""), "window",
+        t |> equal(main_entry?["kind"] ?? "", "window",
                    "MAIN_WIN registers as kind=window")
 
         // ----- Leaves nested inside the container use hierarchical keys -----
         var save_entry = find_widget(snap0, "MAIN_WIN/SAVE")
-        t |> equal(from_JV(save_entry?["kind"], type<string>, ""), "button",
+        t |> equal(save_entry?["kind"] ?? "", "button",
                    "MAIN_WIN/SAVE registers as kind=button (leaf under container)")
 
         // Bare "SAVE" must NOT exist as a top-level key — the only entry is
@@ -55,7 +55,7 @@ def test_containers_window_smoke(t : T?) {
         // ----- Three-deep nesting: window > child > leaf -----
         var snap1 = snapshot(d)
         var wire_entry = find_widget(snap1, "MAIN_WIN/LEFT_PANEL/WIRE")
-        t |> equal(from_JV(wire_entry?["kind"], type<string>, ""), "checkbox",
+        t |> equal(wire_entry?["kind"] ?? "", "checkbox",
                    "MAIN_WIN/LEFT_PANEL/WIRE registers under 3-deep path")
         set_value(d, "MAIN_WIN/LEFT_PANEL/WIRE", JV(true))
         t |> success(wait_for_bool_value(d, "MAIN_WIN/LEFT_PANEL/WIRE", "value", true, 5.0f),
@@ -63,7 +63,7 @@ def test_containers_window_smoke(t : T?) {
 
         // ----- group(RIGHT_GROUP) inside MAIN_WIN, then leaf inside it -----
         var power_entry = find_widget(snap1, "MAIN_WIN/RIGHT_GROUP/POWER")
-        t |> equal(from_JV(power_entry?["kind"], type<string>, ""), "slider_int",
+        t |> equal(power_entry?["kind"] ?? "", "slider_int",
                    "MAIN_WIN/RIGHT_GROUP/POWER registers under nested group path")
         set_value(d, "MAIN_WIN/RIGHT_GROUP/POWER", JV(42))
         t |> success(wait_for_int_value(d, "MAIN_WIN/RIGHT_GROUP/POWER", "value", 42, 5.0f),

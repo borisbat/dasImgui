@@ -27,7 +27,7 @@ def test_inputs_numeric_smoke(t : T?) {
 
         // ----- Snapshot shape -----
         var mass0 = find_widget(snap0, "MASS")
-        t |> equal(from_JV(mass0?["kind"], type<string>, ""), "input_float", "MASS.kind == 'input_float'")
+        t |> equal(mass0?["kind"] ?? "", "input_float", "MASS.kind == 'input_float'")
         t |> success(mass0?["payload"] != null, "MASS.payload present")
 
         // ----- Float scalar -----
@@ -73,8 +73,8 @@ def test_inputs_numeric_smoke(t : T?) {
         // ----- Snapshot envelope -----
         var snap_final = snapshot(d)
         var dbl = find_widget(snap_final, "EPOCH_SEC")
-        t |> equal(from_JV(dbl?["kind"], type<string>, ""), "input_double", "EPOCH_SEC.kind == 'input_double'")
+        t |> equal(dbl?["kind"] ?? "", "input_double", "EPOCH_SEC.kind == 'input_double'")
         var i4 = find_widget(snap_final, "VIEWPORT_LTRB")
-        t |> equal(from_JV(i4?["kind"], type<string>, ""), "input_int4", "VIEWPORT_LTRB.kind == 'input_int4'")
+        t |> equal(i4?["kind"] ?? "", "input_int4", "VIEWPORT_LTRB.kind == 'input_int4'")
     }
 }

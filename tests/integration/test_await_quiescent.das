@@ -40,27 +40,27 @@ def test_imgui_await(t : T?) {
             return
         }
         let idle = await_probe(d)
-        t |> equal(from_JV(idle?["ok"], type<bool>, false), true,
+        t |> equal(idle?["ok"] ?? false, true,
                    "await response.ok = true")
-        t |> equal(from_JV(idle?["value"]?["quiescent"], type<bool>, false), true,
+        t |> equal(idle?["value"]?["quiescent"] ?? false, true,
                    "idle: quiescent = true")
-        t |> equal(from_JV(idle?["value"]?["pending_coroutines"], type<int>, -1), 0,
+        t |> equal(idle?["value"]?["pending_coroutines"] ?? -1, 0,
                    "idle: pending_coroutines = 0")
 
         // Gate 2: long drag → coroutine in flight; await says not quiescent.
         // 30 steps × 1 frame each = ~30 frames in-flight at 60fps. At 700fps
         // headed mode the drag is ~40ms. Probe immediately after dispatch.
         let dr = drag(d, "DEMO_SLIDER", 100.0f, 0.0f, 30)
-        t |> equal(from_JV(dr?["ok"], type<bool>, false), true, "drag dispatched")
+        t |> equal(dr?["ok"] ?? false, true, "drag dispatched")
         let busy = await_probe(d)
-        t |> success(from_JV(busy?["value"]?["pending_coroutines"], type<int>, 0) >= 1 ||
-                     !from_JV(busy?["value"]?["quiescent"], type<bool>, true),
+        t |> success((busy?["value"]?["pending_coroutines"] ?? 0) >= 1 ||
+                     !(busy?["value"]?["quiescent"] ?? true),
                      "during drag: not quiescent OR pending_coroutines>=1")
 
         // Gate 3: poll until quiescent.
         let settled = wait_until(d, 5.0f) $(snap) {
             let probe = await_probe(d)
-            return from_JV(probe?["value"]?["quiescent"], type<bool>, false)
+            return probe?["value"]?["quiescent"] ?? false
         }
         t |> success(settled != null, "post-drag: quiescent recovers")
 
@@ -74,7 +74,7 @@ def test_imgui_await(t : T?) {
         await_mod |> insert("await_frames", JV(7))
         args |> insert("await", JV(await_mod))
         let resp = post_command(d, "imgui_drag", JV(args))
-        t |> equal(from_JV(resp?["await_frames"], type<int>, -1), 7,
+        t |> equal(resp?["await_frames"] ?? -1, 7,
                    "with_await merges await_frames=7 from per-command modifier")
     }
 }

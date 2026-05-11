@@ -34,7 +34,7 @@ def test_scroll_state_smoke(t : T?) {
         var win_scroll_max = widget_payload_field(snap, "SCROLLY_WIN", "scroll_max")
         t |> success(win_scroll_max != null,
                      "SCROLLY_WIN.payload.scroll_max present")
-        let win_max_y = from_JV(win_scroll_max?["y"], type<float>, 0.0f)
+        let win_max_y = win_scroll_max?["y"] ?? 0.0f
         t |> success(win_max_y > 0.0f,
                      "SCROLLY_WIN.scroll_max.y > 0 (got {win_max_y})")
 
@@ -47,7 +47,7 @@ def test_scroll_state_smoke(t : T?) {
         var child_scroll_max = widget_payload_field(child_snap, "NESTED_WIN/LOG_REGION", "scroll_max")
         t |> success(child_scroll_max != null,
                      "NESTED_WIN/LOG_REGION.payload.scroll_max present")
-        let child_max_y = from_JV(child_scroll_max?["y"], type<float>, 0.0f)
+        let child_max_y = child_scroll_max?["y"] ?? 0.0f
         t |> success(child_max_y > 0.0f,
                      "NESTED_WIN/LOG_REGION.scroll_max.y > 0 (got {child_max_y})")
 
