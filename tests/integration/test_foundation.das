@@ -4,7 +4,7 @@ options no_unused_block_arguments = false
 options no_unused_function_arguments = false
 
 require dastest/testing_boost public
-require live_driver public
+require imgui/imgui_playwright public
 require daslib/json public
 require daslib/json_boost public
 
@@ -25,7 +25,7 @@ let FOUNDATION_FEATURE = "modules/dasImgui/examples/features/foundation.das"
 
 [test]
 def test_foundation_smoke(t : T?) {
-    with_live_app(FOUNDATION_FEATURE) $(d) {
+    with_imgui_app(FOUNDATION_FEATURE) $(d) {
         // Gate 1: auto-emit — SAVE_BTN exists in registry without any manual decl.
         var snap0 = wait_for_widget(d, "SAVE_BTN", 15.0f)
         t |> success(snap0 != null, "SAVE_BTN auto-emitted (registry has it)")

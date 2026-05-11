@@ -4,7 +4,7 @@ options no_unused_block_arguments = false
 options no_unused_function_arguments = false
 
 require dastest/testing_boost public
-require live_driver public
+require imgui/imgui_playwright public
 require daslib/json public
 require daslib/json_boost public
 
@@ -17,7 +17,7 @@ let OVERLAY_FEATURE = "modules/dasImgui/examples/features/containers_overlay.das
 
 [test]
 def test_containers_overlay_smoke(t : T?) {
-    with_live_app(OVERLAY_FEATURE) $(d) {
+    with_imgui_app(OVERLAY_FEATURE) $(d) {
         var snap0 = wait_for_widget(d, "OVERLAY_WIN/OPEN_POPUP_BTN", 15.0f)
         t |> success(snap0 != null, "OVERLAY_WIN/OPEN_POPUP_BTN registered")
         if (snap0 == null) {

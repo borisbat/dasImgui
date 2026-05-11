@@ -4,7 +4,7 @@ options no_unused_block_arguments = false
 options no_unused_function_arguments = false
 
 require dastest/testing_boost public
-require live_driver public
+require imgui/imgui_playwright public
 require daslib/json public
 require daslib/json_boost public
 
@@ -32,7 +32,7 @@ let AWAIT_QUIESCENT_FEATURE = "modules/dasImgui/examples/features/await_quiescen
 
 [test]
 def test_imgui_await(t : T?) {
-    with_live_app(AWAIT_QUIESCENT_FEATURE) $(d) {
+    with_imgui_app(AWAIT_QUIESCENT_FEATURE) $(d) {
         // Gate 1: idle quiescence.
         var snap0 = wait_for_widget(d, "DEMO_SLIDER", 15.0f)
         t |> success(snap0 != null, "DEMO_SLIDER reachable")

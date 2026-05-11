@@ -4,7 +4,7 @@ options no_unused_block_arguments = false
 options no_unused_function_arguments = false
 
 require dastest/testing_boost public
-require live_driver public
+require imgui/imgui_playwright public
 require imgui/imgui_transport public
 require daslib/json public
 require daslib/json_boost public
@@ -27,11 +27,11 @@ let TRANSPORT_DEMO_FEATURE = "modules/dasImgui/examples/features/transport_demo.
 
 [test]
 def test_transport_lambda_round_trip(t : T?) {
-    with_live_app(TRANSPORT_DEMO_FEATURE) $(d) {
+    with_imgui_app(TRANSPORT_DEMO_FEATURE) $(d) {
         // Wait for the widget so we know the host is fully ready before
         // routing the smoke commands through the transport lambda.
         let snap0 = wait_for_widget(d, "DEMO_BTN", 15.0f)
-        t |> success(snap0 != null, "DEMO_BTN reachable via live_driver")
+        t |> success(snap0 != null, "DEMO_BTN reachable via imgui_playwright")
         if (snap0 == null) {
             return
         }

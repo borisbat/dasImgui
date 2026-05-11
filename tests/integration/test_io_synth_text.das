@@ -4,7 +4,7 @@ options no_unused_block_arguments = false
 options no_unused_function_arguments = false
 
 require dastest/testing_boost public
-require live_driver public
+require imgui/imgui_playwright public
 require daslib/json public
 require daslib/json_boost public
 
@@ -24,7 +24,7 @@ let IO_SYNTH_TEXT_FEATURE = "modules/dasImgui/examples/features/io_synth_text.da
 
 [test]
 def test_imgui_type_text_buffer_fills(t : T?) {
-    with_live_app(IO_SYNTH_TEXT_FEATURE) $(d) {
+    with_imgui_app(IO_SYNTH_TEXT_FEATURE) $(d) {
         // Gate 1: DEMO_INPUT reaches the snapshot, buffer empty.
         var snap0 = wait_for_widget(d, "DEMO_INPUT", 15.0f)
         t |> success(snap0 != null, "DEMO_INPUT registers (snapshot reachable)")

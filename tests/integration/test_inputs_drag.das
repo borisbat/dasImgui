@@ -4,7 +4,7 @@ options no_unused_block_arguments = false
 options no_unused_function_arguments = false
 
 require dastest/testing_boost public
-require live_driver public
+require imgui/imgui_playwright public
 require daslib/json public
 require daslib/json_boost public
 
@@ -21,7 +21,7 @@ let DRAG_FEATURE = "modules/dasImgui/examples/features/inputs_drag.das"
 
 [test]
 def test_inputs_drag_smoke(t : T?) {
-    with_live_app(DRAG_FEATURE) $(d) {
+    with_imgui_app(DRAG_FEATURE) $(d) {
         // Gate on first-frame render via a known scalar widget.
         var snap0 = wait_for_widget(d, "OPACITY", 15.0f)
         t |> success(snap0 != null, "OPACITY registered after first frame")

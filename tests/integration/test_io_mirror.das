@@ -4,7 +4,7 @@ options no_unused_block_arguments = false
 options no_unused_function_arguments = false
 
 require dastest/testing_boost public
-require live_driver public
+require imgui/imgui_playwright public
 require daslib/json public
 require daslib/json_boost public
 
@@ -19,7 +19,7 @@ let IO_FEATURE = "modules/dasImgui/examples/features/io_mirror.das"
 
 [test]
 def test_io_mirror_smoke(t : T?) {
-    with_live_app(IO_FEATURE) $(d) {
+    with_imgui_app(IO_FEATURE) $(d) {
         var snap = wait_for_render(d, "IO_DEMO_WIN", 15.0f)
         t |> success(snap != null, "IO_DEMO_WIN renders")
         if (snap == null) {

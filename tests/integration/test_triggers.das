@@ -4,7 +4,7 @@ options no_unused_block_arguments = false
 options no_unused_function_arguments = false
 
 require dastest/testing_boost public
-require live_driver public
+require imgui/imgui_playwright public
 require daslib/json public
 require daslib/json_boost public
 
@@ -21,7 +21,7 @@ let TRIGGERS_FEATURE = "modules/dasImgui/examples/features/triggers.das"
 
 [test]
 def test_triggers_smoke(t : T?) {
-    with_live_app(TRIGGERS_FEATURE) $(d) {
+    with_imgui_app(TRIGGERS_FEATURE) $(d) {
         // Gate on a known widget showing up — proves the GUI rendered a
         // frame, no need for sleep().
         var snap0 = wait_for_widget(d, "SAVE_BTN", 15.0f)

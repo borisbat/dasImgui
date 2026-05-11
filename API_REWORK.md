@@ -377,21 +377,20 @@ Everything ships in the **dasImgui repo** (not daslang):
 Tests import the boost: `require imgui/imgui_boost`. Imperative API:
 
 ```das
-require imgui/imgui_boost
+require imgui/imgui_playwright
 
 [test]
-def test_save_flow() {
-    let app = launch_imgui_app("examples/save_demo/main.das", headless=true)
-    defer() {
-        app |> shutdown()
+def test_save_flow(t : T?) {
+    with_imgui_app("modules/dasImgui/examples/save_demo/main.das") $(app) {
+        click(app, "SAVE_BTN")
+        expect_value(app, "STATUS_TEXT", "value", "saved")
+        type_text(app, "NAME_INPUT", "hello")
+        expect_value(app, "NAME_INPUT", "value", "hello")
     }
-
-    click(app, "Setup/SAVE_BTN")
-    expect_value(app, "Setup/STATUS_TEXT", "saved")
-    type_text(app, "Setup/NAME_INPUT", "hello")
-    expect_value(app, "Setup/NAME_INPUT", "hello")
 }
 ```
+
+The Phase 3 surface settled on a block-form lifecycle (`with_imgui_app <| $(app) { ... }`) rather than the originally-sketched noun form (`launch_imgui_app(...)` + `defer() { app |> shutdown() }`): daslang-live IS the launcher, and `popen_argv` inside the block already runs it. `expect_value` takes an explicit `field` arg (4-arg form) — no per-kind default-field table. `type_text` auto-focuses its target before sending characters; the target app must call `advance_coroutines()` each frame for chars to land (Phase 2 coroutine).
 
 ### 7.2 Process model
 
@@ -473,7 +472,7 @@ Each phase lands as a branch in `D:\DASPKG\dasImgui`, pushed for backup. Reviewe
 | **0b — built-ins migrated** | All of imgui's widget surface migrated to `define_widget`: checkbox, radio, combo, list_box, input_text/int/float, color_edit/picker, drag, slider variants, plot_lines, tree_node, collapsing_header, menu, tab_bar/item, popup/modal, tooltip, etc. **ABI-paired shims rewritten in lockstep with their C++ partners** in `bind/` — `ImGuiInputTextBuffer`, `ImGuiComboGetter`, `ImGuiPlotGetter`, `ImGuiSizeConstraints` all get redesigned around the new state-global model (no more `addr` of a stack `var buf`). Update all examples. Breaking change for downstream `require dasImgui/daslib/imgui_boost` users — coordinate with `daspkg` index. | new capabilities |
 | **1 — registry + snapshot** | Per-frame registry table populated by every boost wrapper; **RTTI walk replaces the hand-rolled snapshot from Phase 00** — auto-discovers globals of any registered widget-state type; per-widget `extras` for kinds that have them (text-input cursor, scroll offset, tree expansion). `imgui_snapshot` returns the full picture. | commands beyond snapshot |
 | **2 — full command set** | `imgui_set` (L3), `imgui_click` for arbitrary hex_ids (L1), `imgui_drag`, `imgui_type_text`, `imgui_focus`, `imgui_open`/`close`, `imgui_await` with predicate support. Lambda transport interface, `live_api_transport` default impl. | playwright |
-| **3 — playwright boost** | `imgui/imgui_boost` test helpers: `launch_imgui_app`, `click`, `type_text`, `expect_value`, `await_quiescent`. dastest integration. Hidden-window mode (`glfwWindowHint` + offscreen FBO). | visual aids |
+| **3 — playwright boost** | **DONE 2026-05-10.** Public `imgui/imgui_playwright` (sibling module, not folded into `imgui_boost`). Block-form `with_imgui_app <| $(app) { ... }`, `click`, `type_text` (auto-focus target, 2-frame settle), `set_value`, `open_widget`/`close_widget`, `drag`, `focus`, `await_probe`, `post_command`, `reload`, full poll-until family (`wait_until` + typed sugars + `wait_for_payload_value`), snapshot navigation (`find_widget`/`widget_exists`/`widget_payload_field`/`widget_rendered`). New assertion helpers panic on timeout with focused failure UX: `expect_value` (4-arg, explicit field), `expect_render`, `await_quiescent`. 27→28 dastest cases green (added `test_save_demo`); 27 prior tests cut over from private `tests/integration/live_driver.das` (deleted, no compat shim per §9.4). Raw-curl smoke ships as cross-tool diagnostic (`smoke_curl.ps1` / `smoke_curl.sh`). **Deferred:** noun-form `launch_imgui_app` (daslang-live IS the launcher; block form satisfies every test); hidden-window / offscreen FBO (rolls into Phase 4 where FBO is needed anyway); programmatic negative-path tests for assertion panic UX (`try/recover` ruled out — panic semantics, lint rule incoming). | visual aids |
 | **4 — visual aids** | `imgui_visual_aids_serve()`, auto-highlight on commands, mouse trail, explicit `imgui_highlight`, `narrate` callouts. | recording |
 | **5 — recording / extras** | Either external-tool docs or PNG-sequence FBO dump. Theme/layout helpers not yet shipped. Any final polish. | doc generation |
 | **6 — docs + website** | `imgui2rst` tool (parallel to daslang's `doc/reflections/das2rst.das`) generating RST from `//!` comments in dasImgui modules. Stitches in tutorials. Output linked from the main daslang website (module catalog with per-module docs). | n/a |

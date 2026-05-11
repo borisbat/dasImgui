@@ -4,7 +4,7 @@ options no_unused_block_arguments = false
 options no_unused_function_arguments = false
 
 require dastest/testing_boost public
-require live_driver public
+require imgui/imgui_playwright public
 require daslib/json public
 require daslib/json_boost public
 
@@ -22,7 +22,7 @@ let SCROLL_FEATURE = "modules/dasImgui/examples/features/scroll_state.das"
 
 [test]
 def test_scroll_state_smoke(t : T?) {
-    with_live_app(SCROLL_FEATURE) $(d) {
+    with_imgui_app(SCROLL_FEATURE) $(d) {
         var snap = wait_for_render(d, "SCROLLY_WIN", 15.0f)
         t |> success(snap != null, "SCROLLY_WIN renders")
         if (snap == null) {

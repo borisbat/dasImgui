@@ -4,7 +4,7 @@ options no_unused_block_arguments = false
 options no_unused_function_arguments = false
 
 require dastest/testing_boost public
-require live_driver public
+require imgui/imgui_playwright public
 require daslib/json public
 require daslib/json_boost public
 
@@ -27,7 +27,7 @@ let PLOT_GETTER_FEATURE = "modules/dasImgui/examples/features/plot_getter.das"
 
 [test]
 def test_plot_getters_render(t : T?) {
-    with_live_app(PLOT_GETTER_FEATURE) $(d) {
+    with_imgui_app(PLOT_GETTER_FEATURE) $(d) {
         var snap0 = wait_for_widget(d, "SINE_PLOT", 15.0f)
         t |> success(snap0 != null, "SINE_PLOT registers (snapshot reachable)")
         if (snap0 == null) {

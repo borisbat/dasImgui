@@ -4,7 +4,7 @@ options no_unused_block_arguments = false
 options no_unused_function_arguments = false
 
 require dastest/testing_boost public
-require live_driver public
+require imgui/imgui_playwright public
 require daslib/json public
 require daslib/json_boost public
 
@@ -19,7 +19,7 @@ let TEXT_FEATURE = "modules/dasImgui/examples/features/inputs_text.das"
 
 [test]
 def test_inputs_text_smoke(t : T?) {
-    with_live_app(TEXT_FEATURE) $(d) {
+    with_imgui_app(TEXT_FEATURE) $(d) {
         var snap0 = wait_for_widget(d, "NAME", 15.0f)
         t |> success(snap0 != null, "NAME registered after first frame")
         if (snap0 == null) {

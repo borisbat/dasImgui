@@ -4,7 +4,7 @@ options no_unused_block_arguments = false
 options no_unused_function_arguments = false
 
 require dastest/testing_boost public
-require live_driver public
+require imgui/imgui_playwright public
 require daslib/json public
 require daslib/json_boost public
 
@@ -32,7 +32,7 @@ let ACTIVE_WIDGET_FEATURE = "modules/dasImgui/examples/features/active_widget.da
 
 [test]
 def test_active_widget_foundation(t : T?) {
-    with_live_app(ACTIVE_WIDGET_FEATURE) $(d) {
+    with_imgui_app(ACTIVE_WIDGET_FEATURE) $(d) {
         // Gate 1: foundation regression — snapshot returns globals + io.
         var snap0 = wait_for_widget(d, "DEMO_BTN", 15.0f)
         t |> success(snap0 != null, "DEMO_BTN registers (snapshot reachable)")
@@ -52,7 +52,7 @@ def test_active_widget_foundation(t : T?) {
         // Gate 3: with no input driving anything, GetActiveID() returns 0
         // and io_jv() omits both keys. daslib/json's `?[]` returns a
         // JV(null) placeholder for missing object keys (not literal null),
-        // so we use the from_JV-with-default idiom that live_driver's
+        // so we use the from_JV-with-default idiom that imgui_playwright's
         // widget_rendered helper uses too.
         t |> equal(from_JV(snap0?["io"]?["active_id"], type<uint>, 0u), 0u,
                    "io.active_id reads 0 when nothing is active")

@@ -4,7 +4,7 @@ options no_unused_block_arguments = false
 options no_unused_function_arguments = false
 
 require dastest/testing_boost public
-require live_driver public
+require imgui/imgui_playwright public
 require daslib/json public
 require daslib/json_boost public
 
@@ -18,7 +18,7 @@ let WINDOW_FEATURE = "modules/dasImgui/examples/features/containers_window.das"
 
 [test]
 def test_containers_window_smoke(t : T?) {
-    with_live_app(WINDOW_FEATURE) $(d) {
+    with_imgui_app(WINDOW_FEATURE) $(d) {
         // The first leaf inside MAIN_WIN registers under the hierarchical
         // path "MAIN_WIN/SAVE" — that's the gate the harness should wait on.
         var snap0 = wait_for_widget(d, "MAIN_WIN/SAVE", 15.0f)

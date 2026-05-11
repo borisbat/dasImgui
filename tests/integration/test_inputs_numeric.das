@@ -4,7 +4,7 @@ options no_unused_block_arguments = false
 options no_unused_function_arguments = false
 
 require dastest/testing_boost public
-require live_driver public
+require imgui/imgui_playwright public
 require daslib/json public
 require daslib/json_boost public
 
@@ -18,7 +18,7 @@ let NUMERIC_FEATURE = "modules/dasImgui/examples/features/inputs_numeric.das"
 
 [test]
 def test_inputs_numeric_smoke(t : T?) {
-    with_live_app(NUMERIC_FEATURE) $(d) {
+    with_imgui_app(NUMERIC_FEATURE) $(d) {
         var snap0 = wait_for_widget(d, "MASS", 15.0f)
         t |> success(snap0 != null, "MASS registered after first frame")
         if (snap0 == null) {

@@ -4,7 +4,7 @@ options no_unused_block_arguments = false
 options no_unused_function_arguments = false
 
 require dastest/testing_boost public
-require live_driver public
+require imgui/imgui_playwright public
 require daslib/json public
 require daslib/json_boost public
 
@@ -16,7 +16,7 @@ let CHOICE_FEATURE = "modules/dasImgui/examples/features/inputs_choice.das"
 
 [test]
 def test_inputs_choice_smoke(t : T?) {
-    with_live_app(CHOICE_FEATURE) $(d) {
+    with_imgui_app(CHOICE_FEATURE) $(d) {
         var snap0 = wait_for_widget(d, "FRUIT", 15.0f)
         t |> success(snap0 != null, "FRUIT registered after first frame")
         if (snap0 == null) {

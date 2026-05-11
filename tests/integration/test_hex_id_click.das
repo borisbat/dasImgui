@@ -4,7 +4,7 @@ options no_unused_block_arguments = false
 options no_unused_function_arguments = false
 
 require dastest/testing_boost public
-require live_driver public
+require imgui/imgui_playwright public
 require daslib/json public
 require daslib/json_boost public
 
@@ -28,7 +28,7 @@ let HEX_ID_CLICK_FEATURE = "modules/dasImgui/examples/features/hex_id_click.das"
 
 [test]
 def test_hex_id_click_dispatches_via_path(t : T?) {
-    with_live_app(HEX_ID_CLICK_FEATURE) $(d) {
+    with_imgui_app(HEX_ID_CLICK_FEATURE) $(d) {
         // Gate 1: DEMO_BTN reaches the snapshot with a non-zero hex_id.
         var snap0 = wait_for_widget(d, "DEMO_BTN", 15.0f)
         t |> success(snap0 != null, "DEMO_BTN registers (snapshot reachable)")

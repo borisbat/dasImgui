@@ -4,7 +4,7 @@ options no_unused_block_arguments = false
 options no_unused_function_arguments = false
 
 require dastest/testing_boost public
-require live_driver public
+require imgui/imgui_playwright public
 require daslib/json public
 require daslib/json_boost public
 
@@ -23,7 +23,7 @@ let SNAPSHOT_UNRENDERED_FEATURE = "modules/dasImgui/examples/features/snapshot_u
 
 [test]
 def test_unrendered_widget_visible(t : T?) {
-    with_live_app(SNAPSHOT_UNRENDERED_FEATURE) $(d) {
+    with_imgui_app(SNAPSHOT_UNRENDERED_FEATURE) $(d) {
         var snap = wait_for_widget(d, "VISIBLE_VAL", 15.0f)
         t |> success(snap != null, "VISIBLE_VAL appears in registry")
         if (snap == null) {
