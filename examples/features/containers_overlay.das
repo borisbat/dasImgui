@@ -152,6 +152,7 @@ def update() {
         Text("task = {task_label} (idx {TASK_LIST.value})")
     }
 
+    end_of_frame()
     Render()
     var w, h : int
     live_get_framebuffer_size(w, h)

@@ -100,6 +100,7 @@ def update() {
     }
     End()
 
+    end_of_frame()
     Render()
     var w, h : int
     live_get_framebuffer_size(w, h)

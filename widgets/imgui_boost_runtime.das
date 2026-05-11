@@ -689,6 +689,28 @@ def begin_frame() {
     }
 }
 
+var private g_end_of_frame_hooks : array<function<() : void>>
+
+def public register_end_of_frame_hook(hook : function<() : void>) {
+    //! Append a per-frame painter invoked by `end_of_frame()` after widget
+    //! rendering. Visual-aids / future overlay modules call this from `[init]`
+    //! so their painters fire once per frame without each example wiring
+    //! them up explicitly. Function-pointer (not lambda) — hooks read module
+    //! globals and don't need capture; keeps registration copy-by-value.
+    g_end_of_frame_hooks |> push(hook)
+}
+
+def end_of_frame() {
+    //! Call once per frame AFTER rendering all widgets (and after
+    //! `EndFrame()` is safe — we draw onto `GetForegroundDrawList()` which
+    //! is finalized at `Render()`). Drives the per-frame painters registered
+    //! by `register_end_of_frame_hook` — highlight overlays, mouse trail,
+    //! narrate callouts, etc. No-op when no hooks registered.
+    for (h in g_end_of_frame_hooks) {
+        invoke(h)
+    }
+}
+
 def public advance_coroutines() {
     //! Step every active L1 coroutine one frame, using the `next/empty`
     //! pattern from daslib's `cr_run_all`. `next(c, t)` advances the

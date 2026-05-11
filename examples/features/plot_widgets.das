@@ -78,6 +78,7 @@ def update() {
         plot_histogram(HISTOGRAM, "Hist", hist_data, 0.0f, 1.5f, float2(0.0f, 80.0f))
     }
 
+    end_of_frame()
     Render()
     var w, h : int
     live_get_framebuffer_size(w, h)
