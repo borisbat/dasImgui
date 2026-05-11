@@ -299,6 +299,54 @@ def public close_widget(d : LiveDriver; target : string) : JsonValue? {
     return post_command(d, "imgui_close", JV(args))
 }
 
+def public drag(d : LiveDriver; target : string;
+                dx : float; dy : float;
+                steps : int = 4; button : int = 0) : JsonValue? {
+    //! Synthesize an L1 mouse-drag on `target`'s bbox center: press → `steps`
+    //! interpolated moves → release. Coroutine on the host advances one
+    //! event per frame, so observable settle is `steps + 2` frames.
+    var args : table<string; JsonValue?>
+    args |> insert("target", JV(target))
+    args |> insert("dx", JV(dx))
+    args |> insert("dy", JV(dy))
+    args |> insert("steps", JV(steps))
+    args |> insert("button", JV(button))
+    return post_command(d, "imgui_drag", JV(args))
+}
+
+def public await_probe(d : LiveDriver; until : string = "quiescent") : JsonValue? {
+    //! Single imgui_await POST. Server replies with a `Result<AwaitResult,
+    //! string>` — the AwaitResult lives under `response.value`. This is a
+    //! one-shot probe; for poll-until-quiescent use, write a wait_until
+    //! around it (transport_for + await_imgui ships in Phase 2.6).
+    var args : table<string; JsonValue?>
+    args |> insert("until", JV(until))
+    return post_command(d, "imgui_await", JV(args))
+}
+
+def public focus(d : LiveDriver; target : string) : JsonValue? {
+    //! Force keyboard focus to the next render of `target`. Server-side
+    //! `imgui_focus` adds the path to g_pending_focus; the next time
+    //! widget_prelude runs for that path, it calls SetKeyboardFocusHere(0)
+    //! and clears the entry. Display-only widgets (text_show, plot)
+    //! return Result.err("not focusable").
+    var args : table<string; JsonValue?>
+    args |> insert("target", JV(target))
+    return post_command(d, "imgui_focus", JV(args))
+}
+
+def public type_text(d : LiveDriver; target : string; text : string) : JsonValue? {
+    //! Synthesize keyboard input via L1 AddInputCharactersUTF8: one char per
+    //! frame to whichever widget currently holds keyboard focus. `target` is
+    //! informational until Phase 2.4 wires the focus action — for now the
+    //! example must call `SetKeyboardFocusHere(0)` to put focus on the
+    //! intended widget before the type_text fires.
+    var args : table<string; JsonValue?>
+    args |> insert("target", JV(target))
+    args |> insert("text", JV(text))
+    return post_command(d, "imgui_type_text", JV(args))
+}
+
 def public reload(d : LiveDriver; timeout_sec : float = DEFAULT_RELOAD_TIMEOUT_SEC) : void {
     //! POST /reload then poll /status until has_error=false. Panics on timeout.
     post_signal(d, "/reload")

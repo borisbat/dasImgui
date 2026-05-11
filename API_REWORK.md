@@ -284,15 +284,15 @@ Always-full on demand, served as JSON:
 
 ### 5.2 Sync semantics for commands
 
-Default: **wait until quiescent** — no active drag, popups settled, animations done. Commands may need >1 frame to fully apply (e.g. menu → submenu → action).
+**Client-polling model.** Server reports `{quiescent, frame, pending_coroutines, active_id}` per `imgui_await` probe; the client (`await_imgui` in `widgets/imgui_transport`) drives the wait loop until quiescent (no active drag, popups settled, animations done) with a 5s default timeout. The dispatch handler runs on the GLFW main thread between frames (§3 invariant), so a server-side `while (!quiescent) sleep(...)` would deadlock the loop that advances frames — server-side blocking is structurally unavailable.
 
-Every wait has a **default `timeout=5s`**. On expiry: panic with a snapshot dump of what's still pending (active drag? open popup? unfinished animation?). No silent hangs in CI.
+Per-command override modifiers extracted at the dispatch boundary by `with_await(input, payload)` in `imgui_boost_runtime.das`:
+- `await=N` — surfaces `await_frames: N` in the response so the client polls for `g_frame ≥ baseline + N`
+- `await_until=<predicate>` — surfaces in the response; today only `"quiescent"` is implemented
+- `timeout_sec=N` (default 5.0) — surfaces in the response wrap; client honors as the poll deadline
+- `fire_and_forget=true` — server skips the merge entirely; response is the raw payload, no `await_*` keys, no client-side wait
 
-Overrides:
-- `await=N` — wait N frames
-- `await_until=<predicate>` — snapshot-predicate matches (e.g. window X is open)
-- `timeout=Ns` / `timeout=infinite` — override the 5s default
-- `fire_and_forget=true` — return immediately, scripts poll for confirmation
+On timeout: the client returns `false` from `await_imgui` (no panic). Test harnesses that want hard-fail on hang wrap the await in their own assertion.
 
 ---
 
@@ -311,7 +311,7 @@ No new HTTP server. The dasLiveHost `live_api` debug agent (port 9090 by default
 | `imgui_type_text` | Synthesizes character input (L1) |
 | `imgui_focus` | Force-focus a widget |
 | `imgui_open` / `imgui_close` | Toggle window state |
-| `imgui_await` | Blocks until quiescent (or condition) |
+| `imgui_await` | Returns `{quiescent, frame, pending_coroutines, active_id}` snapshot for client-side polling |
 
 Activation is explicit:
 

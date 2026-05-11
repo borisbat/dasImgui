@@ -11,6 +11,10 @@ require live/live_commands
 require live_host
 require daslib/json public
 require daslib/json_boost public
+require daslib/coroutines public
+require daslib/async_boost
+require daslib/result public
+require math
 require strings
 
 //! Runtime data layer for the dasImgui boost.
@@ -562,6 +566,42 @@ struct WidgetMeta {
 
 var g_widgets : table<string; WidgetMeta>
 
+// ===== Phase 2 reverse maps + coroutine runner =====
+//
+// `g_id_to_path` is a long-lived hex_id → path_key map populated by every
+// widget_finalize / container_finalize. Lets `io_jv()` resolve `GetActiveID()`
+// (an opaque ImGuiID) back to the user's identifier path. Surviving across
+// frames mirrors `g_widgets`; cleared on hot-reload via clear_module_widgets.
+//
+// `g_id_to_bbox` is a per-frame hex_id → bbox map for L1 click/drag fallback
+// when the target string is "0x..." but not in g_id_to_path. Cleared at the
+// top of begin_frame() alongside g_registry.
+//
+// `g_coroutines` holds in-flight L1 input coroutines (imgui_drag, imgui_type_text).
+// Each [async] command spawns one Coroutine (iterator<bool>); the runtime
+// advances the array one step per frame in begin_frame() via advance_coroutines.
+
+var private g_id_to_path : table<uint; string>
+var private g_id_to_bbox : table<uint; float4>
+var private g_coroutines : array<Coroutine>
+var private g_focusable : table<string>     //! set: paths whose widgets accept keyboard focus
+var private g_pending_focus : table<string> //! set: paths to focus on their next widget_prelude
+
+def public id_to_path(hid : uint) : string {
+    //! Safe accessor — returns the path_key for `hid` or "" when unmapped.
+    //! Don't expose g_id_to_path directly: keeping mutation server-internal
+    //! lets the table grow private accessors (eraseed_paths, hex_id by path)
+    //! without breaking external callers.
+    return key_exists(g_id_to_path, hid) ? g_id_to_path[hid] : ""
+}
+
+def public id_to_bbox(hid : uint) : float4 {
+    //! Safe accessor — returns the per-frame bbox for `hid` or `float4(0)`.
+    //! Per-frame: only valid for ids that rendered in the previous frame
+    //! (cleared at frame top before re-population).
+    return key_exists(g_id_to_bbox, hid) ? g_id_to_bbox[hid] : float4(0.0f, 0.0f, 0.0f, 0.0f)
+}
+
 // Deferred (Phase 4 / on-demand): a separate `extras` channel for
 // transient per-frame data that doesn't belong in the persistent state
 // struct (text-input cursor / selection, tooltip content). Phase 1.2
@@ -641,15 +681,52 @@ def public container_path_key() : string {
 
 def begin_frame() {
     //! Call once per frame BEFORE rendering any widgets. Bumps the frame
-    //! counter and clears the per-frame registry. Also defensively clears
-    //! the container path — a panic mid-frame the previous tick would
-    //! otherwise leave a stale chain.
+    //! counter, clears the per-frame registry + per-frame hex_id→bbox map,
+    //! and defensively clears the container path — a panic mid-frame the
+    //! previous tick would otherwise leave a stale chain.
+    //!
+    //! L1 input coroutines are NOT advanced here. ImGui_ImplGlfw_NewFrame()
+    //! pushes the real cursor into the IO event queue every frame, so a
+    //! coroutine that runs before GLFW gets immediately overridden. Call
+    //! `advance_coroutines()` between `ImGui_ImplGlfw_NewFrame()` and
+    //! `NewFrame()` instead — see io_synth_drag.das for the canonical
+    //! ordering. Examples with no L1 input can skip the call entirely.
     g_frame++
     g_registry |> clear()
+    g_id_to_bbox |> clear()
     if (!empty(g_container_path)) {
         g_container_path |> clear()
         g_container_path_str = ""
     }
+}
+
+def public advance_coroutines() {
+    //! Step every active L1 coroutine one frame, using the `next/empty`
+    //! pattern from daslib's `cr_run_all`. `next(c, t)` advances the
+    //! generator to its next yield (or the trailing `return false`); after
+    //! the generator falls off the end, `empty(c)` flips true and we drop
+    //! the slot. Iterates from the tail so `erase` doesn't shift unseen
+    //! indices.
+    //!
+    //! Must be called between `ImGui_ImplGlfw_NewFrame()` and `NewFrame()`
+    //! — see `begin_frame()` doc-comment for the ordering rationale.
+    var i = length(g_coroutines)
+    while (i > 0) {
+        i--
+        var t : bool
+        next(g_coroutines[i], t)
+        if (empty(g_coroutines[i])) {
+            delete g_coroutines[i]
+            g_coroutines |> erase(i)
+        }
+    }
+}
+
+def public spawn_coroutine(var c : Coroutine) {
+    //! Public entry for L1 commands to schedule a coroutine that yields one
+    //! event per frame. Move-in via `<-`; iterator is non-copyable. The
+    //! runtime advances on the next begin_frame().
+    g_coroutines |> emplace(c)
 }
 
 // ===== Render helpers =====
@@ -661,24 +738,61 @@ def begin_frame() {
 
 def public widget_prelude(widget_ident : string) {
     PushID(widget_ident)
+    if (!empty(g_pending_focus)) {
+        let path_key = widget_path_key(widget_ident)
+        if (key_exists(g_pending_focus, path_key)) {
+            SetKeyboardFocusHere(0)
+            g_pending_focus |> erase(path_key)
+        }
+    }
+}
+
+def public register_focusable(widget_ident : string) {
+    //! Tag the widget's path as accepting keyboard focus. Called from each
+    //! interactive finalize helper (click/toggle/radio_int/pending_value/
+    //! text_value) after widget_finalize. Display-only finalize helpers
+    //! (text_show, plot) skip this — `imgui_focus` returns err for those.
+    g_focusable |> insert(widget_path_key(widget_ident))
 }
 
 def public clear_module_widgets(module_name : string) {
-    //! Erase every g_widgets entry tagged with this module. Called as the
-    //! first line of each user module's `register`imgui`widgets()` [init]
-    //! function (prepended by the [widget] macro on first widget per
-    //! module). On hot-reload, the [init] re-fires → clear-then-refill
+    //! Erase every g_widgets entry tagged with this module — and the
+    //! matching g_id_to_path entries that point to those paths. Called as
+    //! the first line of each user module's `register`imgui`widgets()`
+    //! [init] function (prepended by the [widget] macro on first widget
+    //! per module). On hot-reload, the [init] re-fires → clear-then-refill
     //! drops widgets removed from source AND replaces lambdas with fresh
     //! closures bound to post-reload state addresses. Entries from other
     //! modules are untouched.
-    var to_remove : array<string>
+    //!
+    //! Phase 2.1: also sweep g_id_to_path entries whose value matches a
+    //! cleared path. The reverse map is rebuilt by widget_finalize on the
+    //! next render — but the sweep prevents stale hex_id → dead-path
+    //! resolutions during the gap.
+    var paths_to_remove : array<string>
     for (k, m in keys(g_widgets), values(g_widgets)) {
         if (m.module_name == module_name) {
-            to_remove |> push(k)
+            paths_to_remove |> push(k)
         }
     }
-    for (k in to_remove) {
+    for (k in paths_to_remove) {
         g_widgets |> erase(k)
+    }
+    var ids_to_remove : array<uint>
+    for (id, pk in keys(g_id_to_path), values(g_id_to_path)) {
+        for (dead in paths_to_remove) {
+            if (pk == dead) {
+                ids_to_remove |> push(id)
+                break
+            }
+        }
+    }
+    for (id in ids_to_remove) {
+        g_id_to_path |> erase(id)
+    }
+    for (dead in paths_to_remove) {
+        g_focusable |> erase(dead)
+        g_pending_focus |> erase(dead)
     }
 }
 
@@ -730,6 +844,8 @@ def public widget_finalize(widget_ident : string;
     entry.hover = IsItemHovered(ImGuiHoveredFlags.None)
     entry.active = IsItemActive()
     entry.focus = IsItemFocused()
+    g_id_to_path[entry.hex_id] = path_key
+    g_id_to_bbox[entry.hex_id] = entry.bbox
     unsafe {
         g_serializers[path_key] <- serializer
     }
@@ -779,6 +895,7 @@ def public container_finalize(widget_ident : string;
     let path_key = container_path_key()
     entry.kind = kind
     entry.hex_id = GetID(widget_ident)
+    g_id_to_path[entry.hex_id] = path_key
     unsafe {
         g_serializers[path_key] <- serializer
     }
@@ -802,21 +919,67 @@ def public container_finalize(widget_ident : string;
 
 var private g_dispatchers : table<string; lambda<(action : string; payload : JsonValue?) : void>>
 
+// ===== Phase 2 — Result wire format + per-command await =====
+//
+// Every [live_command] handler returns a Result<T, string> (rendered to JSON
+// via the JV overload below). `with_await` is the generic wrapper that auto-
+// converts any payload to JSON and threads per-command await modifiers
+// (await_frames / await_until / timeout_sec / fire_and_forget) into the
+// response so the transport-side await_imgui (widgets/imgui_transport) can
+// poll for quiescence after dispatch. Server never blocks — running on the
+// GLFW main thread inside tick() means a server-side wait deadlocks the
+// frame loop that drives quiescence.
+
+def public JV(r : $Result < auto(TT); auto(EE) >) : JsonValue? {
+    //! Wire format for Result<T, E>: `{"ok": bool, "value"|"error": ...}`.
+    //! Phase 2 transport contract — every L1/L2/L3 handler returns a
+    //! Result; clients read `r?["ok"]` then `r?["value"]` or `r?["error"]`.
+    var tab : table<string; JsonValue?>
+    tab |> insert("ok", JV(r |> is_ok))
+    if (r |> is_ok) {
+        tab |> insert("value", JV(r._value))
+    } else {
+        tab |> insert("error", JV(r._error))
+    }
+    return JV(tab)
+}
+
+struct AwaitModifiers {
+    //! Per-command await knobs. Pulled from `input["await"]` by `with_await`;
+    //! all fields optional with sensible defaults (5s, no-op).
+    @optional await_frames : int = -1
+    @optional await_until : string = ""
+    @optional timeout_sec : float = 5.0f
+    @optional fire_and_forget : bool = false
+}
+
+def private with_await(input : JsonValue?; payload : auto(P)) : JsonValue? {
+    //! Generic wire-shape helper. JV-converts `payload` (Result, struct,
+    //! whatever has a JV overload) and merges per-command await modifiers
+    //! from `input["await"]` into the response. Fire-and-forget skips the
+    //! merge entirely.
+    let mods = from_JV(input?["await"], default<AwaitModifiers>)
+    var jv = JV(payload)
+    if (mods.fire_and_forget) {
+        return jv
+    }
+    var tab : table<string; JsonValue?>
+    if (jv != null && (jv.value is _object)) {
+        for (k, v in keys(jv.value as _object), values(jv.value as _object)) {
+            tab[k] = v
+        }
+    }
+    if (mods.await_frames >= 0) {
+        tab["await_frames"] = JV(mods.await_frames)
+    }
+    if (!empty(mods.await_until)) {
+        tab["await_until"] = JV(mods.await_until)
+    }
+    tab["timeout_sec"] = JV(mods.timeout_sec)
+    return JV(tab)
+}
+
 // ===== [live_command] handlers =====
-
-struct ClickArgs {
-    target : string = ""
-}
-
-struct CmdResultOk {
-    ok : bool = true
-    queued : string = ""
-}
-
-struct CmdResultErr {
-    ok : bool = false
-    error : string = ""
-}
 
 def private extract_string_field(obj : JsonValue?; name : string) : string {
     let v = obj?[name]
@@ -843,18 +1006,22 @@ def private io_jv() : JsonValue? {
     //! Snapshot of public ImGuiIO state at the moment imgui_snapshot
     //! fired. Mouse position via GetMousePos(); button state via
     //! IsMouseDown for left/middle/right (3-element bool array, mirrors
-    //! ImGui's standard ordering). Deferred: active_widget — needs
-    //! ImGui::GetActiveID() bound on the C++ side (it's a public symbol
-    //! but isn't currently in dasIMGUI.func_*.cpp).
+    //! ImGui's standard ordering). Phase 2.1: active_id (raw ImGuiID) and
+    //! active_widget (resolved path_key, when g_id_to_path knows the id)
+    //! drop in only when GetActiveID() is non-zero.
     let pos = GetMousePos()
-    var buttons <- [
-        JV(IsMouseDown(ImGuiMouseButton.Left)),
-        JV(IsMouseDown(ImGuiMouseButton.Middle)),
-        JV(IsMouseDown(ImGuiMouseButton.Right))
-    ]
     var tab : table<string; JsonValue?>
     tab |> insert("mouse_pos", JV(float2(pos.x, pos.y)))
-    tab |> insert("mouse_buttons", JV(buttons))
+    tab |> insert("mouse_buttons", JV(IsMouseDown(ImGuiMouseButton.Left),
+                                      IsMouseDown(ImGuiMouseButton.Middle),
+                                      IsMouseDown(ImGuiMouseButton.Right)))
+    let active_id = GetActiveID()
+    if (active_id != 0u) {
+        tab |> insert("active_id", JV(active_id))
+        if (key_exists(g_id_to_path, active_id)) {
+            tab |> insert("active_widget", JV(g_id_to_path[active_id]))
+        }
+    }
     return JV(tab)
 }
 
@@ -880,34 +1047,266 @@ def imgui_snapshot(input : JsonValue?) : JsonValue? {
     return JV({"frame" => JV(g_frame), "globals" => JV(globals), "io" => io_jv()})
 }
 
-def private dispatch_or_err(action : string; input : JsonValue?) : JsonValue? {
+def private classify_target(target : string) : tuple<int; string> {
+    //! Map target string → (level, resolved). Levels: 2 = L2 path (call the
+    //! dispatcher closure), 1 = L1 hex_id (no L2 path; only "click" supported
+    //! via bbox synthesis), 0 = unresolvable.
+    //!
+    //! Resolution order:
+    //!   1. "0x..." prefix → parse hex; if g_id_to_path knows it, level 2 with
+    //!      the resolved path; else level 1 with the original hex string
+    //!      (caller probes g_id_to_bbox).
+    //!   2. otherwise treat as a path; level 2 if g_dispatchers has it,
+    //!      else level 0.
+    if (empty(target)) {
+        return (0, "")
+    }
+    let n = length(target)
+    let is_hex = n > 2 && slice(target, 0, 2) == "0x" || n > 2 && slice(target, 0, 2) == "0X"
+    if (is_hex) {
+        let hid = parse_hex_id(target)
+        if (hid == 0u) {
+            return (0, target)
+        }
+        if (key_exists(g_id_to_path, hid)) {
+            return (2, g_id_to_path[hid])
+        }
+        return (1, target)
+    }
+    if (key_exists(g_dispatchers, target)) {
+        return (2, target)
+    }
+    return (0, target)
+}
+
+[async]
+def private click_at_coro(center : float2; button : int) : void {
+    //! L1 single click: AddMousePosEvent(center) + AddMouseButtonEvent(down)
+    //! one frame, AddMouseButtonEvent(up) the next. Used by the hex_id-
+    //! targeted L1 fallback when the widget has no L2 dispatcher.
+    var io & = unsafe(GetIO())
+    io |> AddMousePosEvent(center.x, center.y)
+    io |> AddMouseButtonEvent(button, true)
+    await_next_frame()
+    io |> AddMouseButtonEvent(button, false)
+}
+
+def private dispatch_or_err(action : string; input : JsonValue?) : Result<string, string> {
+    //! Resolve `target` and invoke its dispatcher closure with `(action, input)`.
+    //! Targets: L2 path key (g_dispatchers) or "0x..." hex_id. Hex_ids that
+    //! map back to a known path go through L2; hex_ids without a path fall
+    //! to L1 click synthesis (only `click` action; the widget still has to
+    //! have rendered at least once so g_id_to_bbox knows its bbox).
     let target = extract_string_field(input, "target")
-    if (target == "") {
-        return JV(CmdResultErr(error = "missing 'target'"))
+    let (level, resolved) = classify_target(target)
+    if (level == 0) {
+        return err("unresolvable target: {target}", type<string>)
     }
-    if (!key_exists(g_dispatchers, target)) {
-        return JV(CmdResultErr(error = "unknown target: {target}"))
+    if (level == 2) {
+        if (action == "focus") {
+            if (!key_exists(g_focusable, resolved)) {
+                return err("target {resolved} is not focusable (display-only widget)", type<string>)
+            }
+            g_pending_focus |> insert(resolved)
+            return ok(resolved, type<string>)
+        }
+        invoke(g_dispatchers[resolved], action, input)
+        return ok(resolved, type<string>)
     }
-    invoke(g_dispatchers[target], action, input)
-    return JV(CmdResultOk(queued = target))
+    if (action != "click") {
+        return err("L1 hex_id fallback only supports 'click', got '{action}'", type<string>)
+    }
+    let hid = parse_hex_id(resolved)
+    if (!key_exists(g_id_to_bbox, hid)) {
+        return err("hex_id {resolved} not seen this frame (no bbox to click)", type<string>)
+    }
+    let bb = g_id_to_bbox[hid]
+    let center = float2((bb.x + bb.z) * 0.5f, (bb.y + bb.w) * 0.5f)
+    spawn_coroutine(click_at_coro(center, 0))
+    return ok("L1:{resolved}", type<string>)
 }
 
 [live_command(description = "Queue an L2 click on a widget identified by 'target'")]
 def imgui_click(input : JsonValue?) : JsonValue? {
-    return dispatch_or_err("click", input)
+    return with_await(input, dispatch_or_err("click", input))
 }
 
 [live_command(description = "Queue an L3 value set on a widget ('target' name + 'value')")]
 def imgui_set(input : JsonValue?) : JsonValue? {
-    return dispatch_or_err("set", input)
+    return with_await(input, dispatch_or_err("set", input))
 }
 
 [live_command(description = "Queue an open command on a container widget ('target' name)")]
 def imgui_open(input : JsonValue?) : JsonValue? {
-    return dispatch_or_err("open", input)
+    return with_await(input, dispatch_or_err("open", input))
 }
 
 [live_command(description = "Queue a close command on a container widget ('target' name)")]
 def imgui_close(input : JsonValue?) : JsonValue? {
-    return dispatch_or_err("close", input)
+    return with_await(input, dispatch_or_err("close", input))
+}
+
+[live_command(description = "Force keyboard focus to a widget identified by 'target' (path or hex_id)")]
+def imgui_focus(input : JsonValue?) : JsonValue? {
+    return with_await(input, dispatch_or_err("focus", input))
+}
+
+// ===== Phase 2.5 — Quiescence probe =====
+//
+// imgui_await is a polling probe: server reports current liveness state
+// (`{quiescent, frame, pending_coroutines, active_id}`) and the client
+// (widgets/imgui_transport — Phase 2.6) drives the wait loop. Server-side
+// blocking is incompatible with the GLFW-main-thread invariant — the
+// dispatch handler runs on the same thread that advances frames.
+
+struct AwaitArgs {
+    @optional until : string = "quiescent"
+    @optional frame : int = -1
+}
+
+struct AwaitResult {
+    quiescent : bool = false
+    frame : int = 0
+    pending_coroutines : int = 0
+    active_id : uint = 0u
+}
+
+def public JV(r : AwaitResult) : JsonValue? {
+    var tab : table<string; JsonValue?>
+    tab |> insert("quiescent", JV(r.quiescent))
+    tab |> insert("frame", JV(r.frame))
+    tab |> insert("pending_coroutines", JV(r.pending_coroutines))
+    tab |> insert("active_id", JV(r.active_id))
+    return JV(tab)
+}
+
+def private is_quiescent() : bool {
+    //! True when no widget is being interacted with: no active item, no
+    //! mouse button held, no widget owns ImGui's active_id, and no L1
+    //! input coroutines are still in-flight.
+    return (!IsAnyItemActive() &&
+            !IsAnyMouseDown() &&
+            GetActiveID() == 0u &&
+            empty(g_coroutines))
+}
+
+[live_command(description = "Probe quiescence; returns AwaitResult with frame, pending_coroutines, active_id")]
+def imgui_await(input : JsonValue?) : JsonValue? {
+    let args = from_JV(input, default<AwaitArgs>)
+    var result = AwaitResult(frame = g_frame,
+                             pending_coroutines = length(g_coroutines),
+                             active_id = GetActiveID())
+    if (args.frame >= 0) {
+        result.quiescent = g_frame >= args.frame
+    } else {
+        result.quiescent = is_quiescent()
+    }
+    return with_await(input, ok(result, type<string>))
+}
+
+// ===== Phase 2.2 — L1 IO synthesis (coroutine-driven) =====
+//
+// drag/type_text push raw ImGuiIO events through `[async]` coroutines that
+// yield one event per frame. The widget consumes them on subsequent frames
+// like any other input. Targets resolve via the same path/hex_id rails the
+// L2 dispatchers use. `target` for type_text is informational until Phase
+// 2.4 wires the focus arm; chars go to whichever widget already holds focus.
+
+struct DragArgs {
+    @optional target : string = ""
+    @optional dx : float = 0.0f
+    @optional dy : float = 0.0f
+    @optional steps : int = 4
+    @optional button : int = 0
+}
+
+struct TypeTextArgs {
+    @optional target : string = ""
+    @optional text : string = ""
+}
+
+def private parse_hex_id(s : string) : uint {
+    //! Parse a "0x<hex>" / "0X<hex>" string into uint. Returns 0u on empty,
+    //! missing prefix, or parse failure — 0 is imgui's "no widget" sentinel,
+    //! so the failure value is distinguishable from any real id.
+    let n = length(s)
+    if (n <= 2) {
+        return 0u
+    }
+    let prefix = slice(s, 0, 2)
+    if (prefix != "0x" && prefix != "0X") {
+        return 0u
+    }
+    return uint(to_int64(slice(s, 2), true))
+}
+
+def private resolve_target_bbox(target : string) : tuple<bool; float2> {
+    //! Map a target string to the screen-space center of its last-known
+    //! bbox. Tries L2 path lookup in g_registry first; falls through to
+    //! hex_id parse + g_id_to_bbox. Returns (false, 0,0) when neither hits
+    //! — the caller surfaces that as a Result.err.
+    if (key_exists(g_registry, target)) {
+        let bb = g_registry[target].bbox
+        return (true, float2((bb.x + bb.z) * 0.5f, (bb.y + bb.w) * 0.5f))
+    }
+    let hid = parse_hex_id(target)
+    if (hid != 0u && key_exists(g_id_to_bbox, hid)) {
+        let bb = g_id_to_bbox[hid]
+        return (true, float2((bb.x + bb.z) * 0.5f, (bb.y + bb.w) * 0.5f))
+    }
+    return (false, float2(0.0f, 0.0f))
+}
+
+[async]
+def private drag_coro(start : float2; endp : float2; steps : int; button : int) : void {
+    //! L1 drag: press at `start`, walk through `steps` interpolated points,
+    //! release at `endp`. One IO event per await_next_frame() so the widget
+    //! sees discrete down → moves → up across consecutive frames.
+    var io & = unsafe(GetIO())
+    io |> AddMousePosEvent(start.x, start.y)
+    io |> AddMouseButtonEvent(button, true)
+    await_next_frame()
+    for (i in range(1, steps + 1)) {
+        let t = float(i) / float(steps)
+        let p = start + (endp - start) * t
+        io |> AddMousePosEvent(p.x, p.y)
+        await_next_frame()
+    }
+    io |> AddMouseButtonEvent(button, false)
+}
+
+[async]
+def private type_text_coro(text : string) : void {
+    //! L1 keyboard input: push one character per frame to the focused
+    //! widget via AddInputCharactersUTF8. ASCII-correct; multi-byte UTF-8
+    //! codepoints would split mid-sequence — keep payload ASCII for now.
+    //! Phase 2.4 will add target-focus dispatch via the `focus` action.
+    var io & = unsafe(GetIO())
+    let n = length(text)
+    for (i in range(n)) {
+        io |> AddInputCharactersUTF8(slice(text, i, i + 1))
+        await_next_frame()
+    }
+}
+
+[live_command(description = "L1 drag: synthesize mouse-press → N moves → release at target widget bbox center")]
+def imgui_drag(input : JsonValue?) : JsonValue? {
+    let args = from_JV(input, default<DragArgs>)
+    let (found, start) = resolve_target_bbox(args.target)
+    if (!found) {
+        return with_await(input, err("drag target unresolved: {args.target}", type<string>))
+    }
+    let endp = start + float2(args.dx, args.dy)
+    spawn_coroutine(drag_coro(start, endp, max(args.steps, 1), args.button))
+    return with_await(input, ok(args.target, type<string>))
+}
+
+[live_command(description = "L1 keyboard: push UTF-8 chars to the focused widget, one per frame")]
+def imgui_type_text(input : JsonValue?) : JsonValue? {
+    let args = from_JV(input, default<TypeTextArgs>)
+    if (empty(args.text)) {
+        return with_await(input, err("missing 'text'", type<string>))
+    }
+    spawn_coroutine(type_text_coro(args.text))
+    return with_await(input, ok(args.target, type<string>))
 }

@@ -45,6 +45,7 @@ def private click_finalize(widget_ident : string; kind : string; var state : Cli
         }
         widget_finalize(widget_ident, kind, entry, ser, disp)
     }
+    register_focusable(widget_ident)
 }
 
 def private toggle_finalize(widget_ident : string; kind : string; var state : ToggleState) {
@@ -63,6 +64,7 @@ def private toggle_finalize(widget_ident : string; kind : string; var state : To
         }
         widget_finalize(widget_ident, kind, entry, ser, disp)
     }
+    register_focusable(widget_ident)
 }
 
 def private radio_int_finalize(widget_ident : string; kind : string; var state : RadioIntState) {
@@ -81,6 +83,7 @@ def private radio_int_finalize(widget_ident : string; kind : string; var state :
         }
         widget_finalize(widget_ident, kind, entry, ser, disp)
     }
+    register_focusable(widget_ident)
 }
 
 def private pending_value_finalize(widget_ident : string; kind : string; var state : auto) {
@@ -109,6 +112,7 @@ def private pending_value_finalize(widget_ident : string; kind : string; var sta
         }
         widget_finalize(widget_ident, kind, entry, ser, disp)
     }
+    register_focusable(widget_ident)
 }
 
 def private text_value_finalize(widget_ident : string; kind : string; var state : InputTextState) {
@@ -129,6 +133,7 @@ def private text_value_finalize(widget_ident : string; kind : string; var state 
         }
         widget_finalize(widget_ident, kind, entry, ser, disp)
     }
+    register_focusable(widget_ident)
 }
 
 // ===== Triggers (click family) =====
@@ -1188,4 +1193,44 @@ def plot_histogram(var state : PlotState; text : string;
         Text("(empty: {text})")
     }
     plot_finalize(widget_ident, "plot_histogram", state)
+}
+
+// ===== Plot getters (callback) =====
+//
+// Procedural variants of plot_lines / plot_histogram — `getter(idx) :
+// float` produces sample values per frame instead of a backing
+// `array<float>`. Useful for synthesized signals, virtualized buffers, or
+// computed series. The lambda fires synchronously inside the C call;
+// thunk lifetime is bounded by the call.
+
+[widget]
+def plot_lines_getter(var state : PlotState; text : string;
+                      values_count : int;
+                      getter : lambda<(idx : int) : float>;
+                      overlay_text : string = "";
+                      scale_min : float = 3.40282347e38f;
+                      scale_max : float = 3.40282347e38f;
+                      graph_size : float2 = float2(0.0f, 0.0f)) {
+    state.title = text
+    state.bounds = (scale_min, scale_max)
+    state.samples = values_count
+    _builtin_PlotLines_cb(text, values_count, 0, overlay_text,
+                          scale_min, scale_max, graph_size, getter)
+    plot_finalize(widget_ident, "plot_lines_getter", state)
+}
+
+[widget]
+def plot_histogram_getter(var state : PlotState; text : string;
+                          values_count : int;
+                          getter : lambda<(idx : int) : float>;
+                          overlay_text : string = "";
+                          scale_min : float = 3.40282347e38f;
+                          scale_max : float = 3.40282347e38f;
+                          graph_size : float2 = float2(0.0f, 0.0f)) {
+    state.title = text
+    state.bounds = (scale_min, scale_max)
+    state.samples = values_count
+    _builtin_PlotHistogram_cb(text, values_count, 0, overlay_text,
+                              scale_min, scale_max, graph_size, getter)
+    plot_finalize(widget_ident, "plot_histogram_getter", state)
 }

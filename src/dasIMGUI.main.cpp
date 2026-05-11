@@ -8,7 +8,17 @@
 #include "need_dasIMGUI.h"
 #include "aot_dasIMGUI.h"
 
+// Cherry-picked from imgui_internal.h per master plan §3 — the public-API
+// stance allows internal symbols when "a real use case bumps into them."
+// Phase 2: io.active_widget needs ImGui::GetActiveID(); no other internal
+// symbols added without re-discussion.
+#include "imgui_internal.h"
+
 namespace das {
+
+    ImU32 GetActiveID() {
+        return ImGui::GetActiveID();
+    }
 
     void Text ( const char * txt ) {
         ImGui::Text("%s",txt);
@@ -204,6 +214,42 @@ namespace das {
         ComboGetterLambdaThunk thunk { context, at, cb };
         return ImGui::Combo(label, current_item, &ComboGetterLambdaTrampoline, &thunk,
                             items_count, popup_max_height_in_items);
+    }
+
+    // Plot getters — same single-call thunk pattern as Combo. Lambda is
+    // invoked synchronously by PlotLines/PlotHistogram during the C call,
+    // so the thunk lives on the stack frame of the forwarder. No long-
+    // lived registration; lambda lifetime is bounded by the C call.
+    struct PlotGetterLambdaThunk {
+        Context *  context;
+        LineInfo * at;
+        Lambda     lambda;
+    };
+
+    float PlotGetterLambdaTrampoline ( void * data, int idx ) {
+        auto t = (PlotGetterLambdaThunk *) data;
+        if ( !t->lambda.capture ) {
+            t->context->throw_error_at(t->at, "Plot getter: lambda has no capture");
+        }
+        return das_invoke_lambda<float>::invoke<int>(t->context, t->at, t->lambda, idx);
+    }
+
+    void PlotLinesCb ( const char * label, int values_count, int values_offset,
+                       const char * overlay_text, float scale_min, float scale_max,
+                       ImVec2 graph_size, Lambda cb, Context * context, LineInfoArg * at ) {
+        PlotGetterLambdaThunk thunk { context, at, cb };
+        ImGui::PlotLines(label, &PlotGetterLambdaTrampoline, &thunk,
+                         values_count, values_offset,
+                         overlay_text, scale_min, scale_max, graph_size);
+    }
+
+    void PlotHistogramCb ( const char * label, int values_count, int values_offset,
+                           const char * overlay_text, float scale_min, float scale_max,
+                           ImVec2 graph_size, Lambda cb, Context * context, LineInfoArg * at ) {
+        PlotGetterLambdaThunk thunk { context, at, cb };
+        ImGui::PlotHistogram(label, &PlotGetterLambdaTrampoline, &thunk,
+                             values_count, values_offset,
+                             overlay_text, scale_min, scale_max, graph_size);
     }
 
     // ImGui::ImGuiTextFilter::PassFilter
@@ -473,11 +519,19 @@ namespace das {
         // Phase 0b.4 — Combo with per-call lambda getter (no ImGuiComboGetter mirror).
         addExtern<DAS_BIND_FUN(das::ComboCb)>(*this, lib, "_builtin_Combo_cb",
             SideEffects::worstDefault, "das::ComboCb");
+        // Phase 2.1 — GetActiveID cherry-picked from imgui_internal.h.
+        addExtern<DAS_BIND_FUN(das::GetActiveID)>(*this, lib, "GetActiveID",
+            SideEffects::worstDefault, "das::GetActiveID");
         // plot lines and historgram
         addExtern<DAS_BIND_FUN(das::PlotLines)>(*this, lib, "_builtin_PlotLines",
             SideEffects::worstDefault, "das::PlotLines");
         addExtern<DAS_BIND_FUN(das::PlotHistogram)>(*this, lib, "_builtin_PlotHistogram",
             SideEffects::worstDefault, "das::PlotHistogram");
+        // Phase 2.7 — Plot getters with per-call lambda (no ImGuiPlotGetter mirror).
+        addExtern<DAS_BIND_FUN(das::PlotLinesCb)>(*this, lib, "_builtin_PlotLines_cb",
+            SideEffects::worstDefault, "das::PlotLinesCb");
+        addExtern<DAS_BIND_FUN(das::PlotHistogramCb)>(*this, lib, "_builtin_PlotHistogram_cb",
+            SideEffects::worstDefault, "das::PlotHistogramCb");
         // additional default values
         findUniqueFunction("AddRect")
             ->arg_init(5, new ExprConstEnumeration("RoundCornersAll",makeType<ImDrawFlags_>(lib)));
