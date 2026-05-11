@@ -18,4 +18,6 @@ def initialize(project_path : string) {
     register_native_path("imgui", "imgui_transport", "{project_path}/widgets/imgui_transport.das")
     // Phase 3 — public playwright module (promoted from tests/integration/live_driver.das).
     register_native_path("imgui", "imgui_playwright", "{project_path}/widgets/imgui_playwright.das")
+    // Phase 4 — visual aids overlays (highlight, mouse_trail, narrate).
+    register_native_path("imgui", "imgui_visual_aids", "{project_path}/widgets/imgui_visual_aids.das")
 }

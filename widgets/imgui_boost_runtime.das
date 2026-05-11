@@ -689,15 +689,18 @@ def begin_frame() {
     }
 }
 
-var private g_end_of_frame_hooks : array<function<() : void>>
+var private g_end_of_frame_hooks : table<string; function<() : void>>
 
-def public register_end_of_frame_hook(hook : function<() : void>) {
-    //! Append a per-frame painter invoked by `end_of_frame()` after widget
-    //! rendering. Visual-aids / future overlay modules call this from `[init]`
-    //! so their painters fire once per frame without each example wiring
-    //! them up explicitly. Function-pointer (not lambda) — hooks read module
-    //! globals and don't need capture; keeps registration copy-by-value.
-    g_end_of_frame_hooks |> push(hook)
+def public register_end_of_frame_hook(name : string; hook : function<() : void>) {
+    //! Register a per-frame painter invoked by `end_of_frame()` after widget
+    //! rendering. `name` is the slot key — re-registering the same name
+    //! REPLACES the prior entry, so [init] re-running on daslang-live reload
+    //! doesn't multiply painters. Visual-aids / future overlay modules call
+    //! this from `[init]` so their painters fire once per frame without each
+    //! example wiring them up explicitly. Function-pointer (not lambda) —
+    //! hooks read module globals and don't need capture; keeps registration
+    //! copy-by-value.
+    g_end_of_frame_hooks[name] = hook
 }
 
 def end_of_frame() {
@@ -706,7 +709,7 @@ def end_of_frame() {
     //! is finalized at `Render()`). Drives the per-frame painters registered
     //! by `register_end_of_frame_hook` — highlight overlays, mouse trail,
     //! narrate callouts, etc. No-op when no hooks registered.
-    for (h in g_end_of_frame_hooks) {
+    for (h in values(g_end_of_frame_hooks)) {
         invoke(h)
     }
 }
@@ -1217,21 +1220,27 @@ def private parse_hex_id(s : string) : uint {
     return uint(to_int64(slice(s, 2), true))
 }
 
+def public widget_rect(target : string) : tuple<bool; float4> {
+    //! Map a target string to its full last-known bbox rect (x0,y0,x1,y1).
+    //! Tries L2 path lookup in g_registry first; falls through to hex_id
+    //! parse + g_id_to_bbox. Returns (false, float4(0)) when neither hits.
+    //! Public so overlay modules (visual_aids, future) can draw on the
+    //! foreground drawlist without re-walking g_registry themselves.
+    if (key_exists(g_registry, target)) return (true, g_registry[target].bbox)
+    let hid = parse_hex_id(target)
+    if (hid != 0u && key_exists(g_id_to_bbox, hid)) return (true, g_id_to_bbox[hid])
+    return (false, float4(0.0f, 0.0f, 0.0f, 0.0f))
+}
+
 def private resolve_target_bbox(target : string) : tuple<bool; float2> {
     //! Map a target string to the screen-space center of its last-known
     //! bbox. Tries L2 path lookup in g_registry first; falls through to
     //! hex_id parse + g_id_to_bbox. Returns (false, 0,0) when neither hits
     //! — the caller surfaces that as a Result.err.
-    if (key_exists(g_registry, target)) {
-        let bb = g_registry[target].bbox
-        return (true, float2((bb.x + bb.z) * 0.5f, (bb.y + bb.w) * 0.5f))
-    }
-    let hid = parse_hex_id(target)
-    if (hid != 0u && key_exists(g_id_to_bbox, hid)) {
-        let bb = g_id_to_bbox[hid]
-        return (true, float2((bb.x + bb.z) * 0.5f, (bb.y + bb.w) * 0.5f))
-    }
-    return (false, float2(0.0f, 0.0f))
+    let r = widget_rect(target)
+    if (!r._0) return (false, float2(0.0f, 0.0f))
+    let bb = r._1
+    return (true, float2((bb.x + bb.z) * 0.5f, (bb.y + bb.w) * 0.5f))
 }
 
 [async]

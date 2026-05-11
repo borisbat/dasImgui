@@ -10,6 +10,13 @@ imgui.ini
 libhv.*.log
 example/**/_*.png
 example/_aot_generated/
+# Visual-aids ad-hoc smoke screenshots dropped at repo root by the screenshot live_command
+tour_*.png
+decay_*.png
+no_unsafe.png
+post_addrect.png
+post_fix_render.png
+final_clean.png
 daslib/_aot_generated/
 src/imgui_headers.h.json
 src/imgui_headers.h.json.log
