@@ -179,14 +179,14 @@ def private paint_narrates {
                 have_target = true
             }
         }
-        // Crude single-line text-size estimate — ImGui's default font is ~7px
-        // wide × 14px tall; CalcTextSize is bind-skip-listed.
-        let est_w = float(length(g_narrates[i].text)) * 7.0f
-        let est_h = 14.0f
+        // Actual text size via the CalcTextSize shim (main.cpp:342) — picks up
+        // FontGlobalScale and any active font, so the box fits the rendered text
+        // including 1.5× scale that examples typically set.
+        let text_size = CalcTextSize(g_narrates[i].text, false, -1.0f)
         let pad_x = 8.0f
         let pad_y = 4.0f
-        let box_end = float2(anchor.x + est_w + pad_x * 2.0f,
-                             anchor.y + est_h + pad_y * 2.0f)
+        let box_end = float2(anchor.x + text_size.x + pad_x * 2.0f,
+                             anchor.y + text_size.y + pad_y * 2.0f)
         let bg = rgba(32, 32, 32, 204)
         let fg = rgba(255, 255, 255, 255)
         let border = rgba(255, 204, 51, 255)
