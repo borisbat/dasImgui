@@ -30,9 +30,7 @@ def test_plot_getters_render(t : T?) {
     with_imgui_app(PLOT_GETTER_FEATURE) $(d) {
         var snap0 = wait_for_widget(d, "SINE_PLOT", 15.0f)
         t |> success(snap0 != null, "SINE_PLOT registers (snapshot reachable)")
-        if (snap0 == null) {
-            return
-        }
+        if (snap0 == null) return
         t |> equal(snap0?["globals"]?["SINE_PLOT"]?["kind"] ?? "", "plot_lines_getter",
                    "SINE_PLOT.kind = plot_lines_getter")
         t |> equal(snap0?["globals"]?["SINE_PLOT"]?["payload"]?["samples"] ?? -1, 64,
@@ -40,9 +38,7 @@ def test_plot_getters_render(t : T?) {
 
         var snap1 = wait_for_widget(d, "BARS_PLOT", 15.0f)
         t |> success(snap1 != null, "BARS_PLOT reachable")
-        if (snap1 == null) {
-            return
-        }
+        if (snap1 == null) return
         t |> equal(snap1?["globals"]?["BARS_PLOT"]?["kind"] ?? "", "plot_histogram_getter",
                    "BARS_PLOT.kind = plot_histogram_getter")
         t |> equal(snap1?["globals"]?["BARS_PLOT"]?["payload"]?["samples"] ?? -1, 64,

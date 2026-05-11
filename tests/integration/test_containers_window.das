@@ -23,9 +23,7 @@ def test_containers_window_smoke(t : T?) {
         // path "MAIN_WIN/SAVE" — that's the gate the harness should wait on.
         var snap0 = wait_for_widget(d, "MAIN_WIN/SAVE", 15.0f)
         t |> success(snap0 != null, "MAIN_WIN/SAVE registered after first frame")
-        if (snap0 == null) {
-            return
-        }
+        if (snap0 == null) return
 
         // ----- Container itself appears in registry under path key -----
         var main_entry = find_widget(snap0, "MAIN_WIN")

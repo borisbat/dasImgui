@@ -19,9 +19,7 @@ def test_inputs_slider_smoke(t : T?) {
     with_imgui_app(SLIDER_FEATURE) $(d) {
         var snap0 = wait_for_widget(d, "GAIN", 15.0f)
         t |> success(snap0 != null, "GAIN registered after first frame")
-        if (snap0 == null) {
-            return
-        }
+        if (snap0 == null) return
 
         // ----- Snapshot shape -----
         var gain0 = find_widget(snap0, "GAIN")

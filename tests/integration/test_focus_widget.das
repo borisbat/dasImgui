@@ -29,9 +29,7 @@ def test_imgui_focus_keyboard(t : T?) {
         // Gate 1: DEMO_INPUT reaches the snapshot, no focus initially.
         var snap0 = wait_for_widget(d, "DEMO_INPUT", 15.0f)
         t |> success(snap0 != null, "DEMO_INPUT registers (snapshot reachable)")
-        if (snap0 == null) {
-            return
-        }
+        if (snap0 == null) return
         // @optional focus drops false values from JV; default false ensures
         // absent-key reads as not-focused.
         t |> equal(snap0?["globals"]?["DEMO_INPUT"]?["focus"] ?? false, false,

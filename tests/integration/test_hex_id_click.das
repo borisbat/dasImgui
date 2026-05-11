@@ -32,9 +32,7 @@ def test_hex_id_click_dispatches_via_path(t : T?) {
         // Gate 1: DEMO_BTN reaches the snapshot with a non-zero hex_id.
         var snap0 = wait_for_widget(d, "DEMO_BTN", 15.0f)
         t |> success(snap0 != null, "DEMO_BTN registers (snapshot reachable)")
-        if (snap0 == null) {
-            return
-        }
+        if (snap0 == null) return
         let hex_id = snap0?["globals"]?["DEMO_BTN"]?["hex_id"] ?? 0u
         t |> success(hex_id != 0u, "DEMO_BTN.hex_id is non-zero")
         let hex_str = "0x{hex_id:x}"

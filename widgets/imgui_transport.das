@@ -46,9 +46,7 @@ def public live_api_transport(url : string) : Transport {
                 out = string(resp.body)
             }
         }
-        if (empty(out)) {
-            return null
-        }
+        if (empty(out)) return null
         var err_str : string
         return read_json(out, err_str)
     }
@@ -71,9 +69,7 @@ def public await_imgui(transport : Transport;
     var args_jv = JV((until = until))
     while (ref_time_ticks() < deadline) {
         let r = invoke(transport, "imgui_await", args_jv)
-        if (r?["value"]?["quiescent"] ?? false) {
-            return true
-        }
+        if (r?["value"]?["quiescent"] ?? false) return true
         sleep(DEFAULT_AWAIT_POLL_MS)
     }
     return false
@@ -89,9 +85,7 @@ def public await_imgui_frame(transport : Transport;
     var args_jv = JV((frame = target_frame))
     while (ref_time_ticks() < deadline) {
         let r = invoke(transport, "imgui_await", args_jv)
-        if (r?["value"]?["quiescent"] ?? false) {
-            return true
-        }
+        if (r?["value"]?["quiescent"] ?? false) return true
         sleep(DEFAULT_AWAIT_POLL_MS)
     }
     return false
@@ -109,9 +103,7 @@ def public send_with_await(transport : Transport;
     //!   * fire_and_forget paths skip await_* and timeout_sec entirely so
     //!     the absence of `timeout_sec` short-circuits the wait
     var r = invoke(transport, action, payload)
-    if (r == null) {
-        return null
-    }
+    if (r == null) return null
     let af = r?["await_frames"]
     if (af != null) {
         let n = af ?? 0

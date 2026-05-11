@@ -22,9 +22,7 @@ def test_inputs_text_smoke(t : T?) {
     with_imgui_app(TEXT_FEATURE) $(d) {
         var snap0 = wait_for_widget(d, "NAME", 15.0f)
         t |> success(snap0 != null, "NAME registered after first frame")
-        if (snap0 == null) {
-            return
-        }
+        if (snap0 == null) return
 
         // ----- Snapshot kinds -----
         var name0 = find_widget(snap0, "NAME")

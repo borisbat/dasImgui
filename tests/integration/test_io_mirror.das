@@ -22,9 +22,7 @@ def test_io_mirror_smoke(t : T?) {
     with_imgui_app(IO_FEATURE) $(d) {
         var snap = wait_for_render(d, "IO_DEMO_WIN", 15.0f)
         t |> success(snap != null, "IO_DEMO_WIN renders")
-        if (snap == null) {
-            return
-        }
+        if (snap == null) return
 
         // Gate 1: io key is present.
         var io = snap?["io"]

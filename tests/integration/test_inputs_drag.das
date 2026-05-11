@@ -25,9 +25,7 @@ def test_inputs_drag_smoke(t : T?) {
         // Gate on first-frame render via a known scalar widget.
         var snap0 = wait_for_widget(d, "OPACITY", 15.0f)
         t |> success(snap0 != null, "OPACITY registered after first frame")
-        if (snap0 == null) {
-            return
-        }
+        if (snap0 == null) return
 
         // ----- Snapshot shape -----
         var op0 = find_widget(snap0, "OPACITY")

@@ -19,9 +19,7 @@ def test_inputs_color_smoke(t : T?) {
     with_imgui_app(COLOR_FEATURE) $(d) {
         var snap0 = wait_for_widget(d, "TINT_RGB", 15.0f)
         t |> success(snap0 != null, "TINT_RGB registered after first frame")
-        if (snap0 == null) {
-            return
-        }
+        if (snap0 == null) return
 
         // ----- Snapshot shape -----
         var tint0 = find_widget(snap0, "TINT_RGB")

@@ -26,9 +26,7 @@ def test_unrendered_widget_visible(t : T?) {
     with_imgui_app(SNAPSHOT_UNRENDERED_FEATURE) $(d) {
         var snap = wait_for_widget(d, "VISIBLE_VAL", 15.0f)
         t |> success(snap != null, "VISIBLE_VAL appears in registry")
-        if (snap == null) {
-            return
-        }
+        if (snap == null) return
 
         // Gate 1: VISIBLE_VAL is rendered (has bbox).
         t |> success(widget_rendered(snap, "VISIBLE_VAL"),

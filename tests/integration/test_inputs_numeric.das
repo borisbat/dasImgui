@@ -21,9 +21,7 @@ def test_inputs_numeric_smoke(t : T?) {
     with_imgui_app(NUMERIC_FEATURE) $(d) {
         var snap0 = wait_for_widget(d, "MASS", 15.0f)
         t |> success(snap0 != null, "MASS registered after first frame")
-        if (snap0 == null) {
-            return
-        }
+        if (snap0 == null) return
 
         // ----- Snapshot shape -----
         var mass0 = find_widget(snap0, "MASS")

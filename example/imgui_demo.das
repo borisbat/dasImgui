@@ -494,9 +494,7 @@ def DasShowDemoWindow(var _p_open : bool?) {
 }
 
 def DasShowDemoWindowPopups() {
-    if (!CollapsingHeader("Popups & Modal windows")) {
-        return ;
-    }
+    if (!CollapsingHeader("Popups & Modal windows")) return ;
 
     if (TreeNode("Popups")) {
         TextWrapped(
@@ -749,9 +747,7 @@ def ShowExampleMenuFile() {
     if (BeginMenu("Colors")) {
         let sz = GetTextLineHeight();
         for (col in each_enum(type<ImGuiCol>)) {
-            if (col == ImGuiCol.COUNT) {
-                continue;
-            }
+            if (col == ImGuiCol.COUNT) continue;
             let name = GetStyleColorName(col);
             let p = GetCursorScreenPos();
             *GetWindowDrawList() |> AddRectFilled(p, float2(p.x + sz, p.y + sz), GetColorU32(col));
@@ -998,9 +994,7 @@ def DasShowDemoWindowMisc() {
 }
 
 def DasShowDemoWindowLayout {
-    if (!CollapsingHeader("Layout & Scrolling")) {
-        return ;
-    }
+    if (!CollapsingHeader("Layout & Scrolling")) return ;
 
     if (TreeNode("Child windows")) {
         DasHelpMarker("Use child windows to begin into a self-contained independent scrolling/clipping regions within a host window.");
@@ -1962,9 +1956,7 @@ class ExampleAppConsole {
             LogToClipboard();
         }
         for (item in Items) {
-            if (!(*Filter |> PassFilter(item))) {
-                continue;
-            }
+            if (!(*Filter |> PassFilter(item))) continue;
             var color = float4();
             var has_color = false;
             if (find(item, "[error]") != -1) {
@@ -2042,9 +2034,7 @@ class ExampleAppConsole {
                 unsafe {
                     c = character_uat(data.Buf, word_start - 1);
                 }
-                if (c == ' ' || c == '\t' || c == ',' || c == ';') {
-                    break;
-                }
+                if (c == ' ' || c == '\t' || c == ',' || c == ';') break;
                 word_start--;
             }
             let word = data.Buf |> slice(word_start, word_end);
@@ -2078,9 +2068,7 @@ class ExampleAppConsole {
                             break;
                         }
                     }
-                    if (!all_candidates_matches) {
-                        break;
-                    }
+                    if (!all_candidates_matches) break;
                     match_len++;
                 }
                 if (match_len > 0) {
@@ -2177,9 +2165,7 @@ def DisplayContents(var doc : MyDocument) {
 }
 
 def DisplayContextMenu(var doc : MyDocument) {
-    if (!BeginPopupContextItem()) {
-        return ;
-    }
+    if (!BeginPopupContextItem()) return ;
     if (MenuItem("Save {doc.Name}", "CTRL+S", false, doc.Open)) {
         doc |> DoSave();
     }
@@ -2273,9 +2259,7 @@ def DasShowExampleAppDocuments(p_open : bool? implicit) {
             NotifyOfDocumentsClosedElsewhere(app);
         }
         for (doc in app.Documents) {
-            if (!doc.Open) {
-                continue;
-            }
+            if (!doc.Open) continue;
             let tab_flags = (doc.Dirty ? ImGuiTabItemFlags.UnsavedDocument : ImGuiTabItemFlags.None);
             let visible = BeginTabItem(doc.Name, safe_addr(doc.Open), tab_flags);
             if (!doc.Open && doc.Dirty) {
@@ -2812,10 +2796,10 @@ def DasShowExampleAppCustomRendering(p_open : bool? implicit) {
                     points |> resize(points |> length() - 2);
                 }
                 adding_line = false;
-                if (MenuItem("Remove one", "", false, points |> length() > 0)) {
+                if (MenuItem("Remove one", "", false, points |> !empty(points))) {
                     points |> resize(points |> length() - 2);
                 }
-                if (MenuItem("Remove all", "", false, points |> length() > 0)) {
+                if (MenuItem("Remove all", "", false, points |> !empty(points))) {
                     points |> clear();
                 }
                 EndPopup();
@@ -2904,9 +2888,7 @@ def SortMyItems(var items : array<MyItem>; var sorts_specs : ImGuiTableSortSpecs
                 }
                 if (delta > 0) {
                     return sort_spec |> SortDirection == ImGuiSortDirection.Ascending;
-                } elif (delta < 0) {
-                    return !(sort_spec |> SortDirection == ImGuiSortDirection.Ascending);
-                }
+                } elif (delta < 0) return !(sort_spec |> SortDirection == ImGuiSortDirection.Ascending);
             }
         }
         return a.ID < b.ID;
@@ -2948,9 +2930,7 @@ def EditTableSizingFlags(var p_flags : ImGuiTableFlags? implicit) {
     }
     var idx = 0;
     for (pol in policies) {
-        if (pol.Value == (*p_flags & ImGuiTableFlags.SizingMask_)) {
-            break;
-        }
+        if (pol.Value == (*p_flags & ImGuiTableFlags.SizingMask_)) break;
         idx ++;
     }
     var preview_text = "";
@@ -3045,9 +3025,7 @@ enum Mode {
 }
 
 def DasShowDemoWindowTables() {
-    if (!CollapsingHeader("Tables & Columns")) {
-        return ;
-    }
+    if (!CollapsingHeader("Tables & Columns")) return ;
     let TEXT_BASE_WIDTH = CalcTextSize("A").x;
     let TEXT_BASE_HEIGHT = GetTextLineHeightWithSpacing();
     PushID("Tables");
@@ -3605,9 +3583,7 @@ def DasShowDemoWindowTables() {
             for (row in range(20)) {
                 TableNextRow();
                 for (column in range(7)) {
-                    if (!TableSetColumnIndex(column) && column > 0) {
-                        continue;
-                    }
+                    if (!TableSetColumnIndex(column) && column > 0) continue;
                     if (column == 0) {
                         Text("Line {row}");
                     } else {
@@ -4433,14 +4409,14 @@ def DasShowDemoWindowTables() {
                         }
                         if (TableNextColumn()) {
                             if (SmallButton("Chop")) {
-                                item.Quantity += 1;
+                                item.Quantity++;
                             }
                             if (sorts_specs_using_quantity && IsItemDeactivated()) {
                                 items_need_sort = true;
                             }
                             SameLine();
                             if (SmallButton("Eat")) {
-                                item.Quantity -= 1;
+                                item.Quantity--;
                             }
                             if (sorts_specs_using_quantity && IsItemDeactivated()) {
                                 items_need_sort = true;
@@ -4532,9 +4508,7 @@ def DasShowDemoWindowColumns() {
     var open = TreeNode("Legacy Columns API");
     SameLine();
     DasHelpMarker("Columns() is an old API! Prefer using the more flexible and powerful BeginTable() API!");
-    if (!open) {
-        return ;
-    }
+    if (!open) return ;
     if (TreeNode("Basic")) {
         Text("Without border:");
         Columns(3, "mycolumns3", false);
@@ -4729,9 +4703,7 @@ enum Element {
 }
 
 def DasShowDemoWindowWidgets() {
-    if (!CollapsingHeader("Widgets")) {
-        return ;
-    }
+    if (!CollapsingHeader("Widgets")) return ;
     if (TreeNode("Basic")) {
         static_let <| $() {
             var clicked = 0;
@@ -5175,7 +5147,7 @@ def DasShowDemoWindowWidgets() {
                 PushStyleVar(ImGuiStyleVar.FramePadding, ImVec2(float(i) - 1.0f, float(i) - 1.0f));
             }
             if (ImageButton("", my_tex_id, size, uv0, uv1, bg_col, tint_col)) {
-                pressed_count += 1;
+                pressed_count++;
             }
             if (i > 0) {
                 PopStyleVar();
@@ -5464,9 +5436,7 @@ def DasShowDemoWindowWidgets() {
             static_let <| $() {
                 var buf6 <- ImGuiInputTextBuffer("", 64) <| @(it, data) {
                     let ch = int(data.EventChar);
-                    if (ch == 'i' || ch == 'm' || ch == 'g' || ch == 'u') {
-                        return 0;
-                    }
+                    if (ch == 'i' || ch == 'm' || ch == 'g' || ch == 'u') return 0;
                     return 1;
                 }
             }

@@ -52,9 +52,7 @@ def public live_imgui_shutdown() {
 
 [before_reload]
 def private save_imgui_ctx() {
-    if (live_imgui_ctx == null) {
-        return
-    }
+    if (live_imgui_ctx == null) return
     var ser = new MemSerializer()
     var arch = Archive(reading = false, stream = ser)
     var ptr_val = unsafe(reinterpret<uint64>(live_imgui_ctx))
@@ -67,7 +65,7 @@ def private save_imgui_ctx() {
 [after_reload]
 def private restore_imgui_ctx() {
     var data : array<uint8>
-    if (live_load_bytes(STORE_KEY, data) && length(data) > 0) {
+    if (live_load_bytes(STORE_KEY, data) && !empty(data)) {
         var ser = new MemSerializer(data)
         var arch = Archive(reading = true, stream = ser)
         var ptr_val : uint64

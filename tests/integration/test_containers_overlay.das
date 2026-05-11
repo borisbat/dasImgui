@@ -20,9 +20,7 @@ def test_containers_overlay_smoke(t : T?) {
     with_imgui_app(OVERLAY_FEATURE) $(d) {
         var snap0 = wait_for_widget(d, "OVERLAY_WIN/OPEN_POPUP_BTN", 15.0f)
         t |> success(snap0 != null, "OVERLAY_WIN/OPEN_POPUP_BTN registered")
-        if (snap0 == null) {
-            return
-        }
+        if (snap0 == null) return
 
         // ----- combo_select is registered under the window's path -----
         var combo_entry = find_widget(snap0, "OVERLAY_WIN/PALETTE_COMBO")

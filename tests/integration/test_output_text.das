@@ -26,24 +26,19 @@ def test_output_text_smoke(t : T?) {
     with_imgui_app(OUTPUT_TEXT_FEATURE) $(d) {
         var snap = wait_for_render(d, "MAIN_WIN/BANNER", 15.0f)
         t |> success(snap != null, "MAIN_WIN/BANNER renders")
-        if (snap == null) {
-            return
-        }
+        if (snap == null) return
 
         // Gate 1: source-init form keeps banner pinned to "ready".
-        let banner = from_JV(widget_payload_field(snap, "MAIN_WIN/BANNER", "value"),
-                             type<string>, "")
+        let banner = widget_payload_field(snap, "MAIN_WIN/BANNER", "value") ?? ""
         t |> equal(banner, "ready", "BANNER value pinned to source-init literal")
 
         // Gate 2: display-only form starts empty, then bump button writes it.
-        let status0 = from_JV(widget_payload_field(snap, "MAIN_WIN/STATUS_LINE", "value"),
-                              type<string>, "<missing>")
+        let status0 = widget_payload_field(snap, "MAIN_WIN/STATUS_LINE", "value") ?? "<missing>"
         t |> equal(status0, "", "STATUS_LINE starts empty")
 
         click(d, "MAIN_WIN/BUMP_BTN")
         var snap_after_bump = wait_until(d, 5.0f) $(var snap1) {
-            let v = from_JV(widget_payload_field(snap1, "MAIN_WIN/STATUS_LINE", "value"),
-                            type<string>, "")
+            let v = widget_payload_field(snap1, "MAIN_WIN/STATUS_LINE", "value") ?? ""
             return !empty(v)
         }
         t |> success(snap_after_bump != null,

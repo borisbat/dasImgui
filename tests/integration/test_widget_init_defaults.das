@@ -23,9 +23,7 @@ def test_widget_init_defaults(t : T?) {
     with_imgui_app(DEFAULTS_FEATURE) $(d) {
         var snap0 = wait_for_widget(d, "DEFAULTS", 15.0f)
         t |> success(snap0 != null, "DEFAULTS auto-emitted (registry has it)")
-        if (snap0 == null) {
-            return
-        }
+        if (snap0 == null) return
 
         // ===== Field defaults must fire — every field below has a non-zero
         // default in DefaultsState. Pre-fix, the macro emitted `var DEFAULTS :

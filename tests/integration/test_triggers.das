@@ -26,9 +26,7 @@ def test_triggers_smoke(t : T?) {
         // frame, no need for sleep().
         var snap0 = wait_for_widget(d, "SAVE_BTN", 15.0f)
         t |> success(snap0 != null, "SAVE_BTN registered after first frame")
-        if (snap0 == null) {
-            return
-        }
+        if (snap0 == null) return
 
         // ----- Snapshot shape contract -----
         var save0 = find_widget(snap0, "SAVE_BTN")

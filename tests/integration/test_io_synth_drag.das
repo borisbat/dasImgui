@@ -38,9 +38,7 @@ def test_imgui_drag_value_changes(t : T?) {
         // Gate 1: DEMO_SLIDER reaches the snapshot.
         var snap0 = wait_for_widget(d, "DEMO_SLIDER", 15.0f)
         t |> success(snap0 != null, "DEMO_SLIDER registers (snapshot reachable)")
-        if (snap0 == null) {
-            return
-        }
+        if (snap0 == null) return
         let v0 = snap0?["globals"]?["DEMO_SLIDER"]?["payload"]?["value"] ?? -1.0f
         t |> equal(v0, 0.0f, "DEMO_SLIDER starts at 0.0")
 

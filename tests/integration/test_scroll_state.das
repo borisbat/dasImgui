@@ -25,9 +25,7 @@ def test_scroll_state_smoke(t : T?) {
     with_imgui_app(SCROLL_FEATURE) $(d) {
         var snap = wait_for_render(d, "SCROLLY_WIN", 15.0f)
         t |> success(snap != null, "SCROLLY_WIN renders")
-        if (snap == null) {
-            return
-        }
+        if (snap == null) return
         // Gate 1: window's overflow content gives scroll_max.y > 0.
         // JV(float2) serializes as an object {"x":..., "y":...} (not as
         // an array), so navigate by named field.
@@ -41,9 +39,7 @@ def test_scroll_state_smoke(t : T?) {
         // Gate 2: same shape for child region.
         var child_snap = wait_for_render(d, "NESTED_WIN/LOG_REGION", 5.0f)
         t |> success(child_snap != null, "NESTED_WIN/LOG_REGION renders")
-        if (child_snap == null) {
-            return
-        }
+        if (child_snap == null) return
         var child_scroll_max = widget_payload_field(child_snap, "NESTED_WIN/LOG_REGION", "scroll_max")
         t |> success(child_scroll_max != null,
                      "NESTED_WIN/LOG_REGION.payload.scroll_max present")

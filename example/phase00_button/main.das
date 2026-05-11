@@ -123,9 +123,7 @@ struct ClickResultErr {
 [live_command(description="Phase 00: queue an L2 click. Args: \{\"target\":\"DEMO_BTN\"\}")]
 def imgui_click(input : JsonValue?) : JsonValue? {
     let args = from_JV(input, type<ClickArgs>)
-    if (args.target != "DEMO_BTN") {
-        return JV(ClickResultErr(error = "unknown target: {args.target}"))
-    }
+    if (args.target != "DEMO_BTN") return JV(ClickResultErr(error = "unknown target: {args.target}"))
     DEMO_BTN.pending_click = true
     return JV(ClickResultOk(queued = args.target))
 }
@@ -156,9 +154,7 @@ def init() {
 
 [export]
 def update() {
-    if (!live_begin_frame()) {
-        return
-    }
+    if (!live_begin_frame()) return
     g_frame++
     g_registry |> clear()    // start of frame: stale entries gone
 

@@ -28,9 +28,7 @@ def test_imgui_type_text_buffer_fills(t : T?) {
         // Gate 1: DEMO_INPUT reaches the snapshot, buffer empty.
         var snap0 = wait_for_widget(d, "DEMO_INPUT", 15.0f)
         t |> success(snap0 != null, "DEMO_INPUT registers (snapshot reachable)")
-        if (snap0 == null) {
-            return
-        }
+        if (snap0 == null) return
         t |> equal(snap0?["globals"]?["DEMO_INPUT"]?["payload"]?["value"] ?? "?", "",
                    "DEMO_INPUT starts with empty buffer")
 

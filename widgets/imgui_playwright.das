@@ -52,18 +52,14 @@ def private daslang_live_exe() : string {
     //! Mirrors `get_das_exe()` (daslib/command_line) — same dir, swap the
     //! last path component for the platform-appropriate `daslang-live` name.
     let das = get_das_exe()
-    if (empty(das)) {
-        return ""
-    }
+    if (empty(das)) return ""
     let dir = dir_name(das)
     let bin = get_platform_name() == "windows" ? "daslang-live.exe" : "daslang-live"
     return path_join(dir, bin)
 }
 
 def private resolve_feature_path(path : string) : string {
-    if (is_absolute(path)) {
-        return path
-    }
+    if (is_absolute(path)) return path
     return path_join(get_das_root(), path)
 }
 
@@ -77,9 +73,7 @@ def public wait_until_ready(app : ImguiApp; timeout_sec : float) : bool {
                 ok = true
             }
         }
-        if (ok) {
-            return true
-        }
+        if (ok) return true
         sleep(READY_POLL_INTERVAL_MS)
     }
     return false
@@ -166,9 +160,7 @@ def public wait_until(app : ImguiApp;
     let deadline = ref_time_ticks() + int64(timeout_sec * 1000000.0f)
     while (ref_time_ticks() < deadline) {
         var snap = snapshot(app)
-        if (snap != null && invoke(pred, snap)) {
-            return snap
-        }
+        if (snap != null && invoke(pred, snap)) return snap
         sleep(FRAME_POLL_INTERVAL_MS)
     }
     return null
@@ -184,9 +176,7 @@ def public wait_for_widget(app : ImguiApp; widget_ident : string;
     let deadline = ref_time_ticks() + int64(timeout_sec * 1000000.0f)
     while (ref_time_ticks() < deadline) {
         var snap = snapshot(app)
-        if (snap != null && widget_exists(snap, widget_ident)) {
-            return snap
-        }
+        if (snap != null && widget_exists(snap, widget_ident)) return snap
         sleep(FRAME_POLL_INTERVAL_MS)
     }
     return null
@@ -203,9 +193,7 @@ def public wait_for_render(app : ImguiApp; widget_ident : string;
     let deadline = ref_time_ticks() + int64(timeout_sec * 1000000.0f)
     while (ref_time_ticks() < deadline) {
         var snap = snapshot(app)
-        if (snap != null && widget_rendered(snap, widget_ident)) {
-            return snap
-        }
+        if (snap != null && widget_rendered(snap, widget_ident)) return snap
         sleep(FRAME_POLL_INTERVAL_MS)
     }
     return null
@@ -256,7 +244,7 @@ def public wait_for_payload_value(app : ImguiApp;
     //! int2/3/4, etc. — where the typed sugars above don't already apply.
     return wait_until(app, timeout_sec) $(var snap) {
         let v = widget_payload_field(snap, target, field)
-        return v != null && from_JV(v, type<typedecl(expected)>, default<typedecl(expected)>) == expected
+        return v != null && from_JV(v, type<typedecl(expected)>, default<typedecl(expected)>) == expected  // nolint:STYLE020 — template handles vec types where `??` isn't defined
     } != null
 }
 
@@ -273,9 +261,7 @@ def public expect_value(app : ImguiApp;
     //! — never dumps the full snapshot. If the user wants the full
     //! snapshot at the failure point, they call `snapshot(app)` before the
     //! assertion or after recovering.
-    if (wait_for_payload_value(app, target, field, expected, timeout_sec)) {
-        return
-    }
+    if (wait_for_payload_value(app, target, field, expected, timeout_sec)) return
     var snap = snapshot(app)
     let got_jv = widget_payload_field(snap, target, field)
     let got_str = got_jv != null ? write_json(got_jv) : "<missing>"
@@ -293,9 +279,7 @@ def public expect_render(app : ImguiApp;
     //! `rendered:true`; on timeout, panics with a list of currently-
     //! registered widget identifiers so a typo in `widget_ident` is
     //! obvious in the failure message.
-    if (wait_for_render(app, widget_ident, timeout_sec) != null) {
-        return
-    }
+    if (wait_for_render(app, widget_ident, timeout_sec) != null) return
     var snap = snapshot(app)
     var keys_buf = "<none>"
     let g = snap?["globals"]
@@ -315,9 +299,7 @@ def public await_quiescent(app : ImguiApp;
     //! Assertion-style wrapper over `await_imgui(transport, "quiescent",
     //! timeout)`. Panics on timeout — tests want hard-fail per spec §5.2.
     //! For a non-assertion poll, call `await_imgui` directly.
-    if (await_imgui(app.transport, "quiescent", timeout_sec)) {
-        return
-    }
+    if (await_imgui(app.transport, "quiescent", timeout_sec)) return
     panic("await_quiescent timeout after {timeout_sec}s — server never reported quiescent")
 }
 
@@ -400,9 +382,7 @@ def public reload(app : ImguiApp; timeout_sec : float = DEFAULT_RELOAD_TIMEOUT_S
             let parsed = read_json(raw, err)
             if (parsed != null) {
                 let has_err = parsed?["has_error"] ?? false
-                if (!has_err) {
-                    return
-                }
+                if (!has_err) return
             }
         }
         sleep(READY_POLL_INTERVAL_MS)

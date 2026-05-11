@@ -36,9 +36,7 @@ def test_imgui_await(t : T?) {
         // Gate 1: idle quiescence.
         var snap0 = wait_for_widget(d, "DEMO_SLIDER", 15.0f)
         t |> success(snap0 != null, "DEMO_SLIDER reachable")
-        if (snap0 == null) {
-            return
-        }
+        if (snap0 == null) return
         let idle = await_probe(d)
         t |> equal(idle?["ok"] ?? false, true,
                    "await response.ok = true")

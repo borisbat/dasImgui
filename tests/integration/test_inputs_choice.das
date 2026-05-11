@@ -19,9 +19,7 @@ def test_inputs_choice_smoke(t : T?) {
     with_imgui_app(CHOICE_FEATURE) $(d) {
         var snap0 = wait_for_widget(d, "FRUIT", 15.0f)
         t |> success(snap0 != null, "FRUIT registered after first frame")
-        if (snap0 == null) {
-            return
-        }
+        if (snap0 == null) return
 
         // ----- Snapshot shape -----
         var fruit0 = find_widget(snap0, "FRUIT")

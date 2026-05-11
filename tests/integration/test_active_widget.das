@@ -36,9 +36,7 @@ def test_active_widget_foundation(t : T?) {
         // Gate 1: foundation regression — snapshot returns globals + io.
         var snap0 = wait_for_widget(d, "DEMO_BTN", 15.0f)
         t |> success(snap0 != null, "DEMO_BTN registers (snapshot reachable)")
-        if (snap0 == null) {
-            return
-        }
+        if (snap0 == null) return
         t |> success(snap0?["io"] != null, "snapshot.io block present")
 
         // Gate 2: mouse_buttons is the 3-element bool array via multi-arg JV.

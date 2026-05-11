@@ -29,9 +29,7 @@ def test_foundation_smoke(t : T?) {
         // Gate 1: auto-emit — SAVE_BTN exists in registry without any manual decl.
         var snap0 = wait_for_widget(d, "SAVE_BTN", 15.0f)
         t |> success(snap0 != null, "SAVE_BTN auto-emitted (registry has it)")
-        if (snap0 == null) {
-            return
-        }
+        if (snap0 == null) return
 
         // Gate 2: dotted-suffix flags — bare identifiers as registry keys.
         // SPEED came from `slider_int(SPEED.PUBLIC, ...)`; key must be "SPEED",

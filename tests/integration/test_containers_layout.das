@@ -23,9 +23,7 @@ def test_containers_layout_smoke(t : T?) {
         var snap0 = wait_for_widget(d, "LAYOUT_WIN/MAIN_TABS/SETTINGS_TAB/PHYSICS_TREE/GRAVITY", 15.0f)
         t |> success(snap0 != null,
                      "deeply-nested GRAVITY leaf registered under 5-level path")
-        if (snap0 == null) {
-            return
-        }
+        if (snap0 == null) return
 
         // ----- Each container registers under its own path key -----
         t |> equal(find_widget(snap0, "LAYOUT_WIN")?["kind"] ?? "",

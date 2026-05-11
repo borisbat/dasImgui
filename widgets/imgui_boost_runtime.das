@@ -949,9 +949,7 @@ def private with_await(input : JsonValue?; payload : auto(P)) : JsonValue? {
     //! merge entirely.
     let mods = from_JV(input?["await"], default<AwaitModifiers>)
     var jv = JV(payload)
-    if (mods.fire_and_forget) {
-        return jv
-    }
+    if (mods.fire_and_forget) return jv
     var tab : table<string; JsonValue?>
     if (jv != null && (jv.value is _object)) {
         for (k, v in keys(jv.value as _object), values(jv.value as _object)) {
@@ -972,9 +970,7 @@ def private with_await(input : JsonValue?; payload : auto(P)) : JsonValue? {
 
 def private extract_string_field(obj : JsonValue?; name : string) : string {
     let v = obj?[name]
-    if (v == null || !(v.value is _string)) {
-        return ""
-    }
+    if (v == null || !(v.value is _string)) return ""
     return string(v.value as _string)
 }
 
@@ -1043,24 +1039,16 @@ def private classify_target(target : string) : tuple<int; string> {
     //!      (caller probes g_id_to_bbox).
     //!   2. otherwise treat as a path; level 2 if g_dispatchers has it,
     //!      else level 0.
-    if (empty(target)) {
-        return (0, "")
-    }
+    if (empty(target)) return (0, "")
     let n = length(target)
     let is_hex = n > 2 && slice(target, 0, 2) == "0x" || n > 2 && slice(target, 0, 2) == "0X"
     if (is_hex) {
         let hid = parse_hex_id(target)
-        if (hid == 0u) {
-            return (0, target)
-        }
-        if (key_exists(g_id_to_path, hid)) {
-            return (2, g_id_to_path[hid])
-        }
+        if (hid == 0u) return (0, target)
+        if (key_exists(g_id_to_path, hid)) return (2, g_id_to_path[hid])
         return (1, target)
     }
-    if (key_exists(g_dispatchers, target)) {
-        return (2, target)
-    }
+    if (key_exists(g_dispatchers, target)) return (2, target)
     return (0, target)
 }
 
@@ -1084,27 +1072,19 @@ def private dispatch_or_err(action : string; input : JsonValue?) : Result<string
     //! have rendered at least once so g_id_to_bbox knows its bbox).
     let target = extract_string_field(input, "target")
     let (level, resolved) = classify_target(target)
-    if (level == 0) {
-        return err("unresolvable target: {target}", type<string>)
-    }
+    if (level == 0) return err("unresolvable target: {target}", type<string>)
     if (level == 2) {
         if (action == "focus") {
-            if (!key_exists(g_focusable, resolved)) {
-                return err("target {resolved} is not focusable (display-only widget)", type<string>)
-            }
+            if (!key_exists(g_focusable, resolved)) return err("target {resolved} is not focusable (display-only widget)", type<string>)
             g_pending_focus |> insert(resolved)
             return ok(resolved, type<string>)
         }
         invoke(g_dispatchers[resolved], action, input)
         return ok(resolved, type<string>)
     }
-    if (action != "click") {
-        return err("L1 hex_id fallback only supports 'click', got '{action}'", type<string>)
-    }
+    if (action != "click") return err("L1 hex_id fallback only supports 'click', got '{action}'", type<string>)
     let hid = parse_hex_id(resolved)
-    if (!key_exists(g_id_to_bbox, hid)) {
-        return err("hex_id {resolved} not seen this frame (no bbox to click)", type<string>)
-    }
+    if (!key_exists(g_id_to_bbox, hid)) return err("hex_id {resolved} not seen this frame (no bbox to click)", type<string>)
     let bb = g_id_to_bbox[hid]
     let center = float2((bb.x + bb.z) * 0.5f, (bb.y + bb.w) * 0.5f)
     spawn_coroutine(click_at_coro(center, 0))
@@ -1209,13 +1189,9 @@ def private parse_hex_id(s : string) : uint {
     //! missing prefix, or parse failure — 0 is imgui's "no widget" sentinel,
     //! so the failure value is distinguishable from any real id.
     let n = length(s)
-    if (n <= 2) {
-        return 0u
-    }
+    if (n <= 2) return 0u
     let prefix = slice(s, 0, 2)
-    if (prefix != "0x" && prefix != "0X") {
-        return 0u
-    }
+    if (prefix != "0x" && prefix != "0X") return 0u
     return uint(to_int64(slice(s, 2), true))
 }
 
@@ -1272,9 +1248,7 @@ def private type_text_coro(text : string) : void {
 def imgui_drag(input : JsonValue?) : JsonValue? {
     let args = from_JV(input, default<DragArgs>)
     let (found, start) = resolve_target_bbox(args.target)
-    if (!found) {
-        return with_await(input, err("drag target unresolved: {args.target}", type<string>))
-    }
+    if (!found) return with_await(input, err("drag target unresolved: {args.target}", type<string>))
     let endp = start + float2(args.dx, args.dy)
     spawn_coroutine(drag_coro(start, endp, max(args.steps, 1), args.button))
     return with_await(input, ok(args.target, type<string>))
@@ -1283,9 +1257,7 @@ def imgui_drag(input : JsonValue?) : JsonValue? {
 [live_command(description = "L1 keyboard: push UTF-8 chars to the focused widget, one per frame")]
 def imgui_type_text(input : JsonValue?) : JsonValue? {
     let args = from_JV(input, default<TypeTextArgs>)
-    if (empty(args.text)) {
-        return with_await(input, err("missing 'text'", type<string>))
-    }
+    if (empty(args.text)) return with_await(input, err("missing 'text'", type<string>))
     spawn_coroutine(type_text_coro(args.text))
     return with_await(input, ok(args.target, type<string>))
 }

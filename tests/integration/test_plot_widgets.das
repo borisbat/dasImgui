@@ -23,9 +23,7 @@ def test_plot_widgets_smoke(t : T?) {
     with_imgui_app(PLOT_FEATURE) $(d) {
         var snap = wait_for_render(d, "MAIN_WIN/SINE_WAVE", 15.0f)
         t |> success(snap != null, "MAIN_WIN/SINE_WAVE renders")
-        if (snap == null) {
-            return
-        }
+        if (snap == null) return
 
         // Gate 1: kinds and presence.
         var sine = find_widget(snap, "MAIN_WIN/SINE_WAVE")
@@ -36,15 +34,12 @@ def test_plot_widgets_smoke(t : T?) {
                    "HISTOGRAM.kind = plot_histogram")
 
         // Gate 2: payload fields.
-        let sine_title = from_JV(widget_payload_field(snap, "MAIN_WIN/SINE_WAVE", "title"),
-                                 type<string>, "")
+        let sine_title = widget_payload_field(snap, "MAIN_WIN/SINE_WAVE", "title") ?? ""
         t |> equal(sine_title, "Sine wave", "SINE_WAVE.payload.title")
-        let sine_samples = from_JV(widget_payload_field(snap, "MAIN_WIN/SINE_WAVE", "samples"),
-                                   type<int>, 0)
+        let sine_samples = widget_payload_field(snap, "MAIN_WIN/SINE_WAVE", "samples") ?? 0
         t |> equal(sine_samples, 64, "SINE_WAVE.payload.samples = 64")
 
-        let hist_samples = from_JV(widget_payload_field(snap, "MAIN_WIN/HISTOGRAM", "samples"),
-                                   type<int>, 0)
+        let hist_samples = widget_payload_field(snap, "MAIN_WIN/HISTOGRAM", "samples") ?? 0
         t |> equal(hist_samples, 8, "HISTOGRAM.payload.samples = 8")
 
         // Gate 3: bounds is a tuple — check its serialized shape.

@@ -32,9 +32,7 @@ def test_transport_lambda_round_trip(t : T?) {
         // routing the smoke commands through the transport lambda.
         let snap0 = wait_for_widget(d, "DEMO_BTN", 15.0f)
         t |> success(snap0 != null, "DEMO_BTN reachable via imgui_playwright")
-        if (snap0 == null) {
-            return
-        }
+        if (snap0 == null) return
 
         // Gate 1+2: build transport, fetch a snapshot through the lambda.
         let transport <- live_api_transport(d.base_url)
