@@ -498,40 +498,29 @@ struct WidgetEntry {
     //! Per-frame snapshot of one rendered widget. Common fields populated
     //! every frame; per-kind detail is materialized on demand by the
     //! serializer lambda stored in `g_serializers[ident]` (parallel table)
-    //! when `imgui_snapshot` fires. The lambda lives outside the entry
-    //! because `g_registry` is cleared every frame and we need the
-    //! serializer (which captures `& state` of the per-widget global) to
-    //! survive that clear.
+    //! and pasted into `payload` at imgui_snapshot time. The lambda lives
+    //! outside the entry because `g_registry` is cleared every frame and
+    //! we need the serializer (which captures `& state` of the per-widget
+    //! global) to survive that clear.
     kind : string
     hex_id : uint
     bbox : float4                                // packed [x0, y0, x1, y1]
     @optional hover : bool
     @optional active : bool
     @optional focus : bool
+    @optional payload : JsonValue?               // populated by widget_entry_jv from g_serializers
 }
 
-def private widget_entry_jv(ident : string; entry : WidgetEntry) : JsonValue? {
-    //! One JsonValue blob per widget. Common fields come from `entry`; the
-    //! per-kind `payload` comes from `g_serializers[ident]` (the lambda the
-    //! widget def registered). Same shape every kind; per-widget code never
-    //! assembles JsonValue trees by hand.
-    var tab : table<string; JsonValue?>
-    tab |> insert("kind", JV(entry.kind))
-    tab |> insert("hex_id", JV(entry.hex_id))
-    tab |> insert("bbox", JV(entry.bbox))
-    if (entry.hover) {
-        tab |> insert("hover", JV(true))
-    }
-    if (entry.active) {
-        tab |> insert("active", JV(true))
-    }
-    if (entry.focus) {
-        tab |> insert("focus", JV(true))
-    }
+def private widget_entry_jv(ident : string; var entry : WidgetEntry) : JsonValue? {
+    //! One JsonValue blob per widget. The per-kind `payload` comes from
+    //! `g_serializers[ident]` (the lambda the widget def registered) and
+    //! lands on `entry.payload` before serialization; everything else is
+    //! auto-walked off WidgetEntry by JV(struct), with @optional fields
+    //! skipped when zero-valued.
     if (key_exists(g_serializers, ident)) {
-        tab |> insert("payload", invoke(g_serializers[ident]))
+        entry.payload = invoke(g_serializers[ident])
     }
-    return JV(tab)
+    return JV(entry)
 }
 
 var g_registry : table<string; WidgetEntry>
@@ -995,11 +984,7 @@ def private widget_meta_jv(path_key : string; meta : WidgetMeta) : JsonValue? {
     //! comes from the meta's serializer; bbox/hover/active/focus are
     //! absent. `rendered: false` lets clients distinguish "in the source
     //! but currently hidden" from "doesn't exist".
-    var tab : table<string; JsonValue?>
-    tab |> insert("kind", JV(meta.kind))
-    tab |> insert("rendered", JV(false))
-    tab |> insert("payload", invoke(meta.serializer))
-    return JV(tab)
+    return JV((kind = meta.kind, rendered = false, payload = invoke(meta.serializer)))
 }
 
 def private io_jv() : JsonValue? {
@@ -1171,14 +1156,8 @@ struct AwaitResult {
     active_id : uint = 0u
 }
 
-def public JV(r : AwaitResult) : JsonValue? {
-    var tab : table<string; JsonValue?>
-    tab |> insert("quiescent", JV(r.quiescent))
-    tab |> insert("frame", JV(r.frame))
-    tab |> insert("pending_coroutines", JV(r.pending_coroutines))
-    tab |> insert("active_id", JV(r.active_id))
-    return JV(tab)
-}
+// AwaitResult is a plain-fields struct — JV(struct) auto-walker handles
+// the {quiescent, frame, pending_coroutines, active_id} shape for free.
 
 def private is_quiescent() : bool {
     //! True when no widget is being interacted with: no active item, no
