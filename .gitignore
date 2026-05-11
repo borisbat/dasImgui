@@ -20,6 +20,7 @@ final_clean.png
 narrate_fixed.png
 auto_flash_click.png
 auto_highlight_test.png
+ah_step*.png
 daslib/_aot_generated/
 src/imgui_headers.h.json
 src/imgui_headers.h.json.log

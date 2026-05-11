@@ -28,8 +28,67 @@ require math
 //! All three are also exposed as `[live_command] imgui_*` for remote drive
 //! by daslang-live / playwright. `imgui_auto_highlight_on_command`
 //! (default false) opts in to flashing every command target automatically.
+//!
+//! Tunables (colors, frame counts, padding, thickness, etc.) live as
+//! `var public` module globals — set them at init time or whenever to
+//! reskin the overlays. Per-call args still override on a per-flash basis.
 
-// ===== State =====
+def public rgba(r, g, b, a : int) : uint {
+    //! Pack a color into dasIMGUI's IM_COL32 byte order. Used by callers
+    //! that prefer named channels over hex literals when configuring the
+    //! tunable globals below.
+    return ((uint(a) << uint(IM_COL32_A_SHIFT))
+          | (uint(r) << uint(IM_COL32_R_SHIFT))
+          | (uint(g) << uint(IM_COL32_G_SHIFT))
+          | (uint(b) << uint(IM_COL32_B_SHIFT)))
+}
+
+// ===== Tunable knobs (var public) =====
+//
+// All visual settings live here as module globals. Reassign any of these
+// from your app's init (or at runtime) to reskin the overlays. Per-call
+// args on `highlight()` / `mouse_trail()` / `narrate()` still take
+// precedence on a per-call basis.
+
+// Manual highlight() — appearance when user code (or imgui_highlight curl)
+// asks for a flash explicitly.
+var public highlight_color          : uint  = rgba(255, 255, 0, 255)   //! yellow
+var public highlight_thickness      : float = 2.0f
+var public highlight_padding        : float = 2.0f
+var public highlight_rounding       : float = 2.0f
+var public highlight_default_frames : int   = 60
+
+// Auto-flash on remote command — when imgui_auto_highlight_on_command is
+// true. Visually distinct from manual highlights so viewers can tell
+// which actions were driven remotely vs. user-issued.
+var public auto_highlight_color  : uint = rgba(0, 255, 128, 255)        //! bright green
+var public auto_highlight_frames : int  = 180                            //! ~2s at 90fps
+
+// Mouse trail
+var public trail_max_dots   : int   = 64
+var public trail_color      : uint  = rgba(255, 255, 255, 255)
+var public trail_dot_radius : float = 4.0f
+var public trail_fade       : float = 0.96f
+var public trail_enabled    : bool  = false
+
+// Narrate callout
+var public narrate_bg_color       : uint  = rgba(32, 32, 32, 204)
+var public narrate_fg_color       : uint  = rgba(255, 255, 255, 255)
+var public narrate_border_color   : uint  = rgba(255, 204, 51, 255)     //! amber
+var public narrate_border_thickness : float = 1.5f
+var public narrate_pad_x          : float = 8.0f
+var public narrate_pad_y          : float = 4.0f
+var public narrate_corner_radius  : float = 4.0f
+var public narrate_default_frames : int   = 180
+var public narrate_connector_thickness : float = 1.5f
+
+// Auto-highlight gate
+var public imgui_auto_highlight_on_command : bool = false
+    //! When true, every accepted command in imgui_boost_runtime
+    //! (imgui_click / imgui_set / imgui_focus / etc.) auto-flashes the
+    //! target with `auto_highlight_color` for `auto_highlight_frames` ticks.
+
+// ===== Internal state =====
 
 struct private HighlightSpec {
     target : string
@@ -52,50 +111,32 @@ var private g_highlights : array<HighlightSpec>
 var private g_trail : array<TrailDot>
 var private g_narrates : array<NarrateSpec>
 
-var private g_trail_enabled : bool = false
-var private g_trail_fade : float = 0.96f
-var private g_trail_color : uint = 0xFFFFFFFFu
-let private TRAIL_MAX_DOTS = 64
-
-def private rgba(r, g, b, a : int) : uint {
-    //! Pack a color into dasIMGUI's IM_COL32 byte order (0xAARRGGBB).
-    //! Equivalent to the IM_COL32(R, G, B, A) macro in v1 daslib/imgui_boost,
-    //! kept private so v2 doesn't depend on the v1 path.
-    return ((uint(a) << uint(IM_COL32_A_SHIFT))
-          | (uint(r) << uint(IM_COL32_R_SHIFT))
-          | (uint(g) << uint(IM_COL32_G_SHIFT))
-          | (uint(b) << uint(IM_COL32_B_SHIFT)))
-}
-
-let DEFAULT_HIGHLIGHT_COLOR : uint = (255u << 24u) | (255u << 16u) | (255u << 8u) | 0u  // 0xFFFFFF00 — yellow
-let DEFAULT_HIGHLIGHT_FRAMES = 60
-let DEFAULT_NARRATE_FRAMES = 180
-
-var public imgui_auto_highlight_on_command : bool = false
-    //! When true, every accepted command in imgui_boost_runtime
-    //! (imgui_click / imgui_set / imgui_focus / etc.) auto-calls
-    //! `highlight(target, 60)` after the action. Wiring lands in 4.5.
-
 // ===== User API =====
 
 def public highlight(target : string;
-                     frames : int = DEFAULT_HIGHLIGHT_FRAMES;
-                     color : uint = DEFAULT_HIGHLIGHT_COLOR) {
+                     frames : int = highlight_default_frames;
+                     color : uint = highlight_color) {
     //! Flash a colored rect around the named widget's bbox for `frames`
     //! end_of_frame ticks. `target` is a registry path (`"Setup/SAVE_BTN"`)
-    //! or hex_id (`"0x4f3a2b1c"`). `color` is ABGR packed via IM_COL32.
+    //! or hex_id (`"0x4f3a2b1c"`). Defaults pull from the module globals
+    //! `highlight_default_frames` / `highlight_color` — override per call
+    //! when you want a one-off color.
     g_highlights |> push(HighlightSpec(target = target, remaining_frames = frames, color = color))
 }
 
 def public mouse_trail(enabled : bool;
-                       fade : float = 0.96f;
-                       color : uint = 0xFFFFFFFFu) {
-    //! Toggle the fading mouse-trail overlay. Dots sample once per frame
-    //! and decay over TRAIL_MAX_DOTS frames; `fade` is the per-frame alpha
-    //! multiplier (≤1; closer to 1 keeps dots longer). `color` is ABGR.
-    g_trail_enabled = enabled
-    g_trail_fade = fade
-    g_trail_color = color
+                       fade : float = -1.0f;
+                       color : uint = 0u) {
+    //! Toggle the fading mouse-trail overlay. Defaults pull from `trail_fade`
+    //! and `trail_color`; passing non-default values overrides the module
+    //! globals for the new on-state. Disabling clears the trail buffer.
+    trail_enabled = enabled
+    if (fade >= 0.0f) {
+        trail_fade = fade
+    }
+    if (color != 0u) {
+        trail_color = color
+    }
     if (!enabled) {
         g_trail |> clear()
     }
@@ -103,8 +144,9 @@ def public mouse_trail(enabled : bool;
 
 def public narrate(text : string;
                    target : string = "";
-                   frames : int = DEFAULT_NARRATE_FRAMES) {
+                   frames : int = narrate_default_frames) {
     //! Pop a callout box with `text` on the foreground for N frames.
+    //! Colors / padding / corner-radius come from the `narrate_*` globals.
     //! When `target` resolves to a widget bbox the box anchors next to it
     //! with a connector line; otherwise it floats top-left.
     g_narrates |> push(NarrateSpec(text = text, target = target, remaining_frames = frames))
@@ -121,13 +163,14 @@ def private paint_highlights {
         let r = widget_rect(g_highlights[i].target)
         if (r._0) {
             let bb = r._1
+            let pad = highlight_padding
             *dl |> AddRect(
-                float2(bb.x - 2.0f, bb.y - 2.0f),
-                float2(bb.z + 2.0f, bb.w + 2.0f),
+                float2(bb.x - pad, bb.y - pad),
+                float2(bb.z + pad, bb.w + pad),
                 g_highlights[i].color,
-                2.0f,
+                highlight_rounding,
                 ImDrawFlags.None,
-                2.0f
+                highlight_thickness
             )
         }
         g_highlights[i].remaining_frames--
@@ -138,25 +181,25 @@ def private paint_highlights {
 }
 
 def private paint_trail {
-    if (!g_trail_enabled) return
+    if (!trail_enabled) return
     var dl = GetForegroundDrawList()
     let mouse = GetMousePos()
     g_trail |> push(TrailDot(pos = mouse, age_frames = 0))
-    while (length(g_trail) > TRAIL_MAX_DOTS) {
+    while (length(g_trail) > trail_max_dots) {
         g_trail |> erase(0)
     }
-    let base_rgb = g_trail_color & 0x00FFFFFFu
+    let base_rgb = trail_color & 0x00FFFFFFu
     var i = length(g_trail)
     while (i > 0) {
         i--
-        let frac = 1.0f - float(g_trail[i].age_frames) / float(TRAIL_MAX_DOTS)
+        let frac = 1.0f - float(g_trail[i].age_frames) / float(trail_max_dots)
         if (frac <= 0.0f) {
             g_trail |> erase(i)
             continue
         }
-        let alpha_f = clamp(frac * 255.0f * g_trail_fade, 0.0f, 255.0f)
+        let alpha_f = clamp(frac * 255.0f * trail_fade, 0.0f, 255.0f)
         let color = base_rgb | (uint(alpha_f) << 24u)
-        *dl |> AddCircleFilled(g_trail[i].pos, 4.0f * frac + 1.0f, color, 12)
+        *dl |> AddCircleFilled(g_trail[i].pos, trail_dot_radius * frac + 1.0f, color, 12)
         g_trail[i].age_frames++
     }
 }
@@ -180,22 +223,16 @@ def private paint_narrates {
             }
         }
         // Actual text size via the CalcTextSize shim (main.cpp:342) — picks up
-        // FontGlobalScale and any active font, so the box fits the rendered text
-        // including 1.5× scale that examples typically set.
+        // FontGlobalScale and any active font, so the box fits the rendered text.
         let text_size = CalcTextSize(g_narrates[i].text, false, -1.0f)
-        let pad_x = 8.0f
-        let pad_y = 4.0f
-        let box_end = float2(anchor.x + text_size.x + pad_x * 2.0f,
-                             anchor.y + text_size.y + pad_y * 2.0f)
-        let bg = rgba(32, 32, 32, 204)
-        let fg = rgba(255, 255, 255, 255)
-        let border = rgba(255, 204, 51, 255)
-        *dl |> AddRectFilled(anchor, box_end, bg, 4.0f, ImDrawFlags.None)
-        *dl |> AddRect(anchor, box_end, border, 4.0f, ImDrawFlags.None, 1.5f)
-        *dl |> AddText(float2(anchor.x + pad_x, anchor.y + pad_y), fg, g_narrates[i].text)
+        let box_end = float2(anchor.x + text_size.x + narrate_pad_x * 2.0f,
+                             anchor.y + text_size.y + narrate_pad_y * 2.0f)
+        *dl |> AddRectFilled(anchor, box_end, narrate_bg_color, narrate_corner_radius, ImDrawFlags.None)
+        *dl |> AddRect(anchor, box_end, narrate_border_color, narrate_corner_radius, ImDrawFlags.None, narrate_border_thickness)
+        *dl |> AddText(float2(anchor.x + narrate_pad_x, anchor.y + narrate_pad_y), narrate_fg_color, g_narrates[i].text)
         if (have_target) {
             let connector_start = float2(anchor.x, (anchor.y + box_end.y) * 0.5f)
-            *dl |> AddLine(connector_start, widget_center, border, 1.5f)
+            *dl |> AddLine(connector_start, widget_center, narrate_border_color, narrate_connector_thickness)
         }
         g_narrates[i].remaining_frames--
         if (g_narrates[i].remaining_frames <= 0) {
@@ -210,16 +247,13 @@ def private paint_all {
     paint_narrates()
 }
 
-let AUTO_HIGHLIGHT_FRAMES = 180
-
 def private on_command(command : string; target : string) {
-    //! Post-command hook: auto-flash the touched widget when the user has
-    //! opted in via `imgui_auto_highlight_on_command`. Called from
-    //! imgui_boost_runtime's command handlers after a successful resolve.
-    //! 180-frame flash (~2s at 90fps) — longer than the 60-frame default so
-    //! it's actually visible to the user/viewer driving the command stream.
+    //! Post-command hook: auto-flash the touched widget when
+    //! `imgui_auto_highlight_on_command` is set. Uses the distinct
+    //! `auto_highlight_color` / `auto_highlight_frames` knobs so viewers
+    //! can tell command-driven flashes from manual `highlight()` ones.
     if (imgui_auto_highlight_on_command && !empty(target)) {
-        highlight(target, AUTO_HIGHLIGHT_FRAMES)
+        highlight(target, auto_highlight_frames, auto_highlight_color)
     }
 }
 
@@ -233,21 +267,23 @@ def visual_aids_init {
 
 struct HighlightArgs {
     target : string
-    @optional frames : int = DEFAULT_HIGHLIGHT_FRAMES
-    @optional color : uint = DEFAULT_HIGHLIGHT_COLOR
+    @optional frames : int = -1
+    @optional color : uint = 0u
 }
 
 [live_command(description="Flash a colored rect around the named widget's bbox for N frames.")]
 def imgui_highlight(input : JsonValue?) : JsonValue? {
     let args = from_JV(input, type<HighlightArgs>)
-    highlight(args.target, args.frames, args.color)
-    return JV((ok = true, target = args.target, frames = args.frames))
+    let frames = args.frames > 0 ? args.frames : highlight_default_frames
+    let color = args.color != 0u ? args.color : highlight_color
+    highlight(args.target, frames, color)
+    return JV((ok = true, target = args.target, frames = frames))
 }
 
 struct MouseTrailArgs {
     @optional enabled : bool = true
-    @optional fade : float = 0.96f
-    @optional color : uint = 0xFFFFFFFFu
+    @optional fade : float = -1.0f
+    @optional color : uint = 0u
 }
 
 [live_command(description="Toggle the fading mouse-trail overlay. Args: enabled, fade, color.")]
@@ -260,13 +296,14 @@ def imgui_mouse_trail(input : JsonValue?) : JsonValue? {
 struct NarrateArgs {
     text : string
     @optional target : string = ""
-    @optional frames : int = DEFAULT_NARRATE_FRAMES
+    @optional frames : int = -1
 }
 
 [live_command(description="Show a callout box with text for N frames; optional target widget for connector line.")]
 def imgui_narrate(input : JsonValue?) : JsonValue? {
     let args = from_JV(input, type<NarrateArgs>)
-    narrate(args.text, args.target, args.frames)
+    let frames = args.frames > 0 ? args.frames : narrate_default_frames
+    narrate(args.text, args.target, frames)
     return JV((ok = true))
 }
 
