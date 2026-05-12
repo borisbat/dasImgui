@@ -30,6 +30,20 @@ require daslib/templates_boost
 
 let private VALID_FLAGS : array<string> = ["PUBLIC", "PRIVATE", "NOTLIVE"]
 
+// Named-arg sugar that flows into the auto-emitted state global's
+// initializer instead of the widget render call. `init=` is a rename
+// (sugar for `value`); `bounds=` matches the state field name verbatim.
+// `range=` is reserved in daslang's grammar and unusable as a record
+// name, hence the rename pair. Per API_REWORK §4.2 + §9.1.
+def private init_arg_to_field(name : string) : string {
+    if (name == "init") {
+        return "value"
+    } elif (name == "bounds") {
+        return "bounds"
+    }
+    return ""
+}
+
 [function_macro(name = "widget")]
 class WidgetFunctionMacro : AstFunctionAnnotation {
     def override apply(var func : FunctionPtr; var group : ModuleGroup;
@@ -124,7 +138,22 @@ def private apply_widget_or_container(var func : FunctionPtr; var errors : das_s
         kind_name = kind,
         state_type_name = stateTypeName,
         state_struct = stateStruct,
-        render_fn_name = kind)
+        render_fn_name = kind,
+        is_container = is_container)
+    // Stash the widget def's user-facing args (positions 2..N, after the
+    // injected widget_ident at position 1). The indexed-form wrapper
+    // generator mirrors this signature for each (kind, IDENT) pair so the
+    // user's call site forwards args unchanged into the underlying widget.
+    for (i in range(2, length(func.arguments))) {
+        inst.render_fn_args |> push(func.arguments[i])
+    }
+    // Stash the underlying FunctionPtr (long-lived; lives in the widget's
+    // module). The indexed-form wrapper reads .arguments and .result at
+    // visit time, sidestepping the lifetime issue we saw when caching a
+    // cloned TypeDecl on the WidgetCallMacro instance (the clone aliased
+    // to whatever the gc heap reused that slot for, giving the wrapper
+    // wrong return types like `double`/`tuple<>`/`GroupState`).
+    inst.render_fn = func
     compiling_module() |> add_call_macro(make_call_macro(kind, inst))
     return true
 }
@@ -134,6 +163,9 @@ class WidgetCallMacro : AstCallMacro {
     state_type_name : string
     state_struct : Structure const?
     render_fn_name : string
+    is_container : bool
+    render_fn_args : array<VariablePtr>
+    render_fn : FunctionPtr
 
     def override canVisitArgument(expr : ExprCallMacro?; argIndex : int) : bool {
         // The first argument is the IDENT (which doesn't yet exist as a
@@ -148,14 +180,29 @@ class WidgetCallMacro : AstCallMacro {
             macro_error(prog, expr.at, "{kind_name}(IDENT, ...): missing widget identifier")
             return <- default<ExpressionPtr>
         }
-        // Walk the leading-arg AST to extract `BARE.FLAG1.FLAG2...`. Plain
-        // `BARE` is a single ExprVar; dotted forms like `SAVE_BTN.PUBLIC` parse
-        // as nested ExprField (field accesses), outermost-to-innermost. Walk
-        // down, collecting field names as flag tokens, until the leaf ExprVar.
+        // Walk the leading-arg AST to extract:
+        //   IDENT                  → bareName = IDENT (single-global)
+        //   IDENT.FLAG[.FLAG2...]  → bareName = IDENT, flags = [FLAG, FLAG2, ...]
+        //   IDENT[expr]            → bareName = IDENT, indexExpr = expr (table form, §4.4)
+        // Parse layout: outermost is optionally ExprAt (subscript); inside it
+        // is an optional ExprField chain (dotted flags); the leaf is ExprVar.
+        // Flags + subscript not allowed together (flags belong on the user's
+        // declared table, not the indexed reference).
         var bareName : string
         var rawName : string
         var flagsReversed : array<string>
+        var indexExpr : ExpressionPtr
         var cursor : Expression const? = expr.arguments[0]
+        if (cursor is ExprAt) {
+            let ea = cursor as ExprAt
+            // ExprSafeAt (?[]) is a subclass of ExprAt in C++; reject explicitly.
+            if (cursor.__rtti != "ExprAt") {
+                macro_error(prog, expr.at, "{kind_name}(IDENT[k]): safe subscript ?[k] not supported on indexed widgets")
+                return <- default<ExpressionPtr>
+            }
+            indexExpr = clone_expression(ea.index)
+            cursor = ea.subexpr
+        }
         while (cursor is ExprField) {
             let fld = cursor as ExprField
             flagsReversed |> push(string(fld.name))
@@ -164,8 +211,19 @@ class WidgetCallMacro : AstCallMacro {
         if (cursor is ExprVar) {
             bareName = string((cursor as ExprVar).name)
         } else {
-            macro_error(prog, expr.at, "{kind_name}(IDENT...): first argument must be an identifier or `IDENT.FLAG[.FLAG...]`, got {describe(expr.arguments[0])}")
+            macro_error(prog, expr.at, "{kind_name}(IDENT...): first argument must be an identifier, `IDENT.FLAG[.FLAG...]`, or `IDENT[key]`, got {describe(expr.arguments[0])}")
             return <- default<ExpressionPtr>
+        }
+        if (indexExpr != null && !empty(flagsReversed)) {
+            macro_error(prog, expr.at, "{kind_name}({bareName}[k]): dotted flags (.PUBLIC/.NOTLIVE) not supported on indexed form — declare the table global with required annotations directly")
+            return <- default<ExpressionPtr>
+        }
+        // Indexed (table-form) widget: distinct path from single-global —
+        // table global is user-declared, wrapper helper is generated per
+        // (kind, IDENT), no init=/bounds= sugar (use [init] for imperative
+        // pre-population). Returns the wrapper-call rewrite.
+        if (indexExpr != null) {
+            return <- emit_indexed_call(prog, mod, expr, bareName, indexExpr)
         }
         // Reconstruct rawName for error messages (source order).
         rawName = build_string() $(var w) {
@@ -222,6 +280,29 @@ class WidgetCallMacro : AstCallMacro {
             macro_error(prog, expr.at, "{kind_name}(IDENT...): cannot combine PUBLIC and PRIVATE in '{rawName}'")
             return <- default<ExpressionPtr>
         }
+        // Extract init-mapped named-tuple args (e.g. `init=0.5f`, `range=(0,1)`)
+        // BEFORE emit / destructure. These flow into the state global's
+        // initializer; the call itself never sees them. Collected into
+        // initFieldNames/Exprs (parallel arrays so insertion order is
+        // preserved — matches source order at the call site).
+        var initFieldNames : array<string>
+        var initFieldExprs : array<ExpressionPtr>
+        for (i in range(1, length(expr.arguments))) {
+            let a = expr.arguments[i]
+            if (a is ExprMakeTuple) {
+                let mt = a as ExprMakeTuple
+                if (length(mt.recordNames) == length(mt.values) && !empty(mt.recordNames)) {
+                    for (j in range(length(mt.recordNames))) {
+                        let recordName = string(mt.recordNames[j])
+                        let fieldName = init_arg_to_field(recordName)
+                        if (!empty(fieldName)) {
+                            initFieldNames |> push(fieldName)
+                            initFieldExprs |> push(clone_expression(mt.values[j]))
+                        }
+                    }
+                }
+            }
+        }
         // Auto-emit gate: only emit if not already declared at module scope.
         // find_variable is module-scope ONLY — re-uses existing globals.
         // Type built from the captured Structure pointer (NOT Type.alias on
@@ -236,6 +317,20 @@ class WidgetCallMacro : AstCallMacro {
                                         at = expr.at)
             var initCall = new ExprMakeStruct(at = expr.at, makeType = clone_type(typeRef))
             initCall.makeStructFlags |= ExprMakeStructFlags.useInitializer
+            // Seed named-init fields (init=/range= sugar) into the initializer.
+            // `useInitializer=true` keeps struct defaults firing for un-seeded
+            // fields; field LineInfo points at the call site so a wrong field
+            // (e.g. `range=` on a button) reports against the user's arg.
+            if (!empty(initFieldNames)) {
+                var mkS = new MakeStruct(uninitialized)
+                for (j in range(length(initFieldNames))) {
+                    var mkF = new MakeFieldDecl(at = expr.at,
+                                                name := initFieldNames[j],
+                                                value = initFieldExprs[j])
+                    emplace_new(*mkS, mkF)
+                }
+                emplace(initCall.structs, mkS)
+            }
             var v = new Variable(at = expr.at,
                 name := bareName,
                 _type <- typeRef,
@@ -297,8 +392,174 @@ class WidgetCallMacro : AstCallMacro {
             if (a is ExprMakeTuple) {
                 let mt = a as ExprMakeTuple
                 if (length(mt.recordNames) == length(mt.values) && !empty(mt.recordNames)) {
-                    for (v in mt.values) {
-                        newCall.arguments |> push(clone_expression(v))
+                    for (j in range(length(mt.recordNames))) {
+                        // Skip init-mapped names (consumed by the global's initializer above).
+                        if (!empty(init_arg_to_field(string(mt.recordNames[j])))) {
+                            continue
+                        }
+                        newCall.arguments |> push(clone_expression(mt.values[j]))
+                    }
+                    continue
+                }
+            }
+            newCall.arguments |> push(clone_expression(a))
+        }
+        return <- newCall
+    }
+
+    def private emit_indexed_call(prog : ProgramPtr; mod : Module?;
+                                  var expr : ExprCallMacro?;
+                                  bareName : string;
+                                  var indexExpr : ExpressionPtr) : ExpressionPtr {
+        //! Indexed (table-form) widget per API_REWORK §4.4. Validates a
+        //! pre-declared `variable <bareName> : table<K; StateT>` global,
+        //! emits a per-(kind, IDENT) wrapper function lazily, and rewrites
+        //! the call site to dispatch through the wrapper. Each `[i]` /
+        //! `[key]` resolves to a distinct telemetry path
+        //! (`<container>/<bareName>[<k>]`) so multi-render is naturally
+        //! distinguished. Init-arg sugar (`init=`/`bounds=`) is rejected on
+        //! this path — pre-populate the table from an `[init]` function
+        //! instead (V1 limitation, see plan §H).
+        let tableVar = find_variable(mod, bareName)
+        if (tableVar == null) {
+            let msg = "{kind_name}({bareName}[k]): table global '{bareName}' is not declared at module scope. Declare it as:  variable private {bareName} : table<int; {state_type_name}>  (or table<string; ...> for string keys)."
+            macro_error(prog, expr.at, msg)
+            return <- default<ExpressionPtr>
+        }
+        let tabType = tableVar._type
+        if (tabType == null || tabType.baseType != Type.tTable) {
+            macro_error(prog, expr.at,
+                "{kind_name}({bareName}[k]): '{bareName}' is not a table (got {describe(tabType)}). Expected table<K; {state_type_name}>.")
+            return <- default<ExpressionPtr>
+        }
+        if (tabType.secondType == null || unsafe(reinterpret<Structure?>(tabType.secondType.structType)) != unsafe(reinterpret<Structure?>(state_struct))) {
+            macro_error(prog, expr.at,
+                "{kind_name}({bareName}[k]): table value type ({describe(tabType.secondType)}) does not match expected state {state_type_name}.")
+            return <- default<ExpressionPtr>
+        }
+        // Reject init=/bounds= sugar — first-touch initialization for indexed
+        // widgets is via [init] function (imperative), not call-site named args.
+        for (i in range(1, length(expr.arguments))) {
+            let a = expr.arguments[i]
+            if (a is ExprMakeTuple) {
+                let mt = a as ExprMakeTuple
+                if (length(mt.recordNames) == length(mt.values) && !empty(mt.recordNames)) {
+                    for (j in range(length(mt.recordNames))) {
+                        if (!empty(init_arg_to_field(string(mt.recordNames[j])))) {
+                            let recordName = string(mt.recordNames[j])
+                            let msg = "{kind_name}({bareName}[k]): named-init sugar ({recordName}=) not supported on indexed form. Pre-populate {bareName} in an [init] function (e.g. `{bareName}[i].bounds = (0,1); {bareName}[i].value = 0.5f`)."
+                            macro_error(prog, expr.at, msg)
+                            return <- default<ExpressionPtr>
+                        }
+                    }
+                }
+            }
+        }
+        let wrapperName = "$imgui$indexed${kind_name}${bareName}"
+        let moduleName = string(mod.name)
+        let bareNameLit = bareName
+        let kindLit = kind_name
+        let is_container_lit = is_container
+        // Emit the wrapper helper once per (kind, IDENT). find_unique_function
+        // probes the user module before add_function fires; re-running visit()
+        // for the same wrapper (e.g. a second call site) is a no-op.
+        if (find_unique_function(mod, wrapperName, true) == null) {
+            var wrapperArgs : array<VariablePtr>
+            for (a in render_fn_args) {
+                wrapperArgs |> emplace_new <| clone_variable(a)
+            }
+            // Forward call: <kind>(<bareName>[k], bare, ...args by name)
+            var callArgs : array<ExpressionPtr>
+            callArgs |> push <| qmacro($i(bareNameLit)[$i("k")])
+            callArgs |> push <| qmacro($i("bare"))
+            for (a in render_fn_args) {
+                let argName = string(a.name)
+                callArgs |> push <| qmacro($i(argName))
+            }
+            let keyType = clone_type(tabType.firstType)
+            let retType = clone_type(render_fn.result)
+            var bodyStmts : array<ExpressionPtr>
+            // bare = "<bareName>[<k>]" — runtime interp builds the path component
+            bodyStmts |> push <| qmacro_expr(${
+                let bare = "{$v(bareNameLit)}[{k}]"
+            })
+            // Containers push their per-key path component so leaves see
+            // self in g_container_path; pop runs at body's end via finalList.
+            if (is_container_lit) {
+                bodyStmts |> push <| qmacro_expr(${
+                    imgui_boost_runtime::container_path_push(bare)
+                })
+            }
+            // path = container-aware key (matches what widget_finalize computes)
+            bodyStmts |> push <| qmacro_expr(${
+                let path = imgui_boost_runtime::widget_path_key(bare)
+            })
+            // First-touch / post-reload register. Serializer captures the
+            // key by value; table slot is re-resolved on every snapshot read
+            // so any rehashing-induced address churn doesn't desync state.
+            bodyStmts |> push <| qmacro_expr(${
+                if (!imgui_boost_runtime::widget_registered(path)) {
+                    unsafe {
+                        let ser <- @ capture(= k) () : JsonValue ? {
+                            return JV($i(bareNameLit)[k])
+                        }
+                        imgui_boost_runtime::register_widget(
+                            $v(moduleName), path, $v(kindLit),
+                            addr($i(bareNameLit)[k]), ser)
+                    }
+                }
+            })
+            // Final call. For containers the path pop runs after the inner
+            // body via the trailing statement (no early-return).
+            if (retType.baseType == Type.tVoid) {
+                bodyStmts |> push <| qmacro_expr(${
+                    $c(kindLit)($a(callArgs))
+                })
+                if (is_container_lit) {
+                    bodyStmts |> push <| qmacro_expr(${
+                        imgui_boost_runtime::container_path_pop()
+                    })
+                }
+            } else {
+                if (is_container_lit) {
+                    // Bind result, pop path, return.
+                    bodyStmts |> push <| qmacro_expr(${
+                        let _indexed_result = $c(kindLit)($a(callArgs))
+                    })
+                    bodyStmts |> push <| qmacro_expr(${
+                        imgui_boost_runtime::container_path_pop()
+                    })
+                    bodyStmts |> push <| qmacro_expr(${
+                        return _indexed_result
+                    })
+                } else {
+                    bodyStmts |> push <| qmacro_expr(${
+                        return $c(kindLit)($a(callArgs))
+                    })
+                }
+            }
+            var fn = qmacro_function(wrapperName) $(k : $t(keyType); $a(wrapperArgs)) : $t(retType) {
+                $b(bodyStmts)
+            }
+            fn.flags |= FunctionFlags.generated
+            fn.flags |= FunctionFlags.privateFunction
+            fn.body |> force_at(expr.at)
+            if (!(mod |> add_function(fn))) {
+                macro_error(prog, expr.at,
+                    "{kind_name}({bareName}[k]): failed to add indexed wrapper function '{wrapperName}'")
+                return <- default<ExpressionPtr>
+            }
+        }
+        // Rewrite call: wrapperName(indexExpr, ...remaining args)
+        var newCall = new ExprCall(at = expr.at, name := wrapperName)
+        newCall.arguments |> push(indexExpr)
+        for (i in range(1, length(expr.arguments))) {
+            let a = expr.arguments[i]
+            if (a is ExprMakeTuple) {
+                let mt = a as ExprMakeTuple
+                if (length(mt.recordNames) == length(mt.values) && !empty(mt.recordNames)) {
+                    for (j in range(length(mt.recordNames))) {
+                        newCall.arguments |> push(clone_expression(mt.values[j]))
                     }
                     continue
                 }
