@@ -223,21 +223,48 @@ def public cursor_sprite(enabled : bool) {
 }
 
 def public apply_synth_io_override() {
-    //! Re-assert the synthetic cursor position into ImGui's IO between
+    //! Re-assert synthetic input state into ImGui's IO between
     //! `ImGui_ImplGlfw_NewFrame()` and `NewFrame()`. Same call-site as
-    //! `advance_coroutines()` in `imgui_boost_runtime.das:677-682`. Without
-    //! this, the per-frame `ImGui_ImplGlfw_UpdateMouseData` polls
-    //! `glfwGetCursorPos` and posts `AddMousePosEvent(real_cursor)` AFTER
-    //! the synthetic driver's chain dispatch — so the real cursor wins the
-    //! event queue's last-write-wins, widget hit-tests see real_cursor, and
-    //! synthetic clicks land off-target (narrate buttons don't fire, slider
-    //! doesn't drag, highlight buttons don't trigger). Posting once more
-    //! here ensures the synth pos is the LAST event in the queue, so
-    //! `NewFrame()`'s drain ends with io.MousePos = synth pos.
-    let (active, sx, sy) = get_synth_cursor()
-    if (active) {
+    //! `advance_coroutines()` in `imgui_boost_runtime.das:677-682`. Covers
+    //! two ImGui_ImplGlfw race conditions where the impl's per-callback
+    //! polling overrides our synth state:
+    //!
+    //! 1. **Mouse pos**: `ImGui_ImplGlfw_UpdateMouseData` polls
+    //!    `glfwGetCursorPos` every frame and posts `AddMousePosEvent(real)`
+    //!    AFTER our synth chain dispatch — real cursor wins last-write-wins
+    //!    and widget hit-tests miss. Re-queue synth pos as the last event.
+    //!
+    //! 2. **Modifier keys** (Ctrl / Shift / Alt / Super): each call into
+    //!    `ImGui_ImplGlfw_KeyCallback` runs `UpdateKeyModifiers` which polls
+    //!    `glfwGetKey(LEFT_CONTROL/RIGHT_CONTROL/...)` and posts
+    //!    `AddKeyEvent(ImGuiMod_*, false)` because the physical key isn't
+    //!    held. This nukes our synth `ImGuiMod_Ctrl=true` immediately after
+    //!    we set it — `key_chord({Ctrl,A})` then misses select-all because
+    //!    `io.KeyCtrl` drains as false. Re-queue per-modifier `true` as the
+    //!    last event, gated on the actual `synth_held_keys` state.
+    let (owned, sx, sy) = get_synth_cursor()
+    if (owned) {
         var io & = unsafe(GetIO())
         unsafe(io.AddMousePosEvent(sx, sy))
+    }
+    if (!empty(synth_held_keys)) {
+        var io & = unsafe(GetIO())
+        if (synth_held_keys |> key_exists(GLFW_KEY_LEFT_CONTROL)
+                || synth_held_keys |> key_exists(GLFW_KEY_RIGHT_CONTROL)) {
+            unsafe(io.AddKeyEvent(ImGuiKey.ImGuiMod_Ctrl, true))
+        }
+        if (synth_held_keys |> key_exists(GLFW_KEY_LEFT_SHIFT)
+                || synth_held_keys |> key_exists(GLFW_KEY_RIGHT_SHIFT)) {
+            unsafe(io.AddKeyEvent(ImGuiKey.ImGuiMod_Shift, true))
+        }
+        if (synth_held_keys |> key_exists(GLFW_KEY_LEFT_ALT)
+                || synth_held_keys |> key_exists(GLFW_KEY_RIGHT_ALT)) {
+            unsafe(io.AddKeyEvent(ImGuiKey.ImGuiMod_Alt, true))
+        }
+        if (synth_held_keys |> key_exists(GLFW_KEY_LEFT_SUPER)
+                || synth_held_keys |> key_exists(GLFW_KEY_RIGHT_SUPER)) {
+            unsafe(io.AddKeyEvent(ImGuiKey.ImGuiMod_Super, true))
+        }
     }
 }
 

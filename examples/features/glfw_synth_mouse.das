@@ -15,6 +15,7 @@ require imgui/imgui_boost_runtime
 require imgui/imgui_boost_v2
 require imgui/imgui_widgets_builtin
 require imgui/imgui_containers_builtin
+require imgui/imgui_visual_aids
 
 // =============================================================================
 // FEATURE: glfw_synth_mouse — GLFW-side synthetic mouse driver (chain shim).
@@ -44,6 +45,8 @@ def update() {
 
     ImGui_ImplOpenGL3_NewFrame()
     ImGui_ImplGlfw_NewFrame()
+    apply_synth_io_override()    // re-assert synth cursor pos + held modifier
+                                 // keys after ImGui_ImplGlfw's per-frame poll.
     NewFrame()
 
     // Anchored window so SYNTH_BTN's bbox is stable across runs.

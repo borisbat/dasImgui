@@ -47,6 +47,8 @@ def update() {
 
     ImGui_ImplOpenGL3_NewFrame()
     ImGui_ImplGlfw_NewFrame()
+    apply_synth_io_override()    // re-assert synth Ctrl/Shift/Alt/Super so ImGui's
+                                 // shortcut shortcuts (Ctrl+A, etc.) see them.
     NewFrame()
 
     SetNextWindowPos(ImVec2(40.0, 40.0), ImGuiCond.Always)

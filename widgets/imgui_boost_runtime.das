@@ -1075,7 +1075,10 @@ def private io_jv() : JsonValue? {
     //! Snapshot of public ImGuiIO state at the moment imgui_snapshot
     //! fired. Mouse position via GetMousePos(); button state via
     //! IsMouseDown for left/middle/right (3-element bool array, mirrors
-    //! ImGui's standard ordering). Phase 2.1: active_id (raw ImGuiID) and
+    //! ImGui's standard ordering). Modifier-key state via IsKeyDown on
+    //! the ImGuiMod_* keys (key_ctrl/shift/alt/super) — synth tests
+    //! assert on these to detect "Ctrl+A combo actually visible to
+    //! widgets" regressions. Phase 2.1: active_id (raw ImGuiID) and
     //! active_widget (resolved path_key, when g_id_to_path knows the id)
     //! drop in only when GetActiveID() is non-zero.
     let pos = GetMousePos()
@@ -1084,6 +1087,10 @@ def private io_jv() : JsonValue? {
     tab |> insert("mouse_buttons", JV(IsMouseDown(ImGuiMouseButton.Left),
                                       IsMouseDown(ImGuiMouseButton.Middle),
                                       IsMouseDown(ImGuiMouseButton.Right)))
+    tab |> insert("key_ctrl",  JV(IsKeyDown(ImGuiKey.ImGuiMod_Ctrl)))
+    tab |> insert("key_shift", JV(IsKeyDown(ImGuiKey.ImGuiMod_Shift)))
+    tab |> insert("key_alt",   JV(IsKeyDown(ImGuiKey.ImGuiMod_Alt)))
+    tab |> insert("key_super", JV(IsKeyDown(ImGuiKey.ImGuiMod_Super)))
     let active_id = GetActiveID()
     if (active_id != 0u) {
         tab |> insert("active_id", JV(active_id))

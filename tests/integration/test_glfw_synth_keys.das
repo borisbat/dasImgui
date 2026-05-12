@@ -153,6 +153,36 @@ def test_key_stop_aborts(t : T?) {
 }
 
 [test]
+def test_key_chord_ctrl_visible_to_imgui(t : T?) {
+    // Ctrl+A in the recording didn't select text. Root cause: ImGui_ImplGlfw_
+    // KeyCallback runs UpdateKeyModifiers which polls glfwGetKey() — finds the
+    // physical Ctrl unheld and posts AddKeyEvent(ImGuiMod_Ctrl, false)
+    // immediately after our synth Ctrl press. Queue drains: io.KeyCtrl = false,
+    // InputText's Ctrl+A shortcut never fires. Fix: apply_synth_io_override
+    // re-queues ImGuiMod_Ctrl=true after the impl's poll, so NewFrame's drain
+    // ends with KeyCtrl true. Assert via the new io.key_ctrl snapshot field.
+    with_imgui_app(FEATURE) $(d) {
+        var snap0 = wait_for_render(d, "NAME_INPUT", 15.0f)
+        if (snap0 == null) {
+            t |> success(false, "NAME_INPUT renders")
+            return
+        }
+        // Hold Ctrl long enough for snapshot poll to observe — key_press
+        // doesn't auto-release, unlike key_chord's tight-stamped sequence.
+        post_command(d, "key_press", JV((keycode = 341)))   // GLFW_KEY_LEFT_CONTROL
+        let saw_ctrl = wait_until(d, 240) $(var snap) {
+            return snap?["io"]?["key_ctrl"] ?? false
+        }
+        t |> success(saw_ctrl != null, "io.key_ctrl == true while LEFT_CONTROL synth-held")
+        post_command(d, "key_release", JV((keycode = 341)))
+        let cleared = wait_until(d, 240) $(var snap) {
+            return !(snap?["io"]?["key_ctrl"] ?? true)
+        }
+        t |> success(cleared != null, "io.key_ctrl == false after release")
+    }
+}
+
+[test]
 def test_key_stop_releases_held_modifiers(t : T?) {
     // PR #2633 review (copilot r3229531303): key_stop must release any
     // synth-pressed keys, or ImGui inherits stuck modifier state. Simulate

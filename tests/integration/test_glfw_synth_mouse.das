@@ -166,6 +166,43 @@ def test_mouse_stop_aborts(t : T?) {
 }
 
 [test]
+def test_synth_cursor_ownership_sticky(t : T?) {
+    // Cursor sprite disappearing mid-recording: get_synth_cursor previously
+    // returned (playing, x, y) — after a mouse_play timeline drained, playing
+    // flipped false, effective_cursor_pos fell back to GetMousePos(), and the
+    // sprite jumped to the real OS cursor (off-screen if the user is in
+    // another window). Fix is sticky ownership: any synth event flips
+    // cursor_owned true; mouse_status now exposes it.
+    with_imgui_app(FEATURE) $(d) {
+        var snap0 = wait_for_render(d, "SYNTH_WIN", 15.0f)
+        if (snap0 == null) {
+            t |> success(false, "SYNTH_WIN renders")
+            return
+        }
+        let s0 = post_command(d, "mouse_status", null)
+        t |> equal(s0?["cursor_owned"] ?? true, false, "cursor_owned starts false")
+        // Single synth event flips ownership.
+        post_command(d, "mouse_pos", JV((x = 100.0f, y = 100.0f)))
+        let s1 = post_command(d, "mouse_status", null)
+        t |> equal(s1?["cursor_owned"] ?? false, true,  "cursor_owned flips true after mouse_pos")
+        t |> equal(s1?["playing"]      ?? true,  false, "mouse_status.playing is false (mouse_pos is one-shot)")
+        // Run a short timeline, wait for drain, ownership stays.
+        var events <- [
+            JV((t_ms = 0,  kind = "move", x = 50.0f,  y = 50.0f)),
+            JV((t_ms = 80, kind = "move", x = 200.0f, y = 200.0f))
+        ]
+        post_command(d, "mouse_play", JV((events = events)))
+        let drained = wait_until(d, 240) $(var snap) {
+            let s = post_command(d, "mouse_status", null)
+            return !(s?["playing"] ?? true)
+        }
+        t |> success(drained != null, "mouse_play timeline drains")
+        let s2 = post_command(d, "mouse_status", null)
+        t |> equal(s2?["cursor_owned"] ?? false, true, "cursor_owned still true after timeline drain")
+    }
+}
+
+[test]
 def test_mouse_stop_releases_held_buttons(t : T?) {
     // Parity with key_stop (PR #2633 review, copilot r3229531303): an
     // interrupted mouse_play sequence that pressed a button without queuing
