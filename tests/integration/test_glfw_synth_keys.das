@@ -151,3 +151,36 @@ def test_key_stop_aborts(t : T?) {
         t |> equal(halted?["playing"] ?? true, false, "key_status.playing == false after stop")
     }
 }
+
+[test]
+def test_key_stop_releases_held_modifiers(t : T?) {
+    // PR #2633 review (copilot r3229531303): key_stop must release any
+    // synth-pressed keys, or ImGui inherits stuck modifier state. Simulate
+    // an interrupted key_chord by manually pressing LEFT_CONTROL (no paired
+    // release queued) and then calling key_stop — the held_count must drop
+    // to 0 and the stop response must report released=1.
+    with_imgui_app(FEATURE) $(d) {
+        var snap0 = wait_for_render(d, "NAME_INPUT", 15.0f)
+        if (snap0 == null) {
+            t |> success(false, "NAME_INPUT renders")
+            return
+        }
+
+        // GLFW_KEY_LEFT_CONTROL == 341.
+        post_command(d, "key_press", JV((keycode = 341)))
+        let pressed = wait_until(d, 3.0f) $(var snap) {
+            let s = post_command(d, "key_status", null)
+            return (s?["held_count"] ?? 0) >= 1
+        }
+        t |> success(pressed != null, "Ctrl is held (held_count >= 1)")
+
+        let stopped = post_command(d, "key_stop", null)
+        t |> equal(stopped?["released"] ?? -1, 1, "key_stop.released == 1")
+
+        let cleared = wait_until(d, 3.0f) $(var snap) {
+            let s = post_command(d, "key_status", null)
+            return (s?["held_count"] ?? 1) == 0
+        }
+        t |> success(cleared != null, "held_count == 0 after key_stop")
+    }
+}

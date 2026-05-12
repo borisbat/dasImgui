@@ -164,3 +164,36 @@ def test_mouse_stop_aborts(t : T?) {
         t |> equal(halted?["playing"] ?? true, false, "mouse_status.playing == false after stop")
     }
 }
+
+[test]
+def test_mouse_stop_releases_held_buttons(t : T?) {
+    // Parity with key_stop (PR #2633 review, copilot r3229531303): an
+    // interrupted mouse_play sequence that pressed a button without queuing
+    // its release would leave ImGui believing the button is still held.
+    // Press button 0 manually, verify ImGui sees it held, mouse_stop, then
+    // verify both held_count and io.mouse_buttons[0] clear.
+    with_imgui_app(FEATURE) $(d) {
+        var snap0 = wait_for_render(d, "SYNTH_WIN", 15.0f)
+        if (snap0 == null) {
+            t |> success(false, "SYNTH_WIN renders")
+            return
+        }
+
+        post_command(d, "mouse_click", JV((button = 0, action = "press")))
+        let pressed = wait_until(d, 3.0f) $(var snap) {
+            let s = post_command(d, "mouse_status", null)
+            return (s?["held_count"] ?? 0) >= 1 && (snap?["io"]?["mouse_buttons"]?[0] ?? false)
+        }
+        t |> success(pressed != null, "button 0 is held (held_count + io.mouse_buttons[0])")
+
+        let stopped = post_command(d, "mouse_stop", null)
+        t |> equal(stopped?["released"] ?? -1, 1, "mouse_stop.released == 1")
+
+        let cleared = wait_until(d, 3.0f) $(var snap) {
+            let s = post_command(d, "mouse_status", null)
+            let still_held = snap?["io"]?["mouse_buttons"]?[0] ?? true
+            return (s?["held_count"] ?? 1) == 0 && !still_held
+        }
+        t |> success(cleared != null, "held_count == 0 + io.mouse_buttons[0] == false after stop")
+    }
+}
