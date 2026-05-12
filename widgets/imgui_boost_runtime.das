@@ -888,9 +888,7 @@ def private check_unique_render(path_key : string; kind : string) {
     //! canonical case (three calls with different `v_button` arguments
     //! drive one shared `value`). These are detected by kind name; the
     //! list grows as new shared-state widget kinds land.
-    if (kind == "radio_button_int") {
-        return
-    }
+    return if (kind == "radio_button_int")
     if (key_exists(g_rendered_this_frame, path_key)) {
         let msg = "dasImgui: widget '{path_key}' ({kind}) rendered twice in frame {g_frame}. Single-global widgets must render exactly once per frame. For multiple instances, declare a table  variable private <NAME> : table<int; <STATE_TYPE>>  and call with subscript:  {kind}(<NAME>[i], (...))"
         panic(msg)
@@ -1108,9 +1106,7 @@ def imgui_snapshot(input : JsonValue?) : JsonValue? {
         if (key_exists(g_registry, k)) {
             globals |> insert(k, widget_entry_jv(k, g_registry[k]))
         } else {
-            if (find(k, "[") >= 0 && meta.last_seen_frame < g_frame - 1) {
-                continue
-            }
+            continue if (find(k, "[") >= 0 && meta.last_seen_frame < g_frame - 1)
             globals |> insert(k, widget_meta_jv(k, meta))
         }
     }
@@ -1287,8 +1283,10 @@ struct DragArgs {
 }
 
 struct TypeTextArgs {
-    @optional target : string = ""
-    @optional text : string = ""
+    @optional target           : string = ""
+    @optional text             : string = ""
+    @optional per_char_frames  : int    = 1
+    @optional total_frames     : int    = 0
 }
 
 def private parse_hex_id(s : string) : uint {
@@ -1312,6 +1310,17 @@ def public widget_rect(target : string) : tuple<bool; float4> {
     let hid = parse_hex_id(target)
     if (hid != 0u && key_exists(g_id_to_bbox, hid)) return (true, g_id_to_bbox[hid])
     return (false, float4(0.0f, 0.0f, 0.0f, 0.0f))
+}
+
+def public active_widget_path() : string {
+    //! Returns the L2 registry path of the currently focused/active widget,
+    //! or "" when nothing is active or the active widget isn't boost-wrapped
+    //! (only wrapped widgets are mapped in g_id_to_path). Used by overlays
+    //! that want to react to "what is the user typing into right now" without
+    //! polling io_jv()'s snapshot every frame.
+    let aid = GetActiveID()
+    return "" if (aid == 0u)
+    return id_to_path(aid)
 }
 
 def private resolve_target_bbox(target : string) : tuple<bool; float2> {
@@ -1344,16 +1353,20 @@ def private drag_coro(start : float2; endp : float2; steps : int; button : int) 
 }
 
 [async]
-def private type_text_coro(text : string) : void {
-    //! L1 keyboard input: push one character per frame to the focused
-    //! widget via AddInputCharactersUTF8. ASCII-correct; multi-byte UTF-8
-    //! codepoints would split mid-sequence — keep payload ASCII for now.
-    //! Phase 2.4 will add target-focus dispatch via the `focus` action.
+def private type_text_coro(text : string; per_char_frames : int) : void {
+    //! L1 keyboard input: push one character every `per_char_frames` frames
+    //! to the focused widget via AddInputCharactersUTF8. ASCII-correct;
+    //! multi-byte UTF-8 codepoints would split mid-sequence — keep payload
+    //! ASCII for now. `per_char_frames=1` is the legacy 1-char/frame rate;
+    //! larger values pace typing for tutorial recordings.
     var io & = unsafe(GetIO())
     let n = length(text)
+    let gap = max(1, per_char_frames)
     for (i in range(n)) {
         io |> AddInputCharactersUTF8(slice(text, i, i + 1))
-        await_next_frame()
+        for (_ in range(gap)) {
+            await_next_frame()
+        }
     }
 }
 
@@ -1368,11 +1381,15 @@ def imgui_drag(input : JsonValue?) : JsonValue? {
     return with_await(input, ok(args.target, type<string>))
 }
 
-[live_command(description = "L1 keyboard: push UTF-8 chars to the focused widget, one per frame")]
+[live_command(description = "L1 keyboard: push UTF-8 chars to the focused widget. Args: text, per_char_frames (default 1) | total_frames (preferred for fixed-duration typing)")]
 def imgui_type_text(input : JsonValue?) : JsonValue? {
     let args = from_JV(input, default<TypeTextArgs>)
     if (empty(args.text)) return with_await(input, err("missing 'text'", type<string>))
-    spawn_coroutine(type_text_coro(args.text))
+    var gap = max(1, args.per_char_frames)
+    if (args.total_frames > 0) {
+        gap = max(1, args.total_frames / length(args.text))
+    }
+    spawn_coroutine(type_text_coro(args.text, gap))
     if (!empty(args.target)) dispatch_post_command_hooks("type_text", args.target)
     return with_await(input, ok(args.target, type<string>))
 }

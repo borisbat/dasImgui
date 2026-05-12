@@ -348,12 +348,16 @@ def public await_probe(app : ImguiApp; until : string = "quiescent") : JsonValue
 }
 
 def public type_text(app : ImguiApp; target : string; text : string;
-                     focus_timeout_sec : float = 2.0f) : JsonValue? {
+                     focus_timeout_sec : float = 2.0f;
+                     duration_s : float = 0.0f) : JsonValue? {
     //! Auto-focus `target` first, wait for focus to settle, then synthesize
-    //! UTF-8 characters via L1 AddInputCharactersUTF8. Phase 3 closes the
-    //! gap noted in Phase 2: the legacy `type_text` was "informational
-    //! target" and required the example to call `SetKeyboardFocusHere(0)`
-    //! itself.
+    //! UTF-8 characters via L1 AddInputCharactersUTF8. `duration_s > 0`
+    //! paces typing over that wall-clock duration (server translates to
+    //! `total_frames = int(duration_s * 60)` — exact rate is fps-dependent,
+    //! visible-to-viewer-only). Default 0 keeps the 1-char/frame legacy
+    //! rate. Phase 3 closes the gap noted in Phase 2: the legacy
+    //! `type_text` was "informational target" and required the example to
+    //! call `SetKeyboardFocusHere(0)` itself.
     //!
     //! Settle is a `wait_until` poll on `globals[target].focus == true`
     //! (server-side `entry.focus = IsItemFocused()` lands on this top-level
@@ -366,7 +370,9 @@ def public type_text(app : ImguiApp; target : string; text : string;
     wait_until(app, focus_timeout_sec) $(var snap) {
         return snap?["globals"]?[target]?["focus"] ?? false
     }
-    return send_imgui_command(app.transport, "imgui_type_text", JV((target = target, text = text)))
+    let total_frames = duration_s > 0.0f ? int(duration_s * 60.0f) : 0
+    return send_imgui_command(app.transport, "imgui_type_text",
+        JV((target = target, text = text, total_frames = total_frames)))
 }
 
 def public reload(app : ImguiApp; timeout_sec : float = DEFAULT_RELOAD_TIMEOUT_SEC) : void {

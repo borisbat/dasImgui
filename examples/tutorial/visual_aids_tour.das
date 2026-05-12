@@ -17,12 +17,13 @@ require imgui/imgui_widgets_builtin
 require imgui/imgui_visual_aids
 
 // =============================================================================
-// TUTORIAL: visual_aids_tour — the keeper reference example for Phase 4.
+// TUTORIAL: visual_aids_tour — the keeper reference example for Phase 4/5.
 //
-// Main window holds three widgets being demonstrated:
-//   - STATUS  : a text_show display (label-style)
-//   - VOLUME  : a slider_float (interactive input)
-//   - SAVE_BTN: a button (trigger)
+// Main window holds four widgets being demonstrated:
+//   - STATUS    : a text_show display (label-style)
+//   - VOLUME    : a slider_float (interactive input)
+//   - SAVE_BTN  : a button (trigger)
+//   - NAME_INPUT: an input_text (typing target for the keyboard tour)
 //
 // Side "Controls" window has buttons that drive the visual aids:
 //   - Highlight each demoed widget
@@ -60,9 +61,9 @@ def update() {
 
     // ===== Main window — the demoed widgets =====
     SetNextWindowPos(float2(40.0f, 40.0f), ImGuiCond.FirstUseEver)
-    SetNextWindowSize(float2(440.0f, 280.0f), ImGuiCond.FirstUseEver)
+    SetNextWindowSize(float2(440.0f, 360.0f), ImGuiCond.FirstUseEver)
     if (Begin("Demoed widgets", null, ImGuiWindowFlags.None)) {
-        Text("These three widgets get highlighted, narrated, etc.")
+        Text("These widgets get highlighted, narrated, typed-into, etc.")
         Separator()
         text_show(STATUS, (value = "ready"))
         VOLUME.bounds = (0.0f, 100.0f)
@@ -70,6 +71,9 @@ def update() {
         if (button(SAVE_BTN, (text = "Save"))) {
             print("save clicked, count={SAVE_BTN.click_count}\n")
         }
+        Separator()
+        input_text(NAME_INPUT, (text = "Name"))
+        Text("buffer = {NAME_INPUT.value}")
     }
     End()
 
