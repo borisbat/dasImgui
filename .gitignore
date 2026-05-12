@@ -3,6 +3,8 @@
 *.lib
 .daspkg_standalone
 _build/
+build/
+modules/
 imgui/
 example/imgui.ini
 example/imgui_log.txt

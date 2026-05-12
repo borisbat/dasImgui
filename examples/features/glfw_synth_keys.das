@@ -15,6 +15,7 @@ require imgui/imgui_boost_runtime
 require imgui/imgui_boost_v2
 require imgui/imgui_widgets_builtin
 require imgui/imgui_containers_builtin
+require imgui/imgui_visual_aids
 
 // =============================================================================
 // FEATURE: glfw_synth_keys — GLFW-side synthetic keyboard driver (chain shim).
@@ -30,8 +31,6 @@ require imgui/imgui_containers_builtin
 // STANDALONE: daslang.exe modules/dasImgui/examples/features/glfw_synth_keys.das
 // LIVE:       daslang-live modules/dasImgui/examples/features/glfw_synth_keys.das
 // =============================================================================
-
-var auto_focused = false
 
 [export]
 def init() {
@@ -52,18 +51,15 @@ def update() {
 
     SetNextWindowPos(ImVec2(40.0, 40.0), ImGuiCond.Always)
     SetNextWindowSize(ImVec2(640.0, 240.0), ImGuiCond.Always)
-    window(SYNTH_KEYS_WIN, (text = "synth keys demo", closable = false,
-                            flags = ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove)) {
+    if (Begin("synth keys demo", null, ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove)) {
         Text("Drive `key_type`, `key_chord`, `key_play` to feed the input below.")
-        if (!auto_focused) {
-            SetKeyboardFocusHere(0)
-            auto_focused = true
-        }
+        Text("Use `imgui_focus` to put keyboard focus on NAME_INPUT first.")
         input_text(NAME_INPUT, (text = "Name"))
         Text("buffer = {NAME_INPUT.value}")
         Text("Ctrl held: {IsKeyDown(ImGuiKey.LeftCtrl) || IsKeyDown(ImGuiKey.RightCtrl)}")
         Text("Shift held: {IsKeyDown(ImGuiKey.LeftShift) || IsKeyDown(ImGuiKey.RightShift)}")
     }
+    End()
 
     end_of_frame()
     Render()

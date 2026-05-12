@@ -20,8 +20,8 @@ let FEATURE = "modules/dasImgui/examples/features/glfw_synth_keys.das"
 [test]
 def test_key_hud_toggle(t : T?) {
     with_imgui_app(FEATURE) $(d) {
-        var snap0 = wait_for_render(d, "SYNTH_KEYS_WIN", 15.0f)
-        t |> success(snap0 != null, "SYNTH_KEYS_WIN renders")
+        var snap0 = wait_for_render(d, "NAME_INPUT", 15.0f)
+        t |> success(snap0 != null, "NAME_INPUT renders")
         if (snap0 == null) return
 
         let on = post_command(d, "imgui_key_hud", JV((enabled = true)))
@@ -46,9 +46,9 @@ def test_key_hud_signals_reachable(t : T?) {
     //! driver — if `held_count` and `last_codepoint` both move, the HUD has
     //! everything it needs to render correctly.
     with_imgui_app(FEATURE) $(d) {
-        var snap0 = wait_for_render(d, "SYNTH_KEYS_WIN", 15.0f)
+        var snap0 = wait_for_render(d, "NAME_INPUT", 15.0f)
         if (snap0 == null) {
-            t |> success(false, "SYNTH_KEYS_WIN renders")
+            t |> success(false, "NAME_INPUT renders")
             return
         }
 

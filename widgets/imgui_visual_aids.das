@@ -9,6 +9,7 @@ require imgui public
 require imgui/imgui_boost_runtime public
 require live/live_commands
 require live/glfw_live
+require glfw/glfw_boost
 require live_host
 require daslib/json public
 require daslib/json_boost public
@@ -175,7 +176,7 @@ var private g_trail : array<TrailDot>
 var private g_narrates : array<NarrateSpec>
 
 struct private KeycapTrace {
-    label    : string         //! rendered keycap text ("A", "Enter", "Tab", ...)
+    glyph    : string         //! rendered keycap text ("A", "Enter", "Tab", ...)
     t_pushed : float          //! get_uptime() when added; used for fade-out
 }
 
@@ -377,18 +378,15 @@ def private glyph_for_codepoint(cp : uint) : string {
     //! as the literal character. Non-ASCII falls back to "?" — the keycap
     //! is for the recording, not for rich i18n; viewers reading captions
     //! get the textual content elsewhere.
-    if (cp == uint('\n')) return "Enter"
-    if (cp == uint('\r')) return "Enter"
+    if (cp == uint('\n') || cp == uint('\r')) return "Enter"
     if (cp == uint('\t')) return "Tab"
     if (cp == uint(' ')) return "Space"
     if (cp == 8u) return "Bksp"
     if (cp == 27u) return "Esc"
-    if (cp >= 0x20u && cp < 0x7Fu) {
-        return build_string() $(writer) {
-            writer |> write_char(int(cp))
-        }
+    return "?" if (cp < 0x20u || cp >= 0x7Fu)
+    return build_string() $(writer) {
+        writer |> write_char(int(cp))
     }
-    return "?"
 }
 
 def private glyph_for_keycode(kc : int) : string {
@@ -420,15 +418,15 @@ def private paint_key_hud {
     //    keystrokes (no char event) push via the keycode branch.
     let now = float(get_uptime())
     if (synth_last_codepoint_t > g_last_seen_codepoint_t && synth_last_codepoint != 0u) {
-        g_keycap_traces |> push(KeycapTrace(label = glyph_for_codepoint(synth_last_codepoint), t_pushed = now))
+        g_keycap_traces |> push(KeycapTrace(glyph = glyph_for_codepoint(synth_last_codepoint), t_pushed = now))
         g_last_seen_codepoint_t = synth_last_codepoint_t
         // Mark this keycode as "represented by char"; if a key press at the
         // same instant fires next, don't double-push.
         g_last_seen_keycode_t = synth_last_keycode_t
     } elif (synth_last_keycode_t > g_last_seen_keycode_t && synth_last_keycode != 0) {
-        let label = glyph_for_keycode(synth_last_keycode)
-        if (!empty(label)) {
-            g_keycap_traces |> push(KeycapTrace(label = label, t_pushed = now))
+        let g = glyph_for_keycode(synth_last_keycode)
+        if (!empty(g)) {
+            g_keycap_traces |> push(KeycapTrace(glyph = g, t_pushed = now))
         }
         g_last_seen_keycode_t = synth_last_keycode_t
     }
@@ -469,10 +467,10 @@ def private paint_key_hud {
             let p1 = float2(x + key_hud_keycap_w, row_y + key_hud_keycap_h)
             *dl |> AddRectFilled(p0, p1, bg, key_hud_keycap_rounding, ImDrawFlags.None)
             *dl |> AddRect(p0, p1, border, key_hud_keycap_rounding, ImDrawFlags.None, key_hud_keycap_border_thick)
-            let label_size = CalcTextSize(trace.label, false, -1.0f)
+            let label_size = CalcTextSize(trace.glyph, false, -1.0f)
             let tx = x + (key_hud_keycap_w - label_size.x) * 0.5f
             let ty = row_y + (key_hud_keycap_h - label_size.y) * 0.5f
-            *dl |> AddText(float2(tx, ty), text, trace.label)
+            *dl |> AddText(float2(tx, ty), text, trace.glyph)
             x += key_hud_keycap_w + key_hud_keycap_spacing
         }
     }

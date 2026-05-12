@@ -24,8 +24,8 @@ let FEATURE = "modules/dasImgui/examples/features/glfw_synth_keys.das"
 [test]
 def test_key_press_release_held_count(t : T?) {
     with_imgui_app(FEATURE) $(d) {
-        var snap0 = wait_for_render(d, "SYNTH_KEYS_WIN", 15.0f)
-        t |> success(snap0 != null, "SYNTH_KEYS_WIN renders")
+        var snap0 = wait_for_render(d, "NAME_INPUT", 15.0f)
+        t |> success(snap0 != null, "NAME_INPUT renders")
         if (snap0 == null) return
 
         // GLFW_KEY_LEFT_SHIFT == 340.
@@ -48,11 +48,20 @@ def test_key_press_release_held_count(t : T?) {
 [test]
 def test_key_type_lands_in_input(t : T?) {
     with_imgui_app(FEATURE) $(d) {
-        var snap0 = wait_for_render(d, "SYNTH_KEYS_WIN", 15.0f)
-        t |> success(snap0 != null, "SYNTH_KEYS_WIN renders")
+        var snap0 = wait_for_render(d, "NAME_INPUT", 15.0f)
+        t |> success(snap0 != null, "NAME_INPUT renders")
         if (snap0 == null) return
 
-        // App auto-focuses NAME_INPUT on first render via SetKeyboardFocusHere.
+        // Auto-focus on first render reaches keyboard focus but doesn't reliably
+        // settle io.active_widget by the time we poll, so drive explicit focus
+        // via playwright. Same pattern as `test_imgui_type_text_buffer_fills`,
+        // which goes through `type_text` (which calls focus internally).
+        focus(d, "NAME_INPUT")
+        let focused = wait_until(d, 2.0f) $(var snap) {
+            return snap?["globals"]?["NAME_INPUT"]?["focus"] ?? false
+        }
+        t |> success(focused != null, "NAME_INPUT receives keyboard focus")
+
         // Mixed-case payload exercises the auto-shift path.
         post_command(d, "key_type", JV((text = "Hi", per_char_ms = 30)))
 
@@ -75,9 +84,9 @@ def test_key_type_lands_in_input(t : T?) {
 [test]
 def test_key_chord_completes(t : T?) {
     with_imgui_app(FEATURE) $(d) {
-        var snap0 = wait_for_render(d, "SYNTH_KEYS_WIN", 15.0f)
+        var snap0 = wait_for_render(d, "NAME_INPUT", 15.0f)
         if (snap0 == null) {
-            t |> success(false, "SYNTH_KEYS_WIN renders")
+            t |> success(false, "NAME_INPUT renders")
             return
         }
 
@@ -96,9 +105,9 @@ def test_key_chord_completes(t : T?) {
 [test]
 def test_key_play_event_list_completes(t : T?) {
     with_imgui_app(FEATURE) $(d) {
-        var snap0 = wait_for_render(d, "SYNTH_KEYS_WIN", 15.0f)
+        var snap0 = wait_for_render(d, "NAME_INPUT", 15.0f)
         if (snap0 == null) {
-            t |> success(false, "SYNTH_KEYS_WIN renders")
+            t |> success(false, "NAME_INPUT renders")
             return
         }
 
@@ -121,9 +130,9 @@ def test_key_play_event_list_completes(t : T?) {
 [test]
 def test_key_stop_aborts(t : T?) {
     with_imgui_app(FEATURE) $(d) {
-        var snap0 = wait_for_render(d, "SYNTH_KEYS_WIN", 15.0f)
+        var snap0 = wait_for_render(d, "NAME_INPUT", 15.0f)
         if (snap0 == null) {
-            t |> success(false, "SYNTH_KEYS_WIN renders")
+            t |> success(false, "NAME_INPUT renders")
             return
         }
 
