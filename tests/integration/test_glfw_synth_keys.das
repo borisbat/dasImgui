@@ -30,14 +30,14 @@ def test_key_press_release_held_count(t : T?) {
 
         // GLFW_KEY_LEFT_SHIFT == 340.
         post_command(d, "key_press", JV((keycode = 340)))
-        let pressed = wait_until(d, 3.0f) $(var snap) {
+        let pressed = wait_until(d, 180) $(var snap) {
             let s = post_command(d, "key_status", null)
             return (s?["held_count"] ?? 0) >= 1
         }
         t |> success(pressed != null, "key_status.held_count >= 1 after Shift press")
 
         post_command(d, "key_release", JV((keycode = 340)))
-        let released = wait_until(d, 3.0f) $(var snap) {
+        let released = wait_until(d, 180) $(var snap) {
             let s = post_command(d, "key_status", null)
             return (s?["held_count"] ?? 1) == 0
         }
@@ -57,7 +57,7 @@ def test_key_type_lands_in_input(t : T?) {
         // via playwright. Same pattern as `test_imgui_type_text_buffer_fills`,
         // which goes through `type_text` (which calls focus internally).
         focus(d, "NAME_INPUT")
-        let focused = wait_until(d, 2.0f) $(var snap) {
+        let focused = wait_until(d, 120) $(var snap) {
             return snap?["globals"]?["NAME_INPUT"]?["focus"] ?? false
         }
         t |> success(focused != null, "NAME_INPUT receives keyboard focus")
@@ -66,14 +66,14 @@ def test_key_type_lands_in_input(t : T?) {
         post_command(d, "key_type", JV((text = "Hi", per_char_ms = 30)))
 
         // Wait for the timeline to drain.
-        let done = wait_until(d, 4.0f) $(var snap) {
+        let done = wait_until(d, 240) $(var snap) {
             let s = post_command(d, "key_status", null)
             return !(s?["playing"] ?? true)
         }
         t |> success(done != null, "key_type timeline completes")
 
         // Then verify the input buffer received "Hi".
-        let landed = wait_until(d, 3.0f) $(var snap) {
+        let landed = wait_until(d, 180) $(var snap) {
             let v = snap?["globals"]?["NAME_INPUT"]?["payload"]?["value"] ?? ""
             return v == "Hi"
         }
@@ -94,7 +94,7 @@ def test_key_chord_completes(t : T?) {
         let resp = post_command(d, "key_chord", JV((mods = ["Ctrl"], key = "A")))
         t |> equal(resp?["queued"] ?? 0, 4, "key_chord queues 4 events")
 
-        let done = wait_until(d, 4.0f) $(var snap) {
+        let done = wait_until(d, 240) $(var snap) {
             let s = post_command(d, "key_status", null)
             return !(s?["playing"] ?? true) && (s?["held_count"] ?? 1) == 0
         }
@@ -119,7 +119,7 @@ def test_key_play_event_list_completes(t : T?) {
         ]
         post_command(d, "key_play", JV((events = events)))
 
-        let done = wait_until(d, 4.0f) $(var snap) {
+        let done = wait_until(d, 240) $(var snap) {
             let s = post_command(d, "key_status", null)
             return !(s?["playing"] ?? true) && (s?["held_count"] ?? 1) == 0
         }
@@ -138,7 +138,7 @@ def test_key_stop_aborts(t : T?) {
 
         // Start a long-duration type, then stop it mid-flight.
         post_command(d, "key_type", JV((text = "the quick brown fox", per_char_ms = 500)))
-        let started = wait_until(d, 1.0f) $(var snap) {
+        let started = wait_until(d, 60) $(var snap) {
             let s = post_command(d, "key_status", null)
             return s?["playing"] ?? false
         }
@@ -168,7 +168,7 @@ def test_key_stop_releases_held_modifiers(t : T?) {
 
         // GLFW_KEY_LEFT_CONTROL == 341.
         post_command(d, "key_press", JV((keycode = 341)))
-        let pressed = wait_until(d, 3.0f) $(var snap) {
+        let pressed = wait_until(d, 180) $(var snap) {
             let s = post_command(d, "key_status", null)
             return (s?["held_count"] ?? 0) >= 1
         }
@@ -177,7 +177,7 @@ def test_key_stop_releases_held_modifiers(t : T?) {
         let stopped = post_command(d, "key_stop", null)
         t |> equal(stopped?["released"] ?? -1, 1, "key_stop.released == 1")
 
-        let cleared = wait_until(d, 3.0f) $(var snap) {
+        let cleared = wait_until(d, 180) $(var snap) {
             let s = post_command(d, "key_status", null)
             return (s?["held_count"] ?? 1) == 0
         }

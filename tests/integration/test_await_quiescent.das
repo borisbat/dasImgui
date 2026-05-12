@@ -56,7 +56,7 @@ def test_imgui_await(t : T?) {
                      "during drag: not quiescent OR pending_coroutines>=1")
 
         // Gate 3: poll until quiescent.
-        let settled = wait_until(d, 5.0f) $(snap) {
+        let settled = wait_until(d, 300) $(snap) {
             let probe = await_probe(d)
             return probe?["value"]?["quiescent"] ?? false
         }

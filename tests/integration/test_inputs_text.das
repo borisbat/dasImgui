@@ -43,20 +43,20 @@ def test_inputs_text_smoke(t : T?) {
 
         // ----- input_text — string round-trip -----
         set_value(d, "NAME", JV("Alice"))
-        t |> success(wait_for_string_value(d, "NAME", "value", "Alice", 5.0f),
+        t |> success(wait_for_string_value(d, "NAME", "value", "Alice", 300),
                      "imgui_set steers NAME.value to 'Alice'")
         set_value(d, "NAME", JV("Bob"))
-        t |> success(wait_for_string_value(d, "NAME", "value", "Bob", 5.0f),
+        t |> success(wait_for_string_value(d, "NAME", "value", "Bob", 300),
                      "imgui_set re-steers NAME.value to 'Bob'")
 
         // ----- input_text_with_hint — same round-trip -----
         set_value(d, "EMAIL", JV("bob@example.com"))
-        t |> success(wait_for_string_value(d, "EMAIL", "value", "bob@example.com", 5.0f),
+        t |> success(wait_for_string_value(d, "EMAIL", "value", "bob@example.com", 300),
                      "imgui_set steers EMAIL.value")
 
         // ----- input_text_multiline — embedded newline survives -----
         set_value(d, "BIO", JV("line one\nline two"))
-        t |> success(wait_for_string_value(d, "BIO", "value", "line one\nline two", 5.0f),
+        t |> success(wait_for_string_value(d, "BIO", "value", "line one\nline two", 300),
                      "imgui_set steers BIO.value with embedded newline")
 
         // ----- input_text_growable — long string forces CallbackResize -----
@@ -68,7 +68,7 @@ def test_inputs_text_smoke(t : T?) {
             long_text += "x"
         }
         set_value(d, "GROW", JV(long_text))
-        t |> success(wait_for_string_value(d, "GROW", "value", long_text, 8.0f),
+        t |> success(wait_for_string_value(d, "GROW", "value", long_text, 480),
                      "imgui_set steers GROW.value past 256B (CallbackResize fired)")
         var snap_grew = snapshot(d)
         let final_capacity = widget_payload_field(snap_grew, "GROW", "capacity") ?? 0
@@ -77,10 +77,10 @@ def test_inputs_text_smoke(t : T?) {
 
         // ----- combo_getter — int round-trip via lambda getter -----
         set_value(d, "FONT", JV(2))
-        t |> success(wait_for_int_value(d, "FONT", "value", 2, 5.0f),
+        t |> success(wait_for_int_value(d, "FONT", "value", 2, 300),
                      "imgui_set steers FONT to row 2 (Mono)")
         set_value(d, "FONT", JV(4))
-        t |> success(wait_for_int_value(d, "FONT", "value", 4, 5.0f),
+        t |> success(wait_for_int_value(d, "FONT", "value", 4, 300),
                      "imgui_set re-steers FONT to row 4 (Display)")
 
         // ----- Final snapshot persistence -----

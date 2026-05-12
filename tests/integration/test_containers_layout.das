@@ -53,14 +53,14 @@ def test_containers_layout_smoke(t : T?) {
         set_value(d, "LAYOUT_WIN/MAIN_TABS/SETTINGS_TAB/PHYSICS_TREE/GRAVITY", JV(12.5f))
         t |> success(wait_for_payload_value(d,
                         "LAYOUT_WIN/MAIN_TABS/SETTINGS_TAB/PHYSICS_TREE/GRAVITY",
-                        "value", 12.5f, 5.0f),
+                        "value", 12.5f, 300),
                      "imgui_set on 5-deep nested leaf works")
 
         // ----- collapsing_header path key -----
         t |> equal(find_widget(snap0, "LAYOUT_WIN/LOG_HEADER")?["kind"] ?? "",
                    "collapsing_header", "collapsing_header registers")
         // It's flagged DefaultOpen so opened=true is expected on first frame.
-        t |> success(wait_for_bool_value(d, "LAYOUT_WIN/LOG_HEADER", "opened", true, 5.0f),
+        t |> success(wait_for_bool_value(d, "LAYOUT_WIN/LOG_HEADER", "opened", true, 300),
                      "DefaultOpen header reports opened=true")
 
         // ----- imgui_close on a tree_node closes it via SetNextItemOpen -----
@@ -70,7 +70,7 @@ def test_containers_layout_smoke(t : T?) {
         // disappearance is the more meaningful signal anyway — it's what
         // a UI-driving test actually cares about.
         close_widget(d, "LAYOUT_WIN/MAIN_TABS/SETTINGS_TAB/PHYSICS_TREE")
-        var snap_closed = wait_until(d, 5.0f) $(var snap) {
+        var snap_closed = wait_until(d, 300) $(var snap) {
             return !widget_rendered(snap, "LAYOUT_WIN/MAIN_TABS/SETTINGS_TAB/PHYSICS_TREE/GRAVITY")
         }
         t |> success(snap_closed != null,

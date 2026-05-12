@@ -47,7 +47,7 @@ def test_widget_init_defaults(t : T?) {
         // ===== Live state writes still work — confirm the default-init global
         // didn't trip a const-shadow trap. imgui_set bumps count by 1 next frame.
         set_value(d, "DEFAULTS", JV(0))
-        t |> success(wait_for_int_value(d, "DEFAULTS", "count", 43, 5.0f),
+        t |> success(wait_for_int_value(d, "DEFAULTS", "count", 43, 300),
                      "imgui_set still steers state after default-init")
     }
 }

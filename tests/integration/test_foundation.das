@@ -56,11 +56,11 @@ def test_foundation_smoke(t : T?) {
         // Gate 4: unified dispatch — imgui_click and imgui_set both work.
         let count_before = save?["payload"]?["click_count"] ?? 0
         click(d, "SAVE_BTN")
-        t |> success(wait_for_int_value(d, "SAVE_BTN", "click_count", count_before + 1, 5.0f),
+        t |> success(wait_for_int_value(d, "SAVE_BTN", "click_count", count_before + 1, 300),
                      "imgui_click bumps SAVE_BTN.click_count")
 
         set_value(d, "SPEED", JV(7))
-        t |> success(wait_for_int_value(d, "SPEED", "value", 7, 5.0f),
+        t |> success(wait_for_int_value(d, "SPEED", "value", 7, 300),
                      "imgui_set steers SPEED.value to 7")
     }
 }

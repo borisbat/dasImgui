@@ -32,12 +32,12 @@ def test_containers_overlay_smoke(t : T?) {
 
         // ----- imgui_set on combo_select index -----
         set_value(d, "OVERLAY_WIN/PALETTE_COMBO", JV(2))
-        t |> success(wait_for_int_value(d, "OVERLAY_WIN/PALETTE_COMBO", "value", 2, 5.0f),
+        t |> success(wait_for_int_value(d, "OVERLAY_WIN/PALETTE_COMBO", "value", 2, 300),
                      "imgui_set steers PALETTE_COMBO to 2 (Forest)")
 
         // ----- imgui_set on list_box_select index -----
         set_value(d, "OVERLAY_WIN/TASK_LIST", JV(3))
-        t |> success(wait_for_int_value(d, "OVERLAY_WIN/TASK_LIST", "value", 3, 5.0f),
+        t |> success(wait_for_int_value(d, "OVERLAY_WIN/TASK_LIST", "value", 3, 300),
                      "imgui_set steers TASK_LIST to 3 (Package)")
 
         // ----- imgui_open on a popup flips state.open via the dispatcher -----
@@ -46,7 +46,7 @@ def test_containers_overlay_smoke(t : T?) {
         // calling OpenPopup() — so the popup body runs and its leaf
         // OPT_VSYNC appears in the snapshot.
         open_widget(d, "OVERLAY_WIN/OPTIONS_POPUP")
-        var snap_popup_open = wait_until(d, 5.0f) $(var snap) {
+        var snap_popup_open = wait_until(d, 300) $(var snap) {
             return widget_rendered(snap, "OVERLAY_WIN/OPTIONS_POPUP/OPT_VSYNC")
         }
         t |> success(snap_popup_open != null,
@@ -54,7 +54,7 @@ def test_containers_overlay_smoke(t : T?) {
 
         // ----- imgui_close on the open popup closes it -----
         close_widget(d, "OVERLAY_WIN/OPTIONS_POPUP")
-        var snap_popup_closed = wait_until(d, 5.0f) $(var snap) {
+        var snap_popup_closed = wait_until(d, 300) $(var snap) {
             return !widget_rendered(snap, "OVERLAY_WIN/OPTIONS_POPUP/OPT_VSYNC")
         }
         t |> success(snap_popup_closed != null,
@@ -62,7 +62,7 @@ def test_containers_overlay_smoke(t : T?) {
 
         // ----- imgui_open on popup_modal -----
         open_widget(d, "OVERLAY_WIN/CONFIRM_MODAL")
-        var snap_modal = wait_until(d, 5.0f) $(var snap) {
+        var snap_modal = wait_until(d, 300) $(var snap) {
             return widget_rendered(snap, "OVERLAY_WIN/CONFIRM_MODAL/CONFIRM_YES")
         }
         t |> success(snap_modal != null,
@@ -70,7 +70,7 @@ def test_containers_overlay_smoke(t : T?) {
 
         // Modal stays up until pending_close fires; close it via imgui_close.
         close_widget(d, "OVERLAY_WIN/CONFIRM_MODAL")
-        var snap_modal_closed = wait_until(d, 5.0f) $(var snap) {
+        var snap_modal_closed = wait_until(d, 300) $(var snap) {
             return !widget_rendered(snap, "OVERLAY_WIN/CONFIRM_MODAL/CONFIRM_YES")
         }
         t |> success(snap_modal_closed != null,

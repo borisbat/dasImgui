@@ -48,7 +48,7 @@ def test_imgui_type_text_buffer_fills(t : T?) {
 
         // Gate 4: poll until the buffer reflects the full payload — one char
         // per frame means 5 chars take ~5 frames; allow 5s for poll cadence.
-        let done = wait_for_string_value(d, "DEMO_INPUT", "value", "hello", 5.0f)
+        let done = wait_for_string_value(d, "DEMO_INPUT", "value", "hello", 300)
         t |> success(done, "DEMO_INPUT.value reaches 'hello' after L1 keyboard stream")
     }
 }

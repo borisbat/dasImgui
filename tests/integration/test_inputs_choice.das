@@ -31,24 +31,24 @@ def test_inputs_choice_smoke(t : T?) {
 
         // ----- Combo — imgui_set jumps to N-th item -----
         set_value(d, "FRUIT", JV(2))
-        t |> success(wait_for_int_value(d, "FRUIT", "value", 2, 5.0f),
+        t |> success(wait_for_int_value(d, "FRUIT", "value", 2, 300),
                      "imgui_set steers FRUIT to index 2 (Cherry)")
 
         set_value(d, "FRUIT", JV(4))
-        t |> success(wait_for_int_value(d, "FRUIT", "value", 4, 5.0f),
+        t |> success(wait_for_int_value(d, "FRUIT", "value", 4, 300),
                      "imgui_set steers FRUIT to index 4 (Elderberry)")
 
         set_value(d, "WEEKDAY", JV(6))
-        t |> success(wait_for_int_value(d, "WEEKDAY", "value", 6, 5.0f),
+        t |> success(wait_for_int_value(d, "WEEKDAY", "value", 6, 300),
                      "imgui_set steers WEEKDAY to index 6 (Sun)")
 
         // ----- ListBox — same dispatch shape -----
         set_value(d, "SHIRT_SIZE", JV(3))
-        t |> success(wait_for_int_value(d, "SHIRT_SIZE", "value", 3, 5.0f),
+        t |> success(wait_for_int_value(d, "SHIRT_SIZE", "value", 3, 300),
                      "imgui_set steers SHIRT_SIZE to index 3 (L)")
 
         set_value(d, "SHIRT_SIZE", JV(0))
-        t |> success(wait_for_int_value(d, "SHIRT_SIZE", "value", 0, 5.0f),
+        t |> success(wait_for_int_value(d, "SHIRT_SIZE", "value", 0, 300),
                      "imgui_set steers SHIRT_SIZE to index 0 (XS)")
 
         // ----- Final snapshot envelope -----

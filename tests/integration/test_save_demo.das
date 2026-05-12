@@ -32,12 +32,12 @@ def test_save_flow(t : T?) {
 
         // Click → STATUS_TEXT flips to "saved".
         click(app, "SAVE_BTN")
-        expect_value(app, "STATUS_TEXT", "value", "saved", 5.0f)
+        expect_value(app, "STATUS_TEXT", "value", "saved", 300)
 
         // type_text auto-focuses NAME_INPUT, settles, then sends chars.
         // expect_value confirms the chars landed on state.value.
         type_text(app, "NAME_INPUT", "hello")
-        expect_value(app, "NAME_INPUT", "value", "hello", 5.0f)
+        expect_value(app, "NAME_INPUT", "value", "hello", 300)
 
         t |> success(true, "save_demo end-to-end: click + type_text auto-focus + expect_value")
     }

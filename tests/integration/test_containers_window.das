@@ -42,12 +42,12 @@ def test_containers_window_smoke(t : T?) {
 
         // ----- Click via the path-keyed dispatcher -----
         click(d, "MAIN_WIN/SAVE")
-        t |> success(wait_for_int_value(d, "MAIN_WIN/SAVE", "click_count", 1, 5.0f),
+        t |> success(wait_for_int_value(d, "MAIN_WIN/SAVE", "click_count", 1, 300),
                      "imgui_click MAIN_WIN/SAVE bumps click_count")
 
         // ----- imgui_set on a nested slider -----
         set_value(d, "MAIN_WIN/SPEED", JV(7.5f))
-        t |> success(wait_for_payload_value(d, "MAIN_WIN/SPEED", "value", 7.5f, 5.0f),
+        t |> success(wait_for_payload_value(d, "MAIN_WIN/SPEED", "value", 7.5f, 300),
                      "imgui_set steers MAIN_WIN/SPEED to 7.5")
 
         // ----- Three-deep nesting: window > child > leaf -----
@@ -56,7 +56,7 @@ def test_containers_window_smoke(t : T?) {
         t |> equal(wire_entry?["kind"] ?? "", "checkbox",
                    "MAIN_WIN/LEFT_PANEL/WIRE registers under 3-deep path")
         set_value(d, "MAIN_WIN/LEFT_PANEL/WIRE", JV(true))
-        t |> success(wait_for_bool_value(d, "MAIN_WIN/LEFT_PANEL/WIRE", "value", true, 5.0f),
+        t |> success(wait_for_bool_value(d, "MAIN_WIN/LEFT_PANEL/WIRE", "value", true, 300),
                      "imgui_set MAIN_WIN/LEFT_PANEL/WIRE flips it true")
 
         // ----- group(RIGHT_GROUP) inside MAIN_WIN, then leaf inside it -----
@@ -64,7 +64,7 @@ def test_containers_window_smoke(t : T?) {
         t |> equal(power_entry?["kind"] ?? "", "slider_int",
                    "MAIN_WIN/RIGHT_GROUP/POWER registers under nested group path")
         set_value(d, "MAIN_WIN/RIGHT_GROUP/POWER", JV(42))
-        t |> success(wait_for_int_value(d, "MAIN_WIN/RIGHT_GROUP/POWER", "value", 42, 5.0f),
+        t |> success(wait_for_int_value(d, "MAIN_WIN/RIGHT_GROUP/POWER", "value", 42, 300),
                      "imgui_set on a leaf nested in window>group works")
 
         // ----- imgui_open on a closable window flips state.open -----
@@ -73,7 +73,7 @@ def test_containers_window_smoke(t : T?) {
         // existence into `widget_exists` (registered at module [init]) so
         // we test for paint via `widget_rendered` instead.
         open_widget(d, "DETAIL_WIN")
-        var snap_open = wait_until(d, 5.0f) $(var snap) {
+        var snap_open = wait_until(d, 300) $(var snap) {
             return widget_rendered(snap, "DETAIL_WIN/PING")
         }
         t |> success(snap_open != null,
@@ -82,7 +82,7 @@ def test_containers_window_smoke(t : T?) {
         // ----- imgui_close hides the window again -----
         // PING stays in g_widgets (rendered:false) but stops painting.
         close_widget(d, "DETAIL_WIN")
-        var snap_closed = wait_until(d, 5.0f) $(var snap) {
+        var snap_closed = wait_until(d, 300) $(var snap) {
             return !widget_rendered(snap, "DETAIL_WIN/PING")
         }
         t |> success(snap_closed != null,

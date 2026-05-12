@@ -24,9 +24,7 @@ def test_indexed_dynamic_add_remove(t : T?) {
         // Wait for the window's controls to register.
         var snap0 = wait_for_widget(d, "DYN_WIN/ADD_CH", 15.0f)
         t |> success(snap0 != null, "DYN_WIN/ADD_CH registered after first frame")
-        if (snap0 == null) {
-            return
-        }
+        return if (snap0 == null)
         // Empty table: no CHANNEL_VOL[*] entries.
         t |> success(!widget_exists(snap0, "DYN_WIN/CHANNEL_VOL[0]"),
                      "CHANNEL_VOL empty initially (no [0] entry)")
@@ -38,7 +36,7 @@ def test_indexed_dynamic_add_remove(t : T?) {
 
         // imgui_set lands on the new entry; other keys (none) unaffected.
         set_value(d, "DYN_WIN/CHANNEL_VOL[0]", JV(0.42f))
-        t |> success(wait_for_payload_value(d, "DYN_WIN/CHANNEL_VOL[0]", "value", 0.42f, 5.0f),
+        t |> success(wait_for_payload_value(d, "DYN_WIN/CHANNEL_VOL[0]", "value", 0.42f, 300),
                      "imgui_set CHANNEL_VOL[0]=0.42 lands")
 
         // ADD again → [1] appears alongside [0].
@@ -53,7 +51,7 @@ def test_indexed_dynamic_add_remove(t : T?) {
 
         // imgui_set on [1] doesn't perturb [0].
         set_value(d, "DYN_WIN/CHANNEL_VOL[1]", JV(0.91f))
-        t |> success(wait_for_payload_value(d, "DYN_WIN/CHANNEL_VOL[1]", "value", 0.91f, 5.0f),
+        t |> success(wait_for_payload_value(d, "DYN_WIN/CHANNEL_VOL[1]", "value", 0.91f, 300),
                      "imgui_set CHANNEL_VOL[1]=0.91 lands")
         var snap_after_set1 = snapshot(d)
         t |> equal(widget_payload_field(snap_after_set1, "DYN_WIN/CHANNEL_VOL[0]", "value") ?? -1.0f,
@@ -63,7 +61,7 @@ def test_indexed_dynamic_add_remove(t : T?) {
         click(d, "DYN_WIN/REMOVE_CH")
         // §G expiration: indexed entry expires when last_seen_frame < g_frame-1.
         // Wait through a couple of frames for the snapshot to drop it.
-        let dropped = wait_until(d, 5.0f) $(var snap : JsonValue?) : bool {
+        let dropped = wait_until(d, 300) $(var snap : JsonValue?) : bool {
             return !widget_exists(snap, "DYN_WIN/CHANNEL_VOL[1]")
         }
         t |> success(dropped != null, "REMOVE drops CHANNEL_VOL[1] from snapshot")
@@ -75,7 +73,7 @@ def test_indexed_dynamic_add_remove(t : T?) {
 
         // BUMP_LAST raises [0].value (only [0] remains).
         click(d, "DYN_WIN/BUMP_LAST")
-        t |> success(wait_for_payload_value(d, "DYN_WIN/CHANNEL_VOL[0]", "value", 0.52f, 5.0f),
+        t |> success(wait_for_payload_value(d, "DYN_WIN/CHANNEL_VOL[0]", "value", 0.52f, 300),
                      "BUMP_LAST nudges [0].value by 0.1 (0.42 -> 0.52)")
 
         // ADD again → key 1 re-appears with fresh defaults (value=0.5).

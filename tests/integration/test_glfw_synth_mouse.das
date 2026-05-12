@@ -57,13 +57,13 @@ def test_mouse_buttons_io_mirror(t : T?) {
         // event-driven (no polling override), so io.mouse_buttons[0] sticks
         // until release.
         post_command(d, "mouse_click", JV((button = 0, action = "press")))
-        let pressed = wait_until(d, 3.0f) $(var snap) {
+        let pressed = wait_until(d, 180) $(var snap) {
             return snap?["io"]?["mouse_buttons"]?[0] ?? false
         }
         t |> success(pressed != null, "io.mouse_buttons[0] == true after press")
 
         post_command(d, "mouse_click", JV((button = 0, action = "release")))
-        let released = wait_until(d, 3.0f) $(var snap) {
+        let released = wait_until(d, 180) $(var snap) {
             let b = snap?["io"]?["mouse_buttons"]?[0] ?? true
             return !b
         }
@@ -88,7 +88,7 @@ def test_mouse_move_to_animates(t : T?) {
         // Wide window — under suite load a single slow frame can advance the
         // timeline a lot, but anywhere strictly between start and end proves
         // the tick is interpolating rather than snapping straight to the end.
-        let midflight = wait_until(d, 3.0f) $(var snap) {
+        let midflight = wait_until(d, 180) $(var snap) {
             let s = post_command(d, "mouse_status", null)
             let mx = s?["cursor_x"] ?? -1.0f
             return mx > 55.0f && mx < 345.0f
@@ -96,7 +96,7 @@ def test_mouse_move_to_animates(t : T?) {
         t |> success(midflight != null, "cursor passes through mid-flight x")
 
         // Wait until playback completes and cursor lands on the endpoint.
-        let landed = wait_until(d, 5.0f) $(var snap) {
+        let landed = wait_until(d, 300) $(var snap) {
             let s = post_command(d, "mouse_status", null)
             let playing = s?["playing"] ?? true
             let mx = s?["cursor_x"] ?? -1.0f
@@ -127,7 +127,7 @@ def test_mouse_play_event_list_completes(t : T?) {
         post_command(d, "mouse_play", JV((events = events)))
 
         // Convergence: playing flips to false and cursor lands on the last move waypoint.
-        let done = wait_until(d, 5.0f) $(var snap) {
+        let done = wait_until(d, 300) $(var snap) {
             let s = post_command(d, "mouse_status", null)
             let playing = s?["playing"] ?? true
             let mx = s?["cursor_x"] ?? -1.0f
@@ -151,7 +151,7 @@ def test_mouse_stop_aborts(t : T?) {
         post_command(d, "mouse_pos", JV((x = 50.0f, y = 50.0f)))
         post_command(d, "mouse_move_to", JV((x = 400.0f, y = 300.0f, duration_ms = 5000)))
         // After kickoff, mouse_status reports playing=true.
-        let started = wait_until(d, 1.0f) $(var snap) {
+        let started = wait_until(d, 60) $(var snap) {
             let s = post_command(d, "mouse_status", null)
             return s?["playing"] ?? false
         }
@@ -180,7 +180,7 @@ def test_mouse_stop_releases_held_buttons(t : T?) {
         }
 
         post_command(d, "mouse_click", JV((button = 0, action = "press")))
-        let pressed = wait_until(d, 3.0f) $(var snap) {
+        let pressed = wait_until(d, 180) $(var snap) {
             let s = post_command(d, "mouse_status", null)
             return (s?["held_count"] ?? 0) >= 1 && (snap?["io"]?["mouse_buttons"]?[0] ?? false)
         }
@@ -189,7 +189,7 @@ def test_mouse_stop_releases_held_buttons(t : T?) {
         let stopped = post_command(d, "mouse_stop", null)
         t |> equal(stopped?["released"] ?? -1, 1, "mouse_stop.released == 1")
 
-        let cleared = wait_until(d, 3.0f) $(var snap) {
+        let cleared = wait_until(d, 180) $(var snap) {
             let s = post_command(d, "mouse_status", null)
             let still_held = snap?["io"]?["mouse_buttons"]?[0] ?? true
             return (s?["held_count"] ?? 1) == 0 && !still_held

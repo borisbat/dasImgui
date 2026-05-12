@@ -45,7 +45,7 @@ def test_imgui_focus_keyboard(t : T?) {
 
         // Gate 3: after focus dispatch, snapshot.focus flips true within a
         // few frames (widget_prelude consumes g_pending_focus on next render).
-        let focused = wait_until(d, 5.0f) $(snap) => snap?["globals"]?["DEMO_INPUT"]?["focus"] ?? false
+        let focused = wait_until(d, 300) $(snap) => snap?["globals"]?["DEMO_INPUT"]?["focus"] ?? false
         t |> success(focused != null, "DEMO_INPUT.focus becomes true after imgui_focus dispatch")
 
         // Gate 4: display-only widget rejects focus dispatch.

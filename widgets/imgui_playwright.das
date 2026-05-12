@@ -33,6 +33,7 @@ require strings
 // (slower CI box, longer-warmup demos) are a one-line change.
 
 let DEFAULT_LIVE_PORT : int = 9090                   //! daslang-live's live_api default port
+let DEFAULT_DEADLOCK_SANITY_SEC : float = 120.0f     //! frame-budget waits bail out after this wall-clock if the frame counter never advances (subprocess crash / true deadlock). Not a per-test timeout — it should never fire on a slow-but-progressing run.
 let DEFAULT_READY_TIMEOUT_SEC : float = 30.0f        //! /status must turn 200 OK within this — covers daslang-live boot + GLFW + ImGui ctx
 let DEFAULT_TEST_TIMEOUT_SEC : float = 120.0f        //! upper bound on the entire popen lifetime, including body + drain
 let DEFAULT_RELOAD_TIMEOUT_SEC : float = 30.0f       //! POST /reload to /status.has_error == false convergence
@@ -149,18 +150,30 @@ def public widget_rendered(var snap : JsonValue?; ident : string) : bool {
 // ===== Poll-until family =====
 
 def public wait_until(app : ImguiApp;
-                      timeout_sec : float;
+                      max_frames : int;
                       pred : block<(var snap : JsonValue?) : bool>) : JsonValue? {
-    //! Playwright-style poll-until-condition. Calls `snapshot(app)` every
-    //! `FRAME_POLL_INTERVAL_MS` and invokes `pred(snap)`; returns the first
-    //! snapshot for which `pred` returns true, or null on timeout. Tests
-    //! should use this (or the typed sugars below) instead of raw `sleep`s
-    //! — gives auto-retry semantics, removes the brittle "give the host a
-    //! frame" magic delay, and fails fast when a value never converges.
-    let deadline = ref_time_ticks() + int64(timeout_sec * 1000000.0f)
-    while (ref_time_ticks() < deadline) {
+    //! Poll-until-condition with a *frame budget* instead of wall-clock seconds.
+    //! Reads ``snap["frame"]`` on each tick and gives up after ``max_frames``
+    //! frames have elapsed since the first successful snapshot — deterministic
+    //! w.r.t. the work the subprocess does, immune to "what if the machine is
+    //! slow today / someone's watching video on the same CPU." A slow machine
+    //! just spends more wall-clock per frame; coverage is unchanged.
+    //!
+    //! ``DEFAULT_DEADLOCK_SANITY_SEC`` is a backstop only — fires when the
+    //! frame counter never advances (subprocess crashed or truly hung). It
+    //! must never trip on normal slow runs; if it does, raise it.
+    var start_frame   = -1
+    let sanity_deadline = ref_time_ticks() + int64(DEFAULT_DEADLOCK_SANITY_SEC * 1000000.0f)
+    while (true) {
         var snap = snapshot(app)
-        if (snap != null && invoke(pred, snap)) return snap
+        if (snap != null) {
+            if (invoke(pred, snap)) return snap
+            let f = snap?["frame"] ?? 0
+            if (start_frame < 0) {
+                start_frame = f
+            } elif (f - start_frame >= max_frames) return null
+        }
+        return null if (ref_time_ticks() >= sanity_deadline)
         sleep(FRAME_POLL_INTERVAL_MS)
     }
     return null
@@ -203,10 +216,10 @@ def public wait_for_int_value(app : ImguiApp;
                               target : string;
                               field : string;
                               expected : int;
-                              timeout_sec : float = 5.0f) : bool {
+                              max_frames : int = 300) : bool {
     //! Poll snapshot until `globals[target].payload[field] == expected` (typed int).
-    //! Returns true on match, false on timeout.
-    return wait_until(app, timeout_sec) $(var snap) {
+    //! Returns true on match, false after `max_frames` frames elapse.
+    return wait_until(app, max_frames) $(var snap) {
         return (widget_payload_field(snap, target, field) ?? (expected ^ 1)) == expected
     } != null
 }
@@ -215,9 +228,9 @@ def public wait_for_bool_value(app : ImguiApp;
                                target : string;
                                field : string;
                                expected : bool;
-                               timeout_sec : float = 5.0f) : bool {
+                               max_frames : int = 300) : bool {
     //! Poll snapshot until `globals[target].payload[field] == expected` (typed bool).
-    return wait_until(app, timeout_sec) $(var snap) {
+    return wait_until(app, max_frames) $(var snap) {
         return (widget_payload_field(snap, target, field) ?? !expected) == expected
     } != null
 }
@@ -226,9 +239,9 @@ def public wait_for_string_value(app : ImguiApp;
                                  target : string;
                                  field : string;
                                  expected : string;
-                                 timeout_sec : float = 5.0f) : bool {
+                                 max_frames : int = 300) : bool {
     //! Poll snapshot until `globals[target].payload[field] == expected` (typed string).
-    return wait_until(app, timeout_sec) $(var snap) {
+    return wait_until(app, max_frames) $(var snap) {
         return (widget_payload_field(snap, target, field) ?? "") == expected
     } != null
 }
@@ -237,12 +250,12 @@ def public wait_for_payload_value(app : ImguiApp;
                                   target : string;
                                   field : string;
                                   expected : auto(T);
-                                  timeout_sec : float = 5.0f) : bool {
+                                  max_frames : int = 300) : bool {
     //! Generic poll: snapshot until `globals[target].payload[field] == expected`.
     //! T is inferred from `expected` and drives both the from_JV decode and the
     //! equality check. Use for any roundtrippable type — float, float2/3/4,
     //! int2/3/4, etc. — where the typed sugars above don't already apply.
-    return wait_until(app, timeout_sec) $(var snap) {
+    return wait_until(app, max_frames) $(var snap) {
         let v = widget_payload_field(snap, target, field)
         return v != null && from_JV(v, type<typedecl(expected)>, default<typedecl(expected)>) == expected  // nolint:STYLE020 — template handles vec types where `??` isn't defined
     } != null
@@ -254,14 +267,14 @@ def public expect_value(app : ImguiApp;
                         target : string;
                         field : string;
                         expected : auto(T);
-                        timeout_sec : float = 5.0f) : void {
+                        max_frames : int = 300) : void {
     //! Assertion form of `wait_for_payload_value`. Polls until
-    //! `globals[target].payload[field] == expected`; on timeout, panics
-    //! with a focused failure message (want / got / widget kind / rendered)
-    //! — never dumps the full snapshot. If the user wants the full
-    //! snapshot at the failure point, they call `snapshot(app)` before the
-    //! assertion or after recovering.
-    if (wait_for_payload_value(app, target, field, expected, timeout_sec)) return
+    //! `globals[target].payload[field] == expected`; if the value never
+    //! converges within `max_frames` frames, panics with a focused failure
+    //! message (want / got / widget kind / rendered) — never dumps the full
+    //! snapshot. If the user wants the full snapshot at the failure point,
+    //! they call `snapshot(app)` before the assertion or after recovering.
+    if (wait_for_payload_value(app, target, field, expected, max_frames)) return
     var snap = snapshot(app)
     let got_jv = widget_payload_field(snap, target, field)
     let got_str = got_jv != null ? write_json(got_jv) : "<missing>"
@@ -269,7 +282,7 @@ def public expect_value(app : ImguiApp;
     let exists = widget_exists(snap, target)
     let rendered = exists && widget_rendered(snap, target)
     let want_str = write_json(JV(expected))
-    panic("expect_value({target}.{field}) timeout after {timeout_sec}s:\n  want: {want_str}\n  got:  {got_str}\n  widget kind: {kind}\n  widget rendered: {rendered}")
+    panic("expect_value({target}.{field}) gave up after {max_frames} frames:\n  want: {want_str}\n  got:  {got_str}\n  widget kind: {kind}\n  widget rendered: {rendered}")
 }
 
 def public expect_render(app : ImguiApp;
@@ -348,16 +361,17 @@ def public await_probe(app : ImguiApp; until : string = "quiescent") : JsonValue
 }
 
 def public type_text(app : ImguiApp; target : string; text : string;
-                     focus_timeout_sec : float = 2.0f;
+                     focus_max_frames : int = 120;
                      duration_s : float = 0.0f) : JsonValue? {
-    //! Auto-focus `target` first, wait for focus to settle, then synthesize
-    //! UTF-8 characters via L1 AddInputCharactersUTF8. `duration_s > 0`
-    //! paces typing over that wall-clock duration (server translates to
-    //! `total_frames = int(duration_s * 60)` — exact rate is fps-dependent,
-    //! visible-to-viewer-only). Default 0 keeps the 1-char/frame legacy
-    //! rate. Phase 3 closes the gap noted in Phase 2: the legacy
-    //! `type_text` was "informational target" and required the example to
-    //! call `SetKeyboardFocusHere(0)` itself.
+    //! Auto-focus `target` first, wait for focus to settle (up to
+    //! `focus_max_frames` frames), then synthesize UTF-8 characters via L1
+    //! AddInputCharactersUTF8. `duration_s > 0` paces typing over that
+    //! wall-clock duration (server translates to `total_frames =
+    //! int(duration_s * 60)` — exact rate is fps-dependent, visible-to-
+    //! viewer-only). Default 0 keeps the 1-char/frame legacy rate. Phase 3
+    //! closes the gap noted in Phase 2: the legacy `type_text` was
+    //! "informational target" and required the example to call
+    //! `SetKeyboardFocusHere(0)` itself.
     //!
     //! Settle is a `wait_until` poll on `globals[target].focus == true`
     //! (server-side `entry.focus = IsItemFocused()` lands on this top-level
@@ -367,7 +381,7 @@ def public type_text(app : ImguiApp; target : string; text : string;
     //! Falls through to send chars even on focus timeout; the caller can
     //! `expect_value` afterward to surface "the value never landed."
     focus(app, target)
-    wait_until(app, focus_timeout_sec) $(var snap) {
+    wait_until(app, focus_max_frames) $(var snap) {
         return snap?["globals"]?[target]?["focus"] ?? false
     }
     let total_frames = duration_s > 0.0f ? int(duration_s * 60.0f) : 0

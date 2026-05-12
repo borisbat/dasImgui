@@ -52,7 +52,7 @@ def test_focus_rect_resolves_active_widget(t : T?) {
         }
 
         focus(d, "NAME_INPUT")
-        let focused = wait_until(d, 3.0f) $(var snap) {
+        let focused = wait_until(d, 180) $(var snap) {
             return snap?["globals"]?["NAME_INPUT"]?["focus"] ?? false
         }
         t |> success(focused != null, "NAME_INPUT receives keyboard focus after focus dispatch")

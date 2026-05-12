@@ -47,7 +47,7 @@ def test_hex_id_click_dispatches_via_path(t : T?) {
 
         // Gate 3: click_count actually incremented — proves the L2
         // dispatcher fired, not just the resolution.
-        let counted = wait_for_int_value(d, "DEMO_BTN", "click_count", 1, 5.0f)
+        let counted = wait_for_int_value(d, "DEMO_BTN", "click_count", 1, 300)
         t |> success(counted, "DEMO_BTN.click_count reached 1 after hex_id click")
 
         // Gate 4: garbage hex (well-formed prefix, but no widget at that id)

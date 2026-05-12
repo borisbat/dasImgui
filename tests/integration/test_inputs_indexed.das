@@ -25,9 +25,7 @@ def test_inputs_indexed_smoke(t : T?) {
         // the indexed wrapper and it registered the per-key path.
         var snap0 = wait_for_widget(d, "MIX_WIN/CHANNEL_VOL[0]", 15.0f)
         t |> success(snap0 != null, "MIX_WIN/CHANNEL_VOL[0] registered after first frame")
-        if (snap0 == null) {
-            return
-        }
+        return if (snap0 == null)
 
         // ----- Path key shape: int-keyed -----
         for (i in range(4)) {
@@ -47,7 +45,7 @@ def test_inputs_indexed_smoke(t : T?) {
 
         // ----- imgui_set lands on the right key (cross-key isolation) -----
         set_value(d, "MIX_WIN/CHANNEL_VOL[2]", JV(0.123f))
-        t |> success(wait_for_payload_value(d, "MIX_WIN/CHANNEL_VOL[2]", "value", 0.123f, 5.0f),
+        t |> success(wait_for_payload_value(d, "MIX_WIN/CHANNEL_VOL[2]", "value", 0.123f, 300),
                      "imgui_set MIX_WIN/CHANNEL_VOL[2]=0.123 lands")
         var snap_after_set = snapshot(d)
         // Other keys must be untouched.
@@ -58,7 +56,7 @@ def test_inputs_indexed_smoke(t : T?) {
 
         // ----- String-keyed isolation -----
         set_value(d, "MIX_WIN/TRACK_VOL[lead]", JV(0.95f))
-        t |> success(wait_for_payload_value(d, "MIX_WIN/TRACK_VOL[lead]", "value", 0.95f, 5.0f),
+        t |> success(wait_for_payload_value(d, "MIX_WIN/TRACK_VOL[lead]", "value", 0.95f, 300),
                      "imgui_set MIX_WIN/TRACK_VOL[lead]=0.95 lands")
         var snap_after_str = snapshot(d)
         let bass_v = widget_payload_field(snap_after_str, "MIX_WIN/TRACK_VOL[bass]", "value")
