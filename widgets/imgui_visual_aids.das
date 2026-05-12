@@ -8,6 +8,8 @@ module imgui_visual_aids shared public
 require imgui public
 require imgui/imgui_boost_runtime public
 require live/live_commands
+require live/glfw_live
+require live_host
 require daslib/json public
 require daslib/json_boost public
 require strings
@@ -70,6 +72,28 @@ var public trail_color      : uint  = rgba(255, 255, 255, 255)
 var public trail_dot_radius : float = 4.0f
 var public trail_fade       : float = 0.96f
 var public trail_enabled    : bool  = false
+
+// Cursor sprite — drawn at io.MousePos inside ImGui's foreground drawlist, so
+// it shows up in glReadPixels-based recordings (the OS hardware cursor never
+// hits the GL back buffer). Off by default; enable during APNG recording.
+var public cursor_sprite_enabled            : bool  = false
+var public cursor_sprite_color              : uint  = rgba(255, 64, 64, 255)
+var public cursor_sprite_outline_color      : uint  = rgba(255, 255, 255, 255)
+var public cursor_sprite_radius             : float = 9.0f
+var public cursor_sprite_outline_thickness  : float = 2.0f
+var public cursor_sprite_inner_radius       : float = 2.5f
+
+// Click flash — expanding ring drawn at the cursor when glfw_live's synth
+// driver fires a button press. ImGui's hit-test logic uses io.MousePos which
+// the ImGui_ImplGlfw per-frame poll overwrites with the real OS cursor on
+// focused windows, so the widget's own hover/active visuals don't fire for
+// synth clicks. This overlay is the recording's proof-of-click.
+var public click_flash_enabled       : bool  = true
+var public click_flash_color         : uint  = rgba(255, 255, 0, 255)   //! yellow
+var public click_flash_start_radius  : float = 8.0f
+var public click_flash_end_radius    : float = 36.0f
+var public click_flash_thickness     : float = 2.5f
+var public click_flash_duration_s    : float = 0.35f
 
 // Narrate callout
 var public narrate_bg_color       : uint  = rgba(32, 32, 32, 204)
@@ -142,6 +166,32 @@ def public mouse_trail(enabled : bool;
     }
 }
 
+def public cursor_sprite(enabled : bool) {
+    //! Toggle the in-frame cursor sprite. Drawn at io.MousePos via
+    //! ForegroundDrawList, so APNG recordings show a visible cursor pointer
+    //! even when synthetic motion isn't warping the (un-recordable) OS cursor.
+    cursor_sprite_enabled = enabled
+}
+
+def public apply_synth_io_override() {
+    //! Re-assert the synthetic cursor position into ImGui's IO between
+    //! `ImGui_ImplGlfw_NewFrame()` and `NewFrame()`. Same call-site as
+    //! `advance_coroutines()` in `imgui_boost_runtime.das:677-682`. Without
+    //! this, the per-frame `ImGui_ImplGlfw_UpdateMouseData` polls
+    //! `glfwGetCursorPos` and posts `AddMousePosEvent(real_cursor)` AFTER
+    //! the synthetic driver's chain dispatch — so the real cursor wins the
+    //! event queue's last-write-wins, widget hit-tests see real_cursor, and
+    //! synthetic clicks land off-target (narrate buttons don't fire, slider
+    //! doesn't drag, highlight buttons don't trigger). Posting once more
+    //! here ensures the synth pos is the LAST event in the queue, so
+    //! `NewFrame()`'s drain ends with io.MousePos = synth pos.
+    let (active, sx, sy) = get_synth_cursor()
+    if (active) {
+        var io & = unsafe(GetIO())
+        unsafe(io.AddMousePosEvent(sx, sy))
+    }
+}
+
 def public narrate(text : string;
                    target : string = "";
                    frames : int = narrate_default_frames) {
@@ -180,10 +230,20 @@ def private paint_highlights {
     }
 }
 
+def private effective_cursor_pos() : float2 {
+    //! Returns the synthetic cursor pos when glfw_live's mouse driver is
+    //! playing, else the real ImGui cursor. Decouples overlay rendering from
+    //! io.MousePos, which the per-frame ImGui_ImplGlfw polling overwrites
+    //! with the real OS cursor on focused windows.
+    let (active, sx, sy) = get_synth_cursor()
+    return float2(sx, sy) if (active)
+    return GetMousePos()
+}
+
 def private paint_trail {
     if (!trail_enabled) return
     var dl = GetForegroundDrawList()
-    let mouse = GetMousePos()
+    let mouse = effective_cursor_pos()
     g_trail |> push(TrailDot(pos = mouse, age_frames = 0))
     while (length(g_trail) > trail_max_dots) {
         g_trail |> erase(0)
@@ -241,10 +301,33 @@ def private paint_narrates {
     }
 }
 
+def private paint_cursor_sprite {
+    if (!cursor_sprite_enabled) return
+    var dl = GetForegroundDrawList()
+    let p = effective_cursor_pos()
+    *dl |> AddCircleFilled(p, cursor_sprite_radius, cursor_sprite_color, 16)
+    *dl |> AddCircle(p, cursor_sprite_radius, cursor_sprite_outline_color, 16, cursor_sprite_outline_thickness)
+    *dl |> AddCircleFilled(p, cursor_sprite_inner_radius, cursor_sprite_outline_color, 12)
+}
+
+def private paint_click_flash {
+    // Only fire on press, not release; skip if disabled or never clicked.
+    return if (!click_flash_enabled || synth_click_t < 0.0 || synth_click_action != 1)
+    let elapsed = float(get_uptime()) - synth_click_t
+    return if (elapsed < 0.0 || elapsed > click_flash_duration_s)
+    let alpha_f = (1.0f - elapsed / click_flash_duration_s) * 255.0f
+    let radius = click_flash_start_radius + (click_flash_end_radius - click_flash_start_radius) * (elapsed / click_flash_duration_s)
+    let color = (click_flash_color & 0x00FFFFFFu) | (uint(alpha_f) << 24u)
+    var dl = GetForegroundDrawList()
+    *dl |> AddCircle(effective_cursor_pos(), radius, color, 24, click_flash_thickness)
+}
+
 def private paint_all {
     paint_highlights()
     paint_trail()
     paint_narrates()
+    paint_cursor_sprite()
+    paint_click_flash()
 }
 
 def private on_command(command : string; target : string) {
@@ -315,5 +398,16 @@ struct AutoHighlightArgs {
 def imgui_auto_highlight(input : JsonValue?) : JsonValue? {
     let args = from_JV(input, type<AutoHighlightArgs>)
     imgui_auto_highlight_on_command = args.enabled
+    return JV((ok = true, enabled = args.enabled))
+}
+
+struct CursorSpriteArgs {
+    @optional enabled : bool = true
+}
+
+[live_command(description="Toggle the in-frame cursor sprite. Enable before record_start so the recording shows a visible cursor pointer.")]
+def imgui_cursor_sprite(input : JsonValue?) : JsonValue? {
+    let args = from_JV(input, type<CursorSpriteArgs>)
+    cursor_sprite(args.enabled)
     return JV((ok = true, enabled = args.enabled))
 }

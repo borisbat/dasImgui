@@ -55,6 +55,7 @@ def update() {
 
     ImGui_ImplOpenGL3_NewFrame()
     ImGui_ImplGlfw_NewFrame()
+    apply_synth_io_override()
     NewFrame()
 
     // ===== Main window — the demoed widgets =====
