@@ -136,12 +136,24 @@ def main {
     sleep(9000u)
 
     // --- Keyboard tour ---
-    // Move cursor onto NAME_INPUT and click to focus it. The focus rect
-    // lights up around it as soon as it becomes the active widget.
-    var click_events : array<JsonValue?>
-    click_events |> stop_at(0, p_name_input)
-    post_command(app, "mouse_play", JV((events = click_events)))
-    sleep(1200u)
+    // Move cursor visually to NAME_INPUT, then activate via imgui_focus
+    // (not a synth click). The cursor motion gives a visible cue; the
+    // SetKeyboardFocusHere path lights up the focus rect AND keeps Ctrl
+    // shortcuts working inside the InputText afterward. Synth mouse-clicks
+    // into an InputText leave ImGui in an internal state where subsequent
+    // Ctrl+A / Ctrl+Backspace don't reach the widget's shortcut handler
+    // (the nav-route condition only auto-selects when activation goes
+    // through the nav path, not the mouse-click path). Discovered while
+    // re-recording the keyboard tour — Boris caught the visible regression
+    // and we traced it through imgui_widgets.cpp:4282-4286.
+    var move_events <- [
+        JV((t_ms = 0,   kind = "move", x = p_name_input._0, y = p_name_input._1)),
+        JV((t_ms = 400, kind = "move", x = p_name_input._0, y = p_name_input._1))
+    ]
+    post_command(app, "mouse_play", JV((events = move_events)))
+    sleep(800u)
+    post_command(app, "imgui_focus", JV((target = "NAME_INPUT")))
+    sleep(400u)
 
     // Narrate the keyboard half so the viewer knows what's coming.
     post_command(app, "imgui_narrate", JV((
