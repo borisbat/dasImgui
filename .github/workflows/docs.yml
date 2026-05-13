@@ -28,11 +28,10 @@ permissions:
   pages: write
   id-token: write
 
-# dasImgui is laid out under daslang/modules/dasImgui/ to mirror the
-# local-dev path. daslang's dynamic-module discovery scans
-# <daslang_root>/modules/<X>/.das_module — the `imgui/*` namespace
-# registration in dasImgui's .das_module only fires when dasImgui lives
-# at that path.
+# Layout: dasImgui is checked out as a sibling of daslang, then daspkg-installed
+# globally into the cmake-installed daslang SDK. This mirrors the supported
+# end-user flow (daspkg install dasImgui --global) instead of nesting the
+# source under daslang/modules/.
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -44,15 +43,13 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: GaijinEntertainment/daScript
-          path: daslang
-          # Bump to a specific SHA once --detail_output (#2640) lands
-          # if pinning to master proves flaky.
+          path: daslang-src
           ref: master
 
-      - name: "Checkout dasImgui (into daslang/modules/dasImgui)"
+      - name: "Checkout dasImgui"
         uses: actions/checkout@v4
         with:
-          path: daslang/modules/dasImgui
+          path: dasImgui-src
 
       - name: "Install system dependencies"
         run: |
@@ -67,10 +64,10 @@ jobs:
         uses: lukka/get-cmake@latest
 
       - name: "Install Python dependencies"
-        run: pip install -r daslang/doc/requirements.txt
+        run: pip install -r daslang-src/doc/requirements.txt
 
-      - name: "Build: daslang"
-        working-directory: daslang
+      - name: "Build and install daslang SDK"
+        working-directory: daslang-src
         run: |
           set -eux
           cmake --no-warn-unused-cli -B./build \
@@ -81,26 +78,24 @@ jobs:
             -DDAS_GLFW_DISABLED=OFF \
             -G Ninja
           cmake --build ./build --target daslang
+          cmake --install ./build --prefix ${{ github.workspace }}/daslang
 
-      - name: "Build: dasImgui C++ shim"
-        working-directory: daslang/modules/dasImgui
+      - name: "daspkg install dasImgui (global)"
         run: |
           set -eux
-          cmake --no-warn-unused-cli -B./build \
-            -DCMAKE_BUILD_TYPE:STRING=Release \
-            -DDASLANG_DIR=${{ github.workspace }}/daslang \
-            -G Ninja
-          cmake --build ./build
+          ${{ github.workspace }}/daslang/bin/daslang \
+            ${{ github.workspace }}/daslang/utils/daspkg/main.das -- \
+            install ${{ github.workspace }}/dasImgui-src --global
 
       - name: "Run imgui2rst"
-        working-directory: daslang/modules/dasImgui
+        working-directory: ${{ github.workspace }}/daslang/modules/dasImgui
         run: |
           set -eux
-          ../../bin/daslang utils/imgui2rst.das -- \
+          ${{ github.workspace }}/daslang/bin/daslang utils/imgui2rst.das -- \
             --detail_output doc/source/stdlib/generated
 
       - name: "Stub-gate: handmade/ must not contain '// stub'"
-        working-directory: daslang/modules/dasImgui
+        working-directory: ${{ github.workspace }}/daslang/modules/dasImgui
         run: |
           set -eux
           if grep -rl '// stub' doc/source/stdlib/handmade/; then
@@ -110,7 +105,7 @@ jobs:
           fi
 
       - name: "Build Sphinx HTML"
-        working-directory: daslang/modules/dasImgui
+        working-directory: ${{ github.workspace }}/daslang/modules/dasImgui
         run: |
           set -eux
           sphinx-build -W --keep-going \
@@ -119,7 +114,7 @@ jobs:
 
       - name: "Stage site for deployment"
         if: github.ref == 'refs/heads/master'
-        working-directory: daslang/modules/dasImgui
+        working-directory: ${{ github.workspace }}/daslang/modules/dasImgui
         run: |
           set -eux
           mkdir -p _site
@@ -132,7 +127,7 @@ jobs:
         if: github.ref == 'refs/heads/master'
         uses: actions/upload-pages-artifact@v3
         with:
-          path: daslang/modules/dasImgui/_site
+          path: ${{ github.workspace }}/daslang/modules/dasImgui/_site
 
       - name: "Deploy to GitHub Pages"
         if: github.ref == 'refs/heads/master'
