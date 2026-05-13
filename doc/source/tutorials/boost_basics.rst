@@ -105,8 +105,18 @@ When run live, the boost layer exposes the standard live-command surface at
 Next steps
 ==========
 
-For a richer example, see ``examples/tutorial/visual_aids_tour.das`` — the
-keeper reference for Phase 4/5 (highlights, mouse trail, narration, recording).
+The next tutorial walks the full common-widget surface — text input,
+slider, checkbox, combo, color, button — on a single panel.
 
-See also the :ref:`boost macro layer <stdlib_imgui_boost_section>` and the
-:ref:`builtin widgets <stdlib_imgui_widgets_section>` reference.
+.. seealso::
+
+   Full source: :download:`examples/tutorial/boost_basics.das <../../../examples/tutorial/boost_basics.das>`
+
+   Richer reference: ``examples/tutorial/visual_aids_tour.das`` — keeper
+   reference exercising highlights, mouse trail, narration, and recording.
+
+   Next tutorial: :ref:`tutorial_widgets_tour`
+
+   :ref:`Boost macros <stdlib_imgui_boost_section>` — the macro layer.
+
+   :ref:`Builtin widgets <stdlib_imgui_widgets_section>` — widget reference.

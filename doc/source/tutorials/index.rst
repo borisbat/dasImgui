@@ -12,3 +12,4 @@ construction.
    :maxdepth: 2
 
    boost_basics.rst
+   widgets_tour.rst
