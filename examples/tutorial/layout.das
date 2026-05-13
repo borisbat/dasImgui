@@ -1,0 +1,125 @@
+options gen2
+
+require imgui
+require imgui_app
+require glfw/glfw_boost
+require opengl/opengl_boost
+require live/glfw_live
+require live/live_api
+require live/live_commands
+require live/live_vars
+require live/opengl_live
+require live_host
+require imgui/imgui_live
+require imgui/imgui_boost_runtime
+require imgui/imgui_boost_v2
+require imgui/imgui_widgets_builtin
+require imgui/imgui_containers_builtin
+require imgui/imgui_layout_builtin
+require imgui/imgui_visual_aids
+
+// =============================================================================
+// TUTORIAL: layout — split_h / split_v / dock_left on a single panel.
+//
+// Three boost layout helpers compose into a classic IDE-style layout:
+//   SIDEBAR     : dock_left   — fixed-width left rail with a draggable edge
+//   SPLIT_VERT  : split_v     — splits the main area into top + bottom
+//   SPLIT_MAIN  : split_h     — splits the top area into left + right
+//
+// Each helper takes a state struct (registered automatically), an `init`
+// value, optional `bounds`, and a block (`${ ... }`) per pane. The state's
+// `value` field holds either the split fraction (split_*) or the pane width
+// in pixels (dock_*). All three are draggable at runtime.
+//
+// STANDALONE: daslang.exe modules/dasImgui/examples/tutorial/layout.das
+// LIVE:       daslang-live modules/dasImgui/examples/tutorial/layout.das
+//
+// DRIVE (when running live):
+//   curl -X POST -d '{"name":"imgui_set","args":{"target":"SPLIT_MAIN","value":0.7}}'   localhost:9090/command
+//   curl -X POST -d '{"name":"imgui_set","args":{"target":"SPLIT_VERT","value":0.4}}'   localhost:9090/command
+//   curl -X POST -d '{"name":"imgui_set","args":{"target":"SIDEBAR","value":220.0}}'    localhost:9090/command
+// =============================================================================
+
+[export]
+def init() {
+    live_create_window("dasImgui layout tutorial", 1024, 720)
+    live_imgui_init(live_window)
+    var io & = unsafe(GetIO())
+    io.FontGlobalScale = 1.5
+}
+
+[export]
+def update() {
+    if (!live_begin_frame()) return
+    begin_frame()
+
+    ImGui_ImplOpenGL3_NewFrame()
+    ImGui_ImplGlfw_NewFrame()
+    apply_synth_io_override()
+    NewFrame()
+
+    // One window holds the whole layout. dock_left carves out the sidebar;
+    // split_v then split_h compose the main pane.
+    SetNextWindowPos(ImVec2(60.0f, 60.0f), ImGuiCond.Always)
+    SetNextWindowSize(ImVec2(900.0f, 600.0f), ImGuiCond.Always)
+    window(LAYOUT_WIN, (text = "IDE layout",
+                        closable = false,
+                        flags = ImGuiWindowFlags.None)) {
+
+        // Left rail: 200 px by default, draggable between 80 and 320 px.
+        dock_left(SIDEBAR, (init = 200.0f, bounds = (80.0f, 320.0f))) {
+            Text("Sidebar")
+            Spacing()
+            button(EXPLORE_BTN, (text = "Explore"))
+            button(SEARCH_BTN,  (text = "Search"))
+            button(SOURCE_BTN,  (text = "Source"))
+        }
+
+        // Main pane: top/bottom (split_v) where top is left/right (split_h).
+        split_v(SPLIT_VERT, (init = 0.65f, bounds = (0.1f, 0.9f)),
+                ${
+                    split_h(SPLIT_MAIN, (init = 0.4f, bounds = (0.1f, 0.9f)),
+                            ${
+                                Text("Files")
+                                button(FILE_A_BTN, (text = "main.das"))
+                                button(FILE_B_BTN, (text = "lib.das"))
+                            },
+                            ${
+                                Text("Editor")
+                                Text("// drag the splitters")
+                                Text("// — the pane bounds")
+                                Text("//   stay clipped.")
+                            })
+                },
+                ${
+                    Text("Output")
+                    Text("> ready.")
+                })
+    }
+
+    end_of_frame()
+    Render()
+    var w, h : int
+    live_get_framebuffer_size(w, h)
+    glViewport(0, 0, w, h)
+    glClearColor(0.10f, 0.10f, 0.12f, 1.0f)
+    glClear(GL_COLOR_BUFFER_BIT)
+    ImGui_ImplOpenGL3_RenderDrawData(GetDrawData())
+
+    live_end_frame()
+}
+
+[export]
+def shutdown() {
+    live_imgui_shutdown()
+    live_destroy_window()
+}
+
+[export]
+def main() {
+    init()
+    while (!exit_requested()) {
+        update()
+    }
+    shutdown()
+}

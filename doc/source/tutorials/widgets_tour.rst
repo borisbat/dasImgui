@@ -113,6 +113,8 @@ same widget set.
 
    Previous tutorial: :ref:`tutorial_boost_basics`
 
+   Next tutorial: :ref:`tutorial_layout`
+
    :ref:`Boost macros <stdlib_imgui_boost_section>` — the macro layer.
 
    :ref:`Builtin widgets <stdlib_imgui_widgets_section>` — widget reference.
