@@ -79,7 +79,7 @@ The first call every driver makes:
 
 Response shape:
 
-.. code-block:: json
+.. code-block:: text
 
    {
      "frame": 412,
@@ -88,20 +88,20 @@ Response shape:
          "kind": "window",
          "bbox": [30, 30, 670, 490],
          "hex_id": "0x2c1a8f4b",
-         "payload": { "open": true, "size": [640, 460], "..." : "..." }
+         "payload": { "open": true, "size": [640, 460], ... }
        },
        "DRIVE_WIN/SPEED": {
          "kind": "slider_int",
          "bbox": [...],
          "hex_id": "0x...",
-         "payload": { "value": 5, "bounds": [0, 10], "..." : "..." }
+         "payload": { "value": 5, "bounds": [0, 10], ... }
        },
        "DRIVE_WIN/RUN_BTN": {
          "kind": "button",
          "bbox": [...],
          "payload": { "click_count": 0 }
        },
-       "...": "..."
+       ...
      },
      "io": {
        "mouse_pos": [320, 180],
