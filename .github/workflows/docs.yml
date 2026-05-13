@@ -51,7 +51,9 @@ jobs:
       - name: "Checkout dasImgui"
         uses: actions/checkout@v4
         with:
-          path: dasImgui-src
+          # Path basename becomes the daspkg install dir basename
+          # (daspkg uses source basename, not .das_package's package_name).
+          path: dasImgui
 
       - name: "Install system dependencies"
         run: |
@@ -86,7 +88,7 @@ jobs:
           set -eux
           ${{ github.workspace }}/daslang-src/bin/daslang \
             ${{ github.workspace }}/daslang-src/utils/daspkg/main.das -- \
-            install ${{ github.workspace }}/dasImgui-src --global
+            install ${{ github.workspace }}/dasImgui --global
 
       - name: "Run imgui2rst"
         working-directory: ${{ github.workspace }}/daslang-src/modules/dasImgui
