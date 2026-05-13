@@ -9,8 +9,6 @@ require imgui public
 require imgui/imgui_boost_runtime public
 require imgui/imgui_live
 require live/live_commands
-require live/glfw_live
-require glfw/glfw_boost
 require live_host
 require daslib/json public
 require daslib/json_boost public
@@ -85,11 +83,11 @@ var public cursor_sprite_radius             : float = 9.0f
 var public cursor_sprite_outline_thickness  : float = 2.0f
 var public cursor_sprite_inner_radius       : float = 2.5f
 
-// Click flash — expanding ring drawn at the cursor when glfw_live's synth
-// driver fires a button press. ImGui's hit-test logic uses io.MousePos which
-// the ImGui_ImplGlfw per-frame poll overwrites with the real OS cursor on
-// focused windows, so the widget's own hover/active visuals don't fire for
-// synth clicks. This overlay is the recording's proof-of-click.
+// Click flash — expanding ring drawn at the cursor when imgui_live's synth
+// driver fires a button press. The overlay is the recording's proof-of-click
+// — useful when the widget's own hover/active visuals don't fire for a
+// synthetic click (e.g. because the backend's per-frame poll fights over
+// io.MousePos with our synth state).
 var public click_flash_enabled       : bool  = true
 var public click_flash_color         : uint  = rgba(255, 255, 0, 255)   //! yellow
 var public click_flash_start_radius  : float = 8.0f
@@ -115,10 +113,10 @@ var public imgui_auto_highlight_on_command : bool = false
     //! target with `auto_highlight_color` for `auto_highlight_frames` ticks.
 
 // Keycap / modifier HUD — bottom-center keycap pops + modifier-strip below.
-// Reads `synth_last_codepoint` / `synth_last_keycode` from glfw_live to detect
-// each new synth key event and pop a new keycap. Modifier strip lights up
-// directly from `IsKeyDown(ImGuiKey_*)` so it reacts to BOTH synth events (via
-// the chain → ImGui_ImplGlfw) AND real hardware keys.
+// Reads `synth_last_codepoint` / `synth_last_keycode` from imgui_live to
+// detect each new synth key event and pop a new keycap. Modifier strip
+// lights up directly from `IsKeyDown(ImGuiKey_*)` so it reacts to BOTH
+// synth events AND real hardware keys.
 var public key_hud_enabled              : bool   = false
 var public key_hud_show_modifiers       : bool   = true
 var public key_hud_offset_y_from_bottom : float  = 80.0f
@@ -223,59 +221,11 @@ def public cursor_sprite(enabled : bool) {
     cursor_sprite_enabled = enabled
 }
 
-def private legacy_glfw_io_override() {
-    //! Legacy glfw_live path: patches up two ImGui_ImplGlfw race conditions
-    //! by re-queuing synth IO events as the LAST events in the queue, on top
-    //! of whatever the GLFW backend just polled in NewFrame().
-    //!
-    //! 1. Mouse pos — `ImGui_ImplGlfw_UpdateMouseData` overwrites io.MousePos
-    //!    with the real OS cursor; re-assert the synth pos.
-    //! 2. Modifier keys — `UpdateKeyModifiers` reads `glfwGetKey(LEFT_CTRL...)`
-    //!    and posts ImGuiMod_*=false because the physical key isn't held;
-    //!    re-assert ImGuiMod_*=true for each synth-held mod.
-    //!
-    //! Only fires if glfw_live's synth state is populated. imgui_live's full
-    //! bypass (via `imgui_synth_tick`) is the preferred path — backend events
-    //! get purged outright rather than corrected after the fact — but
-    //! glfw_live continues to be supported for non-ImGui GLFW apps and the
-    //! existing dasImgui examples that demo it.
-    let (owned, sx, sy) = glfw_live::get_synth_cursor()
-    if (owned) {
-        var io & = unsafe(GetIO())
-        unsafe(io.AddMousePosEvent(sx, sy))
-    }
-    if (!empty(glfw_live::synth_held_keys)) {
-        var io & = unsafe(GetIO())
-        if (glfw_live::synth_held_keys |> key_exists(GLFW_KEY_LEFT_CONTROL)
-                || glfw_live::synth_held_keys |> key_exists(GLFW_KEY_RIGHT_CONTROL)) {
-            unsafe(io.AddKeyEvent(ImGuiKey.ImGuiMod_Ctrl, true))
-        }
-        if (glfw_live::synth_held_keys |> key_exists(GLFW_KEY_LEFT_SHIFT)
-                || glfw_live::synth_held_keys |> key_exists(GLFW_KEY_RIGHT_SHIFT)) {
-            unsafe(io.AddKeyEvent(ImGuiKey.ImGuiMod_Shift, true))
-        }
-        if (glfw_live::synth_held_keys |> key_exists(GLFW_KEY_LEFT_ALT)
-                || glfw_live::synth_held_keys |> key_exists(GLFW_KEY_RIGHT_ALT)) {
-            unsafe(io.AddKeyEvent(ImGuiKey.ImGuiMod_Alt, true))
-        }
-        if (glfw_live::synth_held_keys |> key_exists(GLFW_KEY_LEFT_SUPER)
-                || glfw_live::synth_held_keys |> key_exists(GLFW_KEY_RIGHT_SUPER)) {
-            unsafe(io.AddKeyEvent(ImGuiKey.ImGuiMod_Super, true))
-        }
-    }
-}
-
 def public apply_synth_io_override() {
-    //! Per-frame synth IO entry point. Call between `ImGui_ImplGlfw_NewFrame()`
-    //! and `NewFrame()` — same site as `imgui_boost_runtime::advance_coroutines`.
-    //!
-    //! Drives both synth driver families:
-    //!   - glfw_live (legacy, dasGLFW chain) — re-assert overwritten state.
-    //!   - imgui_live (ImGui bypass) — purge backend events, inject synth state.
-    //!
-    //! At most one driver is active at a time per session; the inactive one's
-    //! state is empty and its branch is a no-op.
-    legacy_glfw_io_override()
+    //! Per-frame synth IO entry point. Call between the backend's NewFrame
+    //! and ImGui's `NewFrame()` — same site as `imgui_boost_runtime::advance_coroutines`.
+    //! Drives the ImGui bypass driver (`imgui_synth_tick`): purges backend
+    //! events and injects synth state directly into the ImGui input queue.
     imgui_synth_tick()
 }
 
@@ -318,14 +268,11 @@ def private paint_highlights {
 }
 
 def private effective_cursor_pos() : float2 {
-    //! Returns the synthetic cursor pos when either synth driver
-    //! (imgui_live or glfw_live) has fired, else the real ImGui cursor.
-    //! Decouples overlay rendering from io.MousePos, which per-frame
-    //! ImGui_ImplGlfw polling overwrites with the real OS cursor.
-    let (ia, ix, iy) = imgui_live::get_synth_cursor()
-    return float2(ix, iy) if (ia)
-    let (ga, gx, gy) = glfw_live::get_synth_cursor()
-    return float2(gx, gy) if (ga)
+    //! Returns imgui_live's synth cursor when active, else the real ImGui
+    //! cursor. Decouples overlay rendering from io.MousePos, which the
+    //! backend's per-frame poll may overwrite with the real OS cursor.
+    let (active, sx, sy) = imgui_live::get_synth_cursor()
+    return float2(sx, sy) if (active)
     return GetMousePos()
 }
 
@@ -400,13 +347,8 @@ def private paint_cursor_sprite {
 }
 
 def private effective_synth_click() : tuple<int; float> {
-    //! (action, t) — picks the more-recent click between imgui_live (bypass)
-    //! and glfw_live (chain) drivers. action: 1=press, 0=release.
-    let it = imgui_live::synth_click_t
-    let gt = glfw_live::synth_click_t
-    return (imgui_live::synth_click_action, it) if (it >= 0.0 && it >= gt)
-    return (glfw_live::synth_click_action, gt) if (gt >= 0.0)
-    return (0, -1.0)
+    //! (action, t) for imgui_live's last synth click. action: 1=press, 0=release.
+    return (imgui_live::synth_click_action, imgui_live::synth_click_t)
 }
 
 def private paint_click_flash {
@@ -440,26 +382,8 @@ def private glyph_for_codepoint(cp : uint) : string {
     }
 }
 
-def private glyph_for_glfw_keycode(kc : int) : string {
-    //! glfw_live driver path — maps a GLFW_KEY_* to a keycap label.
-    if (kc == GLFW_KEY_ENTER) return "Enter"
-    if (kc == GLFW_KEY_TAB) return "Tab"
-    if (kc == GLFW_KEY_BACKSPACE) return "Bksp"
-    if (kc == GLFW_KEY_ESCAPE) return "Esc"
-    if (kc == GLFW_KEY_SPACE) return "Space"
-    if (kc == GLFW_KEY_LEFT) return "<-"
-    if (kc == GLFW_KEY_RIGHT) return "->"
-    if (kc == GLFW_KEY_UP) return "Up"
-    if (kc == GLFW_KEY_DOWN) return "Down"
-    if (kc == GLFW_KEY_LEFT_SHIFT || kc == GLFW_KEY_RIGHT_SHIFT) return "Shift"
-    if (kc == GLFW_KEY_LEFT_CONTROL || kc == GLFW_KEY_RIGHT_CONTROL) return "Ctrl"
-    if (kc == GLFW_KEY_LEFT_ALT || kc == GLFW_KEY_RIGHT_ALT) return "Alt"
-    if (kc == GLFW_KEY_LEFT_SUPER || kc == GLFW_KEY_RIGHT_SUPER) return "Cmd"
-    return ""    // unknown — caller skips the trace
-}
-
 def private glyph_for_imgui_key(kc : int) : string {
-    //! imgui_live driver path — maps an ImGuiKey value to a keycap label.
+    //! Maps an ImGuiKey value to a keycap label.
     if (kc == int(ImGuiKey.Enter)) return "Enter"
     if (kc == int(ImGuiKey.Tab)) return "Tab"
     if (kc == int(ImGuiKey.Backspace)) return "Bksp"
@@ -479,23 +403,14 @@ def private glyph_for_imgui_key(kc : int) : string {
 def private paint_key_hud {
     return if (!key_hud_enabled)
 
-    // 1) Pull new synth events into traces. Reads from BOTH drivers and
-    //    picks whichever has the most-recent timestamp — at most one is
-    //    active at a time in practice. Codepoint takes priority: a typed
-    //    char already includes the visible glyph; modifier-only keystrokes
-    //    fall through to the keycode branch.
+    // 1) Pull new synth events from imgui_live into traces. Codepoint takes
+    //    priority: a typed char already includes the visible glyph;
+    //    modifier-only keystrokes fall through to the keycode branch.
     let now = float(get_uptime())
-    // Codepoint: imgui_live wins ties (it has the more direct path).
-    let i_cp_t  = imgui_live::synth_last_codepoint_t
-    let g_cp_t  = glfw_live::synth_last_codepoint_t
-    let cp_t    = max(i_cp_t, g_cp_t)
-    let cp      = (i_cp_t >= g_cp_t) ? imgui_live::synth_last_codepoint : glfw_live::synth_last_codepoint
-    // Keycode: same merge, but track which driver won so we use the right map.
-    let i_kc_t  = imgui_live::synth_last_keycode_t
-    let g_kc_t  = glfw_live::synth_last_keycode_t
-    let kc_t    = max(i_kc_t, g_kc_t)
-    let kc_is_imgui = i_kc_t >= g_kc_t
-    let kc      = kc_is_imgui ? imgui_live::synth_last_keycode : glfw_live::synth_last_keycode
+    let cp_t = imgui_live::synth_last_codepoint_t
+    let cp   = imgui_live::synth_last_codepoint
+    let kc_t = imgui_live::synth_last_keycode_t
+    let kc   = imgui_live::synth_last_keycode
     if (cp_t > g_last_seen_codepoint_t && cp != 0u) {
         g_keycap_traces |> push(KeycapTrace(glyph = glyph_for_codepoint(cp), t_pushed = now))
         g_last_seen_codepoint_t = cp_t
@@ -503,7 +418,7 @@ def private paint_key_hud {
         // same instant fires next, don't double-push.
         g_last_seen_keycode_t = kc_t
     } elif (kc_t > g_last_seen_keycode_t && kc != 0) {
-        let g = kc_is_imgui ? glyph_for_imgui_key(kc) : glyph_for_glfw_keycode(kc)
+        let g = glyph_for_imgui_key(kc)
         if (!empty(g)) {
             g_keycap_traces |> push(KeycapTrace(glyph = g, t_pushed = now))
         }
@@ -532,7 +447,21 @@ def private paint_key_hud {
     var dl = GetForegroundDrawList()
 
     if (n > 0) {
-        let row_w = float(n) * key_hud_keycap_w + float(max(0, n - 1)) * key_hud_keycap_spacing
+        // Pre-measure each glyph and grow the per-cap width when the label
+        // is wider than the default — keeps "Space" / "Enter" / "Shift"
+        // from overflowing the keycap box.
+        var cap_widths : array<float>
+        cap_widths |> resize(n)
+        var row_w = 0.0f
+        for (j in range(n)) {
+            let label_size = CalcTextSize(g_keycap_traces[j].glyph, false, -1.0f)
+            let w = max(key_hud_keycap_w, label_size.x + key_hud_keycap_w * 0.4f)
+            cap_widths[j] = w
+            row_w += w
+            if (j > 0) {
+                row_w += key_hud_keycap_spacing
+            }
+        }
         let row_y = vp_pos.y + vp_size.y - key_hud_offset_y_from_bottom - key_hud_keycap_h
         var x = vp_pos.x + (vp_size.x - row_w) * 0.5f
         for (j in range(n)) {
@@ -542,20 +471,21 @@ def private paint_key_hud {
             let bg     = (key_hud_keycap_color        & 0x00FFFFFFu) | (uint(float(key_hud_keycap_color        >> 24u) * fade) << 24u)
             let border = (key_hud_keycap_border_color & 0x00FFFFFFu) | (uint(float(key_hud_keycap_border_color >> 24u) * fade) << 24u)
             let text   = (key_hud_text_color          & 0x00FFFFFFu) | (uint(float(key_hud_text_color          >> 24u) * fade) << 24u)
+            let cap_w = cap_widths[j]
             let p0 = float2(x, row_y)
-            let p1 = float2(x + key_hud_keycap_w, row_y + key_hud_keycap_h)
+            let p1 = float2(x + cap_w, row_y + key_hud_keycap_h)
             *dl |> AddRectFilled(p0, p1, bg, key_hud_keycap_rounding, ImDrawFlags.None)
             *dl |> AddRect(p0, p1, border, key_hud_keycap_rounding, ImDrawFlags.None, key_hud_keycap_border_thick)
             let label_size = CalcTextSize(trace.glyph, false, -1.0f)
-            let tx = x + (key_hud_keycap_w - label_size.x) * 0.5f
+            let tx = x + (cap_w - label_size.x) * 0.5f
             let ty = row_y + (key_hud_keycap_h - label_size.y) * 0.5f
             *dl |> AddText(float2(tx, ty), text, trace.glyph)
-            x += key_hud_keycap_w + key_hud_keycap_spacing
+            x += cap_w + key_hud_keycap_spacing
         }
     }
 
     // 4) Modifier strip — pulls direct from ImGui's live key state so it
-    //    works for synth (chain → impl_glfw → io) AND real keys.
+    //    works for both synth events and real hardware keys.
     if (key_hud_show_modifiers) {
         let names = ["Ctrl", "Shift", "Alt", "Cmd"]
         let active = [

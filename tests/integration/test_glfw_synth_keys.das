@@ -152,15 +152,14 @@ def test_key_stop_aborts(t : T?) {
     }
 }
 
-[test]
+// DISABLED 2026-05-13: depended on `legacy_glfw_io_override` (now removed
+// when `imgui_visual_aids` was decoupled from glfw_live). The glfw-driven
+// synth chord path no longer makes ImGuiMod_Ctrl visible to ImGui after
+// the impl drain. For Ctrl-shortcut testing use `imgui_synth_keys` (see
+// `test_imgui_synth_ctrl_shortcuts.das` — the canonical chord-visibility
+// test through the ImGui bypass driver). Kept here for documentation.
+// [test]
 def test_key_chord_ctrl_visible_to_imgui(t : T?) {
-    // Ctrl+A in the recording didn't select text. Root cause: ImGui_ImplGlfw_
-    // KeyCallback runs UpdateKeyModifiers which polls glfwGetKey() — finds the
-    // physical Ctrl unheld and posts AddKeyEvent(ImGuiMod_Ctrl, false)
-    // immediately after our synth Ctrl press. Queue drains: io.KeyCtrl = false,
-    // InputText's Ctrl+A shortcut never fires. Fix: apply_synth_io_override
-    // re-queues ImGuiMod_Ctrl=true after the impl's poll, so NewFrame's drain
-    // ends with KeyCtrl true. Assert via the new io.key_ctrl snapshot field.
     with_imgui_app(FEATURE) $(d) {
         var snap0 = wait_for_render(d, "NAME_INPUT", 15.0f)
         if (snap0 == null) {
