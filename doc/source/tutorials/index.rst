@@ -20,3 +20,4 @@ construction.
    state_telemetry.rst
    containers.rst
    live_reload.rst
+   driving_outside.rst
