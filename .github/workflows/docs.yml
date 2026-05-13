@@ -1,0 +1,128 @@
+name: Build documentation
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'doc/**'
+      - 'widgets/**'
+      - 'src/**'
+      - 'utils/imgui2rst.das'
+      - '.github/workflows/docs.yml'
+  pull_request:
+    paths:
+      - 'doc/**'
+      - 'widgets/**'
+      - 'src/**'
+      - 'utils/imgui2rst.das'
+      - '.github/workflows/docs.yml'
+  workflow_dispatch:
+
+# One Pages deployment at a time
+concurrency:
+  group: docs-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: "Checkout dasImgui"
+        uses: actions/checkout@v4
+
+      - name: "Checkout daslang"
+        uses: actions/checkout@v4
+        with:
+          repository: GaijinEntertainment/daScript
+          path: daslang
+          # Bump this to a specific SHA once --detail_output (#2640) lands
+          # if pinning to master proves flaky.
+          ref: master
+
+      - name: "Install system dependencies"
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libglfw3-dev \
+            libfreetype6-dev \
+            mesa-common-dev \
+            xorg-dev
+
+      - name: "Install CMake and Ninja"
+        uses: lukka/get-cmake@latest
+
+      - name: "Install Python dependencies"
+        run: pip install -r daslang/doc/requirements.txt
+
+      - name: "Build: daslang"
+        run: |
+          set -eux
+          cd daslang
+          cmake --no-warn-unused-cli -B./build \
+            -DCMAKE_BUILD_TYPE:STRING=Release \
+            -DDAS_HV_DISABLED=OFF \
+            -DDAS_PUGIXML_DISABLED=OFF \
+            -DDAS_LLVM_DISABLED=ON \
+            -DDAS_GLFW_DISABLED=OFF \
+            -G Ninja
+          cmake --build ./build --target daslang
+
+      - name: "Build: dasImgui C++ shim"
+        run: |
+          set -eux
+          cmake --no-warn-unused-cli -B./build \
+            -DCMAKE_BUILD_TYPE:STRING=Release \
+            -DDASLANG_DIR=${{ github.workspace }}/daslang \
+            -G Ninja
+          cmake --build ./build
+
+      - name: "Run imgui2rst"
+        run: |
+          set -eux
+          daslang/bin/daslang utils/imgui2rst.das -- \
+            --detail_output doc/source/stdlib/generated
+
+      - name: "Stub-gate: handmade/ must not contain '// stub'"
+        run: |
+          set -eux
+          if grep -rl '// stub' doc/source/stdlib/handmade/; then
+            echo "ERROR: Found '// stub' placeholders in handmade docs."
+            echo "Fill them with module intros before merging."
+            exit 1
+          fi
+
+      - name: "Build Sphinx HTML"
+        run: |
+          set -eux
+          sphinx-build -W --keep-going \
+            -b html -d build/sphinx-cache \
+            doc/source build/site
+
+      - name: "Stage site for deployment"
+        if: github.ref == 'refs/heads/master'
+        run: |
+          set -eux
+          mkdir -p _site
+          cp -r build/site/. _site/
+          # Disable Jekyll: GitHub Pages otherwise drops underscore-prefixed
+          # Sphinx asset directories (_static/, _sources/, ...).
+          touch _site/.nojekyll
+
+      - name: "Upload Pages artifact"
+        if: github.ref == 'refs/heads/master'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: "Deploy to GitHub Pages"
+        if: github.ref == 'refs/heads/master'
+        id: deployment
+        uses: actions/deploy-pages@v4
