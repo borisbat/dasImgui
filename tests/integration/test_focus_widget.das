@@ -27,29 +27,29 @@ let FOCUS_WIDGET_FEATURE = "modules/dasImgui/examples/features/focus_widget.das"
 def test_imgui_focus_keyboard(t : T?) {
     with_imgui_app(FOCUS_WIDGET_FEATURE) $(d) {
         // Gate 1: DEMO_INPUT reaches the snapshot, no focus initially.
-        var snap0 = wait_for_widget(d, "DEMO_INPUT", 15.0f)
+        var snap0 = wait_for_widget(d, "MAIN_WIN/DEMO_INPUT", 15.0f)
         t |> success(snap0 != null, "DEMO_INPUT registers (snapshot reachable)")
         if (snap0 == null) return
         // @optional focus drops false values from JV; default false ensures
         // absent-key reads as not-focused.
-        t |> equal(snap0?["globals"]?["DEMO_INPUT"]?["focus"] ?? false, false,
+        t |> equal(snap0?["globals"]?["MAIN_WIN/DEMO_INPUT"]?["focus"] ?? false, false,
                    "DEMO_INPUT.focus initially false")
 
         // Gate 2: focus dispatch returns ok-Result.
-        let resp = focus(d, "DEMO_INPUT")
+        let resp = focus(d, "MAIN_WIN/DEMO_INPUT")
         t |> success(resp != null, "focus returned a response")
         t |> equal(resp?["ok"] ?? false, true,
                    "focus response.ok = true on focusable target")
-        t |> equal(resp?["value"] ?? "", "DEMO_INPUT",
+        t |> equal(resp?["value"] ?? "", "MAIN_WIN/DEMO_INPUT",
                    "focus response.value = target")
 
         // Gate 3: after focus dispatch, snapshot.focus flips true within a
         // few frames (widget_prelude consumes g_pending_focus on next render).
-        let focused = wait_until(d, 300) $(snap) => snap?["globals"]?["DEMO_INPUT"]?["focus"] ?? false
+        let focused = wait_until(d, 300) $(snap) => snap?["globals"]?["MAIN_WIN/DEMO_INPUT"]?["focus"] ?? false
         t |> success(focused != null, "DEMO_INPUT.focus becomes true after imgui_focus dispatch")
 
         // Gate 4: display-only widget rejects focus dispatch.
-        let bad_resp = focus(d, "DEMO_TEXT")
+        let bad_resp = focus(d, "MAIN_WIN/DEMO_TEXT")
         t |> equal(bad_resp?["ok"] ?? true, false,
                    "display-only target → response.ok = false")
         t |> success(!empty(bad_resp?["error"] ?? ""),

@@ -14,13 +14,14 @@ require imgui/imgui_live
 require imgui/imgui_boost_runtime
 require imgui/imgui_boost_v2
 require imgui/imgui_widgets_builtin
+require imgui/imgui_containers_builtin
 
 // =============================================================================
 // FEATURE: inputs_color — every Phase 0b.2 Color* widget in one window.
 // SHOWS:   color_edit3 / color_edit4 / color_picker3 / color_picker4 / color_button
-// DRIVE:   curl -X POST -d '{"name":"imgui_set","args":{"target":"BG_COLOR","value":[0.2,0.5,0.9,1.0]}}' \
+// DRIVE:   curl -X POST -d '{"name":"imgui_set","args":{"target":"MAIN_WIN/BG_COLOR","value":[0.2,0.5,0.9,1.0]}}' \
 //               localhost:9090/command
-//          curl -X POST -d '{"name":"imgui_click","args":{"target":"PALETTE_RED"}}' \
+//          curl -X POST -d '{"name":"imgui_click","args":{"target":"MAIN_WIN/PALETTE_RED"}}' \
 //               localhost:9090/command
 // STANDALONE: daslang.exe modules/dasImgui/examples/features/inputs_color.das
 // LIVE:       daslang-live modules/dasImgui/examples/features/inputs_color.das
@@ -44,7 +45,8 @@ def update() {
     NewFrame()
 
     SetNextWindowSize(ImVec2(720.0, 720.0), ImGuiCond.Always)
-    if (Begin("Color inputs — phase 0b.2", null, ImGuiWindowFlags.None)) {
+    window(MAIN_WIN, (text = "Color inputs — phase 0b.2", closable = false,
+                      flags = ImGuiWindowFlags.None)) {
         // ----- Editors (compact RGB / RGBA boxes) -----
         Text("Editors")
         Separator()
@@ -87,7 +89,6 @@ def update() {
                                     size = float2(48.0f, 48.0f)))
         Text("palette clicks: red={PALETTE_RED.click_count}, green={PALETTE_GREEN.click_count}, blue={PALETTE_BLUE.click_count}")
     }
-    End()
 
     end_of_frame()
     Render()

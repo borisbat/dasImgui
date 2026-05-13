@@ -51,13 +51,15 @@ Walkthrough
 Layout
 ======
 
-The subject has two windows:
+The subject has two ``window(...)`` containers:
 
-* **Demoed widgets** — the things the visual aids point at: ``STATUS``
-  (text_show), ``VOLUME`` (slider_float), ``SAVE_BTN`` (button),
-  ``NAME_INPUT`` (input_text).
-* **Visual aids controls** — buttons that fire each aid in-process so
-  you can iterate without a separate driver shell.
+* ``SUBJECT_WIN`` (titled "Demoed widgets") — the things the visual
+  aids point at: ``STATUS`` (text_show), ``VOLUME`` (slider_float),
+  ``SAVE_BTN`` (button), ``NAME_INPUT`` (input_text). Leaves register
+  at ``SUBJECT_WIN/<ident>``.
+* ``CONTROLS_WIN`` (titled "Visual aids controls") — buttons that fire
+  each aid in-process so you can iterate without a separate driver
+  shell.
 
 In the recording at the top, the driver bypasses the controls window
 entirely — it calls ``imgui_highlight`` / ``imgui_mouse_trail`` /
@@ -72,8 +74,8 @@ A colored rectangle drawn around a widget's bbox for N frames:
 
 .. code-block:: das
 
-   highlight("VOLUME")              // default: yellow, 60 frames
-   highlight("SAVE_BTN", 120, 0xFFFF8030u)   // orange, 120 frames
+   highlight("SUBJECT_WIN/VOLUME")              // default: yellow, 60 frames
+   highlight("SUBJECT_WIN/SAVE_BTN", 120, 0xFFFF8030u)   // orange, 120 frames
 
 Highlights are short by design — long enough for "look here" to
 register, short enough that two consecutive highlights compose
@@ -122,9 +124,9 @@ A sticky-note callout with optional connector line to a target widget:
 
 .. code-block:: das
 
-   narrate("Click here to save.", "SAVE_BTN")   // 180 frames default
-   narrate("Drag this to set volume.", "VOLUME", 240)
-   narrate("Floating overlay, no target.")       // no connector line
+   narrate("Click here to save.", "SUBJECT_WIN/SAVE_BTN")   // 180 frames default
+   narrate("Drag this to set volume.", "SUBJECT_WIN/VOLUME", 240)
+   narrate("Floating overlay, no target.")                   // no connector line
 
 The auto-fit logic tries four candidate anchors (right / left / below
 / above the target widget) and picks the first that doesn't overlap
@@ -182,13 +184,13 @@ Every aid is reachable via curl:
 
 .. code-block:: bash
 
-   curl -X POST -d '{"name":"imgui_highlight","args":{"target":"VOLUME"}}' \
+   curl -X POST -d '{"name":"imgui_highlight","args":{"target":"SUBJECT_WIN/VOLUME"}}' \
         localhost:9090/command
    curl -X POST -d '{"name":"imgui_mouse_trail","args":{"enabled":true}}' \
         localhost:9090/command
    curl -X POST -d '{"name":"imgui_cursor_sprite","args":{"enabled":true}}' \
         localhost:9090/command
-   curl -X POST -d '{"name":"imgui_narrate","args":{"text":"click me","target":"SAVE_BTN","frames":180}}' \
+   curl -X POST -d '{"name":"imgui_narrate","args":{"text":"click me","target":"SUBJECT_WIN/SAVE_BTN","frames":180}}' \
         localhost:9090/command
    curl -X POST -d '{"name":"imgui_auto_highlight","args":{"enabled":true}}' \
         localhost:9090/command

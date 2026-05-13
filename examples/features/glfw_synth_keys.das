@@ -24,7 +24,9 @@ require imgui/imgui_visual_aids
 //          callback chain. ImGui_ImplGlfw_KeyCallback / _CharCallback ingest
 //          them normally, so io.MousePos / focus / text-input buffers update
 //          exactly as they would with real hardware input.
-// DRIVE:   curl -X POST -d '{"name":"key_type","args":{"text":"Hello, World!","total_duration_s":3.0}}' \
+// DRIVE:   curl -X POST -d '{"name":"imgui_focus","args":{"target":"MAIN_WIN/NAME_INPUT"}}' \
+//              localhost:9090/command
+//          curl -X POST -d '{"name":"key_type","args":{"text":"Hello, World!","total_duration_s":3.0}}' \
 //              localhost:9090/command
 //          curl -X POST -d '{"name":"key_chord","args":{"mods":["Ctrl"],"key":"A"}}' \
 //              localhost:9090/command
@@ -53,7 +55,8 @@ def update() {
 
     SetNextWindowPos(ImVec2(40.0, 40.0), ImGuiCond.Always)
     SetNextWindowSize(ImVec2(640.0, 240.0), ImGuiCond.Always)
-    if (Begin("synth keys demo", null, ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove)) {
+    window(MAIN_WIN, (text = "synth keys demo", closable = false,
+                      flags = ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove)) {
         Text("Drive `key_type`, `key_chord`, `key_play` to feed the input below.")
         Text("Use `imgui_focus` to put keyboard focus on NAME_INPUT first.")
         input_text(NAME_INPUT, (text = "Name"))
@@ -61,7 +64,6 @@ def update() {
         Text("Ctrl held: {IsKeyDown(ImGuiKey.LeftCtrl) || IsKeyDown(ImGuiKey.RightCtrl)}")
         Text("Shift held: {IsKeyDown(ImGuiKey.LeftShift) || IsKeyDown(ImGuiKey.RightShift)}")
     }
-    End()
 
     end_of_frame()
     Render()

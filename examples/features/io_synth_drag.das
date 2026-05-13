@@ -14,6 +14,7 @@ require imgui/imgui_live
 require imgui/imgui_boost_runtime
 require imgui/imgui_boost_v2
 require imgui/imgui_widgets_builtin
+require imgui/imgui_containers_builtin
 
 // =============================================================================
 // FEATURE: io_synth_drag — Phase 2.2 L1 mouse-drag synthesis.
@@ -22,10 +23,10 @@ require imgui/imgui_widgets_builtin
 //          presses at bbox center, walks N interpolated steps, releases.
 //          During the drag, snapshot.io.active_widget binds to DEMO_SLIDER
 //          and the slider value moves; both observable through imgui_snapshot.
-// DRIVE:   curl -X POST -d '{"name":"imgui_drag","args":{"target":"DEMO_SLIDER","dx":120.0,"dy":0.0,"steps":8}}' \
+// DRIVE:   curl -X POST -d '{"name":"imgui_drag","args":{"target":"MAIN_WIN/DEMO_SLIDER","dx":120.0,"dy":0.0,"steps":8}}' \
 //              localhost:9090/command
 //          curl -X POST -d '{"name":"imgui_snapshot"}' localhost:9090/command \
-//              | jq '{active: .io.active_widget, value: .globals.DEMO_SLIDER.payload.value}'
+//              | jq '{active: .io.active_widget, value: .globals."MAIN_WIN/DEMO_SLIDER".payload.value}'
 // STANDALONE: daslang.exe modules/dasImgui/examples/features/io_synth_drag.das
 // LIVE:       daslang-live modules/dasImgui/examples/features/io_synth_drag.das
 // =============================================================================
@@ -50,13 +51,13 @@ def update() {
     NewFrame()
 
     SetNextWindowSize(ImVec2(720.0, 220.0), ImGuiCond.Always)
-    if (Begin("io_synth_drag — phase 2.2", null, ImGuiWindowFlags.None)) {
+    window(MAIN_WIN, (text = "io_synth_drag — phase 2.2", closable = false,
+                      flags = ImGuiWindowFlags.None)) {
         Text("L1 drag: imgui_drag synthesizes mouse press → moves → release.")
-        Text("During the drag, io.active_widget == 'DEMO_SLIDER'.")
+        Text("During the drag, io.active_widget == 'MAIN_WIN/DEMO_SLIDER'.")
         slider_float(DEMO_SLIDER, (text = "Drag me"))
         Text("slider value = {DEMO_SLIDER.value}")
     }
-    End()
 
     end_of_frame()
     Render()

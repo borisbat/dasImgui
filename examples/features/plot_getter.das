@@ -14,6 +14,7 @@ require imgui/imgui_live
 require imgui/imgui_boost_runtime
 require imgui/imgui_boost_v2
 require imgui/imgui_widgets_builtin
+require imgui/imgui_containers_builtin
 require math
 
 // =============================================================================
@@ -24,7 +25,7 @@ require math
 //          sample. Useful for synthesized signals (sine, noise) or
 //          virtualized buffers.
 // DRIVE:   curl -X POST -d '{"name":"imgui_snapshot"}' localhost:9090/command \
-//              | jq '.globals.SINE_PLOT'
+//              | jq '.globals."MAIN_WIN/SINE_PLOT"'
 // STANDALONE: daslang.exe modules/dasImgui/examples/features/plot_getter.das
 // LIVE:       daslang-live modules/dasImgui/examples/features/plot_getter.das
 // =============================================================================
@@ -49,7 +50,8 @@ def update() {
     NewFrame()
 
     SetNextWindowSize(ImVec2(720.0, 360.0), ImGuiCond.Always)
-    if (Begin("plot_getter — phase 2.7", null, ImGuiWindowFlags.None)) {
+    window(MAIN_WIN, (text = "plot_getter — phase 2.7", closable = false,
+                      flags = ImGuiWindowFlags.None)) {
         Text("Sine wave generated per-sample by the getter lambda.")
         plot_lines_getter(SINE_PLOT, "sin(i*0.1)", SAMPLES,
                           @(idx : int) : float => sin(float(idx) * 0.1f),
@@ -60,7 +62,6 @@ def update() {
                               "", 3.40282347e38f, 3.40282347e38f,
                               float2(640.0, 120.0))
     }
-    End()
 
     end_of_frame()
     Render()

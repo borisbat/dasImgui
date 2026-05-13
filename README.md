@@ -45,6 +45,8 @@ cmake --build modules/dasImgui/_build --config Release
 
 ## Usage
 
+The smallest embedding, using the gen1 ``imgui_app`` harness:
+
 ```das
 options gen2
 
@@ -64,6 +66,11 @@ def main() {
     }
 }
 ```
+
+For real applications, use the v2 boost surface — block-arg `window(...)`
+containers, auto-emitted state structs, live-reload, and a JSON-driven
+command surface. See the [dasImgui tutorials](doc/source/tutorials/index.rst)
+starting at `boost_basics` for a complete walkthrough.
 
 Run with `-project_root` pointing to the directory containing `modules/`:
 

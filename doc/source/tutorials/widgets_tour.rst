@@ -28,7 +28,8 @@ Requires
 The ``require`` block matches :ref:`tutorial_boost_basics` exactly — backend
 (``imgui_app`` / ``glfw`` / ``opengl``), live host (``live/*``), and the v2
 boost layer (``imgui_live``, ``imgui_boost_runtime``, ``imgui_boost_v2``,
-``imgui_widgets_builtin``). One extra line pulls in
+``imgui_widgets_builtin``, ``imgui_containers_builtin`` for the
+``window(...)`` block container). One extra line pulls in
 ``imgui/imgui_visual_aids`` so the post-it narrate overlay the driver script
 paints into the recording is available at render time.
 
@@ -54,21 +55,27 @@ re-asserts the synth IO so live-driven clicks land at the right widget.
 Widgets
 =======
 
-Each boost macro declares the named global the first time it expands and
-registers it under that name. The panel exercises six:
+All six widgets live inside a single ``window(AUDIO_WIN, ...)`` boost
+container — same pattern :ref:`tutorial_boost_basics` introduced, so leaves
+register at ``AUDIO_WIN/<ident>``:
 
 .. code-block:: das
 
-   input_text(USER_NAME, (text = "Your name"))
-   slider_float(VOLUME, (text = "Master volume"))
-   checkbox(MUTED, (text = "Mute"))
-   combo(QUALITY, (text = "Quality", items <- ["Low", "Medium", "High", "Ultra"]))
-   color_edit3(TINT, (text = "Accent color"))
-   if (button(SAVE_BTN, (text = "Save settings"))) { ... }
+   window(AUDIO_WIN, (text = "Audio settings", closable = false,
+                      flags = ImGuiWindowFlags.None)) {
+       input_text(USER_NAME, (text = "Your name"))
+       slider_float(VOLUME, (text = "Master volume"))
+       checkbox(MUTED, (text = "Mute"))
+       combo(QUALITY, (text = "Quality", items <- ["Low", "Medium", "High", "Ultra"]))
+       color_edit3(TINT, (text = "Accent color"))
+       if (button(SAVE_BTN, (text = "Save settings"))) { ... }
+   }
 
-The slider's range comes from a plain field assignment one line above the
-macro call: ``VOLUME.bounds = (0.0f, 1.0f)``. The combo's item list moves into
-the named argument with ``items <-`` because string arrays are non-copyable.
+Each boost macro declares the named global the first time it expands and
+registers it under the path-prefixed name. The slider's range comes from a
+plain field assignment one line above the macro call:
+``VOLUME.bounds = (0.0f, 1.0f)``. The combo's item list moves into the
+named argument with ``items <-`` because string arrays are non-copyable.
 ``SAVE_BTN.click_count`` accumulates across frames — handy for assertions in
 a test harness.
 
@@ -87,11 +94,11 @@ Driving from outside
 
 Under ``daslang-live`` the boost layer exposes ``imgui_set`` and
 ``imgui_click`` over ``localhost:9090``. The top of the source file lists
-one ``curl`` invocation per widget:
+one ``curl`` invocation per widget. Each ``target`` is path-qualified:
 
 .. code-block:: bash
 
-   curl -X POST -d '{"name":"imgui_set","args":{"target":"USER_NAME","value":"Boris"}}' \
+   curl -X POST -d '{"name":"imgui_set","args":{"target":"AUDIO_WIN/USER_NAME","value":"Boris"}}' \
         localhost:9090/command
 
 For ``color_edit3``, ``value`` is a JSON object with ``x`` / ``y`` / ``z``

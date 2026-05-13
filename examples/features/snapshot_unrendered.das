@@ -14,6 +14,7 @@ require imgui/imgui_live
 require imgui/imgui_boost_runtime
 require imgui/imgui_boost_v2
 require imgui/imgui_widgets_builtin
+require imgui/imgui_containers_builtin
 
 // =============================================================================
 // FEATURE: snapshot_unrendered — Phase 1.1 long-lived registry contract.
@@ -23,8 +24,8 @@ require imgui/imgui_widgets_builtin
 //          into an [init] private register`imgui`widgets() function, so
 //          unreachable widget call sites still populate g_widgets.
 // DRIVE:   curl -X POST -d '{"name":"imgui_snapshot"}' localhost:9090/command
-//          → globals contains both VISIBLE_VAL (rendered, has bbox) and
-//          NEVER_RENDERED (rendered=false, no bbox, payload still present).
+//          → globals contains both MAIN_WIN/VISIBLE_VAL (rendered, has bbox)
+//          and NEVER_RENDERED (rendered=false, no bbox, payload still present).
 // STANDALONE: daslang.exe modules/dasImgui/examples/features/snapshot_unrendered.das
 // LIVE:       daslang-live modules/dasImgui/examples/features/snapshot_unrendered.das
 // =============================================================================
@@ -57,7 +58,8 @@ def update() {
     NewFrame()
 
     SetNextWindowSize(ImVec2(720.0, 240.0), ImGuiCond.Always)
-    if (Begin("Phase 1.1 — registry covers unrendered widgets", null, ImGuiWindowFlags.None)) {
+    window(MAIN_WIN, (text = "Phase 1.1 — registry covers unrendered widgets",
+                      closable = false, flags = ImGuiWindowFlags.None)) {
         Text("VISIBLE_VAL renders every frame. NEVER_RENDERED never does.")
         Text("imgui_snapshot must list both, with rendered:false on the second.")
 
@@ -65,7 +67,6 @@ def update() {
         Text("VISIBLE_VAL.value = {VISIBLE_VAL.value}")
         Text("NEVER_RENDERED.value = {NEVER_RENDERED.value}  (state readable; widget never painted)")
     }
-    End()
 
     end_of_frame()
     Render()

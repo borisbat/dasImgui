@@ -55,16 +55,16 @@ def main {
         panic("daslang-live not responding on {BASE_URL} — is it running with widgets_tour.das?")
     }
 
-    var snap = wait_for_render(app, "SAVE_BTN", 10.0f)
+    var snap = wait_for_render(app, "AUDIO_WIN/SAVE_BTN", 10.0f)
     if (snap == null) {
         panic("SAVE_BTN never rendered — wrong app running on {BASE_URL}?")
     }
-    let p_user_name = widget_center(snap, "USER_NAME")
-    let p_muted     = widget_center(snap, "MUTED")
-    let p_save      = widget_center(snap, "SAVE_BTN")
+    let p_user_name = widget_center(snap, "AUDIO_WIN/USER_NAME")
+    let p_muted     = widget_center(snap, "AUDIO_WIN/MUTED")
+    let p_save      = widget_center(snap, "AUDIO_WIN/SAVE_BTN")
 
     // VOLUME slider: drag from 15% to 80% along its bbox.
-    let vol_bb = widget_bbox(snap, "VOLUME")
+    let vol_bb = widget_bbox(snap, "AUDIO_WIN/VOLUME")
     let vol_y  = (vol_bb.y + vol_bb.w) * 0.5f
     let vol_x0 = vol_bb.x + (vol_bb.z - vol_bb.x) * 0.15f
     let vol_x1 = vol_bb.x + (vol_bb.z - vol_bb.x) * 0.80f
@@ -82,12 +82,12 @@ def main {
     // ---- Stage 1: text input ----
     post_command(app, "imgui_narrate", JV((
         text = "Type your name into the field.",
-        target = "USER_NAME",
+        target = "AUDIO_WIN/USER_NAME",
         frames = 180
     )))
     move_to(app, p_user_name)
     sleep(3500u)
-    post_command(app, "imgui_focus", JV((target = "USER_NAME")))
+    post_command(app, "imgui_focus", JV((target = "AUDIO_WIN/USER_NAME")))
     sleep(400u)
     post_command(app, "imgui_key_type", JV((text = "Alice", total_duration_s = 2.5f)))
     sleep(3000u)
@@ -95,7 +95,7 @@ def main {
     // ---- Stage 2: slider drag ----
     post_command(app, "imgui_narrate", JV((
         text = "Drag the slider to set the volume.",
-        target = "VOLUME",
+        target = "AUDIO_WIN/VOLUME",
         frames = 180
     )))
     sleep(3500u)
@@ -107,7 +107,7 @@ def main {
     // ---- Stage 3: checkbox click ----
     post_command(app, "imgui_narrate", JV((
         text = "Click to mute.",
-        target = "MUTED",
+        target = "AUDIO_WIN/MUTED",
         frames = 180
     )))
     sleep(3500u)
@@ -123,27 +123,27 @@ def main {
     // explains what just happened.
     post_command(app, "imgui_narrate", JV((
         text = "Pick a quality preset.",
-        target = "QUALITY",
+        target = "AUDIO_WIN/QUALITY",
         frames = 180
     )))
     sleep(3500u)
-    post_command(app, "imgui_set", JV((target = "QUALITY", value = 2)))
+    post_command(app, "imgui_set", JV((target = "AUDIO_WIN/QUALITY", value = 2)))
     sleep(1500u)
 
     // ---- Stage 5: color editor via imgui_set ----
     post_command(app, "imgui_narrate", JV((
         text = "Tune the accent color.",
-        target = "TINT",
+        target = "AUDIO_WIN/TINT",
         frames = 180
     )))
     sleep(3500u)
-    post_command(app, "imgui_set", JV((target = "TINT", value = float3(0.25f, 0.75f, 0.45f))))
+    post_command(app, "imgui_set", JV((target = "AUDIO_WIN/TINT", value = float3(0.25f, 0.75f, 0.45f))))
     sleep(1500u)
 
     // ---- Stage 6: button click ----
     post_command(app, "imgui_narrate", JV((
         text = "Save the settings.",
-        target = "SAVE_BTN",
+        target = "AUDIO_WIN/SAVE_BTN",
         frames = 180
     )))
     sleep(3500u)

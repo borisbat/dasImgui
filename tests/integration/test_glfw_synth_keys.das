@@ -24,7 +24,7 @@ let FEATURE = "modules/dasImgui/examples/features/glfw_synth_keys.das"
 [test]
 def test_key_press_release_held_count(t : T?) {
     with_imgui_app(FEATURE) $(d) {
-        var snap0 = wait_for_render(d, "NAME_INPUT", 15.0f)
+        var snap0 = wait_for_render(d, "MAIN_WIN/NAME_INPUT", 15.0f)
         t |> success(snap0 != null, "NAME_INPUT renders")
         if (snap0 == null) return
 
@@ -48,7 +48,7 @@ def test_key_press_release_held_count(t : T?) {
 [test]
 def test_key_type_lands_in_input(t : T?) {
     with_imgui_app(FEATURE) $(d) {
-        var snap0 = wait_for_render(d, "NAME_INPUT", 15.0f)
+        var snap0 = wait_for_render(d, "MAIN_WIN/NAME_INPUT", 15.0f)
         t |> success(snap0 != null, "NAME_INPUT renders")
         if (snap0 == null) return
 
@@ -56,9 +56,9 @@ def test_key_type_lands_in_input(t : T?) {
         // settle io.active_widget by the time we poll, so drive explicit focus
         // via playwright. Same pattern as `test_imgui_type_text_buffer_fills`,
         // which goes through `type_text` (which calls focus internally).
-        focus(d, "NAME_INPUT")
+        focus(d, "MAIN_WIN/NAME_INPUT")
         let focused = wait_until(d, 120) $(var snap) {
-            return snap?["globals"]?["NAME_INPUT"]?["focus"] ?? false
+            return snap?["globals"]?["MAIN_WIN/NAME_INPUT"]?["focus"] ?? false
         }
         t |> success(focused != null, "NAME_INPUT receives keyboard focus")
 
@@ -74,7 +74,7 @@ def test_key_type_lands_in_input(t : T?) {
 
         // Then verify the input buffer received "Hi".
         let landed = wait_until(d, 180) $(var snap) {
-            let v = snap?["globals"]?["NAME_INPUT"]?["payload"]?["value"] ?? ""
+            let v = snap?["globals"]?["MAIN_WIN/NAME_INPUT"]?["payload"]?["value"] ?? ""
             return v == "Hi"
         }
         t |> success(landed != null, "NAME_INPUT.value == \"Hi\" after key_type")
@@ -84,7 +84,7 @@ def test_key_type_lands_in_input(t : T?) {
 [test]
 def test_key_chord_completes(t : T?) {
     with_imgui_app(FEATURE) $(d) {
-        var snap0 = wait_for_render(d, "NAME_INPUT", 15.0f)
+        var snap0 = wait_for_render(d, "MAIN_WIN/NAME_INPUT", 15.0f)
         if (snap0 == null) {
             t |> success(false, "NAME_INPUT renders")
             return
@@ -105,7 +105,7 @@ def test_key_chord_completes(t : T?) {
 [test]
 def test_key_play_event_list_completes(t : T?) {
     with_imgui_app(FEATURE) $(d) {
-        var snap0 = wait_for_render(d, "NAME_INPUT", 15.0f)
+        var snap0 = wait_for_render(d, "MAIN_WIN/NAME_INPUT", 15.0f)
         if (snap0 == null) {
             t |> success(false, "NAME_INPUT renders")
             return
@@ -130,7 +130,7 @@ def test_key_play_event_list_completes(t : T?) {
 [test]
 def test_key_stop_aborts(t : T?) {
     with_imgui_app(FEATURE) $(d) {
-        var snap0 = wait_for_render(d, "NAME_INPUT", 15.0f)
+        var snap0 = wait_for_render(d, "MAIN_WIN/NAME_INPUT", 15.0f)
         if (snap0 == null) {
             t |> success(false, "NAME_INPUT renders")
             return
@@ -161,7 +161,7 @@ def test_key_stop_aborts(t : T?) {
 // [test]
 def test_key_chord_ctrl_visible_to_imgui(t : T?) {
     with_imgui_app(FEATURE) $(d) {
-        var snap0 = wait_for_render(d, "NAME_INPUT", 15.0f)
+        var snap0 = wait_for_render(d, "MAIN_WIN/NAME_INPUT", 15.0f)
         if (snap0 == null) {
             t |> success(false, "NAME_INPUT renders")
             return
@@ -189,7 +189,7 @@ def test_key_stop_releases_held_modifiers(t : T?) {
     // release queued) and then calling key_stop — the held_count must drop
     // to 0 and the stop response must report released=1.
     with_imgui_app(FEATURE) $(d) {
-        var snap0 = wait_for_render(d, "NAME_INPUT", 15.0f)
+        var snap0 = wait_for_render(d, "MAIN_WIN/NAME_INPUT", 15.0f)
         if (snap0 == null) {
             t |> success(false, "NAME_INPUT renders")
             return

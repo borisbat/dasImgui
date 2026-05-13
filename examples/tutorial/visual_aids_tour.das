@@ -14,6 +14,7 @@ require imgui/imgui_live
 require imgui/imgui_boost_runtime
 require imgui/imgui_boost_v2
 require imgui/imgui_widgets_builtin
+require imgui/imgui_containers_builtin
 require imgui/imgui_visual_aids
 
 // =============================================================================
@@ -59,10 +60,11 @@ def update() {
     apply_synth_io_override()
     NewFrame()
 
-    // ===== Main window — the demoed widgets =====
+    // ===== Subject window — the demoed widgets =====
     SetNextWindowPos(float2(40.0f, 40.0f), ImGuiCond.FirstUseEver)
     SetNextWindowSize(float2(440.0f, 360.0f), ImGuiCond.FirstUseEver)
-    if (Begin("Demoed widgets", null, ImGuiWindowFlags.None)) {
+    window(SUBJECT_WIN, (text = "Demoed widgets", closable = false,
+                         flags = ImGuiWindowFlags.None)) {
         Text("These widgets get highlighted, narrated, typed-into, etc.")
         Separator()
         text_show(STATUS, (value = "ready"))
@@ -75,27 +77,27 @@ def update() {
         input_text(NAME_INPUT, (text = "Name"))
         Text("buffer = {NAME_INPUT.value}")
     }
-    End()
 
     // ===== Controls window — driver buttons for the aids =====
     SetNextWindowPos(float2(520.0f, 40.0f), ImGuiCond.FirstUseEver)
     SetNextWindowSize(float2(440.0f, 560.0f), ImGuiCond.FirstUseEver)
-    if (Begin("Visual aids controls", null, ImGuiWindowFlags.None)) {
+    window(CONTROLS_WIN, (text = "Visual aids controls", closable = false,
+                          flags = ImGuiWindowFlags.None)) {
         Text("Highlight a widget (yellow rect, 60 frames):")
         Separator()
         if (button(BTN_HIGHLIGHT_STATUS, (text = "highlight STATUS"))) {
-            highlight("STATUS")
+            highlight("SUBJECT_WIN/STATUS")
         }
         if (button(BTN_HIGHLIGHT_VOLUME, (text = "highlight VOLUME"))) {
-            highlight("VOLUME")
+            highlight("SUBJECT_WIN/VOLUME")
         }
         if (button(BTN_HIGHLIGHT_SAVE, (text = "highlight SAVE_BTN"))) {
-            highlight("SAVE_BTN")
+            highlight("SUBJECT_WIN/SAVE_BTN")
         }
         if (button(BTN_HIGHLIGHT_ALL, (text = "highlight all three"))) {
-            highlight("STATUS")
-            highlight("VOLUME")
-            highlight("SAVE_BTN")
+            highlight("SUBJECT_WIN/STATUS")
+            highlight("SUBJECT_WIN/VOLUME")
+            highlight("SUBJECT_WIN/SAVE_BTN")
         }
 
         Spacing()
@@ -112,10 +114,10 @@ def update() {
         Text("Narrate callout (overlay box + connector line):")
         Separator()
         if (button(BTN_NARRATE_VOLUME, (text = "narrate VOLUME"))) {
-            narrate("Drag this to set volume.", "VOLUME")
+            narrate("Drag this to set volume.", "SUBJECT_WIN/VOLUME")
         }
         if (button(BTN_NARRATE_SAVE, (text = "narrate SAVE_BTN"))) {
-            narrate("Click here to save.", "SAVE_BTN")
+            narrate("Click here to save.", "SUBJECT_WIN/SAVE_BTN")
         }
         if (button(BTN_NARRATE_FLOATING, (text = "narrate floating"))) {
             narrate("Floating overlay, no target widget.")
@@ -131,7 +133,6 @@ def update() {
             imgui_auto_highlight_on_command = false
         }
     }
-    End()
 
     end_of_frame()
     Render()

@@ -24,14 +24,14 @@ let SNAPSHOT_UNRENDERED_FEATURE = "modules/dasImgui/examples/features/snapshot_u
 [test]
 def test_unrendered_widget_visible(t : T?) {
     with_imgui_app(SNAPSHOT_UNRENDERED_FEATURE) $(d) {
-        var snap = wait_for_widget(d, "VISIBLE_VAL", 15.0f)
+        var snap = wait_for_widget(d, "MAIN_WIN/VISIBLE_VAL", 15.0f)
         t |> success(snap != null, "VISIBLE_VAL appears in registry")
         if (snap == null) return
 
         // Gate 1: VISIBLE_VAL is rendered (has bbox).
-        t |> success(widget_rendered(snap, "VISIBLE_VAL"),
+        t |> success(widget_rendered(snap, "MAIN_WIN/VISIBLE_VAL"),
                      "VISIBLE_VAL has bbox — rendered this frame")
-        var visible = find_widget(snap, "VISIBLE_VAL")
+        var visible = find_widget(snap, "MAIN_WIN/VISIBLE_VAL")
         t |> equal(visible?["kind"] ?? "", "slider_float",
                    "VISIBLE_VAL.kind")
         t |> success(visible?["payload"]?["value"] != null,

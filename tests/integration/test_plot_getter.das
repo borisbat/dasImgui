@@ -28,20 +28,20 @@ let PLOT_GETTER_FEATURE = "modules/dasImgui/examples/features/plot_getter.das"
 [test]
 def test_plot_getters_render(t : T?) {
     with_imgui_app(PLOT_GETTER_FEATURE) $(d) {
-        var snap0 = wait_for_widget(d, "SINE_PLOT", 15.0f)
+        var snap0 = wait_for_widget(d, "MAIN_WIN/SINE_PLOT", 15.0f)
         t |> success(snap0 != null, "SINE_PLOT registers (snapshot reachable)")
         if (snap0 == null) return
-        t |> equal(snap0?["globals"]?["SINE_PLOT"]?["kind"] ?? "", "plot_lines_getter",
+        t |> equal(snap0?["globals"]?["MAIN_WIN/SINE_PLOT"]?["kind"] ?? "", "plot_lines_getter",
                    "SINE_PLOT.kind = plot_lines_getter")
-        t |> equal(snap0?["globals"]?["SINE_PLOT"]?["payload"]?["samples"] ?? -1, 64,
+        t |> equal(snap0?["globals"]?["MAIN_WIN/SINE_PLOT"]?["payload"]?["samples"] ?? -1, 64,
                    "SINE_PLOT.payload.samples = 64")
 
-        var snap1 = wait_for_widget(d, "BARS_PLOT", 15.0f)
+        var snap1 = wait_for_widget(d, "MAIN_WIN/BARS_PLOT", 15.0f)
         t |> success(snap1 != null, "BARS_PLOT reachable")
         if (snap1 == null) return
-        t |> equal(snap1?["globals"]?["BARS_PLOT"]?["kind"] ?? "", "plot_histogram_getter",
+        t |> equal(snap1?["globals"]?["MAIN_WIN/BARS_PLOT"]?["kind"] ?? "", "plot_histogram_getter",
                    "BARS_PLOT.kind = plot_histogram_getter")
-        t |> equal(snap1?["globals"]?["BARS_PLOT"]?["payload"]?["samples"] ?? -1, 64,
+        t |> equal(snap1?["globals"]?["MAIN_WIN/BARS_PLOT"]?["payload"]?["samples"] ?? -1, 64,
                    "BARS_PLOT.payload.samples = 64")
     }
 }

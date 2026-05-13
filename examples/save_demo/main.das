@@ -14,6 +14,7 @@ require imgui/imgui_live
 require imgui/imgui_boost_runtime
 require imgui/imgui_boost_v2
 require imgui/imgui_widgets_builtin
+require imgui/imgui_containers_builtin
 
 // =============================================================================
 // FEATURE: save_demo — the spec §7.1 example. Three widgets exercised by
@@ -23,10 +24,10 @@ require imgui/imgui_widgets_builtin
 //            STATUS_TEXT  (text_show)   — reflects "saved" after click
 // SHOWS:   First externally-facing test of the public imgui_playwright
 //          surface — click + type_text (auto-focus) + expect_value flow.
-// DRIVE:   curl -X POST -d '{"name":"imgui_click","args":{"target":"SAVE_BTN"}}' \
+// DRIVE:   curl -X POST -d '{"name":"imgui_click","args":{"target":"MAIN_WIN/SAVE_BTN"}}' \
 //               localhost:9090/command
-//          → globals.STATUS_TEXT.payload.value flips to "saved"
-//          curl -X POST -d '{"name":"imgui_set","args":{"target":"NAME_INPUT","value":"hello"}}' \
+//          → globals."MAIN_WIN/STATUS_TEXT".payload.value flips to "saved"
+//          curl -X POST -d '{"name":"imgui_set","args":{"target":"MAIN_WIN/NAME_INPUT","value":"hello"}}' \
 //               localhost:9090/command
 // STANDALONE: daslang.exe modules/dasImgui/examples/save_demo/main.das
 // LIVE:       daslang-live modules/dasImgui/examples/save_demo/main.das
@@ -51,14 +52,14 @@ def update() {
     NewFrame()
 
     SetNextWindowSize(ImVec2(560.0, 200.0), ImGuiCond.Always)
-    if (Begin("Save demo", null, ImGuiWindowFlags.None)) {
+    window(MAIN_WIN, (text = "Save demo", closable = false,
+                      flags = ImGuiWindowFlags.None)) {
         input_text(NAME_INPUT, (text = "Name"))
         if (button(SAVE_BTN, (text = "Save"))) {
             STATUS_TEXT.value := "saved"
         }
         text_show(STATUS_TEXT)
     }
-    End()
 
     end_of_frame()
     Render()

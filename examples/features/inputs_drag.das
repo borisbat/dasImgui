@@ -14,6 +14,7 @@ require imgui/imgui_live
 require imgui/imgui_boost_runtime
 require imgui/imgui_boost_v2
 require imgui/imgui_widgets_builtin
+require imgui/imgui_containers_builtin
 
 // =============================================================================
 // FEATURE: inputs_drag — every Phase 0b.2 Drag* widget in one window.
@@ -21,11 +22,11 @@ require imgui/imgui_widgets_builtin
 //          DragInt / DragInt2 / DragInt3 / DragInt4
 //          DragFloatRange2 / DragIntRange2
 // DRIVE:   curl -X POST -d '{"name":"imgui_snapshot"}' localhost:9090/command
-//          curl -X POST -d '{"name":"imgui_set","args":{"target":"OPACITY","value":0.5}}' \
+//          curl -X POST -d '{"name":"imgui_set","args":{"target":"MAIN_WIN/OPACITY","value":0.5}}' \
 //               localhost:9090/command
-//          curl -X POST -d '{"name":"imgui_set","args":{"target":"SCALE_XY","value":[2.0, 1.5]}}' \
+//          curl -X POST -d '{"name":"imgui_set","args":{"target":"MAIN_WIN/SCALE_XY","value":[2.0, 1.5]}}' \
 //               localhost:9090/command
-//          curl -X POST -d '{"name":"imgui_set","args":{"target":"PRICE","value":[5, 12]}}' \
+//          curl -X POST -d '{"name":"imgui_set","args":{"target":"MAIN_WIN/PRICE","value":[5, 12]}}' \
 //               localhost:9090/command
 // STANDALONE: daslang.exe modules/dasImgui/examples/features/inputs_drag.das
 // LIVE:       daslang-live modules/dasImgui/examples/features/inputs_drag.das
@@ -49,7 +50,8 @@ def update() {
     NewFrame()
 
     SetNextWindowSize(ImVec2(720.0, 660.0), ImGuiCond.Always)
-    if (Begin("Drag inputs — phase 0b.2", null, ImGuiWindowFlags.None)) {
+    window(MAIN_WIN, (text = "Drag inputs — phase 0b.2", closable = false,
+                      flags = ImGuiWindowFlags.None)) {
         // ----- Float scalars -----
         // Bounds set once-per-frame from source; assignment is idempotent.
         // `speed` / `format` / `flags` are per-call args (defaults 1.0f/"%.3f"/None).
@@ -111,7 +113,6 @@ def update() {
         drag_int_range2(PRICE, (text = "Price"))
         Text("price = [{PRICE.value.x}, {PRICE.value.y}]")
     }
-    End()
 
     end_of_frame()
     Render()

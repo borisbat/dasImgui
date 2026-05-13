@@ -14,6 +14,7 @@ require imgui/imgui_live
 require imgui/imgui_boost_runtime
 require imgui/imgui_boost_v2
 require imgui/imgui_widgets_builtin
+require imgui/imgui_containers_builtin
 
 // =============================================================================
 // FEATURE: await_quiescent — Phase 2.5 quiescence probe.
@@ -23,7 +24,7 @@ require imgui/imgui_widgets_builtin
 //          modifier `await={frames:N}` surfaces in the response wrap.
 // DRIVE:   curl -X POST -d '{"name":"imgui_await"}' localhost:9090/command \
 //              | jq '.value'
-//          curl -X POST -d '{"name":"imgui_drag","args":{"target":"DEMO_SLIDER","dx":80,"steps":6,"await":{"await_frames":3}}}' \
+//          curl -X POST -d '{"name":"imgui_drag","args":{"target":"MAIN_WIN/DEMO_SLIDER","dx":80,"steps":6,"await":{"await_frames":3}}}' \
 //              localhost:9090/command           # response carries await_frames=3
 // STANDALONE: daslang.exe modules/dasImgui/examples/features/await_quiescent.das
 // LIVE:       daslang-live modules/dasImgui/examples/features/await_quiescent.das
@@ -49,11 +50,11 @@ def update() {
     NewFrame()
 
     SetNextWindowSize(ImVec2(720.0, 200.0), ImGuiCond.Always)
-    if (Begin("await_quiescent — phase 2.5", null, ImGuiWindowFlags.None)) {
+    window(MAIN_WIN, (text = "await_quiescent — phase 2.5", closable = false,
+                      flags = ImGuiWindowFlags.None)) {
         Text("imgui_await reports quiescent + frame + pending_coroutines + active_id.")
         slider_float(DEMO_SLIDER, (text = "Optional: drag to spawn a coroutine"))
     }
-    End()
 
     end_of_frame()
     Render()

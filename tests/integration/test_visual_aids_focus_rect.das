@@ -21,7 +21,7 @@ let FEATURE = "modules/dasImgui/examples/features/glfw_synth_keys.das"
 [test]
 def test_focus_rect_toggle(t : T?) {
     with_imgui_app(FEATURE) $(d) {
-        var snap0 = wait_for_render(d, "NAME_INPUT", 15.0f)
+        var snap0 = wait_for_render(d, "MAIN_WIN/NAME_INPUT", 15.0f)
         t |> success(snap0 != null, "NAME_INPUT renders")
         if (snap0 == null) return
 
@@ -45,21 +45,21 @@ def test_focus_rect_resolves_active_widget(t : T?) {
     //! mirror keyboard focus 1:1 — focus settling is the load-bearing
     //! signal for our overlay.
     with_imgui_app(FEATURE) $(d) {
-        var snap0 = wait_for_render(d, "NAME_INPUT", 15.0f)
+        var snap0 = wait_for_render(d, "MAIN_WIN/NAME_INPUT", 15.0f)
         if (snap0 == null) {
             t |> success(false, "NAME_INPUT renders")
             return
         }
 
-        focus(d, "NAME_INPUT")
+        focus(d, "MAIN_WIN/NAME_INPUT")
         let focused = wait_until(d, 180) $(var snap) {
-            return snap?["globals"]?["NAME_INPUT"]?["focus"] ?? false
+            return snap?["globals"]?["MAIN_WIN/NAME_INPUT"]?["focus"] ?? false
         }
         t |> success(focused != null, "NAME_INPUT receives keyboard focus after focus dispatch")
 
         // bbox is in globals[NAME_INPUT].bbox (per imgui_boost_runtime).
         let snap = post_command(d, "imgui_snapshot", null)
-        let bb = snap?["globals"]?["NAME_INPUT"]?["bbox"]
+        let bb = snap?["globals"]?["MAIN_WIN/NAME_INPUT"]?["bbox"]
         t |> success(bb != null, "NAME_INPUT.bbox populated in snapshot")
         let x = bb?["x"] ?? 0.0f
         let z = bb?["z"] ?? 0.0f

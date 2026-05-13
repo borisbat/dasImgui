@@ -14,6 +14,7 @@ require imgui/imgui_live
 require imgui/imgui_boost_runtime
 require imgui/imgui_boost_v2
 require imgui/imgui_widgets_builtin
+require imgui/imgui_containers_builtin
 require daslib/json public
 require daslib/json_boost public
 
@@ -83,11 +84,11 @@ def update() {
     NewFrame()
 
     SetNextWindowSize(ImVec2(720.0, 320.0), ImGuiCond.Always)
-    if (Begin("widget_init_defaults", null, ImGuiWindowFlags.None)) {
+    window(MAIN_WIN, (text = "widget_init_defaults", closable = false,
+                      flags = ImGuiWindowFlags.None)) {
         Text("Default-init smoke test. Snapshot to inspect DEFAULTS payload.")
         show_defaults(DEFAULTS, (text = "show_defaults"))
     }
-    End()
 
     end_of_frame()
     Render()

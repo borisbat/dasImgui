@@ -25,7 +25,9 @@ require imgui/imgui_visual_aids
 //          skipping the GLFW backend chain. Ctrl-shortcuts (Ctrl+A etc.)
 //          route correctly after a synth click — the bypass purges
 //          backend events that would otherwise poison Shortcut() routing.
-// DRIVE:   curl -X POST -d '{"name":"imgui_key_type","args":{"text":"Hello, World!","total_duration_s":3.0}}' \
+// DRIVE:   curl -X POST -d '{"name":"imgui_focus","args":{"target":"MAIN_WIN/NAME_INPUT"}}' \
+//              localhost:9090/command
+//          curl -X POST -d '{"name":"imgui_key_type","args":{"text":"Hello, World!","total_duration_s":3.0}}' \
 //              localhost:9090/command
 //          curl -X POST -d '{"name":"imgui_key_chord","args":{"mods":["Ctrl"],"key":"A"}}' \
 //              localhost:9090/command
@@ -54,7 +56,8 @@ def update() {
 
     SetNextWindowPos(ImVec2(40.0, 40.0), ImGuiCond.Always)
     SetNextWindowSize(ImVec2(640.0, 240.0), ImGuiCond.Always)
-    if (Begin("synth keys demo (imgui bypass)", null, ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove)) {
+    window(MAIN_WIN, (text = "synth keys demo (imgui bypass)", closable = false,
+                      flags = ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove)) {
         Text("Drive `imgui_key_type`, `imgui_key_chord`, `imgui_key_play` to feed the input below.")
         Text("Use `imgui_focus` to put keyboard focus on NAME_INPUT first.")
         input_text(NAME_INPUT, (text = "Name"))
@@ -62,7 +65,6 @@ def update() {
         Text("Ctrl held: {IsKeyDown(ImGuiKey.LeftCtrl) || IsKeyDown(ImGuiKey.RightCtrl)}")
         Text("Shift held: {IsKeyDown(ImGuiKey.LeftShift) || IsKeyDown(ImGuiKey.RightShift)}")
     }
-    End()
 
     end_of_frame()
     Render()

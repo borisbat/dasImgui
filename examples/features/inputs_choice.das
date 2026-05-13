@@ -14,15 +14,16 @@ require imgui/imgui_live
 require imgui/imgui_boost_runtime
 require imgui/imgui_boost_v2
 require imgui/imgui_widgets_builtin
+require imgui/imgui_containers_builtin
 
 // =============================================================================
 // FEATURE: inputs_choice — Phase 0b.2 Combo + ListBox (deprecated single-call
 //          forms). Both widgets take `items : array<string>` directly — daslang
 //          marshals it C-side without a shim.
 // SHOWS:   combo / list_box
-// DRIVE:   curl -X POST -d '{"name":"imgui_set","args":{"target":"FRUIT","value":2}}' \
+// DRIVE:   curl -X POST -d '{"name":"imgui_set","args":{"target":"MAIN_WIN/FRUIT","value":2}}' \
 //               localhost:9090/command
-//          curl -X POST -d '{"name":"imgui_set","args":{"target":"SHIRT_SIZE","value":1}}' \
+//          curl -X POST -d '{"name":"imgui_set","args":{"target":"MAIN_WIN/SHIRT_SIZE","value":1}}' \
 //               localhost:9090/command
 // STANDALONE: daslang.exe modules/dasImgui/examples/features/inputs_choice.das
 // LIVE:       daslang-live modules/dasImgui/examples/features/inputs_choice.das
@@ -51,7 +52,8 @@ def update() {
     NewFrame()
 
     SetNextWindowSize(ImVec2(660.0, 460.0), ImGuiCond.Always)
-    if (Begin("Choice inputs — phase 0b.2", null, ImGuiWindowFlags.None)) {
+    window(MAIN_WIN, (text = "Choice inputs — phase 0b.2", closable = false,
+                      flags = ImGuiWindowFlags.None)) {
         Text("Combo (dropdown selector)")
         Separator()
 
@@ -75,9 +77,8 @@ def update() {
         Text("shirt size index = {SHIRT_SIZE.value}")
 
         Spacing()
-        Text("imgui_set with target=FRUIT, value=N jumps to N-th item next frame")
+        Text("imgui_set with target=MAIN_WIN/FRUIT, value=N jumps to N-th item next frame")
     }
-    End()
 
     end_of_frame()
     Render()

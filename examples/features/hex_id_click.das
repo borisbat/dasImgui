@@ -14,6 +14,7 @@ require imgui/imgui_live
 require imgui/imgui_boost_runtime
 require imgui/imgui_boost_v2
 require imgui/imgui_widgets_builtin
+require imgui/imgui_containers_builtin
 
 // =============================================================================
 // FEATURE: hex_id_click — Phase 2.3 hex_id-targeted dispatch.
@@ -24,9 +25,9 @@ require imgui/imgui_widgets_builtin
 //          synthesis (out-of-band; not exercised here — see classify_target
 //          comments for the L1 fallback contract).
 // DRIVE:   curl -X POST -d '{"name":"imgui_snapshot"}' localhost:9090/command \
-//              | jq '.globals.DEMO_BTN.hex_id'           # → 2749588296
+//              | jq '.globals."MAIN_WIN/DEMO_BTN".hex_id'    # → 2749588296
 //          curl -X POST -d '{"name":"imgui_click","args":{"target":"0xa3d68f08"}}' \
-//              localhost:9090/command                    # → {"ok":true,"value":"DEMO_BTN", ...}
+//              localhost:9090/command                    # → {"ok":true,"value":"MAIN_WIN/DEMO_BTN", ...}
 // STANDALONE: daslang.exe modules/dasImgui/examples/features/hex_id_click.das
 // LIVE:       daslang-live modules/dasImgui/examples/features/hex_id_click.das
 // =============================================================================
@@ -49,7 +50,8 @@ def update() {
     NewFrame()
 
     SetNextWindowSize(ImVec2(720.0, 220.0), ImGuiCond.Always)
-    if (Begin("hex_id_click — phase 2.3", null, ImGuiWindowFlags.None)) {
+    window(MAIN_WIN, (text = "hex_id_click — phase 2.3", closable = false,
+                      flags = ImGuiWindowFlags.None)) {
         Text("Click via name or hex_id: imgui_click resolves both forms.")
         Text("Hex strings ('0x...') reverse-map through g_id_to_path to L2.")
         if (button(DEMO_BTN, (text = "Click me"))) {
@@ -57,7 +59,6 @@ def update() {
         }
         Text("clicks: {DEMO_BTN.click_count}")
     }
-    End()
 
     end_of_frame()
     Render()

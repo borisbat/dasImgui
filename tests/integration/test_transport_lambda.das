@@ -30,7 +30,7 @@ def test_transport_lambda_round_trip(t : T?) {
     with_imgui_app(TRANSPORT_DEMO_FEATURE) $(d) {
         // Wait for the widget so we know the host is fully ready before
         // routing the smoke commands through the transport lambda.
-        let snap0 = wait_for_widget(d, "DEMO_BTN", 15.0f)
+        let snap0 = wait_for_widget(d, "MAIN_WIN/DEMO_BTN", 15.0f)
         t |> success(snap0 != null, "DEMO_BTN reachable via imgui_playwright")
         if (snap0 == null) return
 
@@ -42,11 +42,11 @@ def test_transport_lambda_round_trip(t : T?) {
 
         // Gate 3: send a click via the transport; verify Result wire shape.
         var click_resp = send_imgui_command(transport, "imgui_click",
-                                            JV((target = "DEMO_BTN")))
+                                            JV((target = "MAIN_WIN/DEMO_BTN")))
         t |> success(click_resp != null, "click via transport non-null")
         t |> equal(click_resp?["ok"] ?? false, true,
                    "transport click response.ok = true")
-        t |> equal(click_resp?["value"] ?? "", "DEMO_BTN",
+        t |> equal(click_resp?["value"] ?? "", "MAIN_WIN/DEMO_BTN",
                    "transport click response.value = DEMO_BTN")
 
         // Gate 4: await_imgui converges on quiescence within the default

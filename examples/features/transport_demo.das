@@ -14,6 +14,7 @@ require imgui/imgui_live
 require imgui/imgui_boost_runtime
 require imgui/imgui_boost_v2
 require imgui/imgui_widgets_builtin
+require imgui/imgui_containers_builtin
 
 // =============================================================================
 // FEATURE: transport_demo — Phase 2.6 lambda transport.
@@ -23,7 +24,7 @@ require imgui/imgui_widgets_builtin
 //          fixture and route every command through it; users can substitute
 //          mocks/in-process buses without touching call sites.
 // DRIVE:   curl -X POST -d '{"name":"imgui_snapshot"}' localhost:9090/command \
-//              | jq '.globals.DEMO_BTN'
+//              | jq '.globals."MAIN_WIN/DEMO_BTN"'
 // STANDALONE: daslang.exe modules/dasImgui/examples/features/transport_demo.das
 // LIVE:       daslang-live modules/dasImgui/examples/features/transport_demo.das
 // =============================================================================
@@ -46,14 +47,14 @@ def update() {
     NewFrame()
 
     SetNextWindowSize(ImVec2(720.0, 200.0), ImGuiCond.Always)
-    if (Begin("transport_demo — phase 2.6", null, ImGuiWindowFlags.None)) {
+    window(MAIN_WIN, (text = "transport_demo — phase 2.6", closable = false,
+                      flags = ImGuiWindowFlags.None)) {
         Text("Transport lambda routes commands; await_imgui polls quiescence.")
         if (button(DEMO_BTN, (text = "Click me"))) {
             print("DEMO_BTN clicked, count={DEMO_BTN.click_count}\n")
         }
         Text("clicks: {DEMO_BTN.click_count}")
     }
-    End()
 
     end_of_frame()
     Render()

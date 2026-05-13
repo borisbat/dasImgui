@@ -34,7 +34,7 @@ let AWAIT_QUIESCENT_FEATURE = "modules/dasImgui/examples/features/await_quiescen
 def test_imgui_await(t : T?) {
     with_imgui_app(AWAIT_QUIESCENT_FEATURE) $(d) {
         // Gate 1: idle quiescence.
-        var snap0 = wait_for_widget(d, "DEMO_SLIDER", 15.0f)
+        var snap0 = wait_for_widget(d, "MAIN_WIN/DEMO_SLIDER", 15.0f)
         t |> success(snap0 != null, "DEMO_SLIDER reachable")
         if (snap0 == null) return
         let idle = await_probe(d)
@@ -48,7 +48,7 @@ def test_imgui_await(t : T?) {
         // Gate 2: long drag → coroutine in flight; await says not quiescent.
         // 30 steps × 1 frame each = ~30 frames in-flight at 60fps. At 700fps
         // headed mode the drag is ~40ms. Probe immediately after dispatch.
-        let dr = drag(d, "DEMO_SLIDER", 100.0f, 0.0f, 30)
+        let dr = drag(d, "MAIN_WIN/DEMO_SLIDER", 100.0f, 0.0f, 30)
         t |> equal(dr?["ok"] ?? false, true, "drag dispatched")
         let busy = await_probe(d)
         t |> success((busy?["value"]?["pending_coroutines"] ?? 0) >= 1 ||
@@ -64,7 +64,7 @@ def test_imgui_await(t : T?) {
 
         // Gate 4: per-command await modifier surfaces in response wrap.
         let resp = post_command(d, "imgui_drag", JV((
-            target = "DEMO_SLIDER",
+            target = "MAIN_WIN/DEMO_SLIDER",
             dx = 10.0f,
             dy = 0.0f,
             steps = 2,

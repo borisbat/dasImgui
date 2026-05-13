@@ -14,6 +14,7 @@ require imgui/imgui_live
 require imgui/imgui_boost_runtime
 require imgui/imgui_boost_v2
 require imgui/imgui_widgets_builtin
+require imgui/imgui_containers_builtin
 
 // =============================================================================
 // FEATURE: foundation — Phase 0b.0 [widget] foundation contract.
@@ -22,11 +23,11 @@ require imgui/imgui_widgets_builtin
 //          payload via g_serializers, materialized on imgui_snapshot only) +
 //          unified L2/L3 dispatch (one g_dispatchers table for every kind).
 // DRIVE:   curl -X POST -d '{"name":"imgui_snapshot"}' localhost:9090/command
-//          curl -X POST -d '{"name":"imgui_click","args":{"target":"SAVE_BTN"}}' \
+//          curl -X POST -d '{"name":"imgui_click","args":{"target":"MAIN_WIN/SAVE_BTN"}}' \
 //               localhost:9090/command
-//          curl -X POST -d '{"name":"imgui_set","args":{"target":"SPEED","value":7}}' \
+//          curl -X POST -d '{"name":"imgui_set","args":{"target":"MAIN_WIN/SPEED","value":7}}' \
 //               localhost:9090/command
-//          curl -X POST -d '{"name":"imgui_set","args":{"target":"VOLUME","value":0.5}}' \
+//          curl -X POST -d '{"name":"imgui_set","args":{"target":"MAIN_WIN/VOLUME","value":0.5}}' \
 //               localhost:9090/command
 // STANDALONE: daslang.exe modules/dasImgui/examples/features/foundation.das
 // LIVE:       daslang-live modules/dasImgui/examples/features/foundation.das
@@ -53,7 +54,8 @@ def update() {
     NewFrame()
 
     SetNextWindowSize(ImVec2(720.0, 320.0), ImGuiCond.Always)
-    if (Begin("Foundation — phase 0b.0", null, ImGuiWindowFlags.None)) {
+    window(MAIN_WIN, (text = "Foundation — phase 0b.0", closable = false,
+                      flags = ImGuiWindowFlags.None)) {
         Text("Three [widget] decls — every global below is auto-emitted.")
 
         // Button — return form. Identifier `SAVE_BTN` becomes the
@@ -76,7 +78,6 @@ def update() {
         slider_float(VOLUME.NOTLIVE, (text = "Volume (float)"))
         Text("volume = {VOLUME.value}")
     }
-    End()
 
     end_of_frame()
     Render()

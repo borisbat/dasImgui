@@ -34,7 +34,7 @@ let ACTIVE_WIDGET_FEATURE = "modules/dasImgui/examples/features/active_widget.da
 def test_active_widget_foundation(t : T?) {
     with_imgui_app(ACTIVE_WIDGET_FEATURE) $(d) {
         // Gate 1: foundation regression — snapshot returns globals + io.
-        var snap0 = wait_for_widget(d, "DEMO_BTN", 15.0f)
+        var snap0 = wait_for_widget(d, "MAIN_WIN/DEMO_BTN", 15.0f)
         t |> success(snap0 != null, "DEMO_BTN registers (snapshot reachable)")
         if (snap0 == null) return
         t |> success(snap0?["io"] != null, "snapshot.io block present")
@@ -58,13 +58,13 @@ def test_active_widget_foundation(t : T?) {
                      "io.active_widget reads empty when nothing is active")
 
         // Gate 4: imgui_click response wire format is Result<string, string>.
-        // {"ok": true, "value": "DEMO_BTN", ...} — vs Phase 1's
-        // {"ok": true, "queued": "DEMO_BTN"}.
-        let click_resp = click(d, "DEMO_BTN")
+        // {"ok": true, "value": "MAIN_WIN/DEMO_BTN", ...} — vs Phase 1's
+        // {"ok": true, "queued": "MAIN_WIN/DEMO_BTN"}.
+        let click_resp = click(d, "MAIN_WIN/DEMO_BTN")
         t |> success(click_resp != null, "imgui_click returned a response")
         t |> equal(click_resp?["ok"] ?? false, true,
                    "click response.ok = true on hit")
-        t |> equal(click_resp?["value"] ?? "", "DEMO_BTN",
+        t |> equal(click_resp?["value"] ?? "", "MAIN_WIN/DEMO_BTN",
                    "click response.value = target ident (Result wire)")
 
         // Gate 5: with_await default merges timeout_sec (5.0) into the response.
@@ -73,13 +73,13 @@ def test_active_widget_foundation(t : T?) {
 
         // Gate 6: fire_and_forget=true skips the await merge — bare Result.
         let ff_resp = post_command(d, "imgui_click", JV((
-            target = "DEMO_BTN",
+            target = "MAIN_WIN/DEMO_BTN",
             await = JV((fire_and_forget = true))
         )))
         t |> success(ff_resp != null, "fire_and_forget click returned a response")
         t |> equal(ff_resp?["timeout_sec"] ?? 0.0f, 0.0f,
                    "fire_and_forget suppresses timeout_sec merge (reads as default 0.0)")
-        t |> equal(ff_resp?["value"] ?? "", "DEMO_BTN",
+        t |> equal(ff_resp?["value"] ?? "", "MAIN_WIN/DEMO_BTN",
                    "fire_and_forget still carries the Result.value")
 
         // Gate 7: error path — unknown target produces Result.err shape.

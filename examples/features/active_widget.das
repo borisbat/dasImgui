@@ -14,6 +14,7 @@ require imgui/imgui_live
 require imgui/imgui_boost_runtime
 require imgui/imgui_boost_v2
 require imgui/imgui_widgets_builtin
+require imgui/imgui_containers_builtin
 
 // =============================================================================
 // FEATURE: active_widget — Phase 2.1 foundation gate.
@@ -24,9 +25,9 @@ require imgui/imgui_widgets_builtin
 //          per-command modifier merging (await/timeout_sec/fire_and_forget).
 // DRIVE:   curl -X POST -d '{"name":"imgui_snapshot"}' localhost:9090/command \
 //              | jq '.io'
-//          curl -X POST -d '{"name":"imgui_click","args":{"target":"DEMO_BTN"}}' \
-//              localhost:9090/command          # → {"ok": true, "value": "DEMO_BTN", ...}
-//          curl -X POST -d '{"name":"imgui_click","args":{"target":"DEMO_BTN","await":{"fire_and_forget":true}}}' \
+//          curl -X POST -d '{"name":"imgui_click","args":{"target":"MAIN_WIN/DEMO_BTN"}}' \
+//              localhost:9090/command          # → {"ok": true, "value": "MAIN_WIN/DEMO_BTN", ...}
+//          curl -X POST -d '{"name":"imgui_click","args":{"target":"MAIN_WIN/DEMO_BTN","await":{"fire_and_forget":true}}}' \
 //              localhost:9090/command          # → bare {"ok":true,"value":"..."} (no timeout_sec)
 // STANDALONE: daslang.exe modules/dasImgui/examples/features/active_widget.das
 // LIVE:       daslang-live modules/dasImgui/examples/features/active_widget.das
@@ -50,7 +51,8 @@ def update() {
     NewFrame()
 
     SetNextWindowSize(ImVec2(720.0, 280.0), ImGuiCond.Always)
-    if (Begin("active_widget — phase 2.1", null, ImGuiWindowFlags.None)) {
+    window(MAIN_WIN, (text = "active_widget — phase 2.1", closable = false,
+                      flags = ImGuiWindowFlags.None)) {
         Text("Foundation gate: GetActiveID + reverse maps + Result wire.")
         Text("Drag the slider to make snapshot.io.active_widget resolve.")
 
@@ -65,7 +67,6 @@ def update() {
         slider_float(DEMO_SLIDER, (text = "Drag me"))
         Text("slider value = {DEMO_SLIDER.value}")
     }
-    End()
 
     end_of_frame()
     Render()

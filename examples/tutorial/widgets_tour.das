@@ -14,6 +14,7 @@ require imgui/imgui_live
 require imgui/imgui_boost_runtime
 require imgui/imgui_boost_v2
 require imgui/imgui_widgets_builtin
+require imgui/imgui_containers_builtin
 require imgui/imgui_visual_aids
 
 // =============================================================================
@@ -34,12 +35,12 @@ require imgui/imgui_visual_aids
 // LIVE:       daslang-live modules/dasImgui/examples/tutorial/widgets_tour.das
 //
 // DRIVE (when running live):
-//   curl -X POST -d '{"name":"imgui_set","args":{"target":"USER_NAME","value":"Boris"}}'        localhost:9090/command
-//   curl -X POST -d '{"name":"imgui_set","args":{"target":"VOLUME","value":0.75}}'              localhost:9090/command
-//   curl -X POST -d '{"name":"imgui_set","args":{"target":"MUTED","value":true}}'               localhost:9090/command
-//   curl -X POST -d '{"name":"imgui_set","args":{"target":"QUALITY","value":2}}'                localhost:9090/command
-//   curl -X POST -d '{"name":"imgui_set","args":{"target":"TINT","value":{"x":0.2,"y":0.8,"z":0.4}}}' localhost:9090/command
-//   curl -X POST -d '{"name":"imgui_click","args":{"target":"SAVE_BTN"}}'                       localhost:9090/command
+//   curl -X POST -d '{"name":"imgui_set","args":{"target":"AUDIO_WIN/USER_NAME","value":"Boris"}}'        localhost:9090/command
+//   curl -X POST -d '{"name":"imgui_set","args":{"target":"AUDIO_WIN/VOLUME","value":0.75}}'              localhost:9090/command
+//   curl -X POST -d '{"name":"imgui_set","args":{"target":"AUDIO_WIN/MUTED","value":true}}'               localhost:9090/command
+//   curl -X POST -d '{"name":"imgui_set","args":{"target":"AUDIO_WIN/QUALITY","value":2}}'                localhost:9090/command
+//   curl -X POST -d '{"name":"imgui_set","args":{"target":"AUDIO_WIN/TINT","value":{"x":0.2,"y":0.8,"z":0.4}}}' localhost:9090/command
+//   curl -X POST -d '{"name":"imgui_click","args":{"target":"AUDIO_WIN/SAVE_BTN"}}'                       localhost:9090/command
 // =============================================================================
 
 [export]
@@ -64,7 +65,8 @@ def update() {
     // post-its to appear without overlapping the panel.
     SetNextWindowPos(ImVec2(60.0, 60.0), ImGuiCond.Always)
     SetNextWindowSize(ImVec2(720.0, 540.0), ImGuiCond.Always)
-    if (Begin("Audio settings", null, ImGuiWindowFlags.None)) {
+    window(AUDIO_WIN, (text = "Audio settings", closable = false,
+                       flags = ImGuiWindowFlags.None)) {
         // Text input — buffer + string-mirror managed by the state struct.
         input_text(USER_NAME, (text = "Your name"))
 
@@ -100,7 +102,6 @@ def update() {
         Spacing()
         Text("saves so far: {SAVE_BTN.click_count}")
     }
-    End()
 
     end_of_frame()
     Render()

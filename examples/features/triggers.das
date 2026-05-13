@@ -14,17 +14,18 @@ require imgui/imgui_live
 require imgui/imgui_boost_runtime
 require imgui/imgui_boost_v2
 require imgui/imgui_widgets_builtin
+require imgui/imgui_containers_builtin
 
 // =============================================================================
 // FEATURE: triggers — every Phase 0b.1 trigger widget in one window.
 // SHOWS:   Button / SmallButton / ArrowButton / InvisibleButton / ImageButton
 //          / Checkbox / RadioButton (bool + grouped int) / Selectable / MenuItem
 // DRIVE:   curl -X POST -d '{"name":"imgui_snapshot"}' localhost:9090/command
-//          curl -X POST -d '{"name":"imgui_click","args":{"target":"SAVE_BTN"}}' \
+//          curl -X POST -d '{"name":"imgui_click","args":{"target":"MAIN_WIN/SAVE_BTN"}}' \
 //               localhost:9090/command
-//          curl -X POST -d '{"name":"imgui_set","args":{"target":"OPT_A","value":true}}' \
+//          curl -X POST -d '{"name":"imgui_set","args":{"target":"MAIN_WIN/OPT_A","value":true}}' \
 //               localhost:9090/command
-//          curl -X POST -d '{"name":"imgui_set","args":{"target":"DIFFICULTY","value":2}}' \
+//          curl -X POST -d '{"name":"imgui_set","args":{"target":"MAIN_WIN/DIFFICULTY","value":2}}' \
 //               localhost:9090/command
 // STANDALONE: daslang.exe modules/dasImgui/examples/features/triggers.das
 // LIVE:       daslang-live modules/dasImgui/examples/features/triggers.das
@@ -48,7 +49,8 @@ def update() {
     NewFrame()
 
     SetNextWindowSize(ImVec2(720.0, 560.0), ImGuiCond.Always)
-    if (Begin("Triggers — phase 0b.1", null, ImGuiWindowFlags.None)) {
+    window(MAIN_WIN, (text = "Triggers — phase 0b.1", closable = false,
+                      flags = ImGuiWindowFlags.None)) {
         // ----- Click family -----
         Text("Click family")
         Separator()
@@ -100,7 +102,6 @@ def update() {
         radio_button_int(DIFFICULTY, (text = "Hard", v_button = 2))
         Text("difficulty = {DIFFICULTY.value}")
     }
-    End()
 
     end_of_frame()
     Render()

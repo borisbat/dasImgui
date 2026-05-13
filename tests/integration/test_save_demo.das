@@ -28,16 +28,16 @@ def test_save_flow(t : T?) {
     with_imgui_app(SAVE_DEMO_FEATURE) $(app) {
         // Subprocess up + first frame painted. expect_render's failure
         // message would list every registered widget — useful sanity.
-        expect_render(app, "SAVE_BTN", 15.0f)
+        expect_render(app, "MAIN_WIN/SAVE_BTN", 15.0f)
 
         // Click → STATUS_TEXT flips to "saved".
-        click(app, "SAVE_BTN")
-        expect_value(app, "STATUS_TEXT", "value", "saved", 300)
+        click(app, "MAIN_WIN/SAVE_BTN")
+        expect_value(app, "MAIN_WIN/STATUS_TEXT", "value", "saved", 300)
 
         // type_text auto-focuses NAME_INPUT, settles, then sends chars.
         // expect_value confirms the chars landed on state.value.
-        type_text(app, "NAME_INPUT", "hello")
-        expect_value(app, "NAME_INPUT", "value", "hello", 300)
+        type_text(app, "MAIN_WIN/NAME_INPUT", "hello")
+        expect_value(app, "MAIN_WIN/NAME_INPUT", "value", "hello", 300)
 
         t |> success(true, "save_demo end-to-end: click + type_text auto-focus + expect_value")
     }

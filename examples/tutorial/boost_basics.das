@@ -14,6 +14,7 @@ require imgui/imgui_live
 require imgui/imgui_boost_runtime
 require imgui/imgui_boost_v2
 require imgui/imgui_widgets_builtin
+require imgui/imgui_containers_builtin
 require imgui/imgui_visual_aids
 
 // =============================================================================
@@ -27,9 +28,9 @@ require imgui/imgui_visual_aids
 //
 // DRIVE (when running live):
 //   curl -X POST -d '{"name":"imgui_snapshot"}' localhost:9090/command
-//   curl -X POST -d '{"name":"imgui_set","args":{"target":"VOLUME","value":0.75}}' \
+//   curl -X POST -d '{"name":"imgui_set","args":{"target":"BASICS_WIN/VOLUME","value":0.75}}' \
 //        localhost:9090/command
-//   curl -X POST -d '{"name":"imgui_click","args":{"target":"BUMP_BTN"}}' \
+//   curl -X POST -d '{"name":"imgui_click","args":{"target":"BASICS_WIN/BUMP_BTN"}}' \
 //        localhost:9090/command
 // =============================================================================
 
@@ -52,7 +53,8 @@ def update() {
     NewFrame()
 
     SetNextWindowSize(ImVec2(560.0, 240.0), ImGuiCond.Always)
-    if (Begin("Boost basics", null, ImGuiWindowFlags.None)) {
+    window(BASICS_WIN, (text = "Boost basics", closable = false,
+                        flags = ImGuiWindowFlags.None)) {
         // Slider — VOLUME state lives in a generated daslang global.
         VOLUME.bounds = (0.0f, 1.0f)
         slider_float(VOLUME, (text = "Volume"))
@@ -66,7 +68,6 @@ def update() {
         }
         Text("bumps = {BUMP_BTN.click_count}")
     }
-    End()
 
     end_of_frame()
     Render()

@@ -14,6 +14,7 @@ require imgui/imgui_live
 require imgui/imgui_boost_runtime
 require imgui/imgui_boost_v2
 require imgui/imgui_widgets_builtin
+require imgui/imgui_containers_builtin
 
 // =============================================================================
 // FEATURE: io_synth_text — Phase 2.2 L1 keyboard input synthesis.
@@ -23,10 +24,10 @@ require imgui/imgui_widgets_builtin
 //          render via SetKeyboardFocusHere(0), then chars stream in.
 //          Phase 2.4 will add a `target`-driven focus action so callers can
 //          aim type_text at any widget without owning the focus dance.
-// DRIVE:   curl -X POST -d '{"name":"imgui_type_text","args":{"target":"DEMO_INPUT","text":"hello"}}' \
+// DRIVE:   curl -X POST -d '{"name":"imgui_type_text","args":{"target":"MAIN_WIN/DEMO_INPUT","text":"hello"}}' \
 //              localhost:9090/command
 //          curl -X POST -d '{"name":"imgui_snapshot"}' localhost:9090/command \
-//              | jq '.globals.DEMO_INPUT.payload.value'
+//              | jq '.globals."MAIN_WIN/DEMO_INPUT".payload.value'
 // STANDALONE: daslang.exe modules/dasImgui/examples/features/io_synth_text.das
 // LIVE:       daslang-live modules/dasImgui/examples/features/io_synth_text.das
 // =============================================================================
@@ -52,7 +53,8 @@ def update() {
     NewFrame()
 
     SetNextWindowSize(ImVec2(720.0, 220.0), ImGuiCond.Always)
-    if (Begin("io_synth_text — phase 2.2", null, ImGuiWindowFlags.None)) {
+    window(MAIN_WIN, (text = "io_synth_text — phase 2.2", closable = false,
+                      flags = ImGuiWindowFlags.None)) {
         Text("L1 keyboard: imgui_type_text streams chars one frame each.")
         Text("DEMO_INPUT auto-focused on first render via SetKeyboardFocusHere.")
         if (!auto_focused) {
@@ -62,7 +64,6 @@ def update() {
         input_text(DEMO_INPUT, (text = "Type here"))
         Text("buffer = {DEMO_INPUT.value}")
     }
-    End()
 
     end_of_frame()
     Render()

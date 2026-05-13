@@ -36,10 +36,10 @@ let IO_SYNTH_DRAG_FEATURE = "modules/dasImgui/examples/features/io_synth_drag.da
 def test_imgui_drag_value_changes(t : T?) {
     with_imgui_app(IO_SYNTH_DRAG_FEATURE) $(d) {
         // Gate 1: DEMO_SLIDER reaches the snapshot.
-        var snap0 = wait_for_widget(d, "DEMO_SLIDER", 15.0f)
+        var snap0 = wait_for_widget(d, "MAIN_WIN/DEMO_SLIDER", 15.0f)
         t |> success(snap0 != null, "DEMO_SLIDER registers (snapshot reachable)")
         if (snap0 == null) return
-        let v0 = snap0?["globals"]?["DEMO_SLIDER"]?["payload"]?["value"] ?? -1.0f
+        let v0 = snap0?["globals"]?["MAIN_WIN/DEMO_SLIDER"]?["payload"]?["value"] ?? -1.0f
         t |> equal(v0, 0.0f, "DEMO_SLIDER starts at 0.0")
 
         // Gate 2: error path — unknown target produces Result.err.
@@ -50,18 +50,18 @@ def test_imgui_drag_value_changes(t : T?) {
         // Gate 3: imgui_drag with known target returns ok-Result. 8 steps over
         // ~120 px gives the slider plenty of pixel travel for a noticeable
         // value bump (bounds 0..1000, default slider width ~200 px).
-        let drag_resp = drag(d, "DEMO_SLIDER", 120.0f, 0.0f, 8)
+        let drag_resp = drag(d, "MAIN_WIN/DEMO_SLIDER", 120.0f, 0.0f, 8)
         t |> success(drag_resp != null, "imgui_drag returned a response")
         t |> equal(drag_resp?["ok"] ?? false, true,
                    "drag response.ok = true on hit")
-        t |> equal(drag_resp?["value"] ?? "", "DEMO_SLIDER",
+        t |> equal(drag_resp?["value"] ?? "", "MAIN_WIN/DEMO_SLIDER",
                    "drag response.value = target ident (Result wire)")
 
         // Gate 4: after the drag completes (mouse released), the slider
         // value should have moved away from 0. End-to-end proof that L1
         // mouse-down → moves → mouse-up reached the widget and drove its
         // interactive logic. Poll up to 5s for value > 0.
-        let moved = wait_until(d, 300) $(snap) => (snap?["globals"]?["DEMO_SLIDER"]?["payload"]?["value"] ?? 0.0f) > 0.0f
+        let moved = wait_until(d, 300) $(snap) => (snap?["globals"]?["MAIN_WIN/DEMO_SLIDER"]?["payload"]?["value"] ?? 0.0f) > 0.0f
         t |> success(moved != null, "DEMO_SLIDER value moved off 0 after L1 drag")
     }
 }

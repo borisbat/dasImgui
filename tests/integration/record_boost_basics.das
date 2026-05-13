@@ -51,10 +51,10 @@ def main {
         panic("daslang-live not responding on {BASE_URL} — is it running with boost_basics.das?")
     }
 
-    //! boost_basics uses bare `Begin("...")` not the `window(...)` boost
-    //! container, so widget paths are NOT prefixed.
-    let T_VOLUME = "VOLUME"
-    let T_BUMP   = "BUMP_BTN"
+    //! Targets are path-qualified — the `window(BASICS_WIN, ...)` boost
+    //! container pushes its name onto the registry path.
+    let T_VOLUME = "BASICS_WIN/VOLUME"
+    let T_BUMP   = "BASICS_WIN/BUMP_BTN"
 
     var snap = wait_for_render(app, T_BUMP, 10.0f)
     if (snap == null) {

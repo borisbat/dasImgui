@@ -14,15 +14,16 @@ require imgui/imgui_live
 require imgui/imgui_boost_runtime
 require imgui/imgui_boost_v2
 require imgui/imgui_widgets_builtin
+require imgui/imgui_containers_builtin
 
 // =============================================================================
 // FEATURE: inputs_numeric — every Phase 0b.2 Input* numeric widget in one window.
 // SHOWS:   input_float / input_float2/3/4
 //          input_int   / input_int2/3/4
 //          input_double
-// DRIVE:   curl -X POST -d '{"name":"imgui_set","args":{"target":"MASS","value":12.5}}' \
+// DRIVE:   curl -X POST -d '{"name":"imgui_set","args":{"target":"MAIN_WIN/MASS","value":12.5}}' \
 //               localhost:9090/command
-//          curl -X POST -d '{"name":"imgui_set","args":{"target":"VEL_XYZ","value":[1.0,2.0,3.0]}}' \
+//          curl -X POST -d '{"name":"imgui_set","args":{"target":"MAIN_WIN/VEL_XYZ","value":[1.0,2.0,3.0]}}' \
 //               localhost:9090/command
 // STANDALONE: daslang.exe modules/dasImgui/examples/features/inputs_numeric.das
 // LIVE:       daslang-live modules/dasImgui/examples/features/inputs_numeric.das
@@ -46,7 +47,8 @@ def update() {
     NewFrame()
 
     SetNextWindowSize(ImVec2(720.0, 720.0), ImGuiCond.Always)
-    if (Begin("Numeric inputs — phase 0b.2", null, ImGuiWindowFlags.None)) {
+    window(MAIN_WIN, (text = "Numeric inputs — phase 0b.2", closable = false,
+                      flags = ImGuiWindowFlags.None)) {
         // ----- Float scalars (with step buttons) -----
         Text("Float scalars")
         Separator()
@@ -89,7 +91,6 @@ def update() {
         input_int4(VIEWPORT_LTRB, (text = "Viewport LTRB"))
         Text("viewport = [{VIEWPORT_LTRB.value.x}, {VIEWPORT_LTRB.value.y}, {VIEWPORT_LTRB.value.z}, {VIEWPORT_LTRB.value.w}]")
     }
-    End()
 
     end_of_frame()
     Render()

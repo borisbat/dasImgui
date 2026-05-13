@@ -32,13 +32,13 @@ def test_imgui_key_type_lands_in_input(t : T?) {
     //! Same shape as test_key_type_lands_in_input but routed through the
     //! ImGui bypass.
     with_imgui_app(FEATURE) $(d) {
-        var snap0 = wait_for_render(d, "NAME_INPUT", 15.0f)
+        var snap0 = wait_for_render(d, "MAIN_WIN/NAME_INPUT", 15.0f)
         t |> success(snap0 != null, "NAME_INPUT renders")
         if (snap0 == null) return
 
-        focus(d, "NAME_INPUT")
+        focus(d, "MAIN_WIN/NAME_INPUT")
         let focused = wait_until(d, 120) $(var snap) {
-            return snap?["globals"]?["NAME_INPUT"]?["focus"] ?? false
+            return snap?["globals"]?["MAIN_WIN/NAME_INPUT"]?["focus"] ?? false
         }
         t |> success(focused != null, "NAME_INPUT receives keyboard focus")
 
@@ -51,7 +51,7 @@ def test_imgui_key_type_lands_in_input(t : T?) {
         t |> success(done != null, "imgui_key_type timeline completes")
 
         let landed = wait_until(d, 180) $(var snap) {
-            let v = snap?["globals"]?["NAME_INPUT"]?["payload"]?["value"] ?? ""
+            let v = snap?["globals"]?["MAIN_WIN/NAME_INPUT"]?["payload"]?["value"] ?? ""
             return v == "Hi"
         }
         t |> success(landed != null, "NAME_INPUT.value == \"Hi\" after imgui_key_type")
@@ -64,7 +64,7 @@ def test_imgui_key_chord_ctrl_visible(t : T?) {
     //! snapshot field. Sanity check that imgui_live's bypass populates
     //! the modifier state (NOT a routing test — that's the next case).
     with_imgui_app(FEATURE) $(d) {
-        var snap0 = wait_for_render(d, "NAME_INPUT", 15.0f)
+        var snap0 = wait_for_render(d, "MAIN_WIN/NAME_INPUT", 15.0f)
         t |> success(snap0 != null, "NAME_INPUT renders")
         if (snap0 == null) return
 
@@ -94,12 +94,12 @@ def test_click_then_ctrl_a_clears_input(t : T?) {
     //! bypass purges the backend's queue contribution so NavId is
     //! established correctly at activation.
     with_imgui_app(FEATURE) $(d) {
-        var snap0 = wait_for_render(d, "NAME_INPUT", 15.0f)
+        var snap0 = wait_for_render(d, "MAIN_WIN/NAME_INPUT", 15.0f)
         t |> success(snap0 != null, "NAME_INPUT renders")
         if (snap0 == null) return
 
         // Locate NAME_INPUT center for the synth click.
-        let b = snap0?["globals"]?["NAME_INPUT"]?["bbox"]
+        let b = snap0?["globals"]?["MAIN_WIN/NAME_INPUT"]?["bbox"]
         let cx = ((b?["x"] ?? 0.0f) + (b?["z"] ?? 0.0f)) * 0.5f
         let cy = ((b?["y"] ?? 0.0f) + (b?["w"] ?? 0.0f)) * 0.5f
         var click_events <- [
@@ -115,14 +115,14 @@ def test_click_then_ctrl_a_clears_input(t : T?) {
         t |> success(clicked != null, "imgui_mouse_play synth click completes")
 
         let activated = wait_until(d, 240) $(var snap) {
-            return snap?["globals"]?["NAME_INPUT"]?["focus"] ?? false
+            return snap?["globals"]?["MAIN_WIN/NAME_INPUT"]?["focus"] ?? false
         }
         t |> success(activated != null, "NAME_INPUT becomes focused after synth click")
 
         // Type "abc".
         post_command(d, "imgui_key_type", JV((text = "abc", per_char_ms = 30)))
         let typed = wait_until(d, 240) $(var snap) {
-            let v = snap?["globals"]?["NAME_INPUT"]?["payload"]?["value"] ?? ""
+            let v = snap?["globals"]?["MAIN_WIN/NAME_INPUT"]?["payload"]?["value"] ?? ""
             return v == "abc"
         }
         t |> success(typed != null, "NAME_INPUT.value == \"abc\" before chord")
@@ -141,7 +141,7 @@ def test_click_then_ctrl_a_clears_input(t : T?) {
         post_command(d, "imgui_key_release", JV((key = bksp)))
 
         let emptied = wait_until(d, 240) $(var snap) {
-            let v = snap?["globals"]?["NAME_INPUT"]?["payload"]?["value"] ?? "still-has-content"
+            let v = snap?["globals"]?["MAIN_WIN/NAME_INPUT"]?["payload"]?["value"] ?? "still-has-content"
             return v == ""
         }
         t |> success(emptied != null, "NAME_INPUT.value == \"\" after Ctrl+A then Backspace")

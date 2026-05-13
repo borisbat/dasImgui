@@ -89,18 +89,18 @@ def main {
 
     // Resolve widget centers from the running app's snapshot — tolerant to
     // layout drift. SAVE_BTN is the gate: if we can see it we're on the tour.
-    var snap = wait_for_render(app, "SAVE_BTN", 10.0f)
+    var snap = wait_for_render(app, "SUBJECT_WIN/SAVE_BTN", 10.0f)
     if (snap == null) {
         panic("SAVE_BTN never rendered — wrong app running on {BASE_URL}?")
     }
-    let p_hi_status   = widget_center(snap, "BTN_HIGHLIGHT_STATUS")
-    let p_hi_volume   = widget_center(snap, "BTN_HIGHLIGHT_VOLUME")
-    let p_hi_save     = widget_center(snap, "BTN_HIGHLIGHT_SAVE")
-    let p_narrate_vol  = widget_center(snap, "BTN_NARRATE_VOLUME")
-    let p_narrate_save = widget_center(snap, "BTN_NARRATE_SAVE")
-    let p_name_input   = widget_center(snap, "NAME_INPUT")
+    let p_hi_status   = widget_center(snap, "CONTROLS_WIN/BTN_HIGHLIGHT_STATUS")
+    let p_hi_volume   = widget_center(snap, "CONTROLS_WIN/BTN_HIGHLIGHT_VOLUME")
+    let p_hi_save     = widget_center(snap, "CONTROLS_WIN/BTN_HIGHLIGHT_SAVE")
+    let p_narrate_vol  = widget_center(snap, "CONTROLS_WIN/BTN_NARRATE_VOLUME")
+    let p_narrate_save = widget_center(snap, "CONTROLS_WIN/BTN_NARRATE_SAVE")
+    let p_name_input   = widget_center(snap, "SUBJECT_WIN/NAME_INPUT")
     // Slider drag: from ~20% along VOLUME's bbox to ~85%, vertically centered.
-    let vol_bb = widget_bbox(snap, "VOLUME")
+    let vol_bb = widget_bbox(snap, "SUBJECT_WIN/VOLUME")
     let vol_y   = (vol_bb.y + vol_bb.w) * 0.5f
     let vol_x0  = vol_bb.x + (vol_bb.z - vol_bb.x) * 0.20f
     let vol_x1  = vol_bb.x + (vol_bb.z - vol_bb.x) * 0.85f
@@ -154,13 +154,13 @@ def main {
     ]
     post_command(app, "imgui_mouse_play", JV((events = move_events)))
     sleep(800u)
-    post_command(app, "imgui_focus", JV((target = "NAME_INPUT")))
+    post_command(app, "imgui_focus", JV((target = "SUBJECT_WIN/NAME_INPUT")))
     sleep(400u)
 
     // Narrate the keyboard half so the viewer knows what's coming.
     post_command(app, "imgui_narrate", JV((
         text = "Watch the keycap HUD as we type.",
-        target = "NAME_INPUT",
+        target = "SUBJECT_WIN/NAME_INPUT",
         frames = 180
     )))
     sleep(2200u)
@@ -175,7 +175,7 @@ def main {
     // Demonstrate a chord: Ctrl+A. Both Ctrl pill and the "A" keycap pop.
     post_command(app, "imgui_narrate", JV((
         text = "Ctrl+A selects all.",
-        target = "NAME_INPUT",
+        target = "SUBJECT_WIN/NAME_INPUT",
         frames = 150
     )))
     sleep(1600u)

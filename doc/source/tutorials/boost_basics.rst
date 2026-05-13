@@ -30,9 +30,12 @@ The ``require`` block pulls in:
 * The C++-bound Dear ImGui surface (``imgui``, ``imgui_app``).
 * The GLFW backend + OpenGL renderer + live-reload host glue (``glfw/...``,
   ``opengl/...``, ``live/...``).
-* The dasImgui v2 boost layer: ``imgui_live`` (lifecycle), ``imgui_boost_runtime``
-  (state structs), ``imgui_boost_v2`` (macros), ``imgui_widgets_builtin`` (the
-  actual widget implementations).
+* The dasImgui v2 boost layer: ``imgui_live`` (lifecycle),
+  ``imgui_boost_runtime`` (state structs), ``imgui_boost_v2`` (macros),
+  ``imgui_widgets_builtin`` (the actual widget implementations),
+  ``imgui_containers_builtin`` (the ``window(...)`` block-arg container
+  and its siblings), ``imgui_visual_aids`` (the synth-IO override hook
+  used by the recording driver — see :ref:`tutorial_recording`).
 
 Init and shutdown
 =================
@@ -48,13 +51,46 @@ The frame loop
 
 #. ``live_begin_frame()`` — return early if the window is closing.
 #. ``begin_frame()`` — boost-side per-frame setup (registry, command dispatch).
-#. ``ImGui_ImplOpenGL3_NewFrame`` / ``ImGui_ImplGlfw_NewFrame`` / ``NewFrame`` —
-   the standard ImGui backend prologue.
+#. ``ImGui_ImplOpenGL3_NewFrame`` / ``ImGui_ImplGlfw_NewFrame`` /
+   ``apply_synth_io_override`` / ``NewFrame`` — the ImGui backend
+   prologue. ``apply_synth_io_override`` lets synthetic mouse/keyboard
+   events from live-commands win against the GLFW backend's per-frame
+   poll (needed for tutorial recordings).
 #. The widget block (see below).
 #. ``end_of_frame()`` / ``Render()`` — boost-side bookkeeping, then ImGui
    composes the draw list.
 #. ``glViewport`` / ``glClear`` / ``ImGui_ImplOpenGL3_RenderDrawData`` — paint.
 #. ``live_end_frame()`` — swap buffers, advance live-reload housekeeping.
+
+The window container
+====================
+
+The ``window(NAME, ...) { ... }`` macro is the boost-layer wrapper around
+ImGui's ``Begin``/``End`` pair:
+
+.. code-block:: das
+
+   SetNextWindowSize(ImVec2(560.0, 240.0), ImGuiCond.Always)
+   window(BASICS_WIN, (text = "Boost basics", closable = false,
+                       flags = ImGuiWindowFlags.None)) {
+       // ... widgets ...
+   }
+
+Three things to notice:
+
+* The block runs the body once per frame between ``Begin`` and ``End``
+  — no manual ``End()`` to forget.
+* ``BASICS_WIN`` is a daslang identifier — the macro auto-emits a
+  ``WindowState`` global named that, and pushes ``BASICS_WIN`` onto the
+  boost registry path. Every leaf widget registers under
+  ``BASICS_WIN/<ident>``.
+* Per-call config goes in the named-tuple — ``text`` is the title,
+  ``closable`` controls whether the X-button shows, ``flags`` are
+  the raw ``ImGuiWindowFlags`` bits.
+
+``SetNextWindowSize`` / ``SetNextWindowPos`` are the same raw ImGui
+calls you'd use without the boost layer — they affect the next
+``Begin`` (the one the macro emits) just like before.
 
 Widgets
 =======
@@ -68,8 +104,10 @@ Two boost macros do the actual work:
    Text("volume = {VOLUME.value}")
 
 The macro form ``slider_float(VOLUME, ...)`` declares a module global
-``VOLUME : SliderStateFloat`` the first time it expands. Telemetry registers it
-under that name; the bounds line is plain assignment to the struct field.
+``VOLUME : SliderStateFloat`` the first time it expands. Telemetry
+registers it under the path-prefixed name ``BASICS_WIN/VOLUME`` (every
+widget inside ``window(BASICS_WIN, ...)`` inherits the prefix); the
+bounds line is plain assignment to the struct field.
 
 .. code-block:: das
 
@@ -98,10 +136,13 @@ When run live, the boost layer exposes the standard live-command surface at
 
 .. code-block:: bash
 
-   curl -X POST -d '{"name":"imgui_set","args":{"target":"VOLUME","value":0.75}}' \
+   curl -X POST -d '{"name":"imgui_set","args":{"target":"BASICS_WIN/VOLUME","value":0.75}}' \
         localhost:9090/command
 
-…and ``VOLUME.value`` jumps to ``0.75`` on the next frame.
+…and ``VOLUME.value`` jumps to ``0.75`` on the next frame. Note the
+``BASICS_WIN/`` prefix — the ``window`` container pushes its identifier
+onto the registry path, so external drivers target the
+path-qualified name.
 
 Next steps
 ==========

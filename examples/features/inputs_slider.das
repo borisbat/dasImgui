@@ -14,15 +14,16 @@ require imgui/imgui_live
 require imgui/imgui_boost_runtime
 require imgui/imgui_boost_v2
 require imgui/imgui_widgets_builtin
+require imgui/imgui_containers_builtin
 
 // =============================================================================
 // FEATURE: inputs_slider — every Phase 0b.2 Slider* widget in one window.
 // SHOWS:   slider_float / slider_float2/3/4
 //          slider_int   / slider_int2/3/4
 //          vslider_float / vslider_int
-// DRIVE:   curl -X POST -d '{"name":"imgui_set","args":{"target":"GAIN","value":0.7}}' \
+// DRIVE:   curl -X POST -d '{"name":"imgui_set","args":{"target":"MAIN_WIN/GAIN","value":0.7}}' \
 //               localhost:9090/command
-//          curl -X POST -d '{"name":"imgui_set","args":{"target":"WAVE_RGB","value":[0.1,0.5,0.9]}}' \
+//          curl -X POST -d '{"name":"imgui_set","args":{"target":"MAIN_WIN/WAVE_RGB","value":[0.1,0.5,0.9]}}' \
 //               localhost:9090/command
 // STANDALONE: daslang.exe modules/dasImgui/examples/features/inputs_slider.das
 // LIVE:       daslang-live modules/dasImgui/examples/features/inputs_slider.das
@@ -46,7 +47,8 @@ def update() {
     NewFrame()
 
     SetNextWindowSize(ImVec2(720.0, 760.0), ImGuiCond.Always)
-    if (Begin("Slider inputs — phase 0b.2", null, ImGuiWindowFlags.None)) {
+    window(MAIN_WIN, (text = "Slider inputs — phase 0b.2", closable = false,
+                      flags = ImGuiWindowFlags.None)) {
         // ----- Float scalars -----
         Text("Float scalars")
         Separator()
@@ -108,7 +110,6 @@ def update() {
         vslider_int(BUS_GAIN, (text = "Bus dB", size = float2(40.0f, 200.0f)))
         Text("levels: L={VOL_L.value}, R={VOL_R.value}, bus={BUS_GAIN.value}dB")
     }
-    End()
 
     end_of_frame()
     Render()
