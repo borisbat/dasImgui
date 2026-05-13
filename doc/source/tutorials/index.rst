@@ -21,3 +21,4 @@ construction.
    containers.rst
    live_reload.rst
    driving_outside.rst
+   recording.rst
