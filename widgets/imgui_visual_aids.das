@@ -19,10 +19,15 @@ require math
 
 def public rgba(r, g, b, a : int) : uint {
     //! Pack R/G/B/A bytes into ImGui's IM_COL32 word order. Useful when configuring the tunable color globals by channel rather than hex literal.
-    return ((uint(a) << uint(IM_COL32_A_SHIFT))
-          | (uint(r) << uint(IM_COL32_R_SHIFT))
-          | (uint(g) << uint(IM_COL32_G_SHIFT))
-          | (uint(b) << uint(IM_COL32_B_SHIFT)))
+    // Hardcoded shifts to match the runtime ImGui build (standard RGBA mode:
+    // R=0, G=8, B=16, A=24). The `IM_COL32_*_SHIFT` constants exposed via the
+    // C++ bind are stuck at BGRA values (R=16, B=0) — that bind disagrees
+    // with the actual runtime and renders R/B swapped. Source-level fix
+    // keeps every existing dasImgui color literal visually honest.
+    return (uint(r)
+          | (uint(g) << 8u)
+          | (uint(b) << 16u)
+          | (uint(a) << 24u))
 }
 
 // ===== Tunable knobs (var public) =====
@@ -75,16 +80,18 @@ var public click_flash_end_radius    : float = 36.0f
 var public click_flash_thickness     : float = 2.5f
 var public click_flash_duration_s    : float = 0.35f
 
-// Narrate callout
-var public narrate_bg_color       : uint  = rgba(32, 32, 32, 204)
-var public narrate_fg_color       : uint  = rgba(255, 255, 255, 255)
-var public narrate_border_color   : uint  = rgba(255, 204, 51, 255)     // amber
+// Narrate callout — post-it-note look: vivid yellow body, dark text, soft shadow.
+var public narrate_bg_color       : uint  = rgba(255, 236, 130, 240)    // post-it yellow #FFEC82
+var public narrate_fg_color       : uint  = rgba(30, 25, 10, 255)       // near-black warm #1E190A
+var public narrate_border_color   : uint  = rgba(200, 160, 30, 255)     // darker amber #C8A01E
 var public narrate_border_thickness : float = 1.5f
-var public narrate_pad_x          : float = 8.0f
-var public narrate_pad_y          : float = 4.0f
-var public narrate_corner_radius  : float = 4.0f
+var public narrate_pad_x          : float = 12.0f
+var public narrate_pad_y          : float = 8.0f
+var public narrate_corner_radius  : float = 2.0f
 var public narrate_default_frames : int   = 180
 var public narrate_connector_thickness : float = 1.5f
+var public narrate_shadow_color   : uint  = rgba(0, 0, 0, 90)
+var public narrate_shadow_offset  : float2 = float2(3.0f, 4.0f)
 
 // Auto-highlight gate
 var public imgui_auto_highlight_on_command : bool = false
@@ -262,35 +269,144 @@ def private paint_trail {
     }
 }
 
+def private fits_viewport(c : float2; box_size : float2; viewport : float2;
+                          edge_margin : float; shadow : float2; hud_zone_h : float) : bool {
+    let max_x = viewport.x - edge_margin - box_size.x - shadow.x
+    let max_y = viewport.y - edge_margin - box_size.y - shadow.y - hud_zone_h
+    return (c.x >= edge_margin && c.x <= max_x
+         && c.y >= edge_margin && c.y <= max_y)
+}
+
+def public compute_narrate_anchor(
+                                  has_target  : bool;
+                                  widget_bbox : float4;
+                                  box_size    : float2;
+                                  viewport    : float2;
+                                  edge_margin : float;
+                                  gap         : float;
+                                  shadow      : float2;
+                                  hud_zone_h  : float
+                                  ) : float2 {
+    //! Pick a post-it anchor (top-left corner) that fits the viewport without
+    //! overlapping the widget. Tries right → left → below → above of the
+    //! widget; falls back to a viewport-clamped right placement if nothing
+    //! fits cleanly (e.g. text wider than the viewport).
+    if (!has_target) {
+        return float2(edge_margin, edge_margin)
+    }
+    let bb = widget_bbox
+    let cx = (bb.x + bb.z) * 0.5f
+
+    // 1. Right of widget
+    var c = float2(bb.z + gap, bb.y)
+    if (fits_viewport(c, box_size, viewport, edge_margin, shadow, hud_zone_h)) {
+        return c
+    }
+    // 2. Left of widget
+    c = float2(bb.x - gap - box_size.x, bb.y)
+    if (fits_viewport(c, box_size, viewport, edge_margin, shadow, hud_zone_h)) {
+        return c
+    }
+    // 3. Below widget (horizontally centered)
+    c = float2(cx - box_size.x * 0.5f, bb.w + gap)
+    if (fits_viewport(c, box_size, viewport, edge_margin, shadow, hud_zone_h)) {
+        return c
+    }
+    // 4. Above widget (horizontally centered)
+    c = float2(cx - box_size.x * 0.5f, bb.y - gap - box_size.y)
+    if (fits_viewport(c, box_size, viewport, edge_margin, shadow, hud_zone_h)) {
+        return c
+    }
+    // Fallback: keep right placement and clamp into viewport. Only fires when
+    // no candidate fits — typically text wider than viewport, or a widget
+    // that covers most of the screen.
+    var fb = float2(bb.z + gap, bb.y)
+    let max_x = viewport.x - edge_margin - box_size.x - shadow.x
+    let max_y = viewport.y - edge_margin - box_size.y - shadow.y - hud_zone_h
+    if (fb.x > max_x) {
+        fb.x = max_x
+    }
+    if (fb.x < edge_margin) {
+        fb.x = edge_margin
+    }
+    if (fb.y > max_y) {
+        fb.y = max_y
+    }
+    if (fb.y < edge_margin) {
+        fb.y = edge_margin
+    }
+    return fb
+}
+
+def public compute_connector_start(
+                                   anchor        : float2;
+                                   box_size      : float2;
+                                   widget_center : float2
+                                   ) : float2 {
+    //! Midpoint of the post-it edge closest to the widget center. Used to
+    //! anchor the connector line from the right edge when the post-it sits
+    //! to the left of the widget, etc.
+    let cx = anchor.x + box_size.x * 0.5f
+    let cy = anchor.y + box_size.y * 0.5f
+    let dx = widget_center.x - cx
+    let dy = widget_center.y - cy
+    if (abs(dx) > abs(dy)) {
+        return dx > 0.0f ? float2(anchor.x + box_size.x, cy) : float2(anchor.x, cy)
+    }
+    return dy > 0.0f ? float2(cx, anchor.y + box_size.y) : float2(cx, anchor.y)
+}
+
+def private narrate_hud_zone_h : float {
+    //! Bottom screen reserve so narrates don't collide with the key_hud
+    //! keycap row + modifier strip when the HUD is enabled.
+    if (!key_hud_enabled) {
+        return 0.0f
+    }
+    return key_hud_offset_y_from_bottom + key_hud_mod_pill_h + key_hud_mod_strip_y_gap
+}
+
 def private paint_narrates {
     if (empty(g_narrates)) return
     var dl = GetForegroundDrawList()
+    var io & = unsafe(GetIO())
+    let viewport = io.DisplaySize
+    let edge_margin = 8.0f
+    let gap = 16.0f
+    let hud_zone_h = narrate_hud_zone_h()
     var i = length(g_narrates)
     while (i > 0) {
         i--
-        var anchor = float2(40.0f, 40.0f)
+        // Actual text size via the CalcTextSize shim (main.cpp:342) — picks up
+        // FontGlobalScale and any active font, so the box fits the rendered text.
+        let text_size = CalcTextSize(g_narrates[i].text, false, -1.0f)
+        let box_size = float2(text_size.x + narrate_pad_x * 2.0f,
+                              text_size.y + narrate_pad_y * 2.0f)
+
         var have_target = false
+        var widget_bbox = float4(0.0f, 0.0f, 0.0f, 0.0f)
         var widget_center = float2(0.0f, 0.0f)
         if (!empty(g_narrates[i].target)) {
             let r = widget_rect(g_narrates[i].target)
             if (r._0) {
-                let bb = r._1
-                anchor = float2(bb.z + 16.0f, bb.y)
-                widget_center = float2((bb.x + bb.z) * 0.5f, (bb.y + bb.w) * 0.5f)
+                widget_bbox = r._1
+                widget_center = float2((widget_bbox.x + widget_bbox.z) * 0.5f,
+                                       (widget_bbox.y + widget_bbox.w) * 0.5f)
                 have_target = true
             }
         }
-        // Actual text size via the CalcTextSize shim (main.cpp:342) — picks up
-        // FontGlobalScale and any active font, so the box fits the rendered text.
-        let text_size = CalcTextSize(g_narrates[i].text, false, -1.0f)
-        let box_end = float2(anchor.x + text_size.x + narrate_pad_x * 2.0f,
-                             anchor.y + text_size.y + narrate_pad_y * 2.0f)
+        let anchor = compute_narrate_anchor(have_target, widget_bbox, box_size,
+                                            viewport, edge_margin, gap,
+                                            narrate_shadow_offset, hud_zone_h)
+        let box_end = float2(anchor.x + box_size.x, anchor.y + box_size.y)
+        // Drop shadow first so the post-it sits on top of it.
+        *dl |> AddRectFilled(anchor + narrate_shadow_offset, box_end + narrate_shadow_offset,
+                             narrate_shadow_color, narrate_corner_radius, ImDrawFlags.None)
         *dl |> AddRectFilled(anchor, box_end, narrate_bg_color, narrate_corner_radius, ImDrawFlags.None)
         *dl |> AddRect(anchor, box_end, narrate_border_color, narrate_corner_radius, ImDrawFlags.None, narrate_border_thickness)
         *dl |> AddText(float2(anchor.x + narrate_pad_x, anchor.y + narrate_pad_y), narrate_fg_color, g_narrates[i].text)
         if (have_target) {
-            let connector_start = float2(anchor.x, (anchor.y + box_end.y) * 0.5f)
-            *dl |> AddLine(connector_start, widget_center, narrate_border_color, narrate_connector_thickness)
+            let conn_start = compute_connector_start(anchor, box_size, widget_center)
+            *dl |> AddLine(conn_start, widget_center, narrate_border_color, narrate_connector_thickness)
         }
         g_narrates[i].remaining_frames--
         if (g_narrates[i].remaining_frames <= 0) {
