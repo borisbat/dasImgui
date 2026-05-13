@@ -242,10 +242,10 @@ flowing through the state-struct pending channel.
 Next steps
 ==========
 
-Last tutorial: how this recording was actually made. The visual-aids
-recording surface (``imgui_mouse_trail``, ``imgui_cursor_sprite``,
-``imgui_narrate``) plus the ``record_start`` / ``record_stop`` APNG
-writer — all driven by the same JSON commands.
+Now that the JSON-driven view is explicit, the **visual aids tour**
+walks through every overlay the recordings used: highlight, mouse
+trail, cursor sprite, narrate, key HUD, focus rect — all
+``[live_command]``-wrapped so the same curl pattern reaches them.
 
 .. seealso::
 

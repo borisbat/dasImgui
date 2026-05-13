@@ -15,7 +15,8 @@ Source: ``examples/tutorial/boost_basics.das``.
 Walkthrough
 ************
 
-The full source:
+.. image:: ../_static/tutorials/boost_basics.apng
+   :alt: boost_basics recording
 
 .. literalinclude:: ../../../examples/tutorial/boost_basics.das
    :language: das

@@ -229,6 +229,6 @@ go-to once the tutorials are familiar.
 
    Playwright helpers: ``modules/dasImgui/widgets/imgui_playwright.das``.
 
-   Previous tutorial: :ref:`tutorial_driving_outside`
+   Previous tutorial: :ref:`tutorial_visual_aids_tour`
 
    Curriculum top: :ref:`tutorials_dasimgui`

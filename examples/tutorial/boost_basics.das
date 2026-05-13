@@ -14,6 +14,7 @@ require imgui/imgui_live
 require imgui/imgui_boost_runtime
 require imgui/imgui_boost_v2
 require imgui/imgui_widgets_builtin
+require imgui/imgui_visual_aids
 
 // =============================================================================
 // TUTORIAL: boost_basics — the smallest dasImgui v2 program.
@@ -47,6 +48,7 @@ def update() {
 
     ImGui_ImplOpenGL3_NewFrame()
     ImGui_ImplGlfw_NewFrame()
+    apply_synth_io_override()
     NewFrame()
 
     SetNextWindowSize(ImVec2(560.0, 240.0), ImGuiCond.Always)

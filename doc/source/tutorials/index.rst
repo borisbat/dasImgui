@@ -21,4 +21,5 @@ construction.
    containers.rst
    live_reload.rst
    driving_outside.rst
+   visual_aids_tour.rst
    recording.rst

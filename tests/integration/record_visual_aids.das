@@ -8,22 +8,25 @@ require imgui/imgui_playwright public
 require daslib/json public
 require daslib/json_boost public
 
-//! Driver script: re-record `visual_aids_recording.apng` against an
+//! Driver script: record ``visual_aids_tour.apng`` against an
 //! **already-running** daslang-live.
 //!
-//! Workflow (run both commands from the repo root, in two separate shells):
-//!     # window 1 — keep this running:
-//!     bin/Release/daslang-live.exe modules/dasImgui/examples/tutorial/visual_aids_tour.das
-//!     # window 2 — fires the recording, exits when done:
+//! Workflow (two shells):
+//!
+//!     # window 1 — host with cwd = the asset dir so the APNG lands there:
+//!     cd modules/dasImgui/doc/source/_static/tutorials
+//!     ../../../../../../bin/Release/daslang-live.exe \
+//!         ../../../../examples/tutorial/visual_aids_tour.das
+//!
+//!     # window 2 — fire the driver, exits when done:
 //!     bin/Release/daslang.exe modules/dasImgui/tests/integration/record_visual_aids.das
 //!
 //! The driver enables mouse trail + cursor sprite, sweeps through every
 //! widget's snapshot bbox with a synth click at each, then calls record_stop
-//! to flush the writer cleanly. The APNG is written to daslang-live's working
-//! directory (the repo root, when launched manually as above).
+//! to flush the writer cleanly.
 
 let BASE_URL = "http://127.0.0.1:9090"
-let OUTPUT   = "visual_aids_recording.apng"
+let OUTPUT   = "visual_aids_tour.apng"
 
 def widget_bbox(var snap : JsonValue?; ident : string) : float4 {
     //! Read globals[ident].bbox (float4 serialized as {x,y,z,w}). float4 below
@@ -56,11 +59,11 @@ def stop_at(var events : array<JsonValue?>; t_ms : int; pos : tuple<float; float
     events |> push(JV((t_ms = t_ms + 400, kind = "move",   x = pos._0, y = pos._1)))
 }
 
-def drag_along(var events : array<JsonValue?>;
-               t_ms : int;
-               from_pos : tuple<float; float>;
-               to_pos : tuple<float; float>;
-               drag_ms : int) {
+def drag_along_local(var events : array<JsonValue?>;
+                     t_ms : int;
+                     from_pos : tuple<float; float>;
+                     to_pos : tuple<float; float>;
+                     drag_ms : int) {
     //! Append a press-and-drag sequence: park at from, press, move-while-pressed
     //! to `to_pos` over `drag_ms`, release, hold at end. mouse_tick's lerp
     //! between the press-time waypoint and the release-time waypoint produces
@@ -123,7 +126,7 @@ def main {
     events |> stop_at(700,  p_hi_status)
     events |> stop_at(1500, p_hi_volume)
     events |> stop_at(2300, p_hi_save)
-    events |> drag_along(3100, (vol_x0, vol_y), (vol_x1, vol_y), 1000)
+    events |> drag_along_local(3100, (vol_x0, vol_y), (vol_x1, vol_y), 1000)
     events |> stop_at(5500, p_narrate_vol)
     events |> stop_at(6400, p_narrate_save)
     events |> push(JV((t_ms = 7400, kind = "move", x = 500.0f, y = 300.0f)))
