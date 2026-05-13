@@ -71,36 +71,36 @@ def main {
     post_command(app, "imgui_cursor_sprite", JV((enabled = true)))
     post_command(app, "record_start", JV((file = OUTPUT, fps = 30, max_seconds = 60)))
 
-    //! Pacing rule: narrate `frames` ≈ following sleep — keeps the post-it
-    //! visible just long enough to read, leaves a small gap before the next
-    //! narrate so they don't overlap. @ 30 fps: 90 frames = 3.0s, 100 = 3.3s,
-    //! 120 = 4.0s. Add ~500ms sleep slack on top of frame time when also
-    //! moving the cursor (move_to is ~600ms in this driver).
+    //! Pacing rule (LOCKED): `frames` is the app's frame counter (60 fps
+    //! under vsync), NOT the recorder's fps. For ~3s readable narrate:
+    //!     frames = 180   →  3.0s visible
+    //!     sleep  = 3500u →  narrate disappears with ~500ms gap before next
+    //! Then ~1500ms for the actual interaction (click / drag / dwell).
 
     // ---- Stage 1: tour the docked panels ----
     post_command(app, "imgui_narrate", JV((
         text = "ImGui native docking — three dockable panels.",
         target = T_EXPLORER,
-        frames = 90
+        frames = 180
     )))
     move_to(app, p_refresh)
-    sleep(3000u)
+    sleep(3500u)
 
     post_command(app, "imgui_narrate", JV((
         text = "Each panel is a Begin/End window inside the dockspace.",
         target = T_SOURCE,
-        frames = 100
+        frames = 180
     )))
     move_to(app, p_save)
-    sleep(3300u)
+    sleep(3500u)
 
     post_command(app, "imgui_narrate", JV((
         text = "Tabs are draggable — layout persists via imgui.ini.",
         target = T_OUTPUT,
-        frames = 100
+        frames = 180
     )))
     move_to(app, p_clear)
-    sleep(3300u)
+    sleep(3500u)
 
     // ---- Stage 2: drive from outside — imgui_undock pops OUTPUT out ----
     // After undocking, ImGui places the floating window wherever imgui.ini
@@ -109,7 +109,7 @@ def main {
     post_command(app, "imgui_narrate", JV((
         text = "imgui_undock + imgui_set_window_pos — panel floats free.",
         target = T_OUTPUT,
-        frames = 130
+        frames = 200
     )))
     sleep(800u)
     post_command(app, "imgui_undock", JV((target = T_OUTPUT)))
@@ -117,17 +117,17 @@ def main {
         target = T_OUTPUT,
         value = (x = 580.0f, y = 220.0f, w = 360.0f, h = 220.0f)
     )))
-    sleep(3600u)
+    sleep(3700u)
 
     // ---- Stage 3: reset the dockspace ----
     post_command(app, "imgui_narrate", JV((
         text = "imgui_dock_reset rebuilds the default layout.",
         target = T_EXPLORER,
-        frames = 110
+        frames = 180
     )))
     sleep(800u)
     post_command(app, "imgui_dock_reset", JV((target = "DOCK_ROOT")))
-    sleep(2900u)
+    sleep(3000u)
 
     let stopped = post_command(app, "record_stop", null)
     let stop_dump = stopped != null ? write_json(stopped) : "<null>"

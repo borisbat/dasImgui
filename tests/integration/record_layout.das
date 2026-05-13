@@ -74,7 +74,13 @@ def main {
 
     post_command(app, "imgui_mouse_trail",   JV((enabled = true)))
     post_command(app, "imgui_cursor_sprite", JV((enabled = true)))
-    post_command(app, "record_start", JV((file = OUTPUT, fps = 30, max_seconds = 60)))
+    post_command(app, "record_start", JV((file = OUTPUT, fps = 30, max_seconds = 90)))
+
+    //! Pacing rule (LOCKED): `frames` is the app's frame counter (60 fps
+    //! under vsync), NOT the recorder's fps. For ~3s readable narrate:
+    //!     frames = 180   →  3.0s visible
+    //!     sleep  = 3500u →  narrate disappears with ~500ms gap before next
+    //! Then ~1500ms result dwell after the action.
 
     // ---- Stage 1: sidebar (dock_left) ----
     // Narrate against EXPLORE_BTN (a real bbox inside the sidebar) since
@@ -85,9 +91,9 @@ def main {
         frames = 200
     )))
     move_to(app, p_explore)
-    sleep(900u)
+    sleep(3500u)
     post_command(app, "imgui_set", JV((target = T_SIDEBAR, value = 260.0f)))
-    sleep(1400u)
+    sleep(1500u)
 
     // ---- Stage 2: horizontal splitter (split_h on top half) ----
     // Re-resolve FILE_A_BTN bbox; SIDEBAR's resize reflowed the panes.
@@ -100,9 +106,9 @@ def main {
         frames = 200
     )))
     move_to(app, p_file_a_now)
-    sleep(900u)
+    sleep(3500u)
     post_command(app, "imgui_set", JV((target = T_SPLIT_MAIN, value = 0.6f)))
-    sleep(1400u)
+    sleep(1500u)
 
     // ---- Stage 3: vertical splitter ----
     // Narrate against CLEAR_BTN (bottom pane) — split_v has no bbox.
@@ -114,9 +120,9 @@ def main {
         frames = 200
     )))
     move_to(app, p_clear_now)
-    sleep(900u)
+    sleep(3500u)
     post_command(app, "imgui_set", JV((target = T_SPLIT_VERT, value = 0.45f)))
-    sleep(1400u)
+    sleep(1500u)
 
     // ---- Stage 4: click inside sidebar ----
     snap = wait_for_render(app, T_EXPLORE_BTN, 3.0f)
@@ -126,11 +132,11 @@ def main {
         target = T_EXPLORE_BTN,
         frames = 180
     )))
-    sleep(700u)
+    sleep(3500u)
     var explore_events : array<JsonValue?>
     explore_events |> click_at(0, p_explore_now)
     post_command(app, "imgui_mouse_play", JV((events = explore_events)))
-    sleep(1400u)
+    sleep(1500u)
 
     // ---- Stage 5: click inside left-split pane (re-resolve bbox; layout shifted) ----
     snap = wait_for_render(app, T_FILE_A_BTN, 5.0f)
@@ -140,11 +146,11 @@ def main {
         target = T_FILE_A_BTN,
         frames = 180
     )))
-    sleep(700u)
+    sleep(3500u)
     var file_events : array<JsonValue?>
     file_events |> click_at(0, p_file_a_now2)
     post_command(app, "imgui_mouse_play", JV((events = file_events)))
-    sleep(1600u)
+    sleep(1700u)
 
     let stopped = post_command(app, "record_stop", null)
     let stop_dump = stopped != null ? write_json(stopped) : "<null>"

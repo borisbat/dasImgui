@@ -71,22 +71,26 @@ def main {
 
     post_command(app, "imgui_mouse_trail",   JV((enabled = true)))
     post_command(app, "imgui_cursor_sprite", JV((enabled = true)))
-    post_command(app, "record_start", JV((file = OUTPUT, fps = 30, max_seconds = 60)))
+    post_command(app, "record_start", JV((file = OUTPUT, fps = 30, max_seconds = 90)))
+
+    //! Pacing rule (LOCKED): `frames` is the app's frame counter (60 fps
+    //! under vsync), NOT the recorder's fps. For ~3s readable narrate:
+    //!     frames = 180   →  3.0s visible
+    //!     sleep  = 3500u →  narrate disappears with ~500ms gap before next
+    //! Then ~1500ms result dwell after the action.
 
     // ---- Stage 1: text input ----
-    // Narrate first so the post-it is up before we type. Focus via API
-    // (cleaner than synth-click for tour purposes) then run a paced type.
     post_command(app, "imgui_narrate", JV((
         text = "Type your name into the field.",
         target = "USER_NAME",
         frames = 180
     )))
     move_to(app, p_user_name)
-    sleep(1100u)
+    sleep(3500u)
     post_command(app, "imgui_focus", JV((target = "USER_NAME")))
     sleep(400u)
     post_command(app, "imgui_key_type", JV((text = "Alice", total_duration_s = 2.5f)))
-    sleep(3200u)
+    sleep(3000u)
 
     // ---- Stage 2: slider drag ----
     post_command(app, "imgui_narrate", JV((
@@ -94,23 +98,23 @@ def main {
         target = "VOLUME",
         frames = 180
     )))
-    sleep(600u)
+    sleep(3500u)
     var slider_events : array<JsonValue?>
     slider_events |> drag_along(0, (vol_x0, vol_y), (vol_x1, vol_y), 1400)
     post_command(app, "imgui_mouse_play", JV((events = slider_events)))
-    sleep(2400u)
+    sleep(2500u)
 
     // ---- Stage 3: checkbox click ----
     post_command(app, "imgui_narrate", JV((
         text = "Click to mute.",
         target = "MUTED",
-        frames = 150
+        frames = 180
     )))
-    sleep(500u)
+    sleep(3500u)
     var muted_events : array<JsonValue?>
     muted_events |> click_at(0, p_muted)
     post_command(app, "imgui_mouse_play", JV((events = muted_events)))
-    sleep(1400u)
+    sleep(1500u)
 
     // ---- Stage 4: combo via imgui_set ----
     // Opening a combo + clicking a popup item requires the popup to render
@@ -122,9 +126,9 @@ def main {
         target = "QUALITY",
         frames = 180
     )))
-    sleep(900u)
+    sleep(3500u)
     post_command(app, "imgui_set", JV((target = "QUALITY", value = 2)))
-    sleep(1400u)
+    sleep(1500u)
 
     // ---- Stage 5: color editor via imgui_set ----
     post_command(app, "imgui_narrate", JV((
@@ -132,9 +136,9 @@ def main {
         target = "TINT",
         frames = 180
     )))
-    sleep(900u)
+    sleep(3500u)
     post_command(app, "imgui_set", JV((target = "TINT", value = float3(0.25f, 0.75f, 0.45f))))
-    sleep(1400u)
+    sleep(1500u)
 
     // ---- Stage 6: button click ----
     post_command(app, "imgui_narrate", JV((
@@ -142,7 +146,7 @@ def main {
         target = "SAVE_BTN",
         frames = 180
     )))
-    sleep(600u)
+    sleep(3500u)
     var save_events : array<JsonValue?>
     save_events |> click_at(0, p_save)
     post_command(app, "imgui_mouse_play", JV((events = save_events)))
