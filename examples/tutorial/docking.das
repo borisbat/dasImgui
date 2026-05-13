@@ -40,6 +40,7 @@ require imgui/imgui_visual_aids
 //
 // DRIVE (when running live):
 //   curl -X POST -d '{"name":"imgui_undock","args":{"target":"DOCK_ROOT/OUTPUT"}}'    localhost:9090/command
+//   curl -X POST -d '{"name":"imgui_set_window_pos","args":{"target":"DOCK_ROOT/OUTPUT","value":{"x":580,"y":220,"w":360,"h":220}}}' localhost:9090/command
 //   curl -X POST -d '{"name":"imgui_dock_reset","args":{"target":"DOCK_ROOT"}}'        localhost:9090/command
 //   curl -X POST -d '{"name":"imgui_close","args":{"target":"DOCK_ROOT/OUTPUT"}}'      localhost:9090/command
 //

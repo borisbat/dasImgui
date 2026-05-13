@@ -133,6 +133,33 @@ def test_docking_close(t : T?) {
 }
 
 [test]
+def test_docking_set_window_pos(t : T?) {
+    with_imgui_app(DOCK_FEATURE) $(d) {
+        var snap = wait_for_widget(d, "DOCK_ROOT/OUTPUT", 15.0f)
+        if (snap == null) {
+            t |> success(false, "snapshot reachable")
+            return
+        }
+        // First undock so the floating window's pos isn't pinned by the dock.
+        post_command(d, "imgui_undock", JV((target = "DOCK_ROOT/OUTPUT")))
+        let undocked = wait_for_payload_value(d, "DOCK_ROOT/OUTPUT", "docked", false, 30)
+        t |> success(undocked, "OUTPUT undocked")
+
+        // Set window position to a specific spot.
+        post_command(d, "imgui_set_window_pos", JV((
+            target = "DOCK_ROOT/OUTPUT",
+            value = (x = 600.0f, y = 200.0f, w = 300.0f, h = 180.0f)
+        )))
+        // State.pos is a float2 observed every frame from GetWindowPos();
+        // poll the whole field rather than a dotted sub-key (wait_for_payload_value
+        // matches on the full field value).
+        let landed = wait_for_payload_value(d, "DOCK_ROOT/OUTPUT",
+                                            "pos", float2(600.0f, 200.0f), 30)
+        t |> success(landed, "OUTPUT.pos converged to (600,200) after imgui_set_window_pos")
+    }
+}
+
+[test]
 def test_docking_reset(t : T?) {
     with_imgui_app(DOCK_FEATURE) $(d) {
         var snap = wait_for_widget(d, "DOCK_ROOT", 15.0f)

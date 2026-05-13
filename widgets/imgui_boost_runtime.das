@@ -1139,6 +1139,14 @@ def imgui_dock_reset(input : JsonValue?) : JsonValue? {
     return with_await(input, r)
 }
 
+[live_command(description = "Reposition a dock_window ('target' name, 'value' = JSON with x/y and optional w/h)")]
+def imgui_set_window_pos(input : JsonValue?) : JsonValue? {
+    //! Live-command: reposition the dock_window named by ``input["target"]``. ``value`` is a JSON object with required ``x``/``y`` and optional ``w``/``h``. Routes through SetNextWindowPos / SetNextWindowSize on the next frame; useful for placing a window after ``imgui_undock`` (the floating-window default location is implementation-defined) or for scripted layouts.
+    let r = dispatch_or_err("set_window_pos", input)
+    if (r._is_ok) dispatch_post_command_hooks("set_window_pos", r._value)
+    return with_await(input, r)
+}
+
 // ===== Phase 2.5 — Quiescence probe =====
 //
 // imgui_await is a polling probe: server reports current liveness state

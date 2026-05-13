@@ -40,7 +40,9 @@ struct DockWindowState {
     //! WindowState). `docked` / `dock_id` are observed via
     //! IsWindowDocked / GetWindowDockID. `pending_dock_to` / `pending_undock`
     //! flow from live commands; applied via SetNextWindowDockID at top of
-    //! next frame.
+    //! next frame. `pending_pos` / `pending_size` route through
+    //! `imgui_set_window_pos`; gated on the matching `*_set` bool so
+    //! `(0,0)` is a legitimate position request, not a sentinel.
     @live open : bool = true                  //! window open state; preserved across reload
     @optional flags : ImGuiWindowFlags        //! per-call window flags (echoed for telemetry)
     @optional pos : float2                    //! observed window position
@@ -51,6 +53,10 @@ struct DockWindowState {
     @optional pending_close : bool            //! imgui_close queued; applied next frame
     @optional pending_dock_to : uint = 0u     //! imgui_dock queued; SetNextWindowDockID(value) next frame
     @optional pending_undock : bool           //! imgui_undock queued; SetNextWindowDockID(0) next frame
+    @optional pending_pos : float2            //! imgui_set_window_pos queued — pos
+    @optional pending_pos_set : bool          //! gates pending_pos (so (0,0) is a valid request)
+    @optional pending_size : float2           //! imgui_set_window_pos queued — size
+    @optional pending_size_set : bool         //! gates pending_size
 }
 
 // ===== Finalize helpers =====
@@ -90,6 +96,18 @@ def private dock_window_finalize(widget_ident : string; var state : DockWindowSt
                 state.pending_dock_to = from_JV(payload?["value"], type<uint>, 0u)
             } elif (action == "undock") {
                 state.pending_undock = true
+            } elif (action == "set_window_pos") {
+                //! Payload shape: `{x, y[, w, h]}` — pos always set, size optional.
+                let v = payload?["value"]
+                state.pending_pos = float2(v?["x"] ?? 0.0f, v?["y"] ?? 0.0f)
+                state.pending_pos_set = true
+                let has_w = v?["w"] != null
+                let has_h = v?["h"] != null
+                if (has_w || has_h) {
+                    state.pending_size = float2(v?["w"] ?? state.size.x,
+                                                v?["h"] ?? state.size.y)
+                    state.pending_size_set = true
+                }
             }
         }
         container_finalize(widget_ident, "dock_window", entry, ser, disp)
@@ -137,6 +155,14 @@ def dock_window(var state : DockWindowState; text : string; closable : bool;
     if (state.pending_undock) {
         SetNextWindowDockID(0u, ImGuiCond.Always)
         state.pending_undock = false
+    }
+    if (state.pending_pos_set) {
+        SetNextWindowPos(ImVec2(state.pending_pos.x, state.pending_pos.y), ImGuiCond.Always)
+        state.pending_pos_set = false
+    }
+    if (state.pending_size_set) {
+        SetNextWindowSize(ImVec2(state.pending_size.x, state.pending_size.y), ImGuiCond.Always)
+        state.pending_size_set = false
     }
     state.flags = flags
     if (!closable || state.open) {

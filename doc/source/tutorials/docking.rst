@@ -103,14 +103,20 @@ through the reload, and the dock state lives inside that context).
 Driving from outside
 ====================
 
-Three live commands cover the docking surface. Targets are
-path-qualified — the dockspace pushes its name onto the path, so panel
-targets are ``DOCK_ROOT/<name>``:
+Four live commands cover the docking surface. Targets are path-qualified
+— the dockspace pushes its name onto the path, so panel targets are
+``DOCK_ROOT/<name>``:
 
 .. code-block:: bash
 
    # Pop Output out into a floating window
    curl -X POST -d '{"name":"imgui_undock","args":{"target":"DOCK_ROOT/OUTPUT"}}' \
+        localhost:9090/command
+
+   # Reposition the floating window (also works on docked windows — ImGui ignores
+   # the SetNextWindowPos while a window is docked, so this is most useful after
+   # imgui_undock). w/h are optional.
+   curl -X POST -d '{"name":"imgui_set_window_pos","args":{"target":"DOCK_ROOT/OUTPUT","value":{"x":580,"y":220,"w":360,"h":220}}}' \
         localhost:9090/command
 
    # Reset the dockspace back to the default layout
@@ -123,7 +129,10 @@ targets are ``DOCK_ROOT/<name>``:
 
 ``imgui_dock`` is the inverse of ``imgui_undock`` — it takes a ``value`` of
 type ``uint`` (a dock-node id from a prior ``DockBuilder*`` call) and
-re-docks the panel into that node.
+re-docks the panel into that node. ``imgui_set_window_pos`` is the
+companion you'll usually pair with ``imgui_undock``, since a freshly
+undocked window picks its position from ``imgui.ini`` (or ``(0,0)`` if
+the window has never floated).
 
 Next steps
 ==========
