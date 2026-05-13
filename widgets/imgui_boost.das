@@ -36,11 +36,8 @@ let private VALID_FLAGS : array<string> = ["PUBLIC", "PRIVATE", "NOTLIVE"]
 // `range=` is reserved in daslang's grammar and unusable as a record
 // name, hence the rename pair. Per API_REWORK §4.2 + §9.1.
 def private init_arg_to_field(name : string) : string {
-    if (name == "init") {
-        return "value"
-    } elif (name == "bounds") {
-        return "bounds"
-    }
+    return "value" if (name == "init")
+    return "bounds" if (name == "bounds")
     return ""
 }
 
@@ -144,6 +141,10 @@ def private apply_widget_or_container(var func : FunctionPtr; var errors : das_s
     // injected widget_ident at position 1). The indexed-form wrapper
     // generator mirrors this signature for each (kind, IDENT) pair so the
     // user's call site forwards args unchanged into the underlying widget.
+    let userArgN = length(func.arguments) - 2
+    if (userArgN > 0) {
+        inst.render_fn_args |> reserve(userArgN)
+    }
     for (i in range(2, length(func.arguments))) {
         inst.render_fn_args |> push(func.arguments[i])
     }
@@ -222,9 +223,7 @@ class WidgetCallMacro : AstCallMacro {
         // table global is user-declared, wrapper helper is generated per
         // (kind, IDENT), no init=/bounds= sugar (use [init] for imperative
         // pre-population). Returns the wrapper-call rewrite.
-        if (indexExpr != null) {
-            return <- emit_indexed_call(prog, mod, expr, bareName, indexExpr)
-        }
+        return <- emit_indexed_call(prog, mod, expr, bareName, indexExpr) if (indexExpr != null)
         // Reconstruct rawName for error messages (source order).
         rawName = build_string() $(var w) {
             w |> write(bareName)
@@ -287,6 +286,15 @@ class WidgetCallMacro : AstCallMacro {
         // preserved — matches source order at the call site).
         var initFieldNames : array<string>
         var initFieldExprs : array<ExpressionPtr>
+        // §4.8 per-call overrides — string literals (must be ExprConstString)
+        // pulled out of the named-tuple args. `id=` wraps the render call in
+        // PushID/PopID (ImGui hash override only). `path=` replaces bareName
+        // as the widget_ident second arg (both telemetry path AND ImGui hash
+        // change, since widget_prelude does PushID(widget_ident) inside).
+        var idOverride : string
+        var idOverridePresent = false
+        var pathOverride : string
+        var pathOverridePresent = false
         for (i in range(1, length(expr.arguments))) {
             let a = expr.arguments[i]
             if (a is ExprMakeTuple) {
@@ -298,6 +306,22 @@ class WidgetCallMacro : AstCallMacro {
                         if (!empty(fieldName)) {
                             initFieldNames |> push(fieldName)
                             initFieldExprs |> push(clone_expression(mt.values[j]))
+                        } elif (recordName == "id") {
+                            if (!(mt.values[j] is ExprConstString)) {
+                                macro_error(prog, mt.values[j].at,
+                                            "{kind_name}({bareName}, id=...): `id=` must be a string literal")
+                                return <- default<ExpressionPtr>
+                            }
+                            idOverride = string((mt.values[j] as ExprConstString).value)
+                            idOverridePresent = true
+                        } elif (recordName == "path") {
+                            if (!(mt.values[j] is ExprConstString)) {
+                                macro_error(prog, mt.values[j].at,
+                                            "{kind_name}({bareName}, path=...): `path=` must be a string literal")
+                                return <- default<ExpressionPtr>
+                            }
+                            pathOverride = string((mt.values[j] as ExprConstString).value)
+                            pathOverridePresent = true
                         }
                     }
                 }
@@ -384,25 +408,46 @@ class WidgetCallMacro : AstCallMacro {
         // ExprNamedCall and bypasses call_macro dispatch entirely. Destructure
         // named tuples into positional args (in source order — matches the
         // user-facing parameter order).
+        var widgetIdent = bareName
+        if (pathOverridePresent) {
+            widgetIdent = pathOverride
+        }
         var newCall = new ExprCall(at = expr.at, name := render_fn_name)
         newCall.arguments |> push(new ExprVar(at = expr.at, name := bareName))
-        newCall.arguments |> push(new ExprConstString(at = expr.at, value := bareName))
+        newCall.arguments |> push(new ExprConstString(at = expr.at, value := widgetIdent))
         for (i in range(1, length(expr.arguments))) {
             let a = expr.arguments[i]
             if (a is ExprMakeTuple) {
                 let mt = a as ExprMakeTuple
                 if (length(mt.recordNames) == length(mt.values) && !empty(mt.recordNames)) {
                     for (j in range(length(mt.recordNames))) {
-                        // Skip init-mapped names (consumed by the global's initializer above).
-                        if (!empty(init_arg_to_field(string(mt.recordNames[j])))) {
-                            continue
-                        }
+                        let recordName = string(mt.recordNames[j])
+                        // Skip init-mapped names (consumed by the global's
+                        // initializer above) and id=/path= (consumed at
+                        // wrap/widget_ident-substitution time).
+                        continue if (!empty(init_arg_to_field(recordName)) ||
+                                     recordName == "id" ||
+                                     recordName == "path")
                         newCall.arguments |> push(clone_expression(mt.values[j]))
                     }
                     continue
                 }
             }
             newCall.arguments |> push(clone_expression(a))
+        }
+        if (idOverridePresent) {
+            // Wrap in a void block: PushID(idLit); call(); PopID(). Because
+            // the block evaluates to void, capturing the widget's return
+            // value while id= is in play won't compile — that's intentional
+            // for first cut (rare combo; users can use `with_id(idLit) { let
+            // r = button(...) }` for the bool-return form). Same wrapping
+            // shape mirrors `with_id` exactly.
+            let idLit = idOverride
+            return qmacro_block() {
+                PushID($v(idLit))
+                $e(newCall)
+                PopID()
+            }
         }
         return <- newCall
     }
@@ -445,9 +490,14 @@ class WidgetCallMacro : AstCallMacro {
                 let mt = a as ExprMakeTuple
                 if (length(mt.recordNames) == length(mt.values) && !empty(mt.recordNames)) {
                     for (j in range(length(mt.recordNames))) {
-                        if (!empty(init_arg_to_field(string(mt.recordNames[j])))) {
-                            let recordName = string(mt.recordNames[j])
+                        let recordName = string(mt.recordNames[j])
+                        if (!empty(init_arg_to_field(recordName))) {
                             let msg = "{kind_name}({bareName}[k]): named-init sugar ({recordName}=) not supported on indexed form. Pre-populate {bareName} in an [init] function (e.g. `{bareName}[i].bounds = (0,1); {bareName}[i].value = 0.5f`)."
+                            macro_error(prog, expr.at, msg)
+                            return <- default<ExpressionPtr>
+                        }
+                        if (recordName == "id" || recordName == "path") {
+                            let msg = "{kind_name}({bareName}[k], {recordName}=...): per-call {recordName}= override not supported on indexed form (each [k] already gets its own ImGui hash and path key). Wrap the indexed call in `with_id(s)` for an extra scope segment instead."
                             macro_error(prog, expr.at, msg)
                             return <- default<ExpressionPtr>
                         }
@@ -469,9 +519,10 @@ class WidgetCallMacro : AstCallMacro {
                 wrapperArgs |> emplace_new <| clone_variable(a)
             }
             // Forward call: <kind>(<bareName>[k], bare, ...args by name)
-            var callArgs : array<ExpressionPtr>
-            callArgs |> push <| qmacro($i(bareNameLit)[$i("k")])
-            callArgs |> push <| qmacro($i("bare"))
+            var callArgs <- array<ExpressionPtr>(
+                qmacro($i(bareNameLit)[$i("k")]),
+                qmacro($i("bare")))
+            callArgs |> reserve(2 + length(render_fn_args))
             for (a in render_fn_args) {
                 let argName = string(a.name)
                 callArgs |> push <| qmacro($i(argName))

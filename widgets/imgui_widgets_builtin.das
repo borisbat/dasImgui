@@ -86,35 +86,6 @@ def private radio_int_finalize(widget_ident : string; kind : string; var state :
     register_focusable(widget_ident)
 }
 
-def private pending_value_finalize(widget_ident : string; kind : string; var state : auto) {
-    //! Lambda + dispatcher install for the pending-value family — every
-    //! state shape with `has_pending` / `pending_value` / `changed`
-    //! fields, dispatched on action "set". Generic on the state struct;
-    //! `typedecl(state.pending_value)` drives the from_JV decode so one
-    //! body covers all of Drag* (10 kinds) / Slider* (incl. VSlider, 10
-    //! kinds) / Input numeric / Color / Combo / ListBox
-    //! without per-type duplication. InputText goes through
-    //! `text_value_finalize` instead — it needs `:=` to clone the
-    //! JV-owned string bytes into the widget context heap before the JV
-    //! drops on dispatcher return.
-    var entry : WidgetEntry
-    unsafe {
-        let ser <- @ capture(& state) () : JsonValue ? {
-            return JV(state)
-        }
-        let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
-            if (action == "set") {
-                state.pending_value = from_JV(payload?["value"],
-                                              type<typedecl(state.pending_value)>,
-                                              default<typedecl(state.pending_value)>)
-                state.has_pending = true
-            }
-        }
-        widget_finalize(widget_ident, kind, entry, ser, disp)
-    }
-    register_focusable(widget_ident)
-}
-
 def private text_value_finalize(widget_ident : string; kind : string; var state : InputTextState) {
     // String-typed cousin of pending_value_finalize. The JsonValue payload's
     // underlying bytes drop when the dispatcher returns; we `:=` clone into

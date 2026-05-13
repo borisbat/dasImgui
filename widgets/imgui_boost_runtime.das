@@ -788,6 +788,61 @@ def public register_focusable(widget_ident : string) {
     g_focusable |> insert(widget_path_key(widget_ident))
 }
 
+def public pending_value_container_finalize(widget_ident : string; kind : string;
+                                             var state : auto) {
+    //! Container counterpart of `pending_value_finalize` for layout widgets
+    //! (split_h / split_v / dock_left). Same generic state shape (has_pending
+    //! / pending_value), same `imgui_set` action, but routed through
+    //! `container_finalize` so the container's own path doesn't get the
+    //! widget_ident appended twice (the [container] macro already pushed it
+    //! onto g_container_path before the body ran). No `register_focusable` —
+    //! layout containers aren't keyboard-focus targets.
+    var entry : WidgetEntry
+    unsafe {
+        let ser <- @ capture(& state) () : JsonValue ? {
+            return JV(state)
+        }
+        let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
+            if (action == "set") {
+                state.pending_value = from_JV(payload?["value"],
+                                              type<typedecl(state.pending_value)>,
+                                              default<typedecl(state.pending_value)>)
+                state.has_pending = true
+            }
+        }
+        container_finalize(widget_ident, kind, entry, ser, disp)
+    }
+}
+
+def public pending_value_finalize(widget_ident : string; kind : string; var state : auto) {
+    //! Lambda + dispatcher install for the pending-value family — every
+    //! state shape with `has_pending` / `pending_value` / `changed`
+    //! fields, dispatched on action "set". Generic on the state struct;
+    //! `typedecl(state.pending_value)` drives the from_JV decode so one
+    //! body covers all of Drag* (10 kinds) / Slider* (incl. VSlider, 10
+    //! kinds) / Input numeric / Color / Combo / ListBox / layout splitters
+    //! (split_h / split_v / dock_left) without per-type duplication.
+    //! InputText goes through `text_value_finalize` (in imgui_widgets_builtin)
+    //! instead — it needs `:=` to clone the JV-owned string bytes into the
+    //! widget context heap before the JV drops on dispatcher return.
+    var entry : WidgetEntry
+    unsafe {
+        let ser <- @ capture(& state) () : JsonValue ? {
+            return JV(state)
+        }
+        let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
+            if (action == "set") {
+                state.pending_value = from_JV(payload?["value"],
+                                              type<typedecl(state.pending_value)>,
+                                              default<typedecl(state.pending_value)>)
+                state.has_pending = true
+            }
+        }
+        widget_finalize(widget_ident, kind, entry, ser, disp)
+    }
+    register_focusable(widget_ident)
+}
+
 def public clear_module_widgets(module_name : string) {
     //! Erase every g_widgets entry tagged with this module — and the
     //! matching g_id_to_path entries that point to those paths. Called as

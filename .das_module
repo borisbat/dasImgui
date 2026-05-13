@@ -20,4 +20,10 @@ def initialize(project_path : string) {
     register_native_path("imgui", "imgui_playwright", "{project_path}/widgets/imgui_playwright.das")
     // Phase 4 — visual aids overlays (highlight, mouse_trail, narrate).
     register_native_path("imgui", "imgui_visual_aids", "{project_path}/widgets/imgui_visual_aids.das")
+    // §4.8 — explicit ID-stack push (with_id) for scope-based widget addressing.
+    register_native_path("imgui", "imgui_id_builtin", "{project_path}/widgets/imgui_id_builtin.das")
+    // §4.7 — style stack helpers (with_style call_macro + push_style_one overloads).
+    register_native_path("imgui", "imgui_style_builtin", "{project_path}/widgets/imgui_style_builtin.das")
+    // §4.6 — layout helpers (split_h, split_v, dock_left).
+    register_native_path("imgui", "imgui_layout_builtin", "{project_path}/widgets/imgui_layout_builtin.das")
 }
