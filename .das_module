@@ -15,6 +15,9 @@ def initialize(project_path : string) {
     register_native_path("imgui", "imgui_containers_builtin", "{project_path}/widgets/imgui_containers_builtin.das")
     // Reload-aware ImGui ctx lifecycle (mirror of live/glfw_live for ImGui).
     register_native_path("imgui", "imgui_live", "{project_path}/widgets/imgui_live.das")
+    // Synth IO bypass driver (mouse + keyboard timelines + imgui_synth_tick),
+    // re-exported by imgui_live.
+    register_native_path("imgui", "imgui_live_core", "{project_path}/widgets/imgui_live_core.das")
     register_native_path("imgui", "imgui_transport", "{project_path}/widgets/imgui_transport.das")
     // Phase 3 — public playwright module (promoted from tests/integration/live_driver.das).
     register_native_path("imgui", "imgui_playwright", "{project_path}/widgets/imgui_playwright.das")
