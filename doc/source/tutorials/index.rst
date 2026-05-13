@@ -16,3 +16,4 @@ construction.
    layout.rst
    docking.rst
    with_style.rst
+   with_id.rst
