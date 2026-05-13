@@ -29,9 +29,11 @@ permissions:
   id-token: write
 
 # Layout: dasImgui is checked out as a sibling of daslang, then daspkg-installed
-# globally into the cmake-installed daslang SDK. This mirrors the supported
-# end-user flow (daspkg install dasImgui --global) instead of nesting the
-# source under daslang/modules/.
+# globally so it lands under daslang-src/modules/dasImgui/. daslang-src/ is the
+# build tree (executables, shared_modules, daslib live in place) — no separate
+# `cmake --install` needed. Mirrors the supported end-user flow (daspkg install
+# dasImgui --global) without nesting the source under daslang/modules/ at
+# cmake-configure time (which would trip the root-cmake INCLUDE).
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -66,7 +68,7 @@ jobs:
       - name: "Install Python dependencies"
         run: pip install -r daslang-src/doc/requirements.txt
 
-      - name: "Build and install daslang SDK"
+      - name: "Build daslang"
         working-directory: daslang-src
         run: |
           set -eux
@@ -78,24 +80,23 @@ jobs:
             -DDAS_GLFW_DISABLED=OFF \
             -G Ninja
           cmake --build ./build --target daslang
-          cmake --install ./build --prefix ${{ github.workspace }}/daslang
 
       - name: "daspkg install dasImgui (global)"
         run: |
           set -eux
-          ${{ github.workspace }}/daslang/bin/daslang \
-            ${{ github.workspace }}/daslang/utils/daspkg/main.das -- \
+          ${{ github.workspace }}/daslang-src/bin/daslang \
+            ${{ github.workspace }}/daslang-src/utils/daspkg/main.das -- \
             install ${{ github.workspace }}/dasImgui-src --global
 
       - name: "Run imgui2rst"
-        working-directory: ${{ github.workspace }}/daslang/modules/dasImgui
+        working-directory: ${{ github.workspace }}/daslang-src/modules/dasImgui
         run: |
           set -eux
-          ${{ github.workspace }}/daslang/bin/daslang utils/imgui2rst.das -- \
+          ${{ github.workspace }}/daslang-src/bin/daslang utils/imgui2rst.das -- \
             --detail_output doc/source/stdlib/generated
 
       - name: "Stub-gate: handmade/ must not contain '// stub'"
-        working-directory: ${{ github.workspace }}/daslang/modules/dasImgui
+        working-directory: ${{ github.workspace }}/daslang-src/modules/dasImgui
         run: |
           set -eux
           if grep -rl '// stub' doc/source/stdlib/handmade/; then
@@ -105,7 +106,7 @@ jobs:
           fi
 
       - name: "Build Sphinx HTML"
-        working-directory: ${{ github.workspace }}/daslang/modules/dasImgui
+        working-directory: ${{ github.workspace }}/daslang-src/modules/dasImgui
         run: |
           set -eux
           sphinx-build -W --keep-going \
@@ -114,7 +115,7 @@ jobs:
 
       - name: "Stage site for deployment"
         if: github.ref == 'refs/heads/master'
-        working-directory: ${{ github.workspace }}/daslang/modules/dasImgui
+        working-directory: ${{ github.workspace }}/daslang-src/modules/dasImgui
         run: |
           set -eux
           mkdir -p _site
@@ -127,7 +128,7 @@ jobs:
         if: github.ref == 'refs/heads/master'
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ${{ github.workspace }}/daslang/modules/dasImgui/_site
+          path: ${{ github.workspace }}/daslang-src/modules/dasImgui/_site
 
       - name: "Deploy to GitHub Pages"
         if: github.ref == 'refs/heads/master'
