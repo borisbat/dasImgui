@@ -71,81 +71,98 @@ def main {
         panic("daslang-live not responding on {BASE_URL} — is it running with layout.das?")
     }
 
-    var snap = wait_for_render(app, "EXPLORE_BTN", 10.0f)
+    //! All boost widgets are nested under ``window(LAYOUT_WIN, ...)`` in
+    //! layout.das, so every registered key is path-prefixed. dock_left and
+    //! split_* helpers also appear in the registry but with bbox=(0,0,0,0)
+    //! (the splitter handle is an InvisibleButton not separately registered —
+    //! see test_layout_helpers.das:115-122 TODO). We narrate against and move
+    //! the cursor to a child button in each helper's pane instead.
+    let T_SIDEBAR     = "LAYOUT_WIN/SIDEBAR"
+    let T_SPLIT_MAIN  = "LAYOUT_WIN/SPLIT_VERT/SPLIT_MAIN"
+    let T_SPLIT_VERT  = "LAYOUT_WIN/SPLIT_VERT"
+    let T_EXPLORE_BTN = "LAYOUT_WIN/SIDEBAR/EXPLORE_BTN"
+    let T_FILE_A_BTN  = "LAYOUT_WIN/SPLIT_VERT/SPLIT_MAIN/FILE_A_BTN"
+    let T_CLEAR_BTN   = "LAYOUT_WIN/SPLIT_VERT/CLEAR_BTN"
+
+    var snap = wait_for_render(app, T_EXPLORE_BTN, 10.0f)
     if (snap == null) {
-        panic("EXPLORE_BTN never rendered — wrong app running on {BASE_URL}?")
+        panic("{T_EXPLORE_BTN} never rendered — wrong app running on {BASE_URL}?")
     }
-    let p_explore  = widget_center(snap, "EXPLORE_BTN")
-    let p_file_a   = widget_center(snap, "FILE_A_BTN")
-    let p_sidebar  = widget_center(snap, "SIDEBAR")
-    let p_split_h  = widget_center(snap, "SPLIT_MAIN")
-    let p_split_v  = widget_center(snap, "SPLIT_VERT")
+    let p_explore = widget_center(snap, T_EXPLORE_BTN)
+    let p_file_a  = widget_center(snap, T_FILE_A_BTN)
+    let p_clear   = widget_center(snap, T_CLEAR_BTN)
 
     post_command(app, "imgui_mouse_trail",   JV((enabled = true)))
     post_command(app, "imgui_cursor_sprite", JV((enabled = true)))
     post_command(app, "record_start", JV((file = OUTPUT, fps = 30, max_seconds = 60)))
 
     // ---- Stage 1: sidebar (dock_left) ----
+    // Narrate against EXPLORE_BTN (a real bbox inside the sidebar) since
+    // dock_left itself has bbox=(0,0,0,0). Cursor moves into the sidebar.
     post_command(app, "imgui_narrate", JV((
         text = "dock_left fixes a sidebar to the left edge.",
-        target = "SIDEBAR",
+        target = T_EXPLORE_BTN,
         frames = 200
     )))
-    move_to(app, p_sidebar)
+    move_to(app, p_explore)
     sleep(900u)
-    post_command(app, "imgui_set", JV((target = "SIDEBAR", value = 260.0f)))
+    post_command(app, "imgui_set", JV((target = T_SIDEBAR, value = 260.0f)))
     sleep(1400u)
 
     // ---- Stage 2: horizontal splitter (split_h on top half) ----
-    // Re-resolve the splitter bbox; SIDEBAR's resize reflowed the panes.
-    snap = wait_for_render(app, "SPLIT_MAIN", 3.0f)
-    let p_split_h_now = snap != null ? widget_center(snap, "SPLIT_MAIN") : p_split_h
+    // Re-resolve FILE_A_BTN bbox; SIDEBAR's resize reflowed the panes.
+    // Narrate against FILE_A_BTN (left split pane) — split_h has no bbox.
+    snap = wait_for_render(app, T_FILE_A_BTN, 3.0f)
+    let p_file_a_now = snap != null ? widget_center(snap, T_FILE_A_BTN) : p_file_a
     post_command(app, "imgui_narrate", JV((
         text = "split_h slices the top into left + right.",
-        target = "SPLIT_MAIN",
+        target = T_FILE_A_BTN,
         frames = 200
     )))
-    move_to(app, p_split_h_now)
+    move_to(app, p_file_a_now)
     sleep(900u)
-    post_command(app, "imgui_set", JV((target = "SPLIT_MAIN", value = 0.6f)))
+    post_command(app, "imgui_set", JV((target = T_SPLIT_MAIN, value = 0.6f)))
     sleep(1400u)
 
     // ---- Stage 3: vertical splitter ----
-    snap = wait_for_render(app, "SPLIT_VERT", 3.0f)
-    let p_split_v_now = snap != null ? widget_center(snap, "SPLIT_VERT") : p_split_v
+    // Narrate against CLEAR_BTN (bottom pane) — split_v has no bbox.
+    snap = wait_for_render(app, T_CLEAR_BTN, 3.0f)
+    let p_clear_now = snap != null ? widget_center(snap, T_CLEAR_BTN) : p_clear
     post_command(app, "imgui_narrate", JV((
         text = "split_v splits top from bottom.",
-        target = "SPLIT_VERT",
+        target = T_CLEAR_BTN,
         frames = 200
     )))
-    move_to(app, p_split_v_now)
+    move_to(app, p_clear_now)
     sleep(900u)
-    post_command(app, "imgui_set", JV((target = "SPLIT_VERT", value = 0.45f)))
+    post_command(app, "imgui_set", JV((target = T_SPLIT_VERT, value = 0.45f)))
     sleep(1400u)
 
     // ---- Stage 4: click inside sidebar ----
+    snap = wait_for_render(app, T_EXPLORE_BTN, 3.0f)
+    let p_explore_now = snap != null ? widget_center(snap, T_EXPLORE_BTN) : p_explore
     post_command(app, "imgui_narrate", JV((
         text = "Each pane clips its widgets cleanly.",
-        target = "EXPLORE_BTN",
+        target = T_EXPLORE_BTN,
         frames = 180
     )))
     sleep(700u)
     var explore_events : array<JsonValue?>
-    explore_events |> click_at(0, p_explore)
+    explore_events |> click_at(0, p_explore_now)
     post_command(app, "imgui_mouse_play", JV((events = explore_events)))
     sleep(1400u)
 
     // ---- Stage 5: click inside left-split pane (re-resolve bbox; layout shifted) ----
-    snap = wait_for_render(app, "FILE_A_BTN", 5.0f)
-    let p_file_a_now = snap != null ? widget_center(snap, "FILE_A_BTN") : p_file_a
+    snap = wait_for_render(app, T_FILE_A_BTN, 5.0f)
+    let p_file_a_now2 = snap != null ? widget_center(snap, T_FILE_A_BTN) : p_file_a_now
     post_command(app, "imgui_narrate", JV((
         text = "Splitters re-flow the panes on every drag.",
-        target = "FILE_A_BTN",
+        target = T_FILE_A_BTN,
         frames = 180
     )))
     sleep(700u)
     var file_events : array<JsonValue?>
-    file_events |> click_at(0, p_file_a_now)
+    file_events |> click_at(0, p_file_a_now2)
     post_command(app, "imgui_mouse_play", JV((events = file_events)))
     sleep(1600u)
 
