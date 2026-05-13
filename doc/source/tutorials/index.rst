@@ -14,3 +14,4 @@ construction.
    boost_basics.rst
    widgets_tour.rst
    layout.rst
+   docking.rst

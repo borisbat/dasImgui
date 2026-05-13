@@ -10,14 +10,62 @@
 
 // Cherry-picked from imgui_internal.h per master plan §3 — the public-API
 // stance allows internal symbols when "a real use case bumps into them."
-// Phase 2: io.active_widget needs ImGui::GetActiveID(); no other internal
-// symbols added without re-discussion.
+// Phase 2: io.active_widget needs ImGui::GetActiveID().
+// Phase 7: DockBuilder API needed for programmatic initial dock layouts in
+// the boost dockspace/dock_window wrappers (widgets/imgui_docking_builtin.das).
+// No other internal symbols added without re-discussion.
 #include "imgui_internal.h"
 
 namespace das {
 
     ImU32 GetActiveID() {
         return ImGui::GetActiveID();
+    }
+
+    // Phase 7 docking — DockBuilder is internal API; bind a thin C++ surface so
+    // boost wrappers in widgets/imgui_docking_builtin.das can seed default
+    // layouts. ImGui::DockBuilderSplitNode takes ImGuiID* out params; daslang
+    // expresses these as ImGuiID& references for natural call sites:
+    //   var left, right : uint
+    //   DockBuilderSplitNode(parent, ImGuiDir.Left, 0.25f, left, right)
+    ImGuiID DockBuilderAddNode_das(ImGuiID node_id, ImGuiDockNodeFlags_ flags) {
+        return ImGui::DockBuilderAddNode(node_id, (ImGuiDockNodeFlags)flags);
+    }
+    void DockBuilderRemoveNode_das(ImGuiID node_id) {
+        ImGui::DockBuilderRemoveNode(node_id);
+    }
+    void DockBuilderRemoveNodeDockedWindows_das(ImGuiID node_id, bool clear_settings_refs) {
+        ImGui::DockBuilderRemoveNodeDockedWindows(node_id, clear_settings_refs);
+    }
+    void DockBuilderRemoveNodeChildNodes_das(ImGuiID node_id) {
+        ImGui::DockBuilderRemoveNodeChildNodes(node_id);
+    }
+    void DockBuilderSetNodeSize_das(ImGuiID node_id, const ImVec2 & size) {
+        ImGui::DockBuilderSetNodeSize(node_id, size);
+    }
+    ImGuiID DockBuilderSplitNode_das(ImGuiID parent_id, ImGuiDir_ split_dir, float ratio,
+                                     ImGuiID & out_at_dir, ImGuiID & out_at_opp) {
+        ImGuiID a = 0, b = 0;
+        ImGuiID r = ImGui::DockBuilderSplitNode(parent_id, split_dir, ratio, &a, &b);
+        out_at_dir = a;
+        out_at_opp = b;
+        return r;
+    }
+    void DockBuilderDockWindow_das(const char * window_name, ImGuiID node_id) {
+        ImGui::DockBuilderDockWindow(window_name ? window_name : "", node_id);
+    }
+    void DockBuilderFinish_das(ImGuiID node_id) {
+        ImGui::DockBuilderFinish(node_id);
+    }
+    // Existence-check shim — full ImGuiDockNode* handle binding deferred to v2.
+    bool DockBuilderHasNode(ImGuiID node_id) {
+        return ImGui::DockBuilderGetNode(node_id) != nullptr;
+    }
+    // ImGuiDockNodeFlags_DockSpace is internal-only; required when seeding a
+    // dockspace root via DockBuilder. Exposed as a dedicated forwarder so
+    // daslang code doesn't have to hard-code the bit value.
+    ImGuiID DockBuilderAddDockSpaceNode(ImGuiID node_id, ImGuiDockNodeFlags_ flags) {
+        return ImGui::DockBuilderAddNode(node_id, (ImGuiDockNodeFlags)flags | ImGuiDockNodeFlags_DockSpace);
     }
 
     void Text ( const char * txt ) {
@@ -522,6 +570,36 @@ namespace das {
         // Phase 2.1 — GetActiveID cherry-picked from imgui_internal.h.
         addExtern<DAS_BIND_FUN(das::GetActiveID)>(*this, lib, "GetActiveID",
             SideEffects::worstDefault, "das::GetActiveID");
+        // Phase 7 docking — DockBuilder forwarders cherry-picked from imgui_internal.h.
+        addExtern<DAS_BIND_FUN(das::DockBuilderAddNode_das), SimNode_ExtFuncCall, imguiTempFn>(*this, lib, "DockBuilderAddNode",
+            SideEffects::worstDefault, "das::DockBuilderAddNode_das")
+                ->args({"node_id","flags"})
+                    ->arg_init(0, new ExprConstUInt(uint32_t(0)))
+                    ->arg_init(1, new ExprConstEnumeration("None", makeType<ImGuiDockNodeFlags_>(lib)));
+        addExtern<DAS_BIND_FUN(das::DockBuilderRemoveNode_das), SimNode_ExtFuncCall, imguiTempFn>(*this, lib, "DockBuilderRemoveNode",
+            SideEffects::worstDefault, "das::DockBuilderRemoveNode_das");
+        addExtern<DAS_BIND_FUN(das::DockBuilderRemoveNodeDockedWindows_das), SimNode_ExtFuncCall, imguiTempFn>(*this, lib, "DockBuilderRemoveNodeDockedWindows",
+            SideEffects::worstDefault, "das::DockBuilderRemoveNodeDockedWindows_das")
+                ->args({"node_id","clear_settings_refs"})
+                    ->arg_init(1, new ExprConstBool(true));
+        addExtern<DAS_BIND_FUN(das::DockBuilderRemoveNodeChildNodes_das), SimNode_ExtFuncCall, imguiTempFn>(*this, lib, "DockBuilderRemoveNodeChildNodes",
+            SideEffects::worstDefault, "das::DockBuilderRemoveNodeChildNodes_das");
+        addExtern<DAS_BIND_FUN(das::DockBuilderSetNodeSize_das), SimNode_ExtFuncCall, imguiTempFn>(*this, lib, "DockBuilderSetNodeSize",
+            SideEffects::worstDefault, "das::DockBuilderSetNodeSize_das");
+        addExtern<DAS_BIND_FUN(das::DockBuilderSplitNode_das), SimNode_ExtFuncCall, imguiTempFn>(*this, lib, "DockBuilderSplitNode",
+            SideEffects::worstDefault, "das::DockBuilderSplitNode_das")
+                ->args({"node_id","split_dir","size_ratio_for_node_at_dir","out_id_at_dir","out_id_at_opposite_dir"});
+        addExtern<DAS_BIND_FUN(das::DockBuilderDockWindow_das), SimNode_ExtFuncCall, imguiTempFn>(*this, lib, "DockBuilderDockWindow",
+            SideEffects::worstDefault, "das::DockBuilderDockWindow_das");
+        addExtern<DAS_BIND_FUN(das::DockBuilderFinish_das), SimNode_ExtFuncCall, imguiTempFn>(*this, lib, "DockBuilderFinish",
+            SideEffects::worstDefault, "das::DockBuilderFinish_das");
+        addExtern<DAS_BIND_FUN(das::DockBuilderHasNode), SimNode_ExtFuncCall, imguiTempFn>(*this, lib, "DockBuilderHasNode",
+            SideEffects::worstDefault, "das::DockBuilderHasNode");
+        addExtern<DAS_BIND_FUN(das::DockBuilderAddDockSpaceNode), SimNode_ExtFuncCall, imguiTempFn>(*this, lib, "DockBuilderAddDockSpaceNode",
+            SideEffects::worstDefault, "das::DockBuilderAddDockSpaceNode")
+                ->args({"node_id","flags"})
+                    ->arg_init(0, new ExprConstUInt(uint32_t(0)))
+                    ->arg_init(1, new ExprConstEnumeration("None", makeType<ImGuiDockNodeFlags_>(lib)));
         // plot lines and historgram
         addExtern<DAS_BIND_FUN(das::PlotLines)>(*this, lib, "_builtin_PlotLines",
             SideEffects::worstDefault, "das::PlotLines");

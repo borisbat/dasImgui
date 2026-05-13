@@ -1115,6 +1115,30 @@ def imgui_focus(input : JsonValue?) : JsonValue? {
     return with_await(input, r)
 }
 
+[live_command(description = "Re-dock a dock_window to a specific dock node ('target' name, 'value' = dock_id uint)")]
+def imgui_dock(input : JsonValue?) : JsonValue? {
+    //! Live-command: re-dock the dock_window named by ``input["target"]`` into the dock node id supplied in ``input["value"]`` (a ``uint`` from a ``DockBuilder*`` call). Routes through SetNextWindowDockID on the next frame.
+    let r = dispatch_or_err("dock", input)
+    if (r._is_ok) dispatch_post_command_hooks("dock", r._value)
+    return with_await(input, r)
+}
+
+[live_command(description = "Pop a dock_window out of its current dock node ('target' name)")]
+def imgui_undock(input : JsonValue?) : JsonValue? {
+    //! Live-command: undock the dock_window named by ``input["target"]``; the window becomes free-floating. Routes through SetNextWindowDockID(0) on the next frame.
+    let r = dispatch_or_err("undock", input)
+    if (r._is_ok) dispatch_post_command_hooks("undock", r._value)
+    return with_await(input, r)
+}
+
+[live_command(description = "Clear a dockspace's DockBuilder layout so the user's setup runs again ('target' = dockspace name)")]
+def imgui_dock_reset(input : JsonValue?) : JsonValue? {
+    //! Live-command: reset the dockspace named by ``input["target"]`` — clears the DockBuilder node tree and flips ``state.has_initial_layout`` back to false so the user's setup function re-runs on the next frame.
+    let r = dispatch_or_err("reset", input)
+    if (r._is_ok) dispatch_post_command_hooks("reset", r._value)
+    return with_await(input, r)
+}
+
 // ===== Phase 2.5 — Quiescence probe =====
 //
 // imgui_await is a polling probe: server reports current liveness state
