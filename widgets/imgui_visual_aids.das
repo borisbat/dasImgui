@@ -277,20 +277,35 @@ def private fits_viewport(c : float2; box_size : float2; viewport : float2;
          && c.y >= edge_margin && c.y <= max_y)
 }
 
+def private overlaps_any(c : float2; box_size : float2; bboxes : array<float4>) : bool {
+    // Box-on-box overlap test: candidate (c, c+box_size) vs each bbox (x0,y0,x1,y1).
+    // Touching edges count as non-overlapping (>= / <=, not > / <).
+    let bx1 = c.x + box_size.x
+    let by1 = c.y + box_size.y
+    for (b in bboxes) {
+        if (!(bx1 <= b.x || c.x >= b.z || by1 <= b.y || c.y >= b.w)) {
+            return true
+        }
+    }
+    return false
+}
+
 def public compute_narrate_anchor(
-                                  has_target  : bool;
-                                  widget_bbox : float4;
-                                  box_size    : float2;
-                                  viewport    : float2;
-                                  edge_margin : float;
-                                  gap         : float;
-                                  shadow      : float2;
-                                  hud_zone_h  : float
+                                  has_target   : bool;
+                                  widget_bbox  : float4;
+                                  box_size     : float2;
+                                  viewport     : float2;
+                                  edge_margin  : float;
+                                  gap          : float;
+                                  shadow       : float2;
+                                  hud_zone_h   : float;
+                                  other_bboxes : array<float4>
                                   ) : float2 {
     //! Pick a post-it anchor (top-left corner) that fits the viewport without
-    //! overlapping the widget. Tries right → left → below → above of the
-    //! widget; falls back to a viewport-clamped right placement if nothing
-    //! fits cleanly (e.g. text wider than the viewport).
+    //! overlapping the target widget OR any other registered widget. Tries
+    //! right → left → below → above of the target; falls back to a
+    //! viewport-clamped right placement if nothing fits cleanly (e.g. text
+    //! wider than the viewport, or every neighbor blocks).
     if (!has_target) {
         return float2(edge_margin, edge_margin)
     }
@@ -299,22 +314,26 @@ def public compute_narrate_anchor(
 
     // 1. Right of widget
     var c = float2(bb.z + gap, bb.y)
-    if (fits_viewport(c, box_size, viewport, edge_margin, shadow, hud_zone_h)) {
+    if (fits_viewport(c, box_size, viewport, edge_margin, shadow, hud_zone_h)
+        && !overlaps_any(c, box_size, other_bboxes)) {
         return c
     }
     // 2. Left of widget
     c = float2(bb.x - gap - box_size.x, bb.y)
-    if (fits_viewport(c, box_size, viewport, edge_margin, shadow, hud_zone_h)) {
+    if (fits_viewport(c, box_size, viewport, edge_margin, shadow, hud_zone_h)
+        && !overlaps_any(c, box_size, other_bboxes)) {
         return c
     }
     // 3. Below widget (horizontally centered)
     c = float2(cx - box_size.x * 0.5f, bb.w + gap)
-    if (fits_viewport(c, box_size, viewport, edge_margin, shadow, hud_zone_h)) {
+    if (fits_viewport(c, box_size, viewport, edge_margin, shadow, hud_zone_h)
+        && !overlaps_any(c, box_size, other_bboxes)) {
         return c
     }
     // 4. Above widget (horizontally centered)
     c = float2(cx - box_size.x * 0.5f, bb.y - gap - box_size.y)
-    if (fits_viewport(c, box_size, viewport, edge_margin, shadow, hud_zone_h)) {
+    if (fits_viewport(c, box_size, viewport, edge_margin, shadow, hud_zone_h)
+        && !overlaps_any(c, box_size, other_bboxes)) {
         return c
     }
     // Fallback: keep right placement and clamp into viewport. Only fires when
@@ -394,9 +413,21 @@ def private paint_narrates {
                 have_target = true
             }
         }
+        // Collect every registered widget bbox except the target's, so the
+        // post-it doesn't land on a sibling. Cheap: linear scan of the
+        // per-frame registry, typically ≤ 30 entries.
+        var other_bboxes : array<float4>
+        for (k, w in keys(imgui_boost_runtime::g_registry), values(imgui_boost_runtime::g_registry)) {
+            if (have_target && k == g_narrates[i].target) {
+                continue
+            }
+            other_bboxes |> push(w.bbox)
+        }
         let anchor = compute_narrate_anchor(have_target, widget_bbox, box_size,
                                             viewport, edge_margin, gap,
-                                            narrate_shadow_offset, hud_zone_h)
+                                            narrate_shadow_offset, hud_zone_h,
+                                            other_bboxes)
+        delete other_bboxes
         let box_end = float2(anchor.x + box_size.x, anchor.y + box_size.y)
         // Drop shadow first so the post-it sits on top of it.
         *dl |> AddRectFilled(anchor + narrate_shadow_offset, box_end + narrate_shadow_offset,

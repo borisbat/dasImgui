@@ -48,6 +48,17 @@ def click_at(var events : array<JsonValue?>; t_ms : int; pos : tuple<float; floa
     events |> push(JV((t_ms = t_ms + 500, kind = "move",   x = pos._0, y = pos._1)))
 }
 
+def move_to(app : ImguiApp; pos : tuple<float; float>) {
+    //! Send a paced move-to-and-dwell so the cursor sprite + trail visibly
+    //! travel to the target before the subsequent imgui_set lands. Match the
+    //! cadence of click_at's leading move so the playback feels uniform.
+    var events <- [
+        JV((t_ms = 0,   kind = "move", x = pos._0, y = pos._1)),
+        JV((t_ms = 400, kind = "move", x = pos._0, y = pos._1))
+    ]
+    post_command(app, "imgui_mouse_play", JV((events = events)))
+}
+
 [export]
 def main {
     let app = ImguiApp(
@@ -64,8 +75,11 @@ def main {
     if (snap == null) {
         panic("EXPLORE_BTN never rendered — wrong app running on {BASE_URL}?")
     }
-    let p_explore = widget_center(snap, "EXPLORE_BTN")
-    let p_file_a  = widget_center(snap, "FILE_A_BTN")
+    let p_explore  = widget_center(snap, "EXPLORE_BTN")
+    let p_file_a   = widget_center(snap, "FILE_A_BTN")
+    let p_sidebar  = widget_center(snap, "SIDEBAR")
+    let p_split_h  = widget_center(snap, "SPLIT_MAIN")
+    let p_split_v  = widget_center(snap, "SPLIT_VERT")
 
     post_command(app, "imgui_mouse_trail",   JV((enabled = true)))
     post_command(app, "imgui_cursor_sprite", JV((enabled = true)))
@@ -75,28 +89,36 @@ def main {
     post_command(app, "imgui_narrate", JV((
         text = "dock_left fixes a sidebar to the left edge.",
         target = "SIDEBAR",
-        frames = 180
+        frames = 200
     )))
+    move_to(app, p_sidebar)
     sleep(900u)
     post_command(app, "imgui_set", JV((target = "SIDEBAR", value = 260.0f)))
     sleep(1400u)
 
     // ---- Stage 2: horizontal splitter (split_h on top half) ----
+    // Re-resolve the splitter bbox; SIDEBAR's resize reflowed the panes.
+    snap = wait_for_render(app, "SPLIT_MAIN", 3.0f)
+    let p_split_h_now = snap != null ? widget_center(snap, "SPLIT_MAIN") : p_split_h
     post_command(app, "imgui_narrate", JV((
         text = "split_h slices the top into left + right.",
         target = "SPLIT_MAIN",
-        frames = 180
+        frames = 200
     )))
+    move_to(app, p_split_h_now)
     sleep(900u)
     post_command(app, "imgui_set", JV((target = "SPLIT_MAIN", value = 0.6f)))
     sleep(1400u)
 
     // ---- Stage 3: vertical splitter ----
+    snap = wait_for_render(app, "SPLIT_VERT", 3.0f)
+    let p_split_v_now = snap != null ? widget_center(snap, "SPLIT_VERT") : p_split_v
     post_command(app, "imgui_narrate", JV((
         text = "split_v splits top from bottom.",
         target = "SPLIT_VERT",
-        frames = 180
+        frames = 200
     )))
+    move_to(app, p_split_v_now)
     sleep(900u)
     post_command(app, "imgui_set", JV((target = "SPLIT_VERT", value = 0.45f)))
     sleep(1400u)
