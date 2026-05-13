@@ -15,3 +15,4 @@ construction.
    widgets_tour.rst
    layout.rst
    docking.rst
+   with_style.rst

@@ -137,8 +137,8 @@ the window has never floated).
 Next steps
 ==========
 
-Style scopes are next — pushing colors and metrics for a sub-tree of
-widgets, plus the ``(text_color = ...)`` sugar.
+Style scopes are next — ``with_style`` for pushing colors and metrics
+across a sub-tree of widgets, balanced pop, and how nesting stacks.
 
 .. seealso::
 
