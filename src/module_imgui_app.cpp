@@ -30,6 +30,35 @@ DAS_MOD_API void das_ImGui_ImplOpenGL3_Init ( const char * version ) {
     ImGui_ImplOpenGL3_Init(version);
 }
 
+// =====================================================================
+// Synthetic IO bypass — direct injection into ImGui's input queue,
+// skipping the GLFW backend chain. Used by imgui_live's synth driver to
+// fix the click-then-Ctrl+A shortcut-routing bug (project memory:
+// project_imgui_synth_click_breaks_ctrl_shortcuts). The driver appends
+// synth events AFTER the backend's per-frame poll so synth wins the
+// last-write-wins race at NewFrame drain time.
+// =====================================================================
+
+DAS_MOD_API void das_imgui_synth_mouse_pos ( float x, float y ) {
+    ImGui::GetIO().AddMousePosEvent(x, y);
+}
+
+DAS_MOD_API void das_imgui_synth_mouse_button ( int button, bool down ) {
+    ImGui::GetIO().AddMouseButtonEvent(button, down);
+}
+
+DAS_MOD_API void das_imgui_synth_mouse_wheel ( float dx, float dy ) {
+    ImGui::GetIO().AddMouseWheelEvent(dx, dy);
+}
+
+DAS_MOD_API void das_imgui_synth_key ( int key, bool down ) {
+    ImGui::GetIO().AddKeyEvent((ImGuiKey)key, down);
+}
+
+DAS_MOD_API void das_imgui_synth_input_char ( uint32_t cp ) {
+    ImGui::GetIO().AddInputCharacter(cp);
+}
+
 // making custom builtin module
 class Module_imgui_app : public Module {
     ModuleLibrary lib;
@@ -95,6 +124,17 @@ public:
         addExtern<DAS_BIND_FUN(ImGui_ImplOpenGL3_DestroyDeviceObjects)>(*this,lib,"ImGui_ImplOpenGL3_DestroyDeviceObjects",
             SideEffects::worstDefault, "ImGui_ImplOpenGL3_DestroyDeviceObjects");
 #endif
+        // Synth IO bypass (imgui_live driver).
+        addExtern<DAS_BIND_FUN(das_imgui_synth_mouse_pos)>(*this,lib,"imgui_synth_mouse_pos",
+            SideEffects::worstDefault, "das_imgui_synth_mouse_pos");
+        addExtern<DAS_BIND_FUN(das_imgui_synth_mouse_button)>(*this,lib,"imgui_synth_mouse_button",
+            SideEffects::worstDefault, "das_imgui_synth_mouse_button");
+        addExtern<DAS_BIND_FUN(das_imgui_synth_mouse_wheel)>(*this,lib,"imgui_synth_mouse_wheel",
+            SideEffects::worstDefault, "das_imgui_synth_mouse_wheel");
+        addExtern<DAS_BIND_FUN(das_imgui_synth_key)>(*this,lib,"imgui_synth_key",
+            SideEffects::worstDefault, "das_imgui_synth_key");
+        addExtern<DAS_BIND_FUN(das_imgui_synth_input_char)>(*this,lib,"imgui_synth_input_char",
+            SideEffects::worstDefault, "das_imgui_synth_input_char");
         // all good
         return true;
     }
@@ -102,7 +142,12 @@ public:
         tw << "#include \"../modules/dasImgui/src/imgui_stub.h\"\n";
         tw << "#include <backends/imgui_impl_glfw.h>\n";
         tw << "#include <backends/imgui_impl_opengl3.h>\n";
-        tw << "void das_ImGui_ImplOpenGL3_Init ( const char * version );\n";
+        tw << "DAS_MOD_API void das_ImGui_ImplOpenGL3_Init ( const char * version );\n";
+        tw << "DAS_MOD_API void das_imgui_synth_mouse_pos ( float x, float y );\n";
+        tw << "DAS_MOD_API void das_imgui_synth_mouse_button ( int button, bool down );\n";
+        tw << "DAS_MOD_API void das_imgui_synth_mouse_wheel ( float dx, float dy );\n";
+        tw << "DAS_MOD_API void das_imgui_synth_key ( int key, bool down );\n";
+        tw << "DAS_MOD_API void das_imgui_synth_input_char ( uint32_t cp );\n";
         return ModuleAotType::cpp;
     }
 };

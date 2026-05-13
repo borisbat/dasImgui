@@ -3,6 +3,7 @@ options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
 
+require imgui public
 require imgui/imgui_playwright public
 require daslib/json public
 require daslib/json_boost public
@@ -126,31 +127,29 @@ def main {
     events |> stop_at(5500, p_narrate_vol)
     events |> stop_at(6400, p_narrate_save)
     events |> push(JV((t_ms = 7400, kind = "move", x = 500.0f, y = 300.0f)))
-    post_command(app, "mouse_play", JV((events = events)))
+    post_command(app, "imgui_mouse_play", JV((events = events)))
 
-    // Sleep through the mouse tour. Polling mouse_status in a tight loop
-    // while the recorder is grabbing every frame thrashes the host's HTTP
-    // handler — sleep through it instead. Mouse tour ends at ~7.4s + extra
-    // buffer so the last narrate callout / click flash play out fully and
-    // the viewer has a beat to take it in before keyboard tour starts.
+    // Sleep through the mouse tour. Polling status in a tight loop while the
+    // recorder is grabbing every frame thrashes the host's HTTP handler —
+    // sleep through it instead. Mouse tour ends at ~7.4s + extra buffer so
+    // the last narrate callout / click flash play out fully and the viewer
+    // has a beat to take it in before keyboard tour starts.
     sleep(9000u)
 
     // --- Keyboard tour ---
-    // Move cursor visually to NAME_INPUT, then activate via imgui_focus
-    // (not a synth click). The cursor motion gives a visible cue; the
-    // SetKeyboardFocusHere path lights up the focus rect AND keeps Ctrl
-    // shortcuts working inside the InputText afterward. Synth mouse-clicks
-    // into an InputText leave ImGui in an internal state where subsequent
-    // Ctrl+A / Ctrl+Backspace don't reach the widget's shortcut handler
-    // (the nav-route condition only auto-selects when activation goes
-    // through the nav path, not the mouse-click path). Discovered while
-    // re-recording the keyboard tour — Boris caught the visible regression
-    // and we traced it through imgui_widgets.cpp:4282-4286.
+    // Move cursor visually to NAME_INPUT, then activate via imgui_focus. The
+    // cursor motion gives a visible cue; the SetKeyboardFocusHere path
+    // lights up the focus rect AND establishes the nav state Shortcut() keys
+    // off, so Ctrl+A / Ctrl+Backspace route into the InputText afterward.
+    // (Under the legacy glfw_live driver, synth mouse-clicks dropped the
+    // shortcut-routing path; imgui_live's full bypass + g.InputEventsQueue
+    // purge fixes that, but a focus-via-API activation is still cleaner than
+    // a synth click for tour purposes.)
     var move_events <- [
         JV((t_ms = 0,   kind = "move", x = p_name_input._0, y = p_name_input._1)),
         JV((t_ms = 400, kind = "move", x = p_name_input._0, y = p_name_input._1))
     ]
-    post_command(app, "mouse_play", JV((events = move_events)))
+    post_command(app, "imgui_mouse_play", JV((events = move_events)))
     sleep(800u)
     post_command(app, "imgui_focus", JV((target = "NAME_INPUT")))
     sleep(400u)
@@ -167,7 +166,7 @@ def main {
     // exercise auto-Shift around capitals and shifted punctuation, so the
     // modifier strip should flash amber on H, W, and ! while the keycaps
     // pop at bottom-center.
-    post_command(app, "key_type", JV((text = "Hello, World!", total_duration_s = 4.0f)))
+    post_command(app, "imgui_key_type", JV((text = "Hello, World!", total_duration_s = 4.0f)))
     sleep(4800u)
 
     // Demonstrate a chord: Ctrl+A. Both Ctrl pill and the "A" keycap pop.
@@ -177,13 +176,14 @@ def main {
         frames = 150
     )))
     sleep(1600u)
-    post_command(app, "key_chord", JV((mods = ["Ctrl"], key = "A")))
+    post_command(app, "imgui_key_chord", JV((mods = ["Ctrl"], key = "A")))
     sleep(1400u)
 
     // Clear the field — Backspace once (selection is active, so one press
     // empties the buffer). "Bksp" appears in the keycap row.
-    post_command(app, "key_press",   JV((keycode = 259)))   // GLFW_KEY_BACKSPACE
-    post_command(app, "key_release", JV((keycode = 259)))
+    let backspace_key = int(ImGuiKey.Backspace)
+    post_command(app, "imgui_key_press",   JV((key = backspace_key)))
+    post_command(app, "imgui_key_release", JV((key = backspace_key)))
     sleep(1800u)
 
     let stopped = post_command(app, "record_stop", null)
