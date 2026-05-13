@@ -10,18 +10,9 @@ require daslib/json public
 require daslib/json_boost public
 require daslib/fio
 
-//! Lambda-typed transport for dasImgui live commands.
-//!
-//! `Transport` is a closure: command name + JsonValue? payload → parsed
-//! response. `live_api_transport(url)` POSTs to a daslang-live REST
-//! endpoint; users substitute mocks, in-process buses, or alternative
-//! transports without changing call sites.
-//!
-//! Wait helpers (`await_imgui` / `await_imgui_frame` / `send_with_await`)
-//! drive client-side polling against `imgui_await`. Server-side blocking
-//! is incompatible with the GLFW-main-thread invariant — the dispatch
-//! handler runs on the same thread that advances frames, so a server-
-//! blocking await would deadlock.
+// Module overview lives in handmade/module-imgui_transport.rst.
+// Wait helpers are client-side only — server-side blocking would deadlock
+// the GLFW main thread, which also advances frames.
 
 typedef Transport = lambda<(action : string; var payload : JsonValue?) : JsonValue?>
 
@@ -29,10 +20,7 @@ let DEFAULT_AWAIT_POLL_MS : uint = 50u
 let DEFAULT_AWAIT_TIMEOUT_SEC : float = 5.0f
 
 def public live_api_transport(url : string) : Transport {
-    //! Default transport: POSTs `{"name": action, "args": payload}` to
-    //! `<url>/command` and parses the JSON response. `url` is captured by
-    //! value, so the lambda is safe to construct once and reuse across
-    //! calls.
+    //! Default transport: POSTs ``{"name": action, "args": payload}`` to ``<url>/command`` and parses the JSON response. ``url`` is captured by value, so the returned lambda is safe to reuse.
     return <- @ capture(= url) (action : string; var payload : JsonValue ?) : JsonValue ? {
         var body_tab : table<string; JsonValue?>
         body_tab |> insert("name", JV(action))
@@ -53,18 +41,19 @@ def public live_api_transport(url : string) : Transport {
 }
 
 def public send_imgui_command(transport : Transport; action : string; var payload : JsonValue?) : JsonValue? {
+    //! Send one command through ``transport`` and return the parsed JSON response.
     return invoke(transport, action, payload)
 }
 
 def public receive_imgui_snapshot(transport : Transport) : JsonValue? {
+    //! Convenience for ``send_imgui_command(transport, "imgui_snapshot", null)`` — fetches the full widget snapshot.
     return invoke(transport, "imgui_snapshot", null)
 }
 
 def public await_imgui(transport : Transport;
                        until : string = "quiescent";
                        timeout_sec : float = DEFAULT_AWAIT_TIMEOUT_SEC) : bool {
-    //! Poll `imgui_await` until `value.quiescent` flips true (or timeout).
-    //! Returns true on quiescence, false on timeout.
+    //! Poll ``imgui_await`` until ``value.quiescent`` flips true; returns true on quiescence, false on timeout.
     let deadline = ref_time_ticks() + int64(double(timeout_sec) * 1000000.0lf)
     var args_jv = JV((until = until))
     while (ref_time_ticks() < deadline) {
@@ -78,9 +67,7 @@ def public await_imgui(transport : Transport;
 def public await_imgui_frame(transport : Transport;
                              target_frame : int;
                              timeout_sec : float = DEFAULT_AWAIT_TIMEOUT_SEC) : bool {
-    //! Poll `imgui_await` until server's `value.frame >= target_frame`.
-    //! Reuses imgui_await's `frame:` arg, which sets `quiescent = (g_frame
-    //! >= target_frame)` server-side — saves a separate frame-number probe.
+    //! Poll ``imgui_await`` until server-side ``value.frame >= target_frame``; reuses the ``frame:`` arg so server flips ``quiescent`` at the right tick.
     let deadline = ref_time_ticks() + int64(double(timeout_sec) * 1000000.0lf)
     var args_jv = JV((frame = target_frame))
     while (ref_time_ticks() < deadline) {
@@ -95,13 +82,8 @@ def public send_with_await(transport : Transport;
                            action : string;
                            var payload : JsonValue?;
                            timeout_sec : float = DEFAULT_AWAIT_TIMEOUT_SEC) : JsonValue? {
-    //! Send `action`/`payload` and honor any `await_*` modifiers the
-    //! server merged into the response. Client-side wait flow:
-    //!   * `await_frames: N` → wait until server frame ≥ current+N
-    //!   * `await_until: "quiescent"` → poll quiescence
-    //!   * neither key (and not fire_and_forget) → default-poll quiescence
-    //!   * fire_and_forget paths skip await_* and timeout_sec entirely so
-    //!     the absence of `timeout_sec` short-circuits the wait
+    //! Send ``action``/``payload`` and honor any ``await_*`` modifier the server merged into the response.
+    //! Dispatches on ``await_frames`` / ``await_until: "quiescent"`` / ``fire_and_forget``; otherwise default-polls quiescence with ``timeout_sec``.
     var r = invoke(transport, action, payload)
     if (r == null) return null
     let af = r?["await_frames"]

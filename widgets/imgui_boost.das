@@ -12,21 +12,9 @@ require daslib/ast_boost
 require daslib/strings_boost
 require daslib/templates_boost
 
-//! `[widget]` function annotation.
-//!
-//! Mark `def myWidget(var state : MyState; <args>) : <ret>` with `[widget]`
-//! to register it. The macro:
-//!   1. Injects `widget_ident : string` between the state arg and the rest
-//!      so the body can call `widget_finalize(widget_ident, ...)`.
-//!   2. Injects `widget_prelude(widget_ident)` at the body's top (`PushID`).
-//!   3. Registers a per-kind call_macro that intercepts user-side
-//!      `myWidget(IDENT, ...)` calls, parses the dotted-suffix flag chain
-//!      (`SAVE_BTN.PUBLIC` / `RPS.NOTLIVE` etc.), idempotently emits IDENT
-//!      as a module-scope state global, and rewrites the call to
-//!      `myWidget(IDENT, "IDENT", ...)`.
-//!
-//! Auto-emit is module-scope only (find_variable gate). UPPER_SNAKE_CASE
-//! identifiers by convention (API_REWORK §4.5).
+// `[widget]` / `[container]` function annotations. Architectural detail
+// (widget_ident injection, dotted-flag parsing, auto-emit of state
+// globals) lives in handmade/module-imgui_boost_v2.rst and API_REWORK §4.5.
 
 let private VALID_FLAGS : array<string> = ["PUBLIC", "PRIVATE", "NOTLIVE"]
 
@@ -43,32 +31,16 @@ def private init_arg_to_field(name : string) : string {
 
 [function_macro(name = "widget")]
 class WidgetFunctionMacro : AstFunctionAnnotation {
+    //! ``[widget]`` annotation — registers ``def fn(var state : ST, ...)`` as a stateful widget. Auto-emits the state global, injects ``widget_ident``, and installs a per-kind call_macro for dotted-flag parsing.
     def override apply(var func : FunctionPtr; var group : ModuleGroup;
                        args : AnnotationArgumentList; var errors : das_string) : bool {
         return apply_widget_or_container(func, errors, false)
     }
 }
 
-//! `[container]` function annotation — block-arg sibling of `[widget]`.
-//!
-//! Mark `def myContainer(var state : MyState; <args>; blk : block)` with
-//! `[container]` to register a Begin/End-shaped wrapper. The macro:
-//!   1. Same widget_ident injection + auto-emit + dotted-flag handling as
-//!      `[widget]`.
-//!   2. Prepends `container_path_push(widget_ident)` to the body so leaf
-//!      widgets rendered inside `invoke(blk)` see this container in
-//!      `g_container_path`.
-//!   3. Appends `container_path_pop()` to body.finalList so the path is
-//!      popped even when the user body returns early.
-//!
-//! Begin/End semantics — which paint always vs only-on-true — are NOT
-//! abstracted. Each container def authors its own Begin → invoke(blk) → End
-//! sequence so the imgui-irregular pairing rules stay visible at the call
-//! site (Begin/End and BeginChild/EndChild always-pair; everything else
-//! End-only-on-true).
-
 [function_macro(name = "container")]
 class ContainerFunctionMacro : AstFunctionAnnotation {
+    //! ``[container]`` annotation — block-arg sibling of ``[widget]``; same identifier auto-emit, plus ``container_path_push``/``pop`` around ``invoke(blk)`` so leaf telemetry paths nest correctly.
     def override apply(var func : FunctionPtr; var group : ModuleGroup;
                        args : AnnotationArgumentList; var errors : das_string) : bool {
         if (empty(func.arguments) || func.arguments[length(func.arguments) - 1]._type == null
@@ -456,15 +428,6 @@ class WidgetCallMacro : AstCallMacro {
                                   var expr : ExprCallMacro?;
                                   bareName : string;
                                   var indexExpr : ExpressionPtr) : ExpressionPtr {
-        //! Indexed (table-form) widget per API_REWORK §4.4. Validates a
-        //! pre-declared `variable <bareName> : table<K; StateT>` global,
-        //! emits a per-(kind, IDENT) wrapper function lazily, and rewrites
-        //! the call site to dispatch through the wrapper. Each `[i]` /
-        //! `[key]` resolves to a distinct telemetry path
-        //! (`<container>/<bareName>[<k>]`) so multi-render is naturally
-        //! distinguished. Init-arg sugar (`init=`/`bounds=`) is rejected on
-        //! this path — pre-populate the table from an `[init]` function
-        //! instead (V1 limitation, see plan §H).
         let tableVar = find_variable(mod, bareName)
         if (tableVar == null) {
             let msg = "{kind_name}({bareName}[k]): table global '{bareName}' is not declared at module scope. Declare it as:  variable private {bareName} : table<int; {state_type_name}>  (or table<string; ...> for string keys)."

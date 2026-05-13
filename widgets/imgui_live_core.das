@@ -5,17 +5,8 @@ options no_unused_function_arguments = false
 
 module imgui_live_core shared public
 
-//! Synthetic IO bypass driver for ImGui — mouse + keyboard timelines + the
-//! per-frame `imgui_synth_tick`. Events are injected straight into ImGuiIO
-//! via `imgui_synth_*` C++ shims (AddMousePosEvent / AddMouseButtonEvent /
-//! AddKeyEvent / AddInputCharacter), so the driver is independent of any
-//! particular ImGui backend.
-//!
-//! Re-exported by `imgui_live` so consumers still `require imgui/imgui_live`.
-//! Frame integration: call `imgui_synth_tick()` between the backend's
-//! `*_NewFrame()` and `ImGui::NewFrame()` — same site as
-//! `imgui_boost_runtime::advance_coroutines`. When no synth command has
-//! fired the tick is a no-op and real OS input flows through normally.
+// Synthetic IO bypass driver for ImGui — mouse + keyboard timelines + the
+// per-frame imgui_synth_tick. Re-exported by imgui_live.
 
 require imgui public
 require imgui_app
@@ -105,9 +96,7 @@ def private release_held_buttons() {
 }
 
 def public get_synth_cursor() : tuple<bool; float; float> {
-    //! (owned, x, y). When owned=true the synthetic driver has fired at least
-    //! one event this session — visual_aids overlays (mouse_trail,
-    //! cursor_sprite) render against (x, y) instead of GetMousePos().
+    //! Current synth cursor as ``(owned, x, y)``; ``owned=true`` means visual_aids overlays should render against this position instead of ``GetMousePos()``.
     return (synth_cursor_owned, mouse_cursor_x, mouse_cursor_y)
 }
 
@@ -196,6 +185,7 @@ struct MousePlayArgs {
 }
 
 def public sort_mouse_play_events(var events : array<MouseEventWire>) {
+    //! Sort wire-format mouse events ascending by ``t_ms`` in place — call before feeding ``imgui_mouse_play`` so the timeline drains in chronological order.
     events |> sort() $(a, b : MouseEventWire) {
         return a.t_ms < b.t_ms
     }
@@ -350,12 +340,9 @@ var public synth_last_codepoint   : uint  = 0u
 var public synth_last_codepoint_t : float = -1.0
 
 def private mod_alias_for_side_key(key : int) : int {
-    //! Return the ImGuiMod_* alias for a side-mod key (LeftCtrl → ImGuiMod_Ctrl
-    //! etc.), or 0 for a non-mod key. ImGui's `IsKeyDown(ImGuiMod_Ctrl)` /
-    //! io.KeyCtrl / Shortcut() routing all consult the alias key — emitting
-    //! only the side key (LeftCtrl) leaves the alias unset. Mirrors what
-    //! imgui_test_engine's ApplyInputToImGuiContext does in its mod-event
-    //! pairing block at imgui_te_engine.cpp:666-690.
+    // Return ImGuiMod_* alias for a side-mod key (LeftCtrl → ImGuiMod_Ctrl) or 0.
+    // ImGui's IsKeyDown(ImGuiMod_Ctrl) / io.KeyCtrl / Shortcut() consult the alias key —
+    // emitting only the side key leaves the alias unset.
     if (key == int(ImGuiKey.LeftCtrl)  || key == int(ImGuiKey.RightCtrl)) return int(ImGuiKey.ImGuiMod_Ctrl)
     if (key == int(ImGuiKey.LeftShift) || key == int(ImGuiKey.RightShift)) return int(ImGuiKey.ImGuiMod_Shift)
     if (key == int(ImGuiKey.LeftAlt)   || key == int(ImGuiKey.RightAlt)) return int(ImGuiKey.ImGuiMod_Alt)
@@ -392,8 +379,7 @@ def private synth_char(codepoint : uint) {
 }
 
 def public get_synth_keys() : tuple<bool; uint; float> {
-    //! (active, last_codepoint, last_codepoint_t). Visual aids reads this each
-    //! frame to detect new codepoints landing.
+    //! Current synth-key state as ``(active, last_codepoint, last_codepoint_t)``; visual_aids polls this each frame to detect newly-landed codepoints.
     return (key_playing, synth_last_codepoint, synth_last_codepoint_t)
 }
 
@@ -436,10 +422,8 @@ def private needs_shift_ascii(c : int) : bool {
 }
 
 def private base_key_ascii(c : int) : int {
-    //! Returns the ImGuiKey value (as int) for the base key that produces
-    //! character `c` on a US layout — Shift handling is layered on top in
-    //! `imgui_key_type`. Both letter cases produce the same A-Z ImGuiKey, so
-    //! callers add a Shift event for uppercase/shifted-punctuation.
+    // Returns the ImGuiKey value (as int) for the base key producing `c` on a US layout.
+    // Shift handling layered on top in imgui_key_type; both letter cases share one ImGuiKey.
     // ImGuiKey.A=546 .. ImGuiKey.Z=571 ; ImGuiKey._0=536 .. ImGuiKey._9=545 ;
     // digit-prefixed enum values don't parse in daslang (`.0` reads as a
     // float literal), so we anchor the digit base on `ImGuiKey.A - 10`.
@@ -615,6 +599,7 @@ struct KeyPlayArgs {
 }
 
 def public sort_key_play_events(var events : array<KeyEventWire>) {
+    //! Sort wire-format key events ascending by ``t_ms`` in place — call before feeding ``imgui_key_play`` so the timeline drains in chronological order.
     events |> sort() $(a, b : KeyEventWire) {
         return a.t_ms < b.t_ms
     }
@@ -655,13 +640,13 @@ def imgui_key_stop(input : JsonValue?) : JsonValue? {
 }
 
 struct KeyStatusResult {
-    playing        : bool
-    elapsed_ms     : int
-    queue_idx      : int
-    queue_total    : int
-    held_count     : int
+    playing        : bool  //! true while a recorded key timeline is being replayed.
+    elapsed_ms     : int   //! milliseconds since timeline playback began (0 when idle).
+    queue_idx      : int   //! index of the next pending event in the timeline.
+    queue_total    : int   //! total number of events in the active timeline.
+    held_count     : int   //! number of synthetic keys currently held down.
     last_keycode   : int   //! ImGuiKey value (renamed from "key" so visual_aids can read uniformly)
-    last_codepoint : uint
+    last_codepoint : uint  //! most recent codepoint pushed via AddInputCharacter.
 }
 
 [live_command(description="ImGui-bypass keyboard playback status.")]
@@ -703,18 +688,7 @@ def private advance_key_timeline() {
 // ---------------------------------------------------------------------------
 
 def public imgui_synth_tick() {
-    //! Call between the backend's `*_NewFrame()` and `ImGui::NewFrame()` —
-    //! same call site as `imgui_boost_runtime::advance_coroutines`.
-    //! Advances any active mouse/key timeline (which queues transition events
-    //! directly via `imgui_synth_*` shims) and re-asserts the held-state
-    //! snapshot on top of whatever the backend's per-frame polls contributed,
-    //! so synth wins the last-write-wins race at NewFrame drain time.
-    //!
-    //! Held-state re-assertion (cursor pos, held buttons, held keys) is
-    //! APPENDED after backend events rather than purging the queue: a purge
-    //! would also erase synth events queued by direct live-command handlers
-    //! (imgui_key_press / imgui_mouse_click etc.) that hadn't yet been
-    //! drained by NewFrame.
+    //! Per-frame entry point — advance synth mouse/key timelines and re-assert held state. Call between the backend's ``*_NewFrame()`` and ``ImGui::NewFrame()``; no-op when no synth command has fired.
     advance_mouse_timeline()
     advance_key_timeline()
     let synth_armed = synth_cursor_owned || !empty(synth_held_keys) || !empty(synth_held_buttons)

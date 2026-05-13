@@ -15,30 +15,10 @@ require daslib/json_boost public
 require strings
 require math
 
-//! Visual-aids overlays for dasImgui.
-//!
-//! Three primitives, all painted on `ImGui::GetForegroundDrawList()` via an
-//! `end_of_frame()` hook installed at module init:
-//!
-//!   - `highlight(target, frames, color)` — flash a colored rect around a
-//!     widget's bbox for N frames.
-//!   - `mouse_trail(enabled, fade, color)` — toggle a fading dot trail
-//!     following the cursor.
-//!   - `narrate(text, target, frames)` — callout box with optional
-//!     connector line to a named widget.
-//!
-//! All three are also exposed as `[live_command] imgui_*` for remote drive
-//! by daslang-live / playwright. `imgui_auto_highlight_on_command`
-//! (default false) opts in to flashing every command target automatically.
-//!
-//! Tunables (colors, frame counts, padding, thickness, etc.) live as
-//! `var public` module globals — set them at init time or whenever to
-//! reskin the overlays. Per-call args still override on a per-flash basis.
+// Module overview lives in handmade/module-imgui_visual_aids.rst.
 
 def public rgba(r, g, b, a : int) : uint {
-    //! Pack a color into dasIMGUI's IM_COL32 byte order. Used by callers
-    //! that prefer named channels over hex literals when configuring the
-    //! tunable globals below.
+    //! Pack R/G/B/A bytes into ImGui's IM_COL32 word order. Useful when configuring the tunable color globals by channel rather than hex literal.
     return ((uint(a) << uint(IM_COL32_A_SHIFT))
           | (uint(r) << uint(IM_COL32_R_SHIFT))
           | (uint(g) << uint(IM_COL32_G_SHIFT))
@@ -54,7 +34,7 @@ def public rgba(r, g, b, a : int) : uint {
 
 // Manual highlight() — appearance when user code (or imgui_highlight curl)
 // asks for a flash explicitly.
-var public highlight_color          : uint  = rgba(255, 255, 0, 255)   //! yellow
+var public highlight_color          : uint  = rgba(255, 255, 0, 255)   // yellow
 var public highlight_thickness      : float = 2.0f
 var public highlight_padding        : float = 2.0f
 var public highlight_rounding       : float = 2.0f
@@ -63,8 +43,8 @@ var public highlight_default_frames : int   = 60
 // Auto-flash on remote command — when imgui_auto_highlight_on_command is
 // true. Visually distinct from manual highlights so viewers can tell
 // which actions were driven remotely vs. user-issued.
-var public auto_highlight_color  : uint = rgba(0, 255, 128, 255)        //! bright green
-var public auto_highlight_frames : int  = 180                            //! ~2s at 90fps
+var public auto_highlight_color  : uint = rgba(0, 255, 128, 255)        // bright green
+var public auto_highlight_frames : int  = 180                            // ~2s at 90fps
 
 // Mouse trail
 var public trail_max_dots   : int   = 64
@@ -89,7 +69,7 @@ var public cursor_sprite_inner_radius       : float = 2.5f
 // synthetic click (e.g. because the backend's per-frame poll fights over
 // io.MousePos with our synth state).
 var public click_flash_enabled       : bool  = true
-var public click_flash_color         : uint  = rgba(255, 255, 0, 255)   //! yellow
+var public click_flash_color         : uint  = rgba(255, 255, 0, 255)   // yellow
 var public click_flash_start_radius  : float = 8.0f
 var public click_flash_end_radius    : float = 36.0f
 var public click_flash_thickness     : float = 2.5f
@@ -98,7 +78,7 @@ var public click_flash_duration_s    : float = 0.35f
 // Narrate callout
 var public narrate_bg_color       : uint  = rgba(32, 32, 32, 204)
 var public narrate_fg_color       : uint  = rgba(255, 255, 255, 255)
-var public narrate_border_color   : uint  = rgba(255, 204, 51, 255)     //! amber
+var public narrate_border_color   : uint  = rgba(255, 204, 51, 255)     // amber
 var public narrate_border_thickness : float = 1.5f
 var public narrate_pad_x          : float = 8.0f
 var public narrate_pad_y          : float = 4.0f
@@ -108,9 +88,7 @@ var public narrate_connector_thickness : float = 1.5f
 
 // Auto-highlight gate
 var public imgui_auto_highlight_on_command : bool = false
-    //! When true, every accepted command in imgui_boost_runtime
-    //! (imgui_click / imgui_set / imgui_focus / etc.) auto-flashes the
-    //! target with `auto_highlight_color` for `auto_highlight_frames` ticks.
+    //! When true, every accepted imgui_* command auto-flashes its target with ``auto_highlight_color`` for ``auto_highlight_frames`` ticks.
 
 // Keycap / modifier HUD — bottom-center keycap pops + modifier-strip below.
 // Reads `synth_last_codepoint` / `synth_last_keycode` from imgui_live to
@@ -138,15 +116,15 @@ var public key_hud_mod_active_color     : uint   = rgba(255, 200, 80, 255)
 var public key_hud_mod_idle_color       : uint   = rgba(80, 80, 80, 180)
 var public key_hud_mod_active_text      : uint   = rgba(20, 20, 20, 255)
 var public key_hud_mod_idle_text        : uint   = rgba(220, 220, 220, 255)
-let g_keycap_trace_max = 6                                  //! most-recent N keycaps still on screen
-let g_keycap_trace_fallback_lifetime_s = 1.0f               //! safety cap on a stuck trace
+let g_keycap_trace_max = 6                                  // most-recent N keycaps still on screen
+let g_keycap_trace_fallback_lifetime_s = 1.0f               // safety cap on a stuck trace
 
 // Focus rectangle — halo around io.active_widget. Off by default; opt in via
 // imgui_focus_rect for tutorial recordings. Useful when typing into a text
 // input — without this halo there's nothing on screen tying the keycap HUD's
 // output to the destination widget.
 var public focus_rect_enabled   : bool  = false
-var public focus_rect_color     : uint  = rgba(80, 180, 255, 220)            //! cyan
+var public focus_rect_color     : uint  = rgba(80, 180, 255, 220)            // cyan
 var public focus_rect_thickness : float = 2.0f
 var public focus_rect_padding   : float = 3.0f
 var public focus_rect_rounding  : float = 3.0f
@@ -175,33 +153,27 @@ var private g_trail : array<TrailDot>
 var private g_narrates : array<NarrateSpec>
 
 struct private KeycapTrace {
-    glyph    : string         //! rendered keycap text ("A", "Enter", "Tab", ...)
-    t_pushed : float          //! get_uptime() when added; used for fade-out
+    glyph    : string         // rendered keycap text ("A", "Enter", "Tab", ...)
+    t_pushed : float          // get_uptime() when added; used for fade-out
 }
 
 var private g_keycap_traces  : array<KeycapTrace>
-var private g_last_seen_codepoint_t : float = -1.0    //! mirror of synth_last_codepoint_t; only push a new trace when this advances
-var private g_last_seen_keycode_t   : float = -1.0    //! mirror of synth_last_keycode_t; pushed only when no char event represents it
+var private g_last_seen_codepoint_t : float = -1.0    // mirror of synth_last_codepoint_t; only push a new trace when this advances
+var private g_last_seen_keycode_t   : float = -1.0    // mirror of synth_last_keycode_t; pushed only when no char event represents it
 
 // ===== User API =====
 
 def public highlight(target : string;
                      frames : int = highlight_default_frames;
                      color : uint = highlight_color) {
-    //! Flash a colored rect around the named widget's bbox for `frames`
-    //! end_of_frame ticks. `target` is a registry path (`"Setup/SAVE_BTN"`)
-    //! or hex_id (`"0x4f3a2b1c"`). Defaults pull from the module globals
-    //! `highlight_default_frames` / `highlight_color` — override per call
-    //! when you want a one-off color.
+    //! Flash a colored rect around the named widget's bbox for ``frames`` ticks. ``target`` is a registry path or ``"0x<hex_id>"``.
     g_highlights |> push(HighlightSpec(target = target, remaining_frames = frames, color = color))
 }
 
 def public mouse_trail(enabled : bool;
                        fade : float = -1.0f;
                        color : uint = 0u) {
-    //! Toggle the fading mouse-trail overlay. Defaults pull from `trail_fade`
-    //! and `trail_color`; passing non-default values overrides the module
-    //! globals for the new on-state. Disabling clears the trail buffer.
+    //! Toggle the fading mouse-trail overlay; non-default ``fade`` / ``color`` override the module globals. Disabling clears the trail buffer.
     trail_enabled = enabled
     if (fade >= 0.0f) {
         trail_fade = fade
@@ -215,27 +187,19 @@ def public mouse_trail(enabled : bool;
 }
 
 def public cursor_sprite(enabled : bool) {
-    //! Toggle the in-frame cursor sprite. Drawn at io.MousePos via
-    //! ForegroundDrawList, so APNG recordings show a visible cursor pointer
-    //! even when synthetic motion isn't warping the (un-recordable) OS cursor.
+    //! Toggle the in-frame cursor sprite. Drawn on the ForegroundDrawList so APNG recordings show a visible pointer even when the OS hardware cursor isn't captured.
     cursor_sprite_enabled = enabled
 }
 
 def public apply_synth_io_override() {
-    //! Per-frame synth IO entry point. Call between the backend's NewFrame
-    //! and ImGui's `NewFrame()` — same site as `imgui_boost_runtime::advance_coroutines`.
-    //! Drives the ImGui bypass driver (`imgui_synth_tick`): purges backend
-    //! events and injects synth state directly into the ImGui input queue.
+    //! Per-frame synth IO entry point — call between the backend's ``NewFrame`` and ImGui's ``NewFrame``. Drives :ref:`imgui_synth_tick <function-imgui_live_core_imgui_synth_tick>`.
     imgui_synth_tick()
 }
 
 def public narrate(text : string;
                    target : string = "";
                    frames : int = narrate_default_frames) {
-    //! Pop a callout box with `text` on the foreground for N frames.
-    //! Colors / padding / corner-radius come from the `narrate_*` globals.
-    //! When `target` resolves to a widget bbox the box anchors next to it
-    //! with a connector line; otherwise it floats top-left.
+    //! Pop a callout box with ``text`` for ``frames`` ticks. If ``target`` resolves to a widget bbox the box anchors next to it with a connector line; otherwise it floats top-left.
     g_narrates |> push(NarrateSpec(text = text, target = target, remaining_frames = frames))
 }
 
@@ -268,9 +232,7 @@ def private paint_highlights {
 }
 
 def private effective_cursor_pos() : float2 {
-    //! Returns imgui_live's synth cursor when active, else the real ImGui
-    //! cursor. Decouples overlay rendering from io.MousePos, which the
-    //! backend's per-frame poll may overwrite with the real OS cursor.
+    // Synth cursor when active, else real ImGui cursor — backend poll may overwrite io.MousePos.
     let (active, sx, sy) = imgui_live::get_synth_cursor()
     return float2(sx, sy) if (active)
     return GetMousePos()
@@ -347,7 +309,7 @@ def private paint_cursor_sprite {
 }
 
 def private effective_synth_click() : tuple<int; float> {
-    //! (action, t) for imgui_live's last synth click. action: 1=press, 0=release.
+    // (action, t) for last synth click — action: 1=press, 0=release.
     return (imgui_live::synth_click_action, imgui_live::synth_click_t)
 }
 
@@ -365,12 +327,6 @@ def private paint_click_flash {
 }
 
 def private glyph_for_codepoint(cp : uint) : string {
-    //! Map a Unicode codepoint to a 1-4 char keycap label. Special-cases
-    //! whitespace + common control chars to their named glyphs ("Enter",
-    //! "Space", "Tab", "Bksp", "Esc"); other printable ASCII passes through
-    //! as the literal character. Non-ASCII falls back to "?" — the keycap
-    //! is for the recording, not for rich i18n; viewers reading captions
-    //! get the textual content elsewhere.
     if (cp == uint('\n') || cp == uint('\r')) return "Enter"
     if (cp == uint('\t')) return "Tab"
     if (cp == uint(' ')) return "Space"
@@ -383,7 +339,6 @@ def private glyph_for_codepoint(cp : uint) : string {
 }
 
 def private glyph_for_imgui_key(kc : int) : string {
-    //! Maps an ImGuiKey value to a keycap label.
     if (kc == int(ImGuiKey.Enter)) return "Enter"
     if (kc == int(ImGuiKey.Tab)) return "Tab"
     if (kc == int(ImGuiKey.Backspace)) return "Bksp"
@@ -543,10 +498,6 @@ def private paint_all {
 }
 
 def private on_command(command : string; target : string) {
-    //! Post-command hook: auto-flash the touched widget when
-    //! `imgui_auto_highlight_on_command` is set. Uses the distinct
-    //! `auto_highlight_color` / `auto_highlight_frames` knobs so viewers
-    //! can tell command-driven flashes from manual `highlight()` ones.
     if (imgui_auto_highlight_on_command && !empty(target)) {
         highlight(target, auto_highlight_frames, auto_highlight_color)
     }
@@ -554,6 +505,7 @@ def private on_command(command : string; target : string) {
 
 [init]
 def visual_aids_init {
+    //! ``[init]`` — registers the foreground-drawlist paint hook and the post-command auto-highlight hook. Runs once at module load.
     register_end_of_frame_hook("imgui_visual_aids", @@ paint_all)
     register_post_command_hook("imgui_visual_aids", @@ on_command)
 }
@@ -568,6 +520,7 @@ struct HighlightArgs {
 
 [live_command(description="Flash a colored rect around the named widget's bbox for N frames.")]
 def imgui_highlight(input : JsonValue?) : JsonValue? {
+    //! ``[live_command]`` wrapper around :ref:`highlight <function-imgui_visual_aids_highlight_string_int_uint>`. Args: ``target``, ``frames``, ``color``.
     let args = from_JV(input, type<HighlightArgs>)
     let frames = args.frames > 0 ? args.frames : highlight_default_frames
     let color = args.color != 0u ? args.color : highlight_color
@@ -583,6 +536,7 @@ struct MouseTrailArgs {
 
 [live_command(description="Toggle the fading mouse-trail overlay. Args: enabled, fade, color.")]
 def imgui_mouse_trail(input : JsonValue?) : JsonValue? {
+    //! ``[live_command]`` wrapper around :ref:`mouse_trail <function-imgui_visual_aids_mouse_trail_bool_float_uint>`. Args: ``enabled``, ``fade``, ``color``.
     let args = from_JV(input, type<MouseTrailArgs>)
     mouse_trail(args.enabled, args.fade, args.color)
     return JV((ok = true, enabled = args.enabled))
@@ -596,6 +550,7 @@ struct NarrateArgs {
 
 [live_command(description="Show a callout box with text for N frames; optional target widget for connector line.")]
 def imgui_narrate(input : JsonValue?) : JsonValue? {
+    //! ``[live_command]`` wrapper around :ref:`narrate <function-imgui_visual_aids_narrate_string_string_int>`. Args: ``text``, ``target``, ``frames``.
     let args = from_JV(input, type<NarrateArgs>)
     let frames = args.frames > 0 ? args.frames : narrate_default_frames
     narrate(args.text, args.target, frames)
@@ -608,6 +563,7 @@ struct AutoHighlightArgs {
 
 [live_command(description="Toggle the imgui_auto_highlight_on_command flag — when on, every accepted command auto-flashes its target.")]
 def imgui_auto_highlight(input : JsonValue?) : JsonValue? {
+    //! ``[live_command]`` toggle for the ``imgui_auto_highlight_on_command`` flag. Arg: ``enabled``.
     let args = from_JV(input, type<AutoHighlightArgs>)
     imgui_auto_highlight_on_command = args.enabled
     return JV((ok = true, enabled = args.enabled))
@@ -619,6 +575,7 @@ struct CursorSpriteArgs {
 
 [live_command(description="Toggle the in-frame cursor sprite. Enable before record_start so the recording shows a visible cursor pointer.")]
 def imgui_cursor_sprite(input : JsonValue?) : JsonValue? {
+    //! ``[live_command]`` wrapper around :ref:`cursor_sprite <function-imgui_visual_aids_cursor_sprite_bool>`. Arg: ``enabled``.
     let args = from_JV(input, type<CursorSpriteArgs>)
     cursor_sprite(args.enabled)
     return JV((ok = true, enabled = args.enabled))
@@ -631,6 +588,7 @@ struct KeyHudArgs {
 
 [live_command(description="Toggle the keycap + modifier-strip HUD. Pops a keycap at bottom-center for every synth key event and lights up Ctrl/Shift/Alt/Cmd pills while held.")]
 def imgui_key_hud(input : JsonValue?) : JsonValue? {
+    //! ``[live_command]`` toggle for the bottom-center keycap HUD + Ctrl/Shift/Alt/Cmd modifier strip. Args: ``enabled``, ``show_modifiers``.
     let args = from_JV(input, type<KeyHudArgs>)
     key_hud_enabled = args.enabled
     key_hud_show_modifiers = args.show_modifiers
@@ -643,6 +601,7 @@ struct FocusRectArgs {
 
 [live_command(description="Toggle the focus rectangle around io.active_widget. Shows where typing lands; opt-in for tutorial recordings.")]
 def imgui_focus_rect(input : JsonValue?) : JsonValue? {
+    //! ``[live_command]`` toggle for the focus rectangle around ``io.active_widget`` — shows where typing lands. Arg: ``enabled``.
     let args = from_JV(input, type<FocusRectArgs>)
     focus_rect_enabled = args.enabled
     return JV((ok = true, enabled = args.enabled))

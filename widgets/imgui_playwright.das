@@ -14,33 +14,19 @@ require daslib/command_line
 require daslib/strings_boost
 require strings
 
-//! Playwright-style test harness for daslang-live + dasImgui.
-//!
-//! `with_imgui_app(feature_path) <| $(app) { ... }` spawns daslang-live
-//! against the given .das file, polls `/status` until ready, runs the body,
-//! POSTs `/shutdown`, drains stdout, and panics on non-zero subprocess
-//! exit. The body drives the live_api via the `imgui_*` command verbs
-//! through `app.transport`; helpers like `click`, `set_value`, and
-//! `expect_value` wrap the dispatch and snapshot navigation.
-//!
-//! Headless / offscreen rendering is deferred (Phase 4+); the spawned
-//! daslang-live process runs with a visible window today.
+// Module overview lives in handmade/module-imgui_playwright.rst.
 
 // ===== Tunables =====
-//
-// Sleep durations and timeouts. Pulled out of the call sites so a single
-// place documents what each gate is waiting on, and so per-test overrides
-// (slower CI box, longer-warmup demos) are a one-line change.
 
-let DEFAULT_LIVE_PORT : int = 9090                   //! daslang-live's live_api default port
-let DEFAULT_DEADLOCK_SANITY_SEC : float = 120.0f     //! frame-budget waits bail out after this wall-clock if the frame counter never advances (subprocess crash / true deadlock). Not a per-test timeout — it should never fire on a slow-but-progressing run.
-let DEFAULT_READY_TIMEOUT_SEC : float = 30.0f        //! /status must turn 200 OK within this — covers daslang-live boot + GLFW + ImGui ctx
-let DEFAULT_TEST_TIMEOUT_SEC : float = 120.0f        //! upper bound on the entire popen lifetime, including body + drain
-let DEFAULT_RELOAD_TIMEOUT_SEC : float = 30.0f       //! POST /reload to /status.has_error == false convergence
-let DEFAULT_FRAME_WAIT_SEC : float = 10.0f           //! upper bound on "first frame to render the named widget"
+let DEFAULT_LIVE_PORT : int = 9090                   // daslang-live's live_api default port
+let DEFAULT_DEADLOCK_SANITY_SEC : float = 120.0f     // backstop for the frame-counter-never-advances case (crash / true deadlock); never trips on slow-but-progressing
+let DEFAULT_READY_TIMEOUT_SEC : float = 30.0f        // /status must turn 200 OK within this — covers daslang-live boot + GLFW + ImGui ctx
+let DEFAULT_TEST_TIMEOUT_SEC : float = 120.0f        // upper bound on the entire popen lifetime, including body + drain
+let DEFAULT_RELOAD_TIMEOUT_SEC : float = 30.0f       // POST /reload to /status.has_error == false convergence
+let DEFAULT_FRAME_WAIT_SEC : float = 10.0f           // upper bound on "first frame to render the named widget"
 
-let READY_POLL_INTERVAL_MS : uint = 100u             //! ms between /status polls — used by wait_until_ready and reload-convergence loops
-let FRAME_POLL_INTERVAL_MS : uint = 50u              //! ms between snapshot polls — wait_for_widget polls per-frame, ~3 polls/frame at 60fps
+let READY_POLL_INTERVAL_MS : uint = 100u             // ms between /status polls — wait_until_ready and reload convergence
+let FRAME_POLL_INTERVAL_MS : uint = 50u              // ms between snapshot polls — ~3 polls/frame at 60fps
 
 struct ImguiApp {
     base_url : string
@@ -49,9 +35,6 @@ struct ImguiApp {
 }
 
 def private daslang_live_exe() : string {
-    //! Resolve the daslang-live executable next to the running interpreter.
-    //! Mirrors `get_das_exe()` (daslib/command_line) — same dir, swap the
-    //! last path component for the platform-appropriate `daslang-live` name.
     let das = get_das_exe()
     if (empty(das)) return ""
     let dir = dir_name(das)
@@ -92,7 +75,6 @@ def public get_text(app : ImguiApp; uri : string) : string {
 }
 
 def private post_signal(app : ImguiApp; uri : string) {
-    //! Fire-and-forget POST with empty body. Used for /reload and /shutdown.
     POST("{app.base_url}{uri}", "", {"Content-Type" => "application/json"}) $(resp) {
         // intentionally drop the response — caller polled /status to confirm
     }
@@ -101,49 +83,38 @@ def private post_signal(app : ImguiApp; uri : string) {
 // ===== Command dispatch =====
 
 def public post_command(app : ImguiApp; name : string; var args : JsonValue?) : JsonValue? {
-    //! Send `{"name":<name>, "args":<args>}` through `app.transport` and
-    //! return the parsed JSON response (or null on transport failure).
-    //! Public escape hatch for custom verbs not in the shipped helper set.
+    //! Send ``{"name":<name>,"args":<args>}`` through ``app.transport``; returns parsed JSON or null on transport failure.
+    //! Escape hatch for custom verbs outside the shipped helper set.
     return send_imgui_command(app.transport, name, args)
 }
 
 def public snapshot(app : ImguiApp) : JsonValue? {
+    //! Fetch the full widget snapshot (``imgui_snapshot`` command) as a parsed ``JsonValue``.
     return send_imgui_command(app.transport, "imgui_snapshot", null)
 }
 
 // ===== Snapshot navigation =====
 
 def public find_widget(var snap : JsonValue?; ident : string) : JsonValue? {
-    //! Convenience navigator: `snapshot.globals[ident]`. May return a non-null
-    //! `JV(null)` placeholder for missing keys (daslib/json `?[]` quirk).
-    //! For an existence check use `widget_exists` instead.
+    //! Navigate to ``snapshot.globals[ident]``; may return a ``JV(null)`` placeholder for missing keys (daslib/json ``?[]`` quirk).
+    //! For an existence check use ``widget_exists``.
     return snap?["globals"]?[ident]
 }
 
 def public widget_exists(var snap : JsonValue?; ident : string) : bool {
-    //! True iff `globals[ident]` is a real widget entry. Catches the
-    //! `?[]` quirk where missing object keys come back as `JV(null)` rather
-    //! than a literal-null pointer — a non-null pointer to the null variant
-    //! still passes `!= null`. Test for the `kind` field instead, which is
-    //! always a non-empty string on a real entry.
+    //! True iff ``globals[ident]`` is a real widget entry — works around the daslib/json ``?[]`` quirk by checking the always-present ``kind`` field.
     let kind = snap?["globals"]?[ident]?["kind"] ?? ""
     return !empty(kind)
 }
 
 def public widget_payload_field(var snap : JsonValue?; ident : string; field : string) : JsonValue? {
-    //! Convenience navigator: `snapshot.globals[ident].payload[field]`.
-    //! Returns null if any link in the chain is missing.
+    //! Navigate to ``snapshot.globals[ident].payload[field]``; returns null if any link is missing.
     return snap?["globals"]?[ident]?["payload"]?[field]
 }
 
 def public widget_rendered(var snap : JsonValue?; ident : string) : bool {
-    //! True iff `globals[ident]` is for a widget that rendered this frame.
-    //! Phase 1 widgets registered at module init but not yet painted (closed
-    //! window, untaken branch) carry an explicit `"rendered": false`;
-    //! rendered widgets omit the field. The `?? true` default reads the
-    //! absent-field path as rendered. Don't use raw `?[]` != null — the
-    //! daslib/json ?[] quirk returns a JV(null) pointer for missing keys,
-    //! not literal null.
+    //! True iff ``globals[ident]`` is for a widget that painted this frame.
+    //! Registered-but-not-yet-painted entries carry ``"rendered": false``; rendered widgets omit the field (``?? true`` covers absent).
     return snap?["globals"]?[ident]?["rendered"] ?? true
 }
 
@@ -152,16 +123,8 @@ def public widget_rendered(var snap : JsonValue?; ident : string) : bool {
 def public wait_until(app : ImguiApp;
                       max_frames : int;
                       pred : block<(var snap : JsonValue?) : bool>) : JsonValue? {
-    //! Poll-until-condition with a *frame budget* instead of wall-clock seconds.
-    //! Reads ``snap["frame"]`` on each tick and gives up after ``max_frames``
-    //! frames have elapsed since the first successful snapshot — deterministic
-    //! w.r.t. the work the subprocess does, immune to "what if the machine is
-    //! slow today / someone's watching video on the same CPU." A slow machine
-    //! just spends more wall-clock per frame; coverage is unchanged.
-    //!
-    //! ``DEFAULT_DEADLOCK_SANITY_SEC`` is a backstop only — fires when the
-    //! frame counter never advances (subprocess crashed or truly hung). It
-    //! must never trip on normal slow runs; if it does, raise it.
+    //! Poll ``pred(snap)`` with a frame budget instead of wall-clock seconds; returns the matching snapshot or null after ``max_frames`` advance.
+    //! ``DEFAULT_DEADLOCK_SANITY_SEC`` is a backstop for crashed/hung subprocesses — should never trip on slow-but-progressing runs.
     var start_frame   = -1
     let sanity_deadline = ref_time_ticks() + int64(DEFAULT_DEADLOCK_SANITY_SEC * 1000000.0f)
     while (true) {
@@ -181,11 +144,8 @@ def public wait_until(app : ImguiApp;
 
 def public wait_for_widget(app : ImguiApp; widget_ident : string;
                            timeout_sec : float = DEFAULT_FRAME_WAIT_SEC) : JsonValue? {
-    //! Poll snapshot until `globals.<widget_ident>` is present in the registry.
-    //! Phase 1: "present" means registered at module [init] OR rendered at
-    //! least once. Use this to wait for subprocess startup (any widget
-    //! visible == compile+load done). For "wait until the widget is actually
-    //! painting this frame" use `wait_for_render` instead.
+    //! Poll snapshot until ``globals[widget_ident]`` is present (registered at module init OR rendered at least once).
+    //! Use for subprocess-startup gating; for first-paint semantics use ``wait_for_render``.
     let deadline = ref_time_ticks() + int64(timeout_sec * 1000000.0f)
     while (ref_time_ticks() < deadline) {
         var snap = snapshot(app)
@@ -197,12 +157,8 @@ def public wait_for_widget(app : ImguiApp; widget_ident : string;
 
 def public wait_for_render(app : ImguiApp; widget_ident : string;
                            timeout_sec : float = DEFAULT_FRAME_WAIT_SEC) : JsonValue? {
-    //! Poll snapshot until `globals.<widget_ident>` reports `rendered:true`
-    //! (i.e. the widget actually painted this frame). For tests asserting
-    //! that imgui_open / state.open flips re-paint a previously-hidden
-    //! widget. Phase 1.1: registered-but-not-rendered widgets carry
-    //! `rendered:false` and pass `wait_for_widget` immediately, so use this
-    //! variant when you specifically need first-paint semantics.
+    //! Poll snapshot until ``globals[widget_ident]`` reports ``rendered:true`` (the widget painted this frame).
+    //! Use when you specifically need first-paint semantics — registered-but-not-rendered widgets pass ``wait_for_widget`` immediately.
     let deadline = ref_time_ticks() + int64(timeout_sec * 1000000.0f)
     while (ref_time_ticks() < deadline) {
         var snap = snapshot(app)
@@ -251,10 +207,8 @@ def public wait_for_payload_value(app : ImguiApp;
                                   field : string;
                                   expected : auto(T);
                                   max_frames : int = 300) : bool {
-    //! Generic poll: snapshot until `globals[target].payload[field] == expected`.
-    //! T is inferred from `expected` and drives both the from_JV decode and the
-    //! equality check. Use for any roundtrippable type — float, float2/3/4,
-    //! int2/3/4, etc. — where the typed sugars above don't already apply.
+    //! Generic poll: snapshot until ``globals[target].payload[field] == expected``; ``T`` is inferred from ``expected``.
+    //! Use for any roundtrippable type (float2/3/4, int2/3/4, etc.) where the typed sugars above don't apply.
     return wait_until(app, max_frames) $(var snap) {
         let v = widget_payload_field(snap, target, field)
         return v != null && from_JV(v, type<typedecl(expected)>, default<typedecl(expected)>) == expected  // nolint:STYLE020 — template handles vec types where `??` isn't defined
@@ -268,12 +222,7 @@ def public expect_value(app : ImguiApp;
                         field : string;
                         expected : auto(T);
                         max_frames : int = 300) : void {
-    //! Assertion form of `wait_for_payload_value`. Polls until
-    //! `globals[target].payload[field] == expected`; if the value never
-    //! converges within `max_frames` frames, panics with a focused failure
-    //! message (want / got / widget kind / rendered) — never dumps the full
-    //! snapshot. If the user wants the full snapshot at the failure point,
-    //! they call `snapshot(app)` before the assertion or after recovering.
+    //! Assertion form of ``wait_for_payload_value``; panics with a focused want/got/kind/rendered message on timeout.
     if (wait_for_payload_value(app, target, field, expected, max_frames)) return
     var snap = snapshot(app)
     let got_jv = widget_payload_field(snap, target, field)
@@ -288,10 +237,7 @@ def public expect_value(app : ImguiApp;
 def public expect_render(app : ImguiApp;
                          widget_ident : string;
                          timeout_sec : float = DEFAULT_FRAME_WAIT_SEC) : void {
-    //! Assertion form of `wait_for_render`. Polls until the widget reports
-    //! `rendered:true`; on timeout, panics with a list of currently-
-    //! registered widget identifiers so a typo in `widget_ident` is
-    //! obvious in the failure message.
+    //! Assertion form of ``wait_for_render``; panics on timeout with the list of currently-registered widget identifiers (so typos in ``widget_ident`` surface).
     if (wait_for_render(app, widget_ident, timeout_sec) != null) return
     var snap = snapshot(app)
     var keys_buf = "<none>"
@@ -309,9 +255,8 @@ def public expect_render(app : ImguiApp;
 
 def public await_quiescent(app : ImguiApp;
                            timeout_sec : float = 5.0f) : void {
-    //! Assertion-style wrapper over `await_imgui(transport, "quiescent",
-    //! timeout)`. Panics on timeout — tests want hard-fail per spec §5.2.
-    //! For a non-assertion poll, call `await_imgui` directly.
+    //! Assertion wrapper over ``await_imgui(transport, "quiescent", timeout)``; panics on timeout.
+    //! For a non-asserting poll, call ``await_imgui`` directly.
     if (await_imgui(app.transport, "quiescent", timeout_sec)) return
     panic("await_quiescent timeout after {timeout_sec}s — server never reported quiescent")
 }
@@ -319,67 +264,49 @@ def public await_quiescent(app : ImguiApp;
 // ===== Command verbs =====
 
 def public click(app : ImguiApp; target : string) : JsonValue? {
+    //! Synthesize a click on ``target`` (``imgui_click`` verb).
     return send_imgui_command(app.transport, "imgui_click", JV((target = target)))
 }
 
 def public set_value(app : ImguiApp; target : string; var value : JsonValue?) : JsonValue? {
+    //! Set ``target``'s payload value remotely (``imgui_set`` verb); ``value`` is the JSON form expected by the widget kind.
     return send_imgui_command(app.transport, "imgui_set", JV((target = target, value = value)))
 }
 
 def public open_widget(app : ImguiApp; target : string) : JsonValue? {
+    //! Flip ``target.state.open = true`` (``imgui_open`` verb) — reopens a window/tree node from the test driver.
     return send_imgui_command(app.transport, "imgui_open", JV((target = target)))
 }
 
 def public close_widget(app : ImguiApp; target : string) : JsonValue? {
+    //! Flip ``target.state.open = false`` (``imgui_close`` verb) — closes a window/tree node from the test driver.
     return send_imgui_command(app.transport, "imgui_close", JV((target = target)))
 }
 
 def public drag(app : ImguiApp; target : string;
                 dx : float; dy : float;
                 steps : int = 4; button : int = 0) : JsonValue? {
-    //! Synthesize an L1 mouse-drag on `target`'s bbox center: press → `steps`
-    //! interpolated moves → release. Coroutine on the host advances one
-    //! event per frame, so observable settle is `steps + 2` frames.
+    //! Synthesize an L1 mouse-drag on ``target``'s bbox center: press → ``steps`` interpolated moves → release. Settles in ``steps + 2`` frames.
     return send_imgui_command(app.transport, "imgui_drag",
                               JV((target = target, dx = dx, dy = dy, steps = steps, button = button)))
 }
 
 def public focus(app : ImguiApp; target : string) : JsonValue? {
-    //! Force keyboard focus to the next render of `target`. Server-side
-    //! `imgui_focus` adds the path to g_pending_focus; the next time
-    //! widget_prelude runs for that path, it calls SetKeyboardFocusHere(0)
-    //! and clears the entry. Display-only widgets (text_show, plot)
-    //! return Result.err("not focusable").
+    //! Force keyboard focus to the next render of ``target`` (``imgui_focus`` verb); display-only widgets reply ``Result.err("not focusable")``.
     return send_imgui_command(app.transport, "imgui_focus", JV((target = target)))
 }
 
 def public await_probe(app : ImguiApp; until : string = "quiescent") : JsonValue? {
-    //! Single imgui_await POST. Server replies with a `Result<AwaitResult,
-    //! string>` — the AwaitResult lives under `response.value`. This is a
-    //! one-shot probe; for poll-until-quiescent use `await_quiescent`.
+    //! Single ``imgui_await`` POST; the ``AwaitResult`` lives under ``response.value``.
+    //! For poll-until-quiescent use ``await_quiescent``.
     return send_imgui_command(app.transport, "imgui_await", JV((until = until)))
 }
 
 def public type_text(app : ImguiApp; target : string; text : string;
                      focus_max_frames : int = 120;
                      duration_s : float = 0.0f) : JsonValue? {
-    //! Auto-focus `target` first, wait for focus to settle (up to
-    //! `focus_max_frames` frames), then synthesize UTF-8 characters via L1
-    //! AddInputCharactersUTF8. `duration_s > 0` paces typing over that
-    //! wall-clock duration (server translates to `total_frames =
-    //! int(duration_s * 60)` — exact rate is fps-dependent, visible-to-
-    //! viewer-only). Default 0 keeps the 1-char/frame legacy rate. Phase 3
-    //! closes the gap noted in Phase 2: the legacy `type_text` was
-    //! "informational target" and required the example to call
-    //! `SetKeyboardFocusHere(0)` itself.
-    //!
-    //! Settle is a `wait_until` poll on `globals[target].focus == true`
-    //! (server-side `entry.focus = IsItemFocused()` lands on this top-level
-    //! field via @optional). Server-side `imgui_focus` sets g_pending_focus
-    //! → next widget_prelude calls SetKeyboardFocusHere(0) → frame after
-    //! that, IsItemFocused returns true. So expect ~2 frames of latency.
-    //! Falls through to send chars even on focus timeout; the caller can
-    //! `expect_value` afterward to surface "the value never landed."
+    //! Auto-focus ``target``, wait up to ``focus_max_frames`` for focus to settle, then synthesize UTF-8 chars via L1 ``AddInputCharactersUTF8``.
+    //! ``duration_s > 0`` paces typing over wall-clock (server: ``total_frames = int(duration_s * 60)``); default 0 keeps the 1-char/frame rate.
     focus(app, target)
     wait_until(app, focus_max_frames) $(var snap) {
         return snap?["globals"]?[target]?["focus"] ?? false
@@ -390,9 +317,8 @@ def public type_text(app : ImguiApp; target : string; text : string;
 }
 
 def public reload(app : ImguiApp; timeout_sec : float = DEFAULT_RELOAD_TIMEOUT_SEC) : void {
-    //! POST /reload then poll /status until has_error=false. Panics on
-    //! timeout. Stays on raw HTTP — reload is daslang-live's process
-    //! control, not a dasImgui command verb.
+    //! POST ``/reload`` then poll ``/status`` until ``has_error == false``; panics on timeout.
+    //! Stays on raw HTTP — reload is daslang-live process control, not a dasImgui command verb.
     post_signal(app, "/reload")
     let deadline = ref_time_ticks() + int64(timeout_sec * 1000000.0f)
     while (ref_time_ticks() < deadline) {
@@ -425,9 +351,8 @@ def public with_imgui_app_opt(feature_path : string;
                               ready_timeout_sec : float;
                               test_timeout_sec : float;
                               body : block<(app : ImguiApp) : void>) {
-    //! Spawn daslang-live <feature_path>. Body runs while the subprocess is
-    //! alive; on body return, POST /shutdown and drain stdout. Panics on
-    //! non-zero exit code so the surrounding [test] surfaces the failure.
+    //! Spawn ``daslang-live <feature_path>``; runs ``body`` while alive, then POSTs ``/shutdown`` and drains stdout.
+    //! Panics on non-zero exit code, ready-timeout, or test-timeout so the surrounding ``[test]`` fails.
     let exe = daslang_live_exe()
     let app_path = resolve_feature_path(feature_path)
     let argv <- [exe, app_path]

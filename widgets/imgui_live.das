@@ -5,20 +5,8 @@ options no_unused_function_arguments = false
 
 module imgui_live shared public
 
-//! ImGui lifecycle for daslang-live: idempotent init, reload-aware shutdown,
-//! pointer roundtripped via the persistent byte store so the C++ ctx (font
-//! atlas, window state, active widget, drag-in-progress) survives reload.
-//!
-//! Mirrors `live/glfw_live` exactly:
-//!   - `live_imgui_init(window)` — call from your `init()`. Cold start runs
-//!     CreateContext + ImGui_Impl* setup; reload reuses the preserved ctx.
-//!   - `live_imgui_shutdown()` — call from your `shutdown()`. Skips during
-//!     reload (the [before_reload] handler hands the ctx pointer off
-//!     instead); runs only on process exit.
-//!
-//! The synthetic IO bypass driver (mouse + keyboard timelines + the
-//! per-frame `imgui_synth_tick`) lives in `imgui_live_core` and is
-//! re-exported here so consumers still `require imgui/imgui_live`.
+// ImGui lifecycle for daslang-live — re-exports the synth IO driver from
+// imgui_live_core so consumers still `require imgui/imgui_live`.
 
 require imgui public
 require imgui_app
@@ -33,7 +21,7 @@ let private STORE_KEY = "__imgui_ctx"
 var public live_imgui_ctx : ImGuiContext?
 
 def public live_imgui_init(window : GLFWwindow?; glsl_version : string = "#version 330") : ImGuiContext? {
-    //! Idempotent. Call from your script's `init()`.
+    //! Idempotent ImGui context create + backend init; safe across reload (reuses preserved ctx). Call from your script's ``init()``.
     if (live_imgui_ctx != null) {
         SetCurrentContext(live_imgui_ctx)
         return live_imgui_ctx
@@ -46,8 +34,7 @@ def public live_imgui_init(window : GLFWwindow?; glsl_version : string = "#versi
 }
 
 def public live_imgui_shutdown() {
-    //! Reload-aware. Call from your script's `shutdown()`. Skips work
-    //! during reload — `is_reload()` tells us the ctx will be reused.
+    //! Reload-aware ImGui shutdown — skips during reload so the ctx is reused, runs only on process exit. Call from your script's ``shutdown()``.
     if (live_imgui_ctx != null && !is_reload()) {
         ImGui_ImplOpenGL3_Shutdown()
         ImGui_ImplGlfw_Shutdown()

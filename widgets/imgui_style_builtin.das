@@ -37,35 +37,31 @@ require daslib/macro_boost
 var private g_style_pop_stack : array<int>
 
 def public push_style_one(idx : ImGuiCol; col : ImVec4) {
-    //! Push one color style. Routes to `imgui::PushStyleColor(int, ImVec4)`.
+    //! Push one ImGui style entry — color (``ImGuiCol`` key) or var (``ImGuiStyleVar`` key); paired with :ref:`pop_style_n <function-imgui_style_builtin_pop_style_n_int>`.
     PushStyleColor(idx, col)
     g_style_pop_stack |> push(0)
 }
 
 def public push_style_one(idx : ImGuiCol; col : uint) {
-    //! Push one color style with a packed `ImU32` color value.
+    //! Push one ImGui style entry — color (``ImGuiCol`` key) or var (``ImGuiStyleVar`` key); paired with :ref:`pop_style_n <function-imgui_style_builtin_pop_style_n_int>`.
     PushStyleColor(idx, col)
     g_style_pop_stack |> push(0)
 }
 
 def public push_style_one(idx : ImGuiStyleVar; val : float) {
-    //! Push one scalar style var.
+    //! Push one ImGui style entry — color (``ImGuiCol`` key) or var (``ImGuiStyleVar`` key); paired with :ref:`pop_style_n <function-imgui_style_builtin_pop_style_n_int>`.
     PushStyleVar(idx, val)
     g_style_pop_stack |> push(1)
 }
 
 def public push_style_one(idx : ImGuiStyleVar; val : ImVec2) {
-    //! Push one 2-vector style var (`FramePadding`, `WindowPadding`, etc.).
+    //! Push one ImGui style entry — color (``ImGuiCol`` key) or var (``ImGuiStyleVar`` key); paired with :ref:`pop_style_n <function-imgui_style_builtin_pop_style_n_int>`.
     PushStyleVar(idx, val)
     g_style_pop_stack |> push(1)
 }
 
 def public pop_style_n(n : int) {
-    //! Pop the last `n` style entries pushed via `push_style_one`, bulk-
-    //! issuing one `PopStyleColor(colors)` and one `PopStyleVar(vars)`.
-    //! Reads kind tags from `g_style_pop_stack` so unbalanced calls (e.g.
-    //! `n` larger than the current stack depth) are caught implicitly via
-    //! array-bounds panic — keeps the contract loud.
+    //! Pop the last ``n`` entries pushed via :ref:`push_style_one <function-imgui_style_builtin_push_style_one_ImGuiCol_uint>`, issuing one bulk ``PopStyleColor`` and one bulk ``PopStyleVar``.
     return if (n <= 0)
     var colors = 0
     var vars = 0

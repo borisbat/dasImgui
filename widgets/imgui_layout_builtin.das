@@ -37,8 +37,6 @@ let private HANDLE_HIT_PAD = 2.0f  // extra hit-area on each side for easier gra
 
 def private draggable_handle_v(var state : SliderStateFloat; px_per_unit : float;
                                size : ImVec2; tag : string) : bool {
-    //! Vertical splitter line; drag horizontally to resize. Returns true on
-    //! mouse drag, with `state.value` already clamped to bounds.
     let cursor_min = GetCursorScreenPos()
     InvisibleButton(tag, size)
     let cursor_max = ImVec2(cursor_min.x + size.x, cursor_min.y + size.y)
@@ -67,8 +65,6 @@ def private draggable_handle_v(var state : SliderStateFloat; px_per_unit : float
 
 def private draggable_handle_h(var state : SliderStateFloat; px_per_unit : float;
                                size : ImVec2; tag : string) : bool {
-    //! Horizontal splitter line; drag vertically to resize. Sibling of
-    //! `draggable_handle_v` for split_v.
     let cursor_min = GetCursorScreenPos()
     InvisibleButton(tag, size)
     let cursor_max = ImVec2(cursor_min.x + size.x, cursor_min.y + size.y)
@@ -99,9 +95,7 @@ def private draggable_handle_h(var state : SliderStateFloat; px_per_unit : float
 
 [container]
 def split_h(var state : SliderStateFloat; left_blk : block; right_blk : block) {
-    //! Horizontal split — left fraction in `state.value` (0..1). The handle
-    //! is a thin vertical line between two BeginChild panes. Auto-emits
-    //! `SliderStateFloat` global with `init=` / `bounds=` named-arg sugar.
+    //! Horizontal split — left pane width as fraction of total in ``state.value`` (0..1); thin draggable vertical handle between two ``BeginChild`` panes.
     if (state.has_pending) {
         state.value = state.pending_value
         state.has_pending = false
@@ -141,8 +135,7 @@ def split_h(var state : SliderStateFloat; left_blk : block; right_blk : block) {
 
 [container]
 def split_v(var state : SliderStateFloat; top_blk : block; bottom_blk : block) {
-    //! Vertical split — top fraction in `state.value` (0..1). Handle is a thin
-    //! horizontal line between two BeginChild panes.
+    //! Vertical split — top pane height as fraction of total in ``state.value`` (0..1); thin draggable horizontal handle between two ``BeginChild`` panes.
     if (state.has_pending) {
         state.value = state.pending_value
         state.has_pending = false
@@ -180,11 +173,7 @@ def split_v(var state : SliderStateFloat; top_blk : block; bottom_blk : block) {
 
 [container]
 def dock_left(var state : SliderStateFloat; blk : block) {
-    //! Fixed-orientation sidebar on the left — `state.value` is the sidebar
-    //! width in pixels (NOT a fraction). Real docking (DockBuilder) is
-    //! `imgui_internal.h` and off-limits per the project rules, so this is
-    //! a stable-position sidebar with a draggable right edge. Main pane
-    //! content flows after the call via the trailing SameLine.
+    //! Left sidebar with a draggable right edge — ``state.value`` is sidebar width in *pixels* (not a fraction). Main pane flows after the call via ``SameLine``.
     if (state.has_pending) {
         state.value = state.pending_value
         state.has_pending = false
@@ -213,27 +202,23 @@ def dock_left(var state : SliderStateFloat; blk : block) {
 // ===== columns =====
 
 def public columns_open(n : int) {
-    //! Open an N-column block. Thin wrapper around ImGui `Columns(N, null, true)`
-    //! with borders enabled (matches the legacy demo defaults).
+    //! Open an N-column block (borders on). Underlying primitive emitted by the ``columns(N, …)`` call_macro.
     Columns(n, "", true)
 }
 
 def public next_col() {
-    //! Advance to the next column. Wraps `imgui::NextColumn()`.
+    //! Advance to the next column. Underlying primitive emitted by the ``columns(N, …)`` call_macro.
     NextColumn()
 }
 
 def public columns_close() {
-    //! Close a columns block by setting columns back to 1.
+    //! Close a columns block (return to single-column layout). Underlying primitive emitted by the ``columns(N, …)`` call_macro.
     Columns(1, "", false)
 }
 
 [call_macro(name = "columns")]
 class private ColumnsCallMacro : AstCallMacro {
     def override visit(prog : ProgramPtr; mod : Module?; var call : ExprCallMacro?) : Expression? {
-        //! `columns(N, ${col0}, ${col1}, …)` — first arg is an integer literal,
-        //! the rest are exactly N block literals. Expands to
-        //! `columns_open(N); invoke(b0); next_col(); invoke(b1); …; columns_close()`.
         let nargs = length(call.arguments)
         macro_verify(nargs >= 2, prog, call.at,
                      "columns(N, ...) requires the column count and at least one block")

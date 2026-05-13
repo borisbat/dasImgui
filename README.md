@@ -87,6 +87,32 @@ daslang.exe -project_root . my_app.das
 
 v1.90.6-docking (fetched via CMake FetchContent at build time).
 
+## Documentation
+
+Local build (HTML site under `doc/_build/html/`):
+
+```bash
+daslang.exe utils/imgui2rst.das -- --detail_output doc/source/stdlib/generated
+sphinx-build -b html doc/source doc/_build/html
+```
+
+The first step runs the RST emitter (parallel to daslang's `das2rst`); the
+`--detail_output` flag points the per-function `//!` detail files at this
+tree's `generated/detail/` so module pages render the captured docstrings.
+The second step invokes Sphinx.
+
+`doc/source/stdlib/generated/` and `doc/_build/` are gitignored. Tracked
+inputs are `doc/source/conf.py`, `daslang.py`, `index.rst`, the section
+landings (`sec_*.rst`), `external_types.rst`, `handmade/module-*.rst`,
+`tutorials/`, and the emitter itself (`utils/imgui2rst.das`).
+
+Re-run `utils/imgui2rst.das` whenever a public `//!` comment changes. The
+forthcoming `.github/workflows/docs.yml` CI gate will verify no `// stub`
+placeholders remain in `handmade/` and that Sphinx builds clean under `-W`.
+
+The published site (once gh-pages is wired) will be linked from the main
+[daslang documentation](https://dascript.org/).
+
 ## License
 
 MIT

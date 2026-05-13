@@ -28,3 +28,8 @@ src/imgui_headers.h.json
 src/imgui_headers.h.json.log
 src/imgui_vulkan_headers.h.json
 src/imgui_vulkan_headers.h.json.log
+# Sphinx generated content (emitted by utils/imgui2rst.das) — never tracked.
+# Handmade material lives in doc/source/stdlib/handmade/ + sec_*.rst + index.rst
+# + external_types.rst + tutorials/ and IS tracked.
+doc/source/stdlib/generated/
+doc/source/__pycache__/
