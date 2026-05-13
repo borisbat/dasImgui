@@ -39,26 +39,6 @@ def widget_center(var snap : JsonValue?; ident : string) : tuple<float; float> {
     return ((b.x + b.z) * 0.5f, (b.y + b.w) * 0.5f)
 }
 
-def click_at(var events : array<JsonValue?>; t_ms : int; pos : tuple<float; float>) {
-    //! Append move + press + release + dwell. See record_visual_aids.das for
-    //! the trailing dwell rationale.
-    events |> push(JV((t_ms = t_ms,       kind = "move",   x = pos._0, y = pos._1)))
-    events |> push(JV((t_ms = t_ms + 200, kind = "button", button = 0, action = "press")))
-    events |> push(JV((t_ms = t_ms + 300, kind = "button", button = 0, action = "release")))
-    events |> push(JV((t_ms = t_ms + 500, kind = "move",   x = pos._0, y = pos._1)))
-}
-
-def move_to(app : ImguiApp; pos : tuple<float; float>) {
-    //! Send a paced move-to-and-dwell so the cursor sprite + trail visibly
-    //! travel to the target before the subsequent imgui_set lands. Match the
-    //! cadence of click_at's leading move so the playback feels uniform.
-    var events <- [
-        JV((t_ms = 0,   kind = "move", x = pos._0, y = pos._1)),
-        JV((t_ms = 400, kind = "move", x = pos._0, y = pos._1))
-    ]
-    post_command(app, "imgui_mouse_play", JV((events = events)))
-}
-
 [export]
 def main {
     let app = ImguiApp(

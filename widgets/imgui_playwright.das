@@ -34,6 +34,82 @@ struct ImguiApp {
     transport : Transport
 }
 
+// ===== Driver-side mouse helpers (record_*.das) =====
+//
+// Tutorial drivers script smooth cursor motion via ``imgui_mouse_play``.
+// The host's ``advance_mouse_timeline`` (imgui_live_core) interpolates
+// linearly between adjacent move waypoints with distinct ``t_ms``, so we
+// only get visible cursor travel + a useful mouse trail when each call
+// emits at least two move events spanning a real time window.
+//
+// We track the previous cursor target in a module-scope pair so each
+// helper can lerp from there to the next target without the driver
+// having to thread the state by hand.
+
+var private last_cursor_x : float = 0.0f
+var private last_cursor_y : float = 0.0f
+
+def public reset_cursor_pos(pos : tuple<float; float> = (0.0f, 0.0f)) {
+    //! Reset the tracked previous cursor position. Call between recordings
+    //! if the host's synth cursor state was already non-(0,0).
+    last_cursor_x = pos._0
+    last_cursor_y = pos._1
+}
+
+def public move_to(app : ImguiApp; pos : tuple<float; float>; duration_ms : int = 600) {
+    //! Post a lerped cursor move from the last tracked position to ``pos``
+    //! over ``duration_ms``, with a brief dwell pin afterwards. Updates the
+    //! tracked position.
+    var events <- [
+        JV((t_ms = 0,                 kind = "move", x = last_cursor_x, y = last_cursor_y)),
+        JV((t_ms = duration_ms,       kind = "move", x = pos._0,        y = pos._1)),
+        JV((t_ms = duration_ms + 300, kind = "move", x = pos._0,        y = pos._1))
+    ]
+    post_command(app, "imgui_mouse_play", JV((events = events)))
+    last_cursor_x = pos._0
+    last_cursor_y = pos._1
+}
+
+def public click_at(var events : array<JsonValue?>;
+                    t_ms : int;
+                    pos : tuple<float; float>;
+                    travel_ms : int = 500;
+                    button : int = 0) {
+    //! Append lerp-from-last + press + release + dwell to ``events``.
+    //! Cursor travels from the tracked previous position to ``pos`` over
+    //! ``travel_ms``, then mouse button ``button`` is pressed and released.
+    //! Updates the tracked position.
+    events |> push(JV((t_ms = t_ms,                   kind = "move",   x = last_cursor_x, y = last_cursor_y)))
+    events |> push(JV((t_ms = t_ms + travel_ms,       kind = "move",   x = pos._0,        y = pos._1)))
+    events |> push(JV((t_ms = t_ms + travel_ms + 200, kind = "button", button = button,   action = "press")))
+    events |> push(JV((t_ms = t_ms + travel_ms + 300, kind = "button", button = button,   action = "release")))
+    events |> push(JV((t_ms = t_ms + travel_ms + 500, kind = "move",   x = pos._0,        y = pos._1)))
+    last_cursor_x = pos._0
+    last_cursor_y = pos._1
+}
+
+def public drag_along(var events : array<JsonValue?>;
+                      t_ms : int;
+                      from_pos : tuple<float; float>;
+                      to_pos : tuple<float; float>;
+                      drag_ms : int;
+                      approach_ms : int = 400;
+                      button : int = 0) {
+    //! Append lerp-to-start + press + drag + release + dwell to ``events``.
+    //! Cursor first travels from the tracked previous position to
+    //! ``from_pos`` over ``approach_ms``, then presses and drags to
+    //! ``to_pos`` over ``drag_ms``. Updates the tracked position to
+    //! ``to_pos``.
+    events |> push(JV((t_ms = t_ms,                                kind = "move",   x = last_cursor_x, y = last_cursor_y)))
+    events |> push(JV((t_ms = t_ms + approach_ms,                  kind = "move",   x = from_pos._0,   y = from_pos._1)))
+    events |> push(JV((t_ms = t_ms + approach_ms + 100,            kind = "button", button = button,   action = "press")))
+    events |> push(JV((t_ms = t_ms + approach_ms + 100 + drag_ms,  kind = "move",   x = to_pos._0,     y = to_pos._1)))
+    events |> push(JV((t_ms = t_ms + approach_ms + 200 + drag_ms,  kind = "button", button = button,   action = "release")))
+    events |> push(JV((t_ms = t_ms + approach_ms + 300 + drag_ms,  kind = "move",   x = to_pos._0,     y = to_pos._1)))
+    last_cursor_x = to_pos._0
+    last_cursor_y = to_pos._1
+}
+
 def private daslang_live_exe() : string {
     let das = get_das_exe()
     if (empty(das)) return ""

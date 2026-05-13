@@ -43,35 +43,6 @@ def widget_center(var snap : JsonValue?; ident : string) : tuple<float; float> {
     return ((b.x + b.z) * 0.5f, (b.y + b.w) * 0.5f)
 }
 
-def stop_at(var events : array<JsonValue?>; t_ms : int; pos : tuple<float; float>) {
-    //! Append a move-to + dwell sequence. 800ms total — the second move at the
-    //! end pins the cursor so it doesn't drift toward the next stop_at target
-    //! during the post-event dwell.
-    events |> push(JV((t_ms = t_ms,       kind = "move", x = pos._0, y = pos._1)))
-    events |> push(JV((t_ms = t_ms + 600, kind = "move", x = pos._0, y = pos._1)))
-}
-
-def click_at(var events : array<JsonValue?>; t_ms : int; pos : tuple<float; float>) {
-    //! Append a move + press + release + dwell sequence. 700ms total. See
-    //! record_visual_aids.das for the rationale on the trailing dwell anchor.
-    events |> push(JV((t_ms = t_ms,       kind = "move",   x = pos._0, y = pos._1)))
-    events |> push(JV((t_ms = t_ms + 200, kind = "button", button = 0, action = "press")))
-    events |> push(JV((t_ms = t_ms + 300, kind = "button", button = 0, action = "release")))
-    events |> push(JV((t_ms = t_ms + 500, kind = "move",   x = pos._0, y = pos._1)))
-}
-
-def drag_along(var events : array<JsonValue?>;
-               t_ms : int;
-               from_pos : tuple<float; float>;
-               to_pos : tuple<float; float>;
-               drag_ms : int) {
-    events |> push(JV((t_ms = t_ms,                 kind = "move",   x = from_pos._0, y = from_pos._1)))
-    events |> push(JV((t_ms = t_ms + 100,           kind = "button", button = 0, action = "press")))
-    events |> push(JV((t_ms = t_ms + 100 + drag_ms, kind = "move",   x = to_pos._0,   y = to_pos._1)))
-    events |> push(JV((t_ms = t_ms + 200 + drag_ms, kind = "button", button = 0, action = "release")))
-    events |> push(JV((t_ms = t_ms + 300 + drag_ms, kind = "move",   x = to_pos._0,   y = to_pos._1)))
-}
-
 [export]
 def main {
     let app = ImguiApp(
@@ -110,12 +81,8 @@ def main {
         target = "USER_NAME",
         frames = 180
     )))
-    var move_to_name <- [
-        JV((t_ms = 0,   kind = "move", x = p_user_name._0, y = p_user_name._1)),
-        JV((t_ms = 600, kind = "move", x = p_user_name._0, y = p_user_name._1))
-    ]
-    post_command(app, "imgui_mouse_play", JV((events = move_to_name)))
-    sleep(900u)
+    move_to(app, p_user_name)
+    sleep(1100u)
     post_command(app, "imgui_focus", JV((target = "USER_NAME")))
     sleep(400u)
     post_command(app, "imgui_key_type", JV((text = "Alice", total_duration_s = 2.5f)))
