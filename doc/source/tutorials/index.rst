@@ -18,3 +18,4 @@ construction.
    with_style.rst
    with_id.rst
    state_telemetry.rst
+   containers.rst
