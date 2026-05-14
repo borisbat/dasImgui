@@ -30,3 +30,37 @@ def public with_text_wrap_pos(wrap_local_pos_x : float; blk : block) {
     invoke(blk)
     PopTextWrapPos()
 }
+
+def public with_disabled(disabled : bool; blk : block) {
+    //! Run ``blk`` with ``BeginDisabled(disabled)`` applied; matching ``EndDisabled()`` on return.
+    //! While ``disabled=true`` every widget inside ``blk`` is rendered greyed-out and ignores input.
+    BeginDisabled(disabled)
+    invoke(blk)
+    EndDisabled()
+}
+
+def public with_font(font : ImFont?; blk : block) {
+    //! Run ``blk`` with ``PushFont(font)`` applied; matching ``PopFont()`` on return.
+    //! ``font`` is typically obtained from the font atlas (e.g. ``GetIO().Fonts.Fonts[i]``).
+    PushFont(font)
+    invoke(blk)
+    PopFont()
+}
+
+def public with_button_repeat(repeat : bool; blk : block) {
+    //! Run ``blk`` with ``PushButtonRepeat(repeat)`` applied; matching ``PopButtonRepeat()`` on return.
+    //! When ``repeat=true``, held-down buttons fire repeated click events at the io.KeyRepeatRate cadence.
+    PushButtonRepeat(repeat)
+    invoke(blk)
+    PopButtonRepeat()
+}
+
+def public with_clip_rect(clip_rect_min : float2; clip_rect_max : float2;
+                          intersect_with_current : bool; blk : block) {
+    //! Run ``blk`` with ``PushClipRect(min, max, intersect)`` applied; matching ``PopClipRect()`` on return.
+    //! When ``intersect_with_current=true`` the new rect is intersected with the existing clip rect;
+    //! otherwise it replaces it. Coordinates are in screen space.
+    PushClipRect(clip_rect_min, clip_rect_max, intersect_with_current)
+    invoke(blk)
+    PopClipRect()
+}
