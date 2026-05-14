@@ -530,7 +530,7 @@ var g_frame : int = 0
 struct WidgetMeta {
     module_name : string                         //! owning module; lets clear_module_widgets drop on reload
     kind : string                                //! widget kind ("button", "slider_float", ...)
-    state_addr : void?                           //! address of the per-widget state global (untyped)
+    state_addr_getter : lambda<() : void?>       //! resolves the live state-struct address on every invoke (stable for globals; key-checked re-resolution for indexed widgets) — used by finalize lambdas to avoid dangling captures after table rehash/erase
     serializer : lambda<() : JsonValue?>         //! captured-state serializer; invoked at imgui_snapshot time
     last_seen_frame : int                        //! last g_frame this path appeared in g_registry; -1 = never rendered
 }
@@ -722,19 +722,22 @@ def public register_focusable(widget_ident : string) {
 }
 
 def public pending_value_container_finalize(widget_ident : string; kind : string;
-                                             var state : auto) {
+                                            var state : auto) {
     //! Container-side install of the ``pending_value`` dispatcher (``imgui_set``); used by layout containers like ``split_h`` / ``dock_left``.
+    let path = container_path_key()
     var entry : WidgetEntry
     unsafe {
-        let ser <- @ capture(& state) () : JsonValue ? {
-            return JV(state)
+        let ser <- @ capture(= path) () : JsonValue ? {
+            return state_jv(path, type<typedecl(state)>)
         }
-        let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
-            if (action == "set") {
-                state.pending_value = from_JV(payload?["value"],
-                                              type<typedecl(state.pending_value)>,
-                                              default<typedecl(state.pending_value)>)
-                state.has_pending = true
+        let disp <- @ capture(= path) (action : string; payload : JsonValue ?) {
+            with_state(path, type<typedecl(state)>) $(var s) {
+                if (action == "set") {
+                    s.pending_value = from_JV(payload?["value"],
+                                              type<typedecl(s.pending_value)>,
+                                              default<typedecl(s.pending_value)>)
+                    s.has_pending = true
+                }
             }
         }
         container_finalize(widget_ident, kind, entry, ser, disp)
@@ -743,17 +746,20 @@ def public pending_value_container_finalize(widget_ident : string; kind : string
 
 def public pending_value_finalize(widget_ident : string; kind : string; var state : auto) {
     //! Generic serializer + ``imgui_set`` dispatcher install for any state struct with ``has_pending``/``pending_value``/``changed``; covers Drag/Slider/Input-numeric/Color/Combo/ListBox.
+    let path = widget_path_key(widget_ident)
     var entry : WidgetEntry
     unsafe {
-        let ser <- @ capture(& state) () : JsonValue ? {
-            return JV(state)
+        let ser <- @ capture(= path) () : JsonValue ? {
+            return state_jv(path, type<typedecl(state)>)
         }
-        let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
-            if (action == "set") {
-                state.pending_value = from_JV(payload?["value"],
-                                              type<typedecl(state.pending_value)>,
-                                              default<typedecl(state.pending_value)>)
-                state.has_pending = true
+        let disp <- @ capture(= path) (action : string; payload : JsonValue ?) {
+            with_state(path, type<typedecl(state)>) $(var s) {
+                if (action == "set") {
+                    s.pending_value = from_JV(payload?["value"],
+                                              type<typedecl(s.pending_value)>,
+                                              default<typedecl(s.pending_value)>)
+                    s.has_pending = true
+                }
             }
         }
         widget_finalize(widget_ident, kind, entry, ser, disp)
@@ -798,17 +804,44 @@ def public widget_registered(path : string) : bool {
 def public register_widget(module_name : string;
                            bare_ident : string;
                            kind : string;
-                           state_addr : void?;
+                           var state_addr_getter : lambda<() : void?>;
                            var serializer : lambda<() : JsonValue?>) {
-    //! Module-init registration of a widget into the long-lived ``g_widgets`` table; ``module_name`` lets :ref:`clear_module_widgets <function-imgui_boost_runtime_clear_module_widgets_string>` drop it on reload.
+    //! Module-init registration of a widget into the long-lived ``g_widgets`` table; ``module_name`` lets :ref:`clear_module_widgets <function-imgui_boost_runtime_clear_module_widgets_string>` drop it on reload. ``state_addr_getter`` is invoked on every dispatcher/serializer call to resolve the live state-struct address — stable closure for globals, key-checked re-resolution for indexed widgets.
     unsafe {
         g_widgets[bare_ident] <- WidgetMeta(
             module_name = module_name,
             kind = kind,
-            state_addr = state_addr,
+            state_addr_getter <- state_addr_getter,
             serializer <- serializer,
             last_seen_frame = -1
         )
+    }
+}
+
+def public lookup_state_addr(path : string) : void? {
+    //! Resolve a widget's current state-struct address by path — invokes the registered ``state_addr_getter`` so indexed-form widgets reinterpret the live table slot on every call instead of dereferencing a stale capture. Returns null when ``path`` is absent from ``g_widgets`` or the getter reports the slot is gone (erased indexed key). Uses ``?[]`` safe lookup so the finalize lambdas can run from inside an ``imgui_snapshot`` iteration without tripping the locked-table guard (``tab[k]`` is daslang's auto-insert form).
+    let meta = unsafe(g_widgets?[path])
+    return null if (meta == null)
+    return invoke(meta.state_addr_getter)
+}
+
+def public state_jv(path : string; t : type<auto(T)>) : JsonValue? {
+    //! Safe serializer-side helper for ``[widget]`` finalize lambdas — resolves the live state-struct address at ``path`` and returns ``JV(state)``. Returns ``null`` when the slot is gone (erased indexed key) so the snapshot reports the widget without a payload instead of dereferencing a stale capture. Pair with ``with_state`` on the dispatcher side; together they let custom-widget finalize helpers stay free of ``unsafe`` / ``reinterpret``.
+    let raw = lookup_state_addr(path)
+    return null if (raw == null)
+    unsafe {
+        return JV(*reinterpret<T?>(raw))
+    }
+}
+
+def public with_state(path : string; t : type<auto(T)>;
+                      blk : block<(var s : T -const&) : void>) {
+    //! Safe dispatcher-side helper for ``[widget]`` finalize lambdas — resolves the live state-struct address at ``path`` and invokes ``blk`` with a mutable reference to the state. No-op when the slot is gone (erased indexed key). The block body looks like a plain ``state.field = ...`` mutation; the ``unsafe`` / ``reinterpret`` cast is hidden in this helper.
+    let raw = lookup_state_addr(path)
+    return if (raw == null)
+    unsafe {
+        var s & = *reinterpret<T -const?>(raw)
+        invoke(blk, s)
     }
 }
 
