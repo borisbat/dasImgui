@@ -306,6 +306,79 @@ def menu_label(var state : ClickState; text : string;
     return clicked
 }
 
+[widget]
+def selectable_label(var state : ClickState; text : string; selected : bool;
+                     flags : ImGuiSelectableFlags = ImGuiSelectableFlags.None;
+                     size : float2 = float2(0.0f, 0.0f)) : bool {
+    //! Selectable row whose selected-appearance is driven by a caller-owned
+    //! bool — the widget reports clicks but does not toggle its own state.
+    //! Use for exclusive-selection patterns (`selectable_label(ROW[i], name,
+    //! group.value == i)`) where one external int tracks the chosen index.
+    //! For the self-toggling form, use `selectable` instead. Parallels
+    //! `menu_label` (static) vs `menu_item` (toggling).
+    let im_clicked = Selectable(text, selected, flags, size)
+    var clicked = im_clicked
+    if (state.pending_click) {
+        state.pending_click = false
+        clicked = true
+    }
+    state.clicked = clicked
+    if (clicked) {
+        state.click_count++
+    }
+    click_finalize(widget_ident, "selectable_label", state)
+    return clicked
+}
+
+// ===== Tree leaf form =====
+//
+// `tree_node_ex` is the [widget] counterpart to the `tree_node` [container]:
+// it wraps a bare `TreeNodeEx(text, flags)` call and returns the open bool
+// without claiming a matching `TreePop()`. The caller is responsible for
+// `TreePop()` when the node opened AND `flags` don't include
+// `NoTreePushOnOpen` (the Leaf+NoTreePushOnOpen variant emits no push, so no
+// pop is needed either).
+//
+// Reach for `tree_node_ex` when you need the post-header most-recent-item
+// state (`IsItemClicked`, `drag_drop_source`, inline `same_line` + button) —
+// the container form hides the TreeNodeEx call site so those queries would
+// attach to the wrong item. For straightforward "open body, render kids,
+// close" use the container.
+
+[widget]
+def tree_node_ex(var state : TreeNodeState; text : string;
+                 flags : ImGuiTreeNodeFlags) : bool {
+    //! Leaf-form `TreeNodeEx` — returns the open bool, caller pairs `TreePop()`
+    //! manually when needed. See section comment above for when to choose this
+    //! over the `tree_node` container.
+    if (state.pending_open) {
+        SetNextItemOpen(true, ImGuiCond.Always)
+        state.pending_open = false
+    }
+    if (state.pending_close) {
+        SetNextItemOpen(false, ImGuiCond.Always)
+        state.pending_close = false
+    }
+    state.flags = flags
+    let im_open = TreeNodeEx(text, flags)
+    state.opened = im_open
+    var entry : WidgetEntry
+    unsafe {
+        let ser <- @ capture(& state) () : JsonValue ? {
+            return JV(state)
+        }
+        let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
+            if (action == "open") {
+                state.pending_open = true
+            } elif (action == "close") {
+                state.pending_close = true
+            }
+        }
+        widget_finalize(widget_ident, "tree_node_ex", entry, ser, disp)
+    }
+    return im_open
+}
+
 // ===== Radio (int family) =====
 
 [widget]
@@ -1301,6 +1374,33 @@ def dummy(var state : EmptyMarkerState; size : float2) {
     marker_finalize(widget_ident, "dummy", state)
 }
 
+[widget]
+def align_text_to_frame_padding(var state : EmptyMarkerState) {
+    //! Vertically align the next text widget to fit a framed item's baseline —
+    //! the standard prefix when pairing `text(...)` with an inline input or
+    //! button so the label sits centred on the frame.
+    AlignTextToFramePadding()
+    marker_finalize(widget_ident, "align_text_to_frame_padding", state)
+}
+
+[widget]
+def indent(var state : EmptyMarkerState; indent_w : float = 0.0f) {
+    //! Push the cursor right by `indent_w` (or `IndentSpacing` style default
+    //! when `0.0f`) for the rest of the current scope. Pair with `unindent`
+    //! when done. For block-scoped indent prefer the `with_indent` wrapper.
+    Indent(indent_w)
+    marker_finalize(widget_ident, "indent", state)
+}
+
+[widget]
+def unindent(var state : EmptyMarkerState; indent_w : float = 0.0f) {
+    //! Pull the cursor left by `indent_w` (or `IndentSpacing` when `0.0f`).
+    //! Pair with `indent` to bracket a section manually; for block-scoped
+    //! indent prefer `with_indent`.
+    Unindent(indent_w)
+    marker_finalize(widget_ident, "unindent", state)
+}
+
 // ===== Display: progress / image =====
 //
 // Content display widgets — `progress_bar` shows a fraction in [0,1] (or
@@ -1388,12 +1488,16 @@ def set_tooltip(var state : NarrativeState; text : string) {
 }
 
 [widget]
-def set_item_tooltip(var state : NarrativeState; text : string) {
+def set_item_tooltip(var state : NarrativeState; text : string;
+                     flags : ImGuiHoveredFlags = ImGuiHoveredFlags.ForTooltip) {
     //! Show `text` as a tooltip when the immediately-preceding widget is
-    //! hovered. ImGui's `if (IsItemHovered(ForTooltip)) SetTooltip(text)`
-    //! idiom — `SetItemTooltip` isn't in the daslang bindings, so we inline.
+    //! hovered. Default `flags = ForTooltip` pulls per-style delay/stationary;
+    //! override with `DelayNone`, `Stationary`, `DelayNormal | NoSharedDelay`
+    //! etc. for custom hover semantics. ImGui's `if (IsItemHovered(flags))
+    //! SetTooltip(text)` idiom — `SetItemTooltip` isn't in the daslang
+    //! bindings, so we inline.
     state.value := text
-    if (IsItemHovered(ImGuiHoveredFlags.ForTooltip)) {
+    if (IsItemHovered(flags)) {
         SetTooltip(text)
     }
     narrative_finalize(widget_ident, "set_item_tooltip", state)
@@ -1951,4 +2055,23 @@ def edit_checkbox_flags(var ptr : int? implicit; text : string = "";
     let changed = CheckboxFlags(lbl, ptr, flags_value)
     edit_finalize(widget_ident, "edit_checkbox_flags", ptr)
     return changed
+}
+
+[edit_widget]
+def edit_collapsing_header(var ptr : bool? implicit; text : string = "";
+                           flags : ImGuiTreeNodeFlags = ImGuiTreeNodeFlags.None) : bool {
+    //! ``CollapsingHeader(label, p_visible, flags)`` against a caller-owned
+    //! ``bool?`` p_open. While ``*ptr == false`` the header (and its body)
+    //! is hidden entirely. While ``*ptr == true`` the X close-button on the
+    //! header writes ``*ptr = false`` when clicked. Body of the
+    //! conditional ``if (edit_collapsing_header(...))`` runs only when the
+    //! section is both visible AND expanded. The state-owned sibling is the
+    //! ``collapsing_header(closable=true)`` container.
+    let lbl = empty(text) ? widget_ident : text
+    var im_open : bool = false
+    if (unsafe(*ptr)) {
+        im_open = CollapsingHeader(lbl, ptr, flags)
+    }
+    edit_finalize(widget_ident, "edit_collapsing_header", ptr)
+    return im_open
 }

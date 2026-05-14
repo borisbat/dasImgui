@@ -30,12 +30,19 @@ require math
 //     eight textured-button loops; each index gets its own state global.
 //   - Containers — `tree_node` / `collapsing_header` / `item_tooltip` /
 //     `drag_drop_source` (Phase 1) — replace raw `Begin*/End*` pairs.
+//   - Leaf widgets — `tree_node_ex` returns the open bool without claiming
+//     `TreePop()`, used where post-header item-state queries are needed
+//     (Tree/Advanced node + leaf rows).
 //   - Scope wrappers — `with_id` / `with_style` (color + var) / `with_text_wrap_pos`
-//     (Phase 1) — replace raw `Push*/Pop*`.
+//     / `with_disabled` (Phase 1) — replace raw `Push*/Pop*` and the
+//     `BeginDisabled/EndDisabled` pair.
 //   - External-pointer cases — `edit_checkbox_flags` (Tree Nodes/Advanced),
-//     `edit_slider_angle` (Basic) — boost variants taking `safe_addr(...)`
-//     against module-scope plain vars. `CollapsingHeader(p_open=)` still raw
-//     because no boost equivalent ships yet.
+//     `edit_slider_angle` (Basic), `edit_collapsing_header` (Collapsing
+//     Headers / closable bool) — `[edit_widget]` rail taking `safe_addr(...)`
+//     against module-scope plain vars or `unsafe(addr(struct.field))`.
+//   - Hover-gated tooltips — `set_item_tooltip(IDENT, text, flags=...)` for the
+//     `if (IsItemHovered(flags)) SetTooltip(text)` idiom. Default `flags =
+//     ForTooltip`; override per call (DelayNone / Stationary / etc.).
 //   - `IMGUI_DEMO_MARKER` test-engine markers dropped (off-limits per CLAUDE.md).
 //   - `SetItemTooltip(s)` → `item_tooltip(IDENT) { Text(s) }` (binding gap).
 // =============================================================================
@@ -85,6 +92,9 @@ var private WIDGETS_LOOP_CH_TEXT_INNER : table<int; NarrativeState>
 var private WIDGETS_LOOP_CH_TEXT_INNER2 : table<int; NarrativeState>
 var private WIDGETS_LOOP_TEXT_PARA : table<int; NarrativeState>
 var private WIDGETS_LOOP_IMG_SL : table<int; EmptyMarkerState>
+var private WIDGETS_BASIC_LB_ROW : table<int; ClickState>
+var private WIDGETS_TREE_LOOP_NODE : table<int; TreeNodeState>
+var private WIDGETS_TREE_LOOP_LEAF : table<int; TreeNodeState>
 
 
 // =============================================================================
@@ -98,17 +108,15 @@ var private WIDGETS_LOOP_IMG_SL : table<int; EmptyMarkerState>
 def ShowDemoWindowWidgets() {
     collapsing_header(WIDGETS_SECTION,
         (text = "Widgets", closable = false, flags = ImGuiTreeNodeFlags.None)) {
-            if (WIDGETS_DISABLE_ALL) BeginDisabled()
-
-            BasicSection()
-            TooltipsSection()
-            TreeNodesSection()
-            CollapsingHeadersSection()
-            BulletsSection()
-            TextSection()
-            ImagesSection()
-
-            if (WIDGETS_DISABLE_ALL) EndDisabled()
+            with_disabled(WIDGETS_DISABLE_ALL) {
+                BasicSection()
+                TooltipsSection()
+                TreeNodesSection()
+                CollapsingHeadersSection()
+                BulletsSection()
+                TextSection()
+                ImagesSection()
+            }
     }
 }
 
@@ -155,7 +163,7 @@ def private BasicSection() {
 
         // Arrow buttons with the Repeater flag — wrapped by with_button_repeat
         // scope wrapper; the arrow buttons themselves go through boost.
-        AlignTextToFramePadding()
+        align_text_to_frame_padding(WIDGETS_BASIC_ATFP)
         text("Hold to repeat:")
         same_line(WIDGETS_SL_4)
         let spacing = unsafe(GetStyle()).ItemInnerSpacing.x
@@ -177,7 +185,7 @@ def private BasicSection() {
             text("I am a tooltip")
         }
 
-        LabelText("label", "Value")
+        label_text(WIDGETS_BASIC_LABEL, (key = "label", value = "Value"))
 
         separator_text("Inputs")
 
@@ -333,7 +341,8 @@ def private BasicSection() {
                                        "Orange", "Pineapple", "Strawberry", "Watermelon")
             for (i in range(length(lb_items))) {
                 let is_sel = WIDGETS_BASIC_LISTBOX.value == i
-                if (Selectable(lb_items[i], is_sel)) {
+                if (selectable_label(WIDGETS_BASIC_LB_ROW[i],
+                                     (text = lb_items[i], selected = is_sel))) {
                     WIDGETS_BASIC_LISTBOX.value = i
                 }
             }
@@ -397,7 +406,7 @@ def private TooltipsSection() {
         radio_button_int(WIDGETS_TIP_ALWAYS_ON, (text = "Always On (Simple)", v_button = 1)); same_line(WIDGETS_SL_16)
         radio_button_int(WIDGETS_TIP_ALWAYS_ON, (text = "Always On (Advanced)", v_button = 2))
         if (WIDGETS_TIP_ALWAYS_ON.value == 1) {
-            SetTooltip("I am following you around.")
+            set_tooltip(WIDGETS_TIP_FOLLOW_TT, "I am following you around.")
         } elif (WIDGETS_TIP_ALWAYS_ON.value == 2) {
             // Advanced form draws into the tooltip body. Value-gated rather than
             // IsItemHovered()-gated — the boost `tooltip` container handles
@@ -422,39 +431,35 @@ def private TooltipsSection() {
         }
 
         button(WIDGETS_TIP_MANUAL, (text = "Manual"))
-        if (IsItemHovered(ImGuiHoveredFlags.ForTooltip)) {
-            SetTooltip("I am a manually emitted tooltip.")
-        }
+        set_item_tooltip(WIDGETS_TIP_MANUAL_TT, "I am a manually emitted tooltip.")
 
         button(WIDGETS_TIP_DELAY_NONE, (text = "DelayNone"))
-        if (IsItemHovered(ImGuiHoveredFlags.DelayNone)) {
-            SetTooltip("I am a tooltip with no delay.")
-        }
+        set_item_tooltip(WIDGETS_TIP_DELAY_NONE_TT,
+                         (text = "I am a tooltip with no delay.",
+                          flags = ImGuiHoveredFlags.DelayNone))
 
         button(WIDGETS_TIP_DELAY_SHORT, (text = "DelayShort"))
-        if (IsItemHovered(ImGuiHoveredFlags.DelayShort | ImGuiHoveredFlags.NoSharedDelay)) {
-            let delay = unsafe(GetStyle()).HoverDelayShort
-            SetTooltip("I am a tooltip with a short delay ({delay} sec).")
-        }
+        let delay_short = unsafe(GetStyle()).HoverDelayShort
+        set_item_tooltip(WIDGETS_TIP_DELAY_SHORT_TT,
+                         (text = "I am a tooltip with a short delay ({delay_short} sec).",
+                          flags = ImGuiHoveredFlags.DelayShort | ImGuiHoveredFlags.NoSharedDelay))
 
         button(WIDGETS_TIP_DELAY_LONG, (text = "DelayLong"))
-        if (IsItemHovered(ImGuiHoveredFlags.DelayNormal | ImGuiHoveredFlags.NoSharedDelay)) {
-            let delay = unsafe(GetStyle()).HoverDelayNormal
-            SetTooltip("I am a tooltip with a long delay ({delay} sec).")
-        }
+        let delay_long = unsafe(GetStyle()).HoverDelayNormal
+        set_item_tooltip(WIDGETS_TIP_DELAY_LONG_TT,
+                         (text = "I am a tooltip with a long delay ({delay_long} sec).",
+                          flags = ImGuiHoveredFlags.DelayNormal | ImGuiHoveredFlags.NoSharedDelay))
 
         button(WIDGETS_TIP_STATIONARY, (text = "Stationary"))
-        if (IsItemHovered(ImGuiHoveredFlags.Stationary)) {
-            SetTooltip("I am a tooltip requiring mouse to be stationary before activating.")
-        }
+        set_item_tooltip(WIDGETS_TIP_STATIONARY_TT,
+                         (text = "I am a tooltip requiring mouse to be stationary before activating.",
+                          flags = ImGuiHoveredFlags.Stationary))
 
         // Disabled-item tooltip — ForTooltip flag pulls AllowWhenDisabled from style.
-        BeginDisabled()
-        button(WIDGETS_TIP_DISABLED, (text = "Disabled item"))
-        EndDisabled()
-        if (IsItemHovered(ImGuiHoveredFlags.ForTooltip)) {
-            SetTooltip("I am a a tooltip for a disabled item.")
+        with_disabled(true) {
+            button(WIDGETS_TIP_DISABLED, (text = "Disabled item"))
         }
+        set_item_tooltip(WIDGETS_TIP_DISABLED_TT, "I am a a tooltip for a disabled item.")
     }
 }
 
@@ -568,30 +573,33 @@ def private TreeNodesSection() {
             checkbox(WIDGETS_TREE_DRAG_TEST, (text = "Test tree node as drag source"))
 
             text("Hello!")
-            if (WIDGETS_TREE_ALIGN.value) Unindent(GetTreeNodeToLabelSpacing())
+            if (WIDGETS_TREE_ALIGN.value) {
+                unindent(WIDGETS_TREE_REUNINDENT, GetTreeNodeToLabelSpacing())
+            }
 
             var node_clicked = -1
             for (i in range(6)) {
                 // Disable default "open on single-click" + set Selected from mask.
                 // node_flags stays as int (matching WIDGETS_TREE_BASE_FLAGS) so
-                // `|=` works; cast back to ImGuiTreeNodeFlags at the TreeNodeEx
-                // call site.
+                // `|=` works; cast back to ImGuiTreeNodeFlags at the call site.
                 var node_flags = WIDGETS_TREE_BASE_FLAGS
                 let is_selected = (WIDGETS_TREE_SELECTION_MASK & (1 << i)) != 0
                 if (is_selected) {
                     node_flags |= int(ImGuiTreeNodeFlags.Selected)
                 }
-                // Per-row ID scope. Raw TreeNodeEx is used because the Leaf form
-                // (i >= 3) sets `NoTreePushOnOpen` which is incompatible with the
-                // boost `tree_node` macro's unconditional TreePop (the macro pops
-                // whenever Begin returned true, but NoTreePushOnOpen means the
-                // node was never pushed). Mixing tree_node for nodes and raw for
-                // leaves would split the loop into two branches; raw on both
-                // keeps the loop coherent.
+                // Per-row ID scope. `tree_node_ex` (leaf-form boost widget)
+                // returns the open bool without claiming a TreePop — caller
+                // matches one when the node opened AND flags don't include
+                // `NoTreePushOnOpen`. The boost `tree_node` container can't be
+                // used here because we need post-header item-state queries
+                // (IsItemClicked, drag_drop_source, inline same_line + button);
+                // the container hides the TreeNodeEx call site so those would
+                // attach to the wrong item.
                 with_id("row_{i}") {
                     if (i < 3) {
-                        let node_open = TreeNodeEx("Selectable Node {i}",
-                            unsafe(reinterpret<ImGuiTreeNodeFlags>(node_flags)))
+                        let node_open = tree_node_ex(WIDGETS_TREE_LOOP_NODE[i],
+                            (text = "Selectable Node {i}",
+                             flags = unsafe(reinterpret<ImGuiTreeNodeFlags>(node_flags))))
                         if (IsItemClicked() && !IsItemToggledOpen()) {
                             node_clicked = i
                         }
@@ -615,8 +623,9 @@ def private TreeNodesSection() {
                         // Leaves: Leaf + NoTreePushOnOpen — no TreePop is paired.
                         node_flags |= (int(ImGuiTreeNodeFlags.Leaf) |
                                        int(ImGuiTreeNodeFlags.NoTreePushOnOpen))
-                        TreeNodeEx("Selectable Leaf {i}",
-                            unsafe(reinterpret<ImGuiTreeNodeFlags>(node_flags)))
+                        tree_node_ex(WIDGETS_TREE_LOOP_LEAF[i],
+                            (text = "Selectable Leaf {i}",
+                             flags = unsafe(reinterpret<ImGuiTreeNodeFlags>(node_flags))))
                         if (IsItemClicked() && !IsItemToggledOpen()) {
                             node_clicked = i
                         }
@@ -637,7 +646,9 @@ def private TreeNodesSection() {
                     WIDGETS_TREE_SELECTION_MASK = (1 << node_clicked)
                 }
             }
-            if (WIDGETS_TREE_ALIGN.value) Indent(GetTreeNodeToLabelSpacing())
+            if (WIDGETS_TREE_ALIGN.value) {
+                indent(WIDGETS_TREE_REINDENT, GetTreeNodeToLabelSpacing())
+            }
         }
     }
 }
@@ -659,11 +670,13 @@ def private CollapsingHeadersSection() {
                     text(WIDGETS_LOOP_CH_TEXT_INNER[i], (text = "Some content {i}"))
                 }
             }
-            // The second header uses `safe_addr` to wire the close-button to the
-            // checkbox's bool — there is no boost variant accepting the external
-            // p_open pointer for CollapsingHeader. Raw + safe_addr until Phase 3.
-            if (CollapsingHeader("Header with a close button",
-                                 safe_addr(WIDGETS_CH_CLOSABLE_GROUP.value))) {
+            // The second header's X-button is wired to the checkbox's bool —
+            // boost `edit_collapsing_header` is the [edit_widget] form taking
+            // an external p_visible pointer; the body runs only while the bool
+            // is true AND the header is expanded.
+            if (edit_collapsing_header(safe_addr(WIDGETS_CH_CLOSABLE_GROUP.value),
+                                       (id = "WIDGETS_CH_HEADER2",
+                                        text = "Header with a close button"))) {
                 text((text = "IsItemHovered: {IsItemHovered()}"))
                 for (i in range(5)) {
                     text(WIDGETS_LOOP_CH_TEXT_INNER2[i], (text = "More content {i}"))
@@ -703,9 +716,9 @@ def private TextSection() {
 
             tree_node(WIDGETS_TEXT_COLORFUL,
                 (text = "Colorful Text", flags = ImGuiTreeNodeFlags.None)) {
-                TextColored(float4(1.0f, 0.0f, 1.0f, 1.0f), "Pink")
-                TextColored(float4(1.0f, 1.0f, 0.0f, 1.0f), "Yellow")
-                TextDisabled("Disabled")
+                text_colored(WIDGETS_TEXT_PINK, float4(1.0f, 0.0f, 1.0f, 1.0f), "Pink")
+                text_colored(WIDGETS_TEXT_YELLOW, float4(1.0f, 1.0f, 0.0f, 1.0f), "Yellow")
+                text_disabled("Disabled")
                 same_line(WIDGETS_SL_22)
                 text_disabled("(?)")
                 item_tooltip(WIDGETS_TEXT_HM1_TIP) {
@@ -717,11 +730,11 @@ def private TextSection() {
 
             tree_node(WIDGETS_TEXT_WORDWRAP,
                 (text = "Word Wrapping", flags = ImGuiTreeNodeFlags.None)) {
-                TextWrapped(
+                text_wrapped((text =
                     "This text should automatically wrap on the edge of the " +
                     "window. The current implementation for text wrapping " +
                     "follows simple rules suitable for English and possibly " +
-                    "other languages.")
+                    "other languages."))
                 spacing(WIDGETS_SP_1)
 
                 slider_float(WIDGETS_TEXT_WRAP_WIDTH,
@@ -758,11 +771,11 @@ def private TextSection() {
 
             tree_node(WIDGETS_TEXT_UTF8,
                 (text = "UTF-8 Text", flags = ImGuiTreeNodeFlags.None)) {
-                TextWrapped(
+                text_wrapped((text =
                     "CJK text will only appear if the font was loaded with the " +
                     "appropriate CJK character ranges. Call io.Fonts->" +
                     "AddFontFromFileTTF() manually to load extra character ranges. " +
-                    "Read docs/FONTS.md for details.")
+                    "Read docs/FONTS.md for details."))
                 // daslang source files are UTF-8 so the literals are stored as-is.
                 text("Hiragana: かきくけこ (kakikukeko)")
                 text("Kanjis: 日本語 (nihongo)")
@@ -782,11 +795,11 @@ def private ImagesSection() {
         (text = "Images", flags = ImGuiTreeNodeFlags.None)) {
 
         let io & = unsafe(GetIO())
-        TextWrapped(
+        text_wrapped((text =
             "Below we are displaying the font texture (which is the only texture " +
             "we have access to in this demo). Use the 'ImTextureID' type as " +
             "storage to pass pointers or identifier to your own texture data. " +
-            "Hover the texture for a zoomed view!")
+            "Hover the texture for a zoomed view!"))
 
         let my_tex_id = unsafe(*io.Fonts).TexID
         let my_tex_w = float(unsafe(*io.Fonts).TexWidth)
@@ -831,7 +844,7 @@ def private ImagesSection() {
                    tint_col = tint_col, border_col = border_col))
         }
 
-        TextWrapped("And now some textured buttons..")
+        text_wrapped("And now some textured buttons..")
         for (i in range(8)) {
             // Per-iteration FramePadding push for i>0. `with_style` scopes the var.
             if (i > 0) {
