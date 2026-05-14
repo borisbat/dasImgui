@@ -107,6 +107,29 @@ def private text_value_finalize(widget_ident : string; kind : string; var state 
     register_focusable(widget_ident)
 }
 
+def private edit_finalize(widget_ident : string; kind : string; var ptr : auto(TT)? implicit) {
+    // External-pointer finalize: serializer captures the raw pointer and
+    // dereferences at snapshot time (snapshot reads `*ptr` live), dispatcher
+    // writes through `*ptr` on `set`. Caller owns the pointee — pass
+    // `safe_addr(local)` or `unsafe(addr(struct.field))` and accept lifetime
+    // responsibility. Generic on `TT` so the same body covers every scalar
+    // and vector type (`bool`/`int`/`float`/`float2`/etc.) via from_JV.
+    var entry : WidgetEntry
+    unsafe {
+        var p = ptr
+        let ser <- @ capture(= p) () : JsonValue ? {
+            return JV((value = *p))
+        }
+        let disp <- @ capture(= p) (action : string; payload : JsonValue ?) {
+            if (action == "set") {
+                *p = from_JV(payload?["value"], type<TT>, default<TT>)
+            }
+        }
+        widget_finalize(widget_ident, kind, entry, ser, disp)
+    }
+    register_focusable(widget_ident)
+}
+
 // ===== Triggers (click family) =====
 
 [widget]
@@ -1487,4 +1510,110 @@ def plot_histogram_getter(var state : PlotState; text : string;
     _builtin_PlotHistogram_cb(text, values_count, 0, overlay_text,
                               scale_min, scale_max, graph_size, getter)
     plot_finalize(widget_ident, "plot_histogram_getter", state)
+}
+
+// ===== External-pointer rail (edit_* family) =====
+//
+// Sibling shape to the state-backed `[widget]` defs: caller owns the value
+// via `safe_addr(local)` / `unsafe(addr(struct.field))` and the renderer
+// reads/writes through the pointer directly. No auto-emit, no state struct,
+// no `@live` preservation — the external owner controls persistence.
+// Required `id="..."` at the call site keys the telemetry path.
+
+[edit_widget]
+def edit_checkbox(var ptr : bool? implicit; text : string = "") : bool {
+    //! ``Checkbox(label, ptr)`` against a caller-owned ``bool?``. Telemetry payload is ``{value}``; ``imgui_set`` writes through ``*ptr``.
+    let lbl = empty(text) ? widget_ident : text
+    let changed = Checkbox(lbl, ptr)
+    edit_finalize(widget_ident, "edit_checkbox", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_radio_button(var ptr : bool? implicit; text : string = "") : bool {
+    //! Bool-form ``RadioButton`` against a caller-owned ``bool?``; the widget flips ``*ptr`` on click (ImGui's RadioButton-bool doesn't mutate). For grouped int-form radios, declare a ``RadioIntState`` and use ``radio_button_int``.
+    let lbl = empty(text) ? widget_ident : text
+    let im_clicked = unsafe(RadioButton(lbl, *ptr))
+    if (im_clicked) {
+        unsafe {
+            *ptr = !*ptr
+        }
+    }
+    edit_finalize(widget_ident, "edit_radio_button", ptr)
+    return im_clicked
+}
+
+[edit_widget]
+def edit_slider_float(var ptr : float? implicit; text : string = "";
+                      v_min : float = 0.0f; v_max : float = 1.0f;
+                      format : string = "%.3f";
+                      flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    //! ``SliderFloat`` against a caller-owned ``float?``. Range is per-call (no state-side ``bounds``); other args mirror :ref:`slider_float <function-imgui_widgets_builtin_slider_float_SliderStateFloat_string_string_ImGuiSliderFlags>`.
+    let lbl = empty(text) ? widget_ident : text
+    let changed = SliderFloat(lbl, ptr, v_min, v_max, format, flags)
+    edit_finalize(widget_ident, "edit_slider_float", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_slider_int(var ptr : int? implicit; text : string = "";
+                    v_min : int = 0; v_max : int = 100;
+                    format : string = "%d";
+                    flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    //! ``SliderInt`` against a caller-owned ``int?``. Range is per-call.
+    let lbl = empty(text) ? widget_ident : text
+    let changed = SliderInt(lbl, ptr, v_min, v_max, format, flags)
+    edit_finalize(widget_ident, "edit_slider_int", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_drag_float(var ptr : float? implicit; text : string = "";
+                    speed : float = 1.0f;
+                    v_min : float = 0.0f; v_max : float = 0.0f;
+                    format : string = "%.3f";
+                    flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    //! ``DragFloat`` against a caller-owned ``float?``. ``v_min == v_max == 0`` ⇒ unbounded (ImGui convention).
+    let lbl = empty(text) ? widget_ident : text
+    let changed = DragFloat(lbl, ptr, speed, v_min, v_max, format, flags)
+    edit_finalize(widget_ident, "edit_drag_float", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_drag_int(var ptr : int? implicit; text : string = "";
+                  speed : float = 1.0f;
+                  v_min : int = 0; v_max : int = 0;
+                  format : string = "%d";
+                  flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    //! ``DragInt`` against a caller-owned ``int?``. ``v_min == v_max == 0`` ⇒ unbounded.
+    let lbl = empty(text) ? widget_ident : text
+    let changed = DragInt(lbl, ptr, speed, v_min, v_max, format, flags)
+    edit_finalize(widget_ident, "edit_drag_int", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_input_float(var ptr : float? implicit; text : string = "";
+                     step : float = 0.0f;
+                     step_fast : float = 0.0f;
+                     format : string = "%.3f";
+                     flags : ImGuiInputTextFlags = ImGuiInputTextFlags.None) : bool {
+    //! ``InputFloat`` against a caller-owned ``float?``. No clamping (matches :ref:`input_float <function-imgui_widgets_builtin_input_float_InputStateFloat_string_float_float_string_ImGuiInputTextFlags>`); ``step``/``step_fast`` drive the ±buttons.
+    let lbl = empty(text) ? widget_ident : text
+    let changed = InputFloat(lbl, ptr, step, step_fast, format, flags)
+    edit_finalize(widget_ident, "edit_input_float", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_input_int(var ptr : int? implicit; text : string = "";
+                   step : int = 1;
+                   step_fast : int = 100;
+                   flags : ImGuiInputTextFlags = ImGuiInputTextFlags.None) : bool {
+    //! ``InputInt`` against a caller-owned ``int?``. No clamping.
+    let lbl = empty(text) ? widget_ident : text
+    let changed = InputInt(lbl, ptr, step, step_fast, flags)
+    edit_finalize(widget_ident, "edit_input_int", ptr)
+    return changed
 }

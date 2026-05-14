@@ -583,3 +583,131 @@ class WidgetCallMacro : AstCallMacro {
         return <- newCall
     }
 }
+
+// `[edit_widget]` annotation — external-pointer sibling of `[widget]`. The
+// annotated function takes (ptr : T?, ...named args...). No state struct,
+// no auto-emit, no init=/bounds= sugar. The macro extracts the call-site
+// `id="..."` (required, string literal) and rewrites to a positional call;
+// the renderer captures `ptr` in serializer/dispatcher closures so snapshot
+// reads dereference `*ptr` live. Caller picks `safe_addr(local)` vs
+// `unsafe(addr(struct.field))` and owns the pointee lifetime.
+
+[function_macro(name = "edit_widget")]
+class EditWidgetFunctionMacro : AstFunctionAnnotation {
+    //! ``[edit_widget]`` annotation — registers an external-pointer widget. First parameter is the user-owned pointer (``T?``); macro injects ``widget_ident : string`` at index 1 and installs a call_macro that requires an explicit ``id="..."`` literal at the call site.
+    def override apply(var func : FunctionPtr; var group : ModuleGroup;
+                       args : AnnotationArgumentList; var errors : das_string) : bool {
+        return apply_edit_widget(func, errors)
+    }
+}
+
+def private apply_edit_widget(var func : FunctionPtr; var errors : das_string) : bool {
+    if (empty(func.arguments)) {
+        errors := "[edit_widget] requires at least one parameter (ptr)"
+        return false
+    }
+    let ptrArg = func.arguments[0]
+    if (ptrArg._type == null || ptrArg._type.baseType != Type.tPointer) {
+        errors := "[edit_widget] first parameter must be a pointer (e.g. `float?`, `int?`, `bool?`)"
+        return false
+    }
+    let kind = string(func.name)
+    func.flags |= FunctionFlags.generated
+    // Inject widget_ident : string at index 1 (between ptr and the rest).
+    // Mirrors the [widget] macro injection so the user body can reference
+    // `widget_ident` literally when calling widget_finalize / edit_finalize.
+    var widthIdentVar = new Variable(at = func.at,
+        name := "widget_ident",
+        _type <- new TypeDecl(baseType = Type.tString, at = func.at))
+    widthIdentVar.flags |= VariableFlags.generated
+    func.arguments |> emplace(widthIdentVar, 1)
+    // Wrap the body: prepend widget_prelude(widget_ident) so PushID +
+    // pending-focus apply uniformly. PopID is emitted by widget_finalize
+    // at the bottom of edit_finalize.
+    var fblk = new ExprBlock(at = func.body.at)
+    fblk.list |> push(qmacro(widget_prelude($i("widget_ident"))))
+    let oldBody = func.body as ExprBlock
+    for (el in oldBody.list) {
+        fblk.list |> push(clone_expression(el))
+    }
+    for (ef in oldBody.finalList) {
+        fblk.finalList |> push(clone_expression(ef))
+    }
+    func.body = fblk
+    var inst = new EditExternalCallMacro(
+        kind_name = kind,
+        render_fn = func)
+    let userArgN = length(func.arguments) - 2
+    if (userArgN > 0) {
+        inst.render_fn_args |> reserve(userArgN)
+    }
+    for (i in range(2, length(func.arguments))) {
+        inst.render_fn_args |> push(func.arguments[i])
+    }
+    compiling_module() |> add_call_macro(make_call_macro(kind, inst))
+    return true
+}
+
+class EditExternalCallMacro : AstCallMacro {
+    //! Call macro installed by ``[edit_widget]``. Recognizes ``edit_kind(ptr, (id="...", ...))``, requires an explicit ``id=`` string literal, destructures the rest of the named-tuple to positional args (source order — match parameter order, like ``WidgetCallMacro``), and rewrites to a direct call into the renderer.
+    kind_name : string
+    render_fn : FunctionPtr
+    render_fn_args : array<VariablePtr>
+
+    def override visit(prog : ProgramPtr; mod : Module?; var expr : ExprCallMacro?) : ExpressionPtr {
+        if (empty(expr.arguments)) {
+            macro_error(prog, expr.at, "{kind_name}(ptr, (id=\"...\", ...)): missing pointer argument")
+            return <- default<ExpressionPtr>
+        }
+        // Extract id= from named-tuple args (must be present; string literal).
+        var idLit : string
+        var idPresent = false
+        for (i in range(1, length(expr.arguments))) {
+            let a = expr.arguments[i]
+            if (a is ExprMakeTuple) {
+                let mt = a as ExprMakeTuple
+                if (length(mt.recordNames) == length(mt.values) && !empty(mt.recordNames)) {
+                    for (j in range(length(mt.recordNames))) {
+                        if (mt.recordNames[j] == "id") {
+                            if (!(mt.values[j] is ExprConstString)) {
+                                macro_error(prog, mt.values[j].at,
+                                            "{kind_name}(..., id=...): `id=` must be a string literal")
+                                return <- default<ExpressionPtr>
+                            }
+                            idLit = string((mt.values[j] as ExprConstString).value)
+                            idPresent = true
+                        }
+                    }
+                }
+            }
+        }
+        if (!idPresent) {
+            macro_error(prog, expr.at,
+                "{kind_name}(ptr, (id=\"...\", ...)): external-pointer widgets require an explicit `id=\"...\"` for the telemetry path. No auto-generation — pick a stable unique identifier.")
+            return <- default<ExpressionPtr>
+        }
+        if (empty(idLit)) {
+            macro_error(prog, expr.at, "{kind_name}: `id=` must not be empty")
+            return <- default<ExpressionPtr>
+        }
+        // Rewrite to positional: kind_name(ptr, "<idLit>", ...named args destructured).
+        var newCall = new ExprCall(at = expr.at, name := kind_name)
+        newCall.arguments |> push(clone_expression(expr.arguments[0]))
+        newCall.arguments |> push(new ExprConstString(at = expr.at, value := idLit))
+        for (i in range(1, length(expr.arguments))) {
+            let a = expr.arguments[i]
+            if (a is ExprMakeTuple) {
+                let mt = a as ExprMakeTuple
+                if (length(mt.recordNames) == length(mt.values) && !empty(mt.recordNames)) {
+                    for (j in range(length(mt.recordNames))) {
+                        continue if (mt.recordNames[j] == "id")
+                        newCall.arguments |> push(clone_expression(mt.values[j]))
+                    }
+                    continue
+                }
+            }
+            newCall.arguments |> push(clone_expression(a))
+        }
+        return <- newCall
+    }
+}
