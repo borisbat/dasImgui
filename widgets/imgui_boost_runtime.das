@@ -8,7 +8,7 @@ module imgui_boost_runtime shared
 require imgui public
 require live/live_vars public
 require live/live_commands
-require live_host
+require live_host public
 require daslib/json public
 require daslib/json_boost public
 require daslib/coroutines public
