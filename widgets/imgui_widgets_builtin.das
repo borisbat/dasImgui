@@ -1617,3 +1617,174 @@ def edit_input_int(var ptr : int? implicit; text : string = "";
     edit_finalize(widget_ident, "edit_input_int", ptr)
     return changed
 }
+
+// ===== External-pointer rail (10b: vectors) =====
+//
+// Vector overloads (float2/3/4 + int2/3/4) for slider and drag. Each
+// `T2?`/`T3?`/`T4?` pointer is reinterpret-cast to `T?` at the ImGui call
+// site since ImGui's Slider* / Drag* family signatures all take a single
+// `T*` and treat it as a contiguous 2/3/4-component layout — no separate
+// vector binding. `edit_finalize` still takes the full vector pointer so
+// the serializer/dispatcher round-trip the whole tuple via from_JV.
+
+[edit_widget]
+def edit_slider_float2(var ptr : float2? implicit; text : string = "";
+                       v_min : float = 0.0f; v_max : float = 1.0f;
+                       format : string = "%.3f";
+                       flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    //! ``SliderFloat2`` against a caller-owned ``float2?``.
+    let lbl = empty(text) ? widget_ident : text
+    let changed = SliderFloat2(lbl, unsafe(reinterpret<float?>(ptr)),
+                               v_min, v_max, format, flags)
+    edit_finalize(widget_ident, "edit_slider_float2", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_slider_float3(var ptr : float3? implicit; text : string = "";
+                       v_min : float = 0.0f; v_max : float = 1.0f;
+                       format : string = "%.3f";
+                       flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    //! ``SliderFloat3`` against a caller-owned ``float3?``.
+    let lbl = empty(text) ? widget_ident : text
+    let changed = SliderFloat3(lbl, unsafe(reinterpret<float?>(ptr)),
+                               v_min, v_max, format, flags)
+    edit_finalize(widget_ident, "edit_slider_float3", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_slider_float4(var ptr : float4? implicit; text : string = "";
+                       v_min : float = 0.0f; v_max : float = 1.0f;
+                       format : string = "%.3f";
+                       flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    //! ``SliderFloat4`` against a caller-owned ``float4?``.
+    let lbl = empty(text) ? widget_ident : text
+    let changed = SliderFloat4(lbl, unsafe(reinterpret<float?>(ptr)),
+                               v_min, v_max, format, flags)
+    edit_finalize(widget_ident, "edit_slider_float4", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_slider_int2(var ptr : int2? implicit; text : string = "";
+                     v_min : int = 0; v_max : int = 100;
+                     format : string = "%d";
+                     flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    //! ``SliderInt2`` against a caller-owned ``int2?``.
+    let lbl = empty(text) ? widget_ident : text
+    let changed = SliderInt2(lbl, unsafe(reinterpret<int?>(ptr)),
+                             v_min, v_max, format, flags)
+    edit_finalize(widget_ident, "edit_slider_int2", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_slider_int3(var ptr : int3? implicit; text : string = "";
+                     v_min : int = 0; v_max : int = 100;
+                     format : string = "%d";
+                     flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    //! ``SliderInt3`` against a caller-owned ``int3?``.
+    let lbl = empty(text) ? widget_ident : text
+    let changed = SliderInt3(lbl, unsafe(reinterpret<int?>(ptr)),
+                             v_min, v_max, format, flags)
+    edit_finalize(widget_ident, "edit_slider_int3", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_slider_int4(var ptr : int4? implicit; text : string = "";
+                     v_min : int = 0; v_max : int = 100;
+                     format : string = "%d";
+                     flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    //! ``SliderInt4`` against a caller-owned ``int4?``.
+    let lbl = empty(text) ? widget_ident : text
+    let changed = SliderInt4(lbl, unsafe(reinterpret<int?>(ptr)),
+                             v_min, v_max, format, flags)
+    edit_finalize(widget_ident, "edit_slider_int4", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_drag_float2(var ptr : float2? implicit; text : string = "";
+                     speed : float = 1.0f;
+                     v_min : float = 0.0f; v_max : float = 0.0f;
+                     format : string = "%.3f";
+                     flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    //! ``DragFloat2`` against a caller-owned ``float2?``.
+    let lbl = empty(text) ? widget_ident : text
+    let changed = DragFloat2(lbl, unsafe(reinterpret<float?>(ptr)),
+                             speed, v_min, v_max, format, flags)
+    edit_finalize(widget_ident, "edit_drag_float2", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_drag_float3(var ptr : float3? implicit; text : string = "";
+                     speed : float = 1.0f;
+                     v_min : float = 0.0f; v_max : float = 0.0f;
+                     format : string = "%.3f";
+                     flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    //! ``DragFloat3`` against a caller-owned ``float3?``.
+    let lbl = empty(text) ? widget_ident : text
+    let changed = DragFloat3(lbl, unsafe(reinterpret<float?>(ptr)),
+                             speed, v_min, v_max, format, flags)
+    edit_finalize(widget_ident, "edit_drag_float3", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_drag_float4(var ptr : float4? implicit; text : string = "";
+                     speed : float = 1.0f;
+                     v_min : float = 0.0f; v_max : float = 0.0f;
+                     format : string = "%.3f";
+                     flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    //! ``DragFloat4`` against a caller-owned ``float4?``.
+    let lbl = empty(text) ? widget_ident : text
+    let changed = DragFloat4(lbl, unsafe(reinterpret<float?>(ptr)),
+                             speed, v_min, v_max, format, flags)
+    edit_finalize(widget_ident, "edit_drag_float4", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_drag_int2(var ptr : int2? implicit; text : string = "";
+                   speed : float = 1.0f;
+                   v_min : int = 0; v_max : int = 0;
+                   format : string = "%d";
+                   flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    //! ``DragInt2`` against a caller-owned ``int2?``.
+    let lbl = empty(text) ? widget_ident : text
+    let changed = DragInt2(lbl, unsafe(reinterpret<int?>(ptr)),
+                           speed, v_min, v_max, format, flags)
+    edit_finalize(widget_ident, "edit_drag_int2", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_drag_int3(var ptr : int3? implicit; text : string = "";
+                   speed : float = 1.0f;
+                   v_min : int = 0; v_max : int = 0;
+                   format : string = "%d";
+                   flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    //! ``DragInt3`` against a caller-owned ``int3?``.
+    let lbl = empty(text) ? widget_ident : text
+    let changed = DragInt3(lbl, unsafe(reinterpret<int?>(ptr)),
+                           speed, v_min, v_max, format, flags)
+    edit_finalize(widget_ident, "edit_drag_int3", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_drag_int4(var ptr : int4? implicit; text : string = "";
+                   speed : float = 1.0f;
+                   v_min : int = 0; v_max : int = 0;
+                   format : string = "%d";
+                   flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    //! ``DragInt4`` against a caller-owned ``int4?``.
+    let lbl = empty(text) ? widget_ident : text
+    let changed = DragInt4(lbl, unsafe(reinterpret<int?>(ptr)),
+                           speed, v_min, v_max, format, flags)
+    edit_finalize(widget_ident, "edit_drag_int4", ptr)
+    return changed
+}
