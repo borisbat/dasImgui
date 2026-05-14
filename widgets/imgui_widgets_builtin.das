@@ -842,22 +842,6 @@ def combo(var state : ComboState; text : string; items : array<string>;
 }
 
 [widget]
-def list_box(var state : ListBoxState; text : string; items : array<string>;
-             height_in_items : int = -1) : bool {
-    //! `imgui_set {"value": N}` selects the N-th item next frame.
-    //! `height_in_items = -1` lets ImGui pick a default; positive caps the visible rows.
-    if (state.has_pending) {
-        state.value = state.pending_value
-        state.has_pending = false
-    }
-    let changed = ListBox(text, unsafe(addr(state.value)),
-                          unsafe(addr(items[0])), length(items), height_in_items)
-    state.changed = changed
-    pending_value_finalize(widget_ident, "list_box", state)
-    return changed
-}
-
-[widget]
 def color_button(var state : ClickState; desc_id : string;
                  col : float4;
                  size : float2 = float2(0.0f, 0.0f);

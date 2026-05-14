@@ -98,8 +98,44 @@ Every helper's state struct is targetable by name. Drag without a mouse:
 ``value`` is the same type the user would set by dragging — pixels for
 ``dock_*``, fraction for ``split_*``.
 
-Next steps
-==========
+Scope wrappers
+==============
+
+Three stateless block-arg wrappers in ``imgui/imgui_scope_builtin`` cover
+the leftover Push/Pop idioms ImGui uses for ad-hoc layout overrides. Each
+brackets the block with the corresponding ImGui Push/Pop pair and takes
+no state — they read like inline scopes:
+
+.. code-block:: das
+
+   require imgui/imgui_scope_builtin
+
+   // Indent / Unindent — nest content under a heading.
+   with_indent(0.0f) {       // 0.0f defers to style IndentSpacing
+       Text("Bullet child")
+   }
+   with_indent(40.0f) {      // explicit pixel offset
+       Text("Hard-indented")
+   }
+
+   // PushItemWidth / PopItemWidth — scope a widget-width override.
+   with_item_width(120.0f) {
+       slider_float(NARROW, (text = "narrow", bounds = (0.0f, 1.0f)))
+   }
+   with_item_width(-60.0f) { // negative = right-edge minus N
+       slider_float(STRETCH, (text = "stretch", bounds = (0.0f, 1.0f)))
+   }
+
+   // PushTextWrapPos / PopTextWrapPos — scope where long text wraps.
+   with_text_wrap_pos(0.0f) { TextUnformatted(LIPSUM) }   // window right edge
+   with_text_wrap_pos(200.0f) { TextUnformatted(LIPSUM) } // wrap at 200 px
+
+Feature demos: ``examples/features/with_indent.das``,
+``examples/features/with_item_width.das``,
+``examples/features/with_text_wrap_pos.das``.
+
+Standalone vs live
+==================
 
 Docking is next — full ImGui dockspaces and the dock helpers that ride on
 top of them.

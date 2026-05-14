@@ -9,7 +9,7 @@ require daslib/json public
 require daslib/json_boost public
 
 //! Integration smoke for Phase 0b.3 overlay containers — popup, popup_modal,
-//! tooltip, item_tooltip, combo_select, list_box_select. Verifies the
+//! tooltip, item_tooltip, combo_select, list_box. Verifies the
 //! pending-open / pending-close flow on popups and the block-arg combo /
 //! list_box paths.
 
@@ -27,15 +27,15 @@ def test_containers_overlay_smoke(t : T?) {
         t |> equal(combo_entry?["kind"] ?? "", "combo_select",
                    "combo_select registers under nested path")
         var listbox_entry = find_widget(snap0, "OVERLAY_WIN/TASK_LIST")
-        t |> equal(listbox_entry?["kind"] ?? "", "list_box_select",
-                   "list_box_select registers under nested path")
+        t |> equal(listbox_entry?["kind"] ?? "", "list_box",
+                   "list_box registers under nested path")
 
         // ----- imgui_set on combo_select index -----
         set_value(d, "OVERLAY_WIN/PALETTE_COMBO", JV(2))
         t |> success(wait_for_int_value(d, "OVERLAY_WIN/PALETTE_COMBO", "value", 2, 300),
                      "imgui_set steers PALETTE_COMBO to 2 (Forest)")
 
-        // ----- imgui_set on list_box_select index -----
+        // ----- imgui_set on list_box index -----
         set_value(d, "OVERLAY_WIN/TASK_LIST", JV(3))
         t |> success(wait_for_int_value(d, "OVERLAY_WIN/TASK_LIST", "value", 3, 300),
                      "imgui_set steers TASK_LIST to 3 (Package)")

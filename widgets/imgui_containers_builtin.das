@@ -35,7 +35,7 @@ require math
 // dispatcher lambda is a no-op; the serializer still reflects state for
 // snapshot.
 //
-// `combo_select` / `list_box_select` reuse ComboState / ListBoxState (a
+// `combo_select` / `list_box` reuse ComboState / ListBoxState (a
 // `pending_value : int` shape) and inline their own dispatcher because the
 // shared `pending_value_finalize` helper is private to imgui_widgets_builtin.
 
@@ -230,6 +230,20 @@ def popup(var state : PopupState; text : string;
 }
 
 [container]
+def popup_context_item(var state : PopupContextItemState; str_id : string;
+                       flags : ImGuiPopupFlags; blk : block) {
+    //! `BeginPopupContextItem(str_id, flags)` / `EndPopup()` — right-click
+    //! context popup attached to the previously submitted item. ImGui drives
+    //! open/close internally on right-click; body runs only while open.
+    let im_open = BeginPopupContextItem(str_id, flags)
+    if (im_open) {
+        invoke(blk)
+        EndPopup()
+    }
+    stateless_finalize(widget_ident, "popup_context_item", state)
+}
+
+[container]
 def popup_modal(var state : PopupState; text : string; closable : bool;
                 flags : ImGuiWindowFlags; blk : block) {
     //! `BeginPopupModal(name, p_open, flags)` / `EndPopup()`. Same lifecycle
@@ -394,13 +408,13 @@ def collapsing_header(var state : CollapsingHeaderState; text : string;
 
 // ===== Choice block-arg family =====
 //
-// `combo_select` and `list_box_select` are the BeginCombo / BeginListBox
-// counterparts to the leaf `combo` / `list_box` widgets shipped in 0b.2-choice.
-// They reuse the same state structs (ComboState / ListBoxState) — `value : int`
-// is the user-driven selection index. Body code is responsible for emitting
-// Selectable items inside; the dispatcher's "set" action just writes
-// `state.value` for the next frame. Per-call args (preview_value, flags, size)
-// follow the named-tuple convention.
+// `combo_select` is the BeginCombo counterpart to the leaf `combo` widget.
+// `list_box` is unified on the BeginListBox/EndListBox form — the legacy
+// items-array `[widget] def list_box` was dropped (modern ImGui idiom is
+// Begin/End + Selectable). Both reuse selection state structs (ComboState /
+// ListBoxState) — `value : int` is the user-driven selection index. Body
+// code emits Selectable items; the dispatcher's "set" action writes
+// `state.value` for the next frame. Per-call args follow the named-tuple convention.
 
 [container]
 def combo_select(var state : ComboState; text : string; preview_value : string;
@@ -433,7 +447,7 @@ def combo_select(var state : ComboState; text : string; preview_value : string;
 }
 
 [container]
-def list_box_select(var state : ListBoxState; text : string; size : float2; blk : block) {
+def list_box(var state : ListBoxState; text : string; size : float2; blk : block) {
     //! `BeginListBox(label, size)` / `EndListBox()` — only-on-true. Body
     //! emits the per-item rows. `imgui_set {"value":N}` steers next-frame
     //! selection; bodies typically read `state.value` to tag the active row.
@@ -457,6 +471,42 @@ def list_box_select(var state : ListBoxState; text : string; size : float2; blk 
                 state.has_pending = true
             }
         }
-        container_finalize(widget_ident, "list_box_select", entry, ser, disp)
+        container_finalize(widget_ident, "list_box", entry, ser, disp)
     }
+}
+
+// ===== Drag-drop family =====
+//
+// Both bodies are gated on ImGui's internal drag-drop state machine:
+// `drag_drop_source` body runs only when the previous item has been picked
+// up for drag; `drag_drop_target` body runs only when a payload-bearing
+// drag is hovering. Payload set/accept are raw `SetDragDropPayload` /
+// `AcceptDragDropPayload` calls inside the body — no boost wrapper, since
+// the payload data is caller-owned and crosses widget boundaries.
+
+[container]
+def drag_drop_source(var state : DragDropSourceState; flags : ImGuiDragDropFlags;
+                     blk : block) {
+    //! `BeginDragDropSource(flags)` / `EndDragDropSource()` — only-on-true.
+    //! Body calls `SetDragDropPayload(type, data, sz, cond)` to publish the
+    //! payload and renders the drag preview (Text, Image, etc.).
+    let im_open = BeginDragDropSource(flags)
+    if (im_open) {
+        invoke(blk)
+        EndDragDropSource()
+    }
+    stateless_finalize(widget_ident, "drag_drop_source", state)
+}
+
+[container]
+def drag_drop_target(var state : DragDropTargetState; blk : block) {
+    //! `BeginDragDropTarget()` / `EndDragDropTarget()` — only-on-true.
+    //! Body calls `AcceptDragDropPayload(type, flags)` to receive the payload
+    //! when the drag releases over this target.
+    let im_open = BeginDragDropTarget()
+    if (im_open) {
+        invoke(blk)
+        EndDragDropTarget()
+    }
+    stateless_finalize(widget_ident, "drag_drop_target", state)
 }

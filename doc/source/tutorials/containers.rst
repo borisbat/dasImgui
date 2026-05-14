@@ -24,7 +24,7 @@ This tutorial covers four representative containers: ``menu_bar`` +
 (``examples/features/containers_*.das``) cover the rest:
 ``child`` / ``group`` (window family), ``tree_node`` /
 ``collapsing_header`` (layout family), ``popup_modal`` /
-``tooltip`` / ``combo_select`` / ``list_box_select`` (overlay family).
+``tooltip`` / ``combo_select`` / ``list_box`` (overlay family).
 
 Source: ``examples/tutorial/containers.das``.
 
@@ -176,6 +176,34 @@ Path-qualified targets for every container leaf:
 Note that menu items receive ``imgui_click`` directly — they're click
 targets, not open/close targets.
 
+Context popups
+==============
+
+``popup_context_item`` is the right-click-context sibling of ``popup`` —
+ImGui drives open/close internally based on the previous item receiving
+a right-click; the wrapper just gates the body on Begin returning true:
+
+.. code-block:: das
+
+   require imgui/imgui_containers_builtin
+
+   button(TARGET_BTN, (text = "Right-click me"))
+   popup_context_item(TARGET_CTX, (str_id = "target_ctx",
+                                   flags = ImGuiPopupFlags.MouseButtonRight)) {
+       if (menu_item(ACTION_RENAME, (text = "Rename", shortcut = "F2"))) {
+           // ...
+       }
+       if (menu_item(ACTION_DELETE, (text = "Delete", shortcut = "Del"))) {
+           // ...
+       }
+   }
+
+The popup is keyed off the **previously submitted item** — submission
+order matters, and ``popup_context_item`` registers under its own path
+in the snapshot. Use ``imgui_click`` to drive menu items from outside.
+
+Feature demo: ``examples/features/popup_context_item.das``.
+
 Next steps
 ==========
 
@@ -196,7 +224,7 @@ HTTP server) versus what gets rebuilt.
    * ``examples/features/containers_layout.das`` — tab_bar plus
      tree_node, collapsing_header
    * ``examples/features/containers_overlay.das`` — popup_modal,
-     tooltip, combo_select, list_box_select
+     tooltip, combo_select, list_box
 
    Previous tutorial: :ref:`tutorial_state_telemetry`
 
