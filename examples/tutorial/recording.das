@@ -69,10 +69,10 @@ def update() {
     SetNextWindowSize(ImVec2(520.0f, 280.0f), ImGuiCond.FirstUseEver)
     window(REC_WIN, (text = "subject", closable = false,
                      flags = ImGuiWindowFlags.None)) {
-        Text("Tiny subject — driver narrates what's happening.")
+        text(RC_TEXT_1, (text = "Tiny subject — driver narrates what's happening."))
         slider_float(VOLUME, (text = "Volume"))
         if (button(SAVE_BTN, (text = "Save"))) {}
-        Text("SAVE_BTN.click_count = {SAVE_BTN.click_count}")
+        text(RC_TEXT_2, (text = "SAVE_BTN.click_count = {SAVE_BTN.click_count}"))
     }
 
     end_of_frame()

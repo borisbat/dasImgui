@@ -143,27 +143,27 @@ def update() {
                       flags = ImGuiWindowFlags.None)) {
 
         // ---- A slider whose value survives reload (@live in SliderStateFloat) ----
-        Text("VOLUME.value is @live - survives reload.")
+        text(LR_TEXT_1, (text = "VOLUME.value is @live - survives reload."))
         slider_float(VOLUME, (text = "Volume"))
 
-        Separator()
+        separator(LR_SEP_1)
 
         // ---- The custom counter, driven from outside via [live_command] ----
-        Text("g_custom_counter = {g_custom_counter}")
-        Text("  - @live, preserved across reload")
-        Text("  - mutated externally by `bump_counter` / `reset_counter`")
+        text(LR_TEXT_2, (text = "g_custom_counter = {g_custom_counter}"))
+        text(LR_TEXT_3, (text = "  - @live, preserved across reload"))
+        text(LR_TEXT_4, (text = "  - mutated externally by `bump_counter` / `reset_counter`"))
 
-        Separator()
+        separator(LR_SEP_2)
 
         // ---- Contrast: session string resets each reload ----
-        Text("g_session_string = \"{g_session_string}\"")
-        Text("  - NOT @live; init() rewrites it each reload")
+        text(LR_TEXT_5, (text = "g_session_string = \"{g_session_string}\""))
+        text(LR_TEXT_6, (text = "  - NOT @live; init() rewrites it each reload"))
 
-        Separator()
+        separator(LR_SEP_3)
 
         // ---- A button whose click count is preserved (ClickState is @live) ----
         if (button(PING_BTN, (text = "Ping (click_count survives reload)"))) {}
-        Text("PING_BTN.click_count = {PING_BTN.click_count}")
+        text(LR_TEXT_7, (text = "PING_BTN.click_count = {PING_BTN.click_count}"))
     }
 
     end_of_frame()

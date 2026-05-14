@@ -89,15 +89,15 @@ def update() {
 
         // ---- A text input — driven by `imgui_set` with a string value ----
         input_text(USER, (text = "User"))
-        Text("USER.value = \"{USER.value}\"")
+        text(DR_TEXT_USER, (text = "USER.value = \"{USER.value}\""))
 
-        Separator()
+        separator(DR_SEP_1)
 
         // ---- A slider — driven by `imgui_set` with a number value ----
         slider_int(SPEED, (text = "Speed"))
-        Text("SPEED.value = {SPEED.value}")
+        text(DR_TEXT_SPEED, (text = "SPEED.value = {SPEED.value}"))
 
-        Separator()
+        separator(DR_SEP_2)
 
         // ---- A combo — driven by `imgui_set` with the selected index ----
         var preset_label = "(none)"
@@ -116,23 +116,23 @@ def update() {
                 }
             }
         }
-        Text("PRESET = {preset_label} (idx {PRESET.value})")
+        text(DR_TEXT_PRESET, (text = "PRESET = {preset_label} (idx {PRESET.value})"))
 
-        Separator()
+        separator(DR_SEP_3)
 
         // ---- A button — fired by `imgui_click` ----
         if (button(RUN_BTN, (text = "Run"))) {}
-        Text("RUN_BTN.click_count = {RUN_BTN.click_count}")
+        text(DR_TEXT_RUN, (text = "RUN_BTN.click_count = {RUN_BTN.click_count}"))
 
-        Separator()
+        separator(DR_SEP_4)
 
         // ---- A popup — opened/closed via `imgui_open` / `imgui_close` ----
-        Text("STATUS_POPUP — driven by imgui_open / imgui_close.")
+        text(DR_TEXT_POPUP_HINT, (text = "STATUS_POPUP — driven by imgui_open / imgui_close."))
         popup(STATUS_POPUP, (text = "StatusPopup",
                              flags = ImGuiWindowFlags.None)) {
-            Text("Driven from outside via imgui_open.")
-            Separator()
-            Text("RUN_BTN.click_count = {RUN_BTN.click_count}")
+            text(DR_TEXT_POPUP_BODY, (text = "Driven from outside via imgui_open."))
+            separator(DR_SEP_5)
+            text(DR_TEXT_POPUP_RUN, (text = "RUN_BTN.click_count = {RUN_BTN.click_count}"))
         }
     }
 

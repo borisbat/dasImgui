@@ -65,17 +65,17 @@ def update() {
     SetNextWindowSize(float2(440.0f, 360.0f), ImGuiCond.FirstUseEver)
     window(SUBJECT_WIN, (text = "Demoed widgets", closable = false,
                          flags = ImGuiWindowFlags.None)) {
-        Text("These widgets get highlighted, narrated, typed-into, etc.")
-        Separator()
+        text(VA_TEXT_1, (text = "These widgets get highlighted, narrated, typed-into, etc."))
+        separator(VA_SEP_1)
         text_show(STATUS, (value = "ready"))
         VOLUME.bounds = (0.0f, 100.0f)
         slider_float(VOLUME, (text = "Volume"))
         if (button(SAVE_BTN, (text = "Save"))) {
             print("save clicked, count={SAVE_BTN.click_count}\n")
         }
-        Separator()
+        separator(VA_SEP_2)
         input_text(NAME_INPUT, (text = "Name"))
-        Text("buffer = {NAME_INPUT.value}")
+        text(VA_TEXT_2, (text = "buffer = {NAME_INPUT.value}"))
     }
 
     // ===== Controls window — driver buttons for the aids =====
@@ -83,8 +83,8 @@ def update() {
     SetNextWindowSize(float2(440.0f, 560.0f), ImGuiCond.FirstUseEver)
     window(CONTROLS_WIN, (text = "Visual aids controls", closable = false,
                           flags = ImGuiWindowFlags.None)) {
-        Text("Highlight a widget (yellow rect, 60 frames):")
-        Separator()
+        text(VA_TEXT_3, (text = "Highlight a widget (yellow rect, 60 frames):"))
+        separator(VA_SEP_3)
         if (button(BTN_HIGHLIGHT_STATUS, (text = "highlight STATUS"))) {
             highlight("SUBJECT_WIN/STATUS")
         }
@@ -100,9 +100,9 @@ def update() {
             highlight("SUBJECT_WIN/SAVE_BTN")
         }
 
-        Spacing()
-        Text("Mouse trail (fading dots following cursor):")
-        Separator()
+        spacing(VA_SP_1)
+        text(VA_TEXT_4, (text = "Mouse trail (fading dots following cursor):"))
+        separator(VA_SEP_4)
         if (button(BTN_TRAIL_ON, (text = "mouse trail ON"))) {
             mouse_trail(true)
         }
@@ -110,9 +110,9 @@ def update() {
             mouse_trail(false)
         }
 
-        Spacing()
-        Text("Narrate callout (overlay box + connector line):")
-        Separator()
+        spacing(VA_SP_2)
+        text(VA_TEXT_5, (text = "Narrate callout (overlay box + connector line):"))
+        separator(VA_SEP_5)
         if (button(BTN_NARRATE_VOLUME, (text = "narrate VOLUME"))) {
             narrate("Drag this to set volume.", "SUBJECT_WIN/VOLUME")
         }
@@ -123,9 +123,9 @@ def update() {
             narrate("Floating overlay, no target widget.")
         }
 
-        Spacing()
-        Text("Auto-highlight on command (flag, currently {imgui_auto_highlight_on_command}):")
-        Separator()
+        spacing(VA_SP_3)
+        text(VA_TEXT_6, (text = "Auto-highlight on command (flag, currently {imgui_auto_highlight_on_command}):"))
+        separator(VA_SEP_6)
         if (button(BTN_AUTO_ON, (text = "auto-highlight ON"))) {
             imgui_auto_highlight_on_command = true
         }

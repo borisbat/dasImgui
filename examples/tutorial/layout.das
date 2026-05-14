@@ -72,8 +72,8 @@ def update() {
 
         // Left rail: 200 px by default, draggable between 80 and 320 px.
         dock_left(SIDEBAR, (init = 200.0f, bounds = (80.0f, 320.0f))) {
-            Text("Sidebar")
-            Spacing()
+            text(LO_TEXT_1, (text = "Sidebar"))
+            spacing(LO_SP_1)
             button(EXPLORE_BTN, (text = "Explore"))
             button(SEARCH_BTN,  (text = "Search"))
             button(SOURCE_BTN,  (text = "Source"))
@@ -84,20 +84,20 @@ def update() {
                 ${
                     split_h(SPLIT_MAIN, (init = 0.4f, bounds = (0.1f, 0.9f)),
                             ${
-                                Text("Files")
+                                text(LO_TEXT_2, (text = "Files"))
                                 button(FILE_A_BTN, (text = "main.das"))
                                 button(FILE_B_BTN, (text = "lib.das"))
                             },
                             ${
-                                Text("Editor")
-                                Text("// drag the splitters")
-                                Text("// — the pane bounds")
-                                Text("//   stay clipped.")
+                                text(LO_TEXT_3, (text = "Editor"))
+                                text(LO_TEXT_4, (text = "// drag the splitters"))
+                                text(LO_TEXT_5, (text = "// — the pane bounds"))
+                                text(LO_TEXT_6, (text = "//   stay clipped."))
                             })
                 },
                 ${
-                    Text("Output")
-                    Text("> ready.")
+                    text(LO_TEXT_7, (text = "Output"))
+                    text(LO_TEXT_8, (text = "> ready."))
                     button(CLEAR_BTN, (text = "Clear output"))
                 })
     }
