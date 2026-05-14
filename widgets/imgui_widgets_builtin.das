@@ -1077,6 +1077,139 @@ def text_show(var state : TextShowState; value : string = "") {
     text_show_finalize(widget_ident, "text_show", state)
 }
 
+// ===== Display: narrative =====
+//
+// Read-only display widgets that surface text or decoration to the user.
+// Standard serializer (`JV(state)`) emits payload for telemetry:
+//   - NarrativeState   → {value: "<text>"}
+//   - LabelTextState   → {key: "<left>", value: "<right>"}
+//   - EmptyMarkerState → {}  (placeholder elides at zero)
+// All dispatchers are no-ops — these widgets don't accept commands.
+// `register_focusable` is NOT called (display widgets are not focusable).
+
+def private narrative_finalize(widget_ident : string; kind : string; var state : NarrativeState) {
+    var entry : WidgetEntry
+    unsafe {
+        let ser <- @ capture(& state) () : JsonValue ? {
+            return JV(state)
+        }
+        let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
+            // Read-only display; no L2/L3 actions.
+        }
+        widget_finalize(widget_ident, kind, entry, ser, disp)
+    }
+}
+
+def private label_text_finalize(widget_ident : string; kind : string; var state : LabelTextState) {
+    var entry : WidgetEntry
+    unsafe {
+        let ser <- @ capture(& state) () : JsonValue ? {
+            return JV(state)
+        }
+        let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
+            // Read-only display; no L2/L3 actions.
+        }
+        widget_finalize(widget_ident, kind, entry, ser, disp)
+    }
+}
+
+def private marker_finalize(widget_ident : string; kind : string; var state : EmptyMarkerState) {
+    var entry : WidgetEntry
+    unsafe {
+        let ser <- @ capture(& state) () : JsonValue ? {
+            return JV(state)
+        }
+        let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
+            // Stateless decoration; no L2/L3 actions.
+        }
+        widget_finalize(widget_ident, kind, entry, ser, disp)
+    }
+}
+
+[widget]
+def text(var state : NarrativeState; text : string) {
+    //! Plain text display. `state.value` echoes the call-site string for
+    //! `expect_value(IDENT, "literal")` assertions.
+    state.value := text
+    Text(text)
+    narrative_finalize(widget_ident, "text", state)
+}
+
+[widget]
+def text_unformatted(var state : NarrativeState; text : string) {
+    //! Like `text` but bypasses ImGui's printf-style format parsing — no `%` escaping needed.
+    state.value := text
+    TextUnformatted(text)
+    narrative_finalize(widget_ident, "text_unformatted", state)
+}
+
+[widget]
+def text_wrapped(var state : NarrativeState; text : string) {
+    //! Text wrapped to the current window or content-region width.
+    state.value := text
+    TextWrapped(text)
+    narrative_finalize(widget_ident, "text_wrapped", state)
+}
+
+[widget]
+def text_colored(var state : NarrativeState; color : float4; text : string) {
+    //! Tinted text — `color` overrides ``ImGuiCol_Text`` for this draw.
+    state.value := text
+    TextColored(color, text)
+    narrative_finalize(widget_ident, "text_colored", state)
+}
+
+[widget]
+def text_disabled(var state : NarrativeState; text : string) {
+    //! Text rendered in the disabled style (``ImGuiCol_TextDisabled``).
+    state.value := text
+    TextDisabled(text)
+    narrative_finalize(widget_ident, "text_disabled", state)
+}
+
+[widget]
+def bullet_text(var state : NarrativeState; text : string) {
+    //! Bullet point followed by text — like `bullet` + `text` in one call.
+    state.value := text
+    BulletText(text)
+    narrative_finalize(widget_ident, "bullet_text", state)
+}
+
+[widget]
+def bullet(var state : EmptyMarkerState) {
+    //! Renders a bullet glyph and stays on the current line. Follow with
+    //! `same_line` + content for prefix bullets, or use `bullet_text` for
+    //! "bullet + text" in one call.
+    Bullet()
+    marker_finalize(widget_ident, "bullet", state)
+}
+
+[widget]
+def label_text(var state : LabelTextState; key : string; value : string) {
+    //! Two-part display: `key` on the left in the label gutter, `value`
+    //! on the right. Both echoed for telemetry. The struct field is `key`
+    //! (not `label`) because `label` is reserved in gen2.
+    state.key := key
+    state.value := value
+    LabelText(key, value)
+    label_text_finalize(widget_ident, "label_text", state)
+}
+
+[widget]
+def separator(var state : EmptyMarkerState) {
+    //! Full-width horizontal divider line.
+    Separator()
+    marker_finalize(widget_ident, "separator", state)
+}
+
+[widget]
+def separator_text(var state : NarrativeState; text : string) {
+    //! Horizontal divider with an inline label.
+    state.value := text
+    SeparatorText(text)
+    narrative_finalize(widget_ident, "separator_text", state)
+}
+
 // ===== Plot lines / histogram (array form) =====
 //
 // Display widgets backed by `PlotState`. Plotted values come per-frame as
