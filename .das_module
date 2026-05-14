@@ -7,8 +7,13 @@ def initialize(project_path : string) {
         register_dynamic_module("{project_path}/dasModuleImgui.shared_module", "Module_dasIMGUI")
         register_dynamic_module("{project_path}/imguiApp.shared_module", "Module_imgui_app")
     }
-    register_native_path("imgui", "imgui_boost", "{project_path}/daslib/imgui_boost.das")
-    // Phase 0a — define_widget core. Coexists with v1 imgui_boost; v2 cutover lands in 0b.
+    // v1 imgui_boost registration disabled during the boost-v2 refactor.
+    // The file at `daslib/imgui_boost.das` is intentionally non-compileable
+    // until v1 is restored (see file header). Leaving the route mapped would
+    // surface as a parse error on any require; commenting it out makes
+    // `require imgui/imgui_boost` fail earlier with "module not found".
+    // register_native_path("imgui", "imgui_boost", "{project_path}/daslib/imgui_boost.das")
+    // Phase 0a — define_widget core. v2 surface; primary post-refactor home.
     register_native_path("imgui", "imgui_boost_v2", "{project_path}/widgets/imgui_boost.das")
     register_native_path("imgui", "imgui_boost_runtime", "{project_path}/widgets/imgui_boost_runtime.das")
     register_native_path("imgui", "imgui_widgets_builtin", "{project_path}/widgets/imgui_widgets_builtin.das")
@@ -33,4 +38,7 @@ def initialize(project_path : string) {
     register_native_path("imgui", "imgui_layout_builtin", "{project_path}/widgets/imgui_layout_builtin.das")
     // Phase 7 — docking (dockspace, dock_window) + DockBuilder bindings cherry-picked from imgui_internal.h.
     register_native_path("imgui", "imgui_docking_builtin", "{project_path}/widgets/imgui_docking_builtin.das")
+    // IM_COL32 packer split out from v1 imgui_boost (the legacy module is
+    // non-compileable during the v2 refactor; rgba+constants live here).
+    register_native_path("imgui", "imgui_colors", "{project_path}/widgets/imgui_colors.das")
 }

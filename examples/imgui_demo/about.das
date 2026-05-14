@@ -4,7 +4,7 @@ options indenting = 4
 module about
 
 require imgui
-require imgui/imgui_boost
+require imgui/imgui_containers_builtin
 require daslib/safe_addr
 
 // Module-scope state — replaces the C++ `static bool show_config_info`.
@@ -17,7 +17,8 @@ var ABOUT_SHOW_CONFIG_INFO = false
 //     meaningful translation to a daslang-hosted demo and are elided.
 //   - The C++ pointer-to-clipboard log path is preserved.
 def ShowAboutWindow() {
-    Begin("About Dear ImGui", null, ImGuiWindowFlags.AlwaysAutoResize) {
+    window(ABOUT_WINDOW, (text = "About Dear ImGui", closable = false,
+                          flags = ImGuiWindowFlags.AlwaysAutoResize)) {
         Text("Dear ImGui {IMGUI_VERSION} ({IMGUI_VERSION_NUM})")
         Separator()
         Text("By Omar Cornut and all Dear ImGui contributors.")

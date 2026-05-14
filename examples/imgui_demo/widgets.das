@@ -9,7 +9,7 @@ require imgui/imgui_containers_builtin
 require imgui/imgui_id_builtin
 require imgui/imgui_scope_builtin
 require imgui/imgui_style_builtin        // with_style call_macro
-require imgui/imgui_boost                // IM_COL32 helpers
+require imgui/imgui_colors               // rgba packer (formerly v1 IM_COL32)
 require daslib/safe_addr
 require math
 
@@ -68,7 +68,7 @@ var WIDGETS_IMAGES_PRESSED_COUNT = 0
 // ----- Indexed widget tables -----
 // The `[widget]` indexed form `IDENT[k]` requires a module-scope `table<K; ST>`
 // declared upfront (the macro does not auto-emit indexed tables — see
-// imgui_boost.das:432 "table global is not declared at module scope").
+// widgets/imgui_boost.das "table global is not declared at module scope").
 var private WIDGETS_BASIC_COLOR_BTN : table<int; ClickState>
 var private WIDGETS_TREE_BASIC : table<int; TreeNodeState>
 var private WIDGETS_TREE_BASIC_BTN : table<int; ClickState>
@@ -80,10 +80,10 @@ var private WIDGETS_IMAGES_BTN : table<int; ClickState>
 // Helpers
 // =============================================================================
 
-// Mirrors imgui_demo.cpp:181-191 HelpMarker(). Local rename: `imgui_boost.das`
-// already exports a `HelpMarker(desc, qsign : bool = true)` whose 1-arg form
-// clashes with a local `HelpMarker(desc)` (overload ambiguity, not a name
-// collision). Uses Phase 1 `with_text_wrap_pos` to scope PushTextWrapPos/Pop.
+// Mirrors imgui_demo.cpp:181-191 HelpMarker(). Local rename kept distinct
+// from the (currently non-compileable) v1 `HelpMarker(desc, qsign : bool)`
+// so the demo still compiles cleanly when v1 is restored. Uses Phase 1
+// `with_text_wrap_pos` to scope PushTextWrapPos/Pop.
 def private demo_help_marker(desc : string) {
     TextDisabled("(?)")
     if (IsItemHovered()) {
@@ -652,9 +652,9 @@ def private TextSection() {
                         // pick up `let`-const from a binding — AddRect/Filled
                         // need a non-const ImDrawList&.
                         *GetWindowDrawList() |> AddRect(GetItemRectMin(),
-                            GetItemRectMax(), IM_COL32(255u, 255u, 0u, 255u))
+                            GetItemRectMax(), rgba(255u, 255u, 0u, 255u))
                         *GetWindowDrawList() |> AddRectFilled(marker_min,
-                            marker_max, IM_COL32(255u, 0u, 255u, 255u))
+                            marker_max, rgba(255u, 0u, 255u, 255u))
                     }
                 }
             }
