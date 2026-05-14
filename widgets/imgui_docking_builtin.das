@@ -71,17 +71,13 @@ def private dockspace_finalize(widget_ident : string; var state : DockSpaceState
     var entry : WidgetEntry
     unsafe {
         let ser <- @ capture(= path) () : JsonValue ? {
-            let raw = lookup_state_addr(path)
-            return null if (raw == null)
-            var s = unsafe(reinterpret<typedecl(state)?>(raw))
-            return JV(*s)
+            return state_jv(path, type<typedecl(state)>)
         }
         let disp <- @ capture(= path) (action : string; payload : JsonValue ?) {
-            let raw = lookup_state_addr(path)
-            return if (raw == null)
-            var s = unsafe(reinterpret<typedecl(state)?>(raw))
-            if (action == "reset") {
-                s.pending_reset = true
+            with_state(path, type<typedecl(state)>) $(var s) {
+                if (action == "reset") {
+                    s.pending_reset = true
+                }
             }
         }
         container_finalize(widget_ident, "dockspace", entry, ser, disp)
@@ -93,34 +89,30 @@ def private dock_window_finalize(widget_ident : string; var state : DockWindowSt
     var entry : WidgetEntry
     unsafe {
         let ser <- @ capture(= path) () : JsonValue ? {
-            let raw = lookup_state_addr(path)
-            return null if (raw == null)
-            var s = unsafe(reinterpret<typedecl(state)?>(raw))
-            return JV(*s)
+            return state_jv(path, type<typedecl(state)>)
         }
         let disp <- @ capture(= path) (action : string; payload : JsonValue ?) {
-            let raw = lookup_state_addr(path)
-            return if (raw == null)
-            var s = unsafe(reinterpret<typedecl(state)?>(raw))
-            if (action == "open") {
-                s.pending_open = true
-            } elif (action == "close") {
-                s.pending_close = true
-            } elif (action == "dock") {
-                s.pending_dock_to = from_JV(payload?["value"], type<uint>, 0u)
-            } elif (action == "undock") {
-                s.pending_undock = true
-            } elif (action == "set_window_pos") {
-                //! Payload shape: `{x, y[, w, h]}` — pos always set, size optional.
-                let v = payload?["value"]
-                s.pending_pos = float2(v?["x"] ?? 0.0f, v?["y"] ?? 0.0f)
-                s.pending_pos_set = true
-                let has_w = v?["w"] != null
-                let has_h = v?["h"] != null
-                if (has_w || has_h) {
-                    s.pending_size = float2(v?["w"] ?? s.size.x,
-                                            v?["h"] ?? s.size.y)
-                    s.pending_size_set = true
+            with_state(path, type<typedecl(state)>) $(var s) {
+                if (action == "open") {
+                    s.pending_open = true
+                } elif (action == "close") {
+                    s.pending_close = true
+                } elif (action == "dock") {
+                    s.pending_dock_to = from_JV(payload?["value"], type<uint>, 0u)
+                } elif (action == "undock") {
+                    s.pending_undock = true
+                } elif (action == "set_window_pos") {
+                    //! Payload shape: `{x, y[, w, h]}` — pos always set, size optional.
+                    let v = payload?["value"]
+                    s.pending_pos = float2(v?["x"] ?? 0.0f, v?["y"] ?? 0.0f)
+                    s.pending_pos_set = true
+                    let has_w = v?["w"] != null
+                    let has_h = v?["h"] != null
+                    if (has_w || has_h) {
+                        s.pending_size = float2(v?["w"] ?? s.size.x,
+                                                v?["h"] ?? s.size.y)
+                        s.pending_size_set = true
+                    }
                 }
             }
         }

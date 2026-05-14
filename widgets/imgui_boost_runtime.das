@@ -728,20 +728,16 @@ def public pending_value_container_finalize(widget_ident : string; kind : string
     var entry : WidgetEntry
     unsafe {
         let ser <- @ capture(= path) () : JsonValue ? {
-            let raw = lookup_state_addr(path)
-            return null if (raw == null)
-            var s = unsafe(reinterpret<typedecl(state)?>(raw))
-            return JV(*s)
+            return state_jv(path, type<typedecl(state)>)
         }
         let disp <- @ capture(= path) (action : string; payload : JsonValue ?) {
-            let raw = lookup_state_addr(path)
-            return if (raw == null)
-            var s = unsafe(reinterpret<typedecl(state)?>(raw))
-            if (action == "set") {
-                s.pending_value = from_JV(payload?["value"],
-                                          type<typedecl(s.pending_value)>,
-                                          default<typedecl(s.pending_value)>)
-                s.has_pending = true
+            with_state(path, type<typedecl(state)>) $(var s) {
+                if (action == "set") {
+                    s.pending_value = from_JV(payload?["value"],
+                                              type<typedecl(s.pending_value)>,
+                                              default<typedecl(s.pending_value)>)
+                    s.has_pending = true
+                }
             }
         }
         container_finalize(widget_ident, kind, entry, ser, disp)
@@ -754,20 +750,16 @@ def public pending_value_finalize(widget_ident : string; kind : string; var stat
     var entry : WidgetEntry
     unsafe {
         let ser <- @ capture(= path) () : JsonValue ? {
-            let raw = lookup_state_addr(path)
-            return null if (raw == null)
-            var s = unsafe(reinterpret<typedecl(state)?>(raw))
-            return JV(*s)
+            return state_jv(path, type<typedecl(state)>)
         }
         let disp <- @ capture(= path) (action : string; payload : JsonValue ?) {
-            let raw = lookup_state_addr(path)
-            return if (raw == null)
-            var s = unsafe(reinterpret<typedecl(state)?>(raw))
-            if (action == "set") {
-                s.pending_value = from_JV(payload?["value"],
-                                          type<typedecl(s.pending_value)>,
-                                          default<typedecl(s.pending_value)>)
-                s.has_pending = true
+            with_state(path, type<typedecl(state)>) $(var s) {
+                if (action == "set") {
+                    s.pending_value = from_JV(payload?["value"],
+                                              type<typedecl(s.pending_value)>,
+                                              default<typedecl(s.pending_value)>)
+                    s.has_pending = true
+                }
             }
         }
         widget_finalize(widget_ident, kind, entry, ser, disp)
@@ -831,6 +823,26 @@ def public lookup_state_addr(path : string) : void? {
     let meta = unsafe(g_widgets?[path])
     return null if (meta == null)
     return invoke(meta.state_addr_getter)
+}
+
+def public state_jv(path : string; t : type<auto(T)>) : JsonValue? {
+    //! Safe serializer-side helper for ``[widget]`` finalize lambdas — resolves the live state-struct address at ``path`` and returns ``JV(state)``. Returns ``null`` when the slot is gone (erased indexed key) so the snapshot reports the widget without a payload instead of dereferencing a stale capture. Pair with :ref:`with_state <function-imgui_boost_runtime_with_state>` on the dispatcher side; together they let custom-widget finalize helpers stay free of ``unsafe`` / ``reinterpret``.
+    let raw = lookup_state_addr(path)
+    return null if (raw == null)
+    unsafe {
+        return JV(*reinterpret<T?>(raw))
+    }
+}
+
+def public with_state(path : string; t : type<auto(T)>;
+                      blk : block<(var s : T -const&) : void>) {
+    //! Safe dispatcher-side helper for ``[widget]`` finalize lambdas — resolves the live state-struct address at ``path`` and invokes ``blk`` with a mutable reference to the state. No-op when the slot is gone (erased indexed key). The block body looks like a plain ``state.field = ...`` mutation; the ``unsafe`` / ``reinterpret`` cast is hidden in this helper.
+    let raw = lookup_state_addr(path)
+    return if (raw == null)
+    unsafe {
+        var s & = *reinterpret<T -const?>(raw)
+        invoke(blk, s)
+    }
 }
 
 var private g_serializers : table<string; lambda<() : JsonValue?>>

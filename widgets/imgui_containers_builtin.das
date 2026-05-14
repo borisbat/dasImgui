@@ -44,19 +44,15 @@ def private open_close_finalize(widget_ident : string; kind : string; var state 
     var entry : WidgetEntry
     unsafe {
         let ser <- @ capture(= path) () : JsonValue ? {
-            let raw = lookup_state_addr(path)
-            return null if (raw == null)
-            var s = unsafe(reinterpret<typedecl(state)?>(raw))
-            return JV(*s)
+            return state_jv(path, type<typedecl(state)>)
         }
         let disp <- @ capture(= path) (action : string; payload : JsonValue ?) {
-            let raw = lookup_state_addr(path)
-            return if (raw == null)
-            var s = unsafe(reinterpret<typedecl(state)?>(raw))
-            if (action == "open") {
-                s.pending_open = true
-            } elif (action == "close") {
-                s.pending_close = true
+            with_state(path, type<typedecl(state)>) $(var s) {
+                if (action == "open") {
+                    s.pending_open = true
+                } elif (action == "close") {
+                    s.pending_close = true
+                }
             }
         }
         container_finalize(widget_ident, kind, entry, ser, disp)
@@ -68,10 +64,7 @@ def private stateless_finalize(widget_ident : string; kind : string; var state :
     var entry : WidgetEntry
     unsafe {
         let ser <- @ capture(= path) () : JsonValue ? {
-            let raw = lookup_state_addr(path)
-            return null if (raw == null)
-            var s = unsafe(reinterpret<typedecl(state)?>(raw))
-            return JV(*s)
+            return state_jv(path, type<typedecl(state)>)
         }
         let disp <- @ capture(= path) (action : string; payload : JsonValue ?) {
             // No actions; serializer is the only telemetry surface for stateless containers.
@@ -432,18 +425,14 @@ def combo_select(var state : ComboState; text : string; preview_value : string;
     var entry : WidgetEntry
     unsafe {
         let ser <- @ capture(= path) () : JsonValue ? {
-            let raw = lookup_state_addr(path)
-            return null if (raw == null)
-            var s = unsafe(reinterpret<typedecl(state)?>(raw))
-            return JV(*s)
+            return state_jv(path, type<typedecl(state)>)
         }
         let disp <- @ capture(= path) (action : string; payload : JsonValue ?) {
-            let raw = lookup_state_addr(path)
-            return if (raw == null)
-            var s = unsafe(reinterpret<typedecl(state)?>(raw))
-            if (action == "set") {
-                s.pending_value = payload?["value"] ?? 0
-                s.has_pending = true
+            with_state(path, type<typedecl(state)>) $(var s) {
+                if (action == "set") {
+                    s.pending_value = payload?["value"] ?? 0
+                    s.has_pending = true
+                }
             }
         }
         container_finalize(widget_ident, "combo_select", entry, ser, disp)
@@ -468,18 +457,14 @@ def list_box_select(var state : ListBoxState; text : string; size : float2; blk 
     var entry : WidgetEntry
     unsafe {
         let ser <- @ capture(= path) () : JsonValue ? {
-            let raw = lookup_state_addr(path)
-            return null if (raw == null)
-            var s = unsafe(reinterpret<typedecl(state)?>(raw))
-            return JV(*s)
+            return state_jv(path, type<typedecl(state)>)
         }
         let disp <- @ capture(= path) (action : string; payload : JsonValue ?) {
-            let raw = lookup_state_addr(path)
-            return if (raw == null)
-            var s = unsafe(reinterpret<typedecl(state)?>(raw))
-            if (action == "set") {
-                s.pending_value = payload?["value"] ?? 0
-                s.has_pending = true
+            with_state(path, type<typedecl(state)>) $(var s) {
+                if (action == "set") {
+                    s.pending_value = payload?["value"] ?? 0
+                    s.has_pending = true
+                }
             }
         }
         container_finalize(widget_ident, "list_box_select", entry, ser, disp)

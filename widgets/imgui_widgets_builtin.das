@@ -37,17 +37,13 @@ def private click_finalize(widget_ident : string; kind : string; var state : Cli
     var entry : WidgetEntry
     unsafe {
         let ser <- @ capture(= path) () : JsonValue ? {
-            let raw = lookup_state_addr(path)
-            return null if (raw == null)
-            var s = unsafe(reinterpret<typedecl(state)?>(raw))
-            return JV(*s)
+            return state_jv(path, type<typedecl(state)>)
         }
         let disp <- @ capture(= path) (action : string; payload : JsonValue ?) {
-            let raw = lookup_state_addr(path)
-            return if (raw == null)
-            var s = unsafe(reinterpret<typedecl(state)?>(raw))
-            if (action == "click") {
-                s.pending_click = true
+            with_state(path, type<typedecl(state)>) $(var s) {
+                if (action == "click") {
+                    s.pending_click = true
+                }
             }
         }
         widget_finalize(widget_ident, kind, entry, ser, disp)
@@ -62,18 +58,14 @@ def private toggle_finalize(widget_ident : string; kind : string; var state : To
     var entry : WidgetEntry
     unsafe {
         let ser <- @ capture(= path) () : JsonValue ? {
-            let raw = lookup_state_addr(path)
-            return null if (raw == null)
-            var s = unsafe(reinterpret<typedecl(state)?>(raw))
-            return JV(*s)
+            return state_jv(path, type<typedecl(state)>)
         }
         let disp <- @ capture(= path) (action : string; payload : JsonValue ?) {
-            let raw = lookup_state_addr(path)
-            return if (raw == null)
-            var s = unsafe(reinterpret<typedecl(state)?>(raw))
-            if (action == "set") {
-                s.pending_value = payload?["value"] ?? false
-                s.pending_toggle = true
+            with_state(path, type<typedecl(state)>) $(var s) {
+                if (action == "set") {
+                    s.pending_value = payload?["value"] ?? false
+                    s.pending_toggle = true
+                }
             }
         }
         widget_finalize(widget_ident, kind, entry, ser, disp)
@@ -88,18 +80,14 @@ def private radio_int_finalize(widget_ident : string; kind : string; var state :
     var entry : WidgetEntry
     unsafe {
         let ser <- @ capture(= path) () : JsonValue ? {
-            let raw = lookup_state_addr(path)
-            return null if (raw == null)
-            var s = unsafe(reinterpret<typedecl(state)?>(raw))
-            return JV(*s)
+            return state_jv(path, type<typedecl(state)>)
         }
         let disp <- @ capture(= path) (action : string; payload : JsonValue ?) {
-            let raw = lookup_state_addr(path)
-            return if (raw == null)
-            var s = unsafe(reinterpret<typedecl(state)?>(raw))
-            if (action == "set") {
-                s.pending_value = payload?["value"] ?? 0
-                s.pending_set = true
+            with_state(path, type<typedecl(state)>) $(var s) {
+                if (action == "set") {
+                    s.pending_value = payload?["value"] ?? 0
+                    s.pending_set = true
+                }
             }
         }
         widget_finalize(widget_ident, kind, entry, ser, disp)
@@ -116,18 +104,14 @@ def private text_value_finalize(widget_ident : string; kind : string; var state 
     var entry : WidgetEntry
     unsafe {
         let ser <- @ capture(= path) () : JsonValue ? {
-            let raw = lookup_state_addr(path)
-            return null if (raw == null)
-            var s = unsafe(reinterpret<typedecl(state)?>(raw))
-            return JV(*s)
+            return state_jv(path, type<typedecl(state)>)
         }
         let disp <- @ capture(= path) (action : string; payload : JsonValue ?) {
-            let raw = lookup_state_addr(path)
-            return if (raw == null)
-            var s = unsafe(reinterpret<typedecl(state)?>(raw))
-            if (action == "set") {
-                s.pending_value := payload?["value"] ?? ""
-                s.has_pending = true
+            with_state(path, type<typedecl(state)>) $(var s) {
+                if (action == "set") {
+                    s.pending_value := payload?["value"] ?? ""
+                    s.has_pending = true
+                }
             }
         }
         widget_finalize(widget_ident, kind, entry, ser, disp)
@@ -1095,17 +1079,13 @@ def private text_show_finalize(widget_ident : string; kind : string; var state :
     var entry : WidgetEntry
     unsafe {
         let ser <- @ capture(= path) () : JsonValue ? {
-            let raw = lookup_state_addr(path)
-            return null if (raw == null)
-            var s = unsafe(reinterpret<typedecl(state)?>(raw))
-            return JV(*s)
+            return state_jv(path, type<typedecl(state)>)
         }
         let disp <- @ capture(= path) (action : string; payload : JsonValue ?) {
-            let raw = lookup_state_addr(path)
-            return if (raw == null)
-            var s = unsafe(reinterpret<typedecl(state)?>(raw))
-            if (action == "set") {
-                s.value := payload?["value"] ?? ""
+            with_state(path, type<typedecl(state)>) $(var s) {
+                if (action == "set") {
+                    s.value := payload?["value"] ?? ""
+                }
             }
         }
         widget_finalize(widget_ident, kind, entry, ser, disp)
@@ -1151,10 +1131,7 @@ def private plot_finalize(widget_ident : string; kind : string; var state : Plot
     var entry : WidgetEntry
     unsafe {
         let ser <- @ capture(= path) () : JsonValue ? {
-            let raw = lookup_state_addr(path)
-            return null if (raw == null)
-            var s = unsafe(reinterpret<typedecl(state)?>(raw))
-            return JV(*s)
+            return state_jv(path, type<typedecl(state)>)
         }
         let disp <- @ capture(= path) (action : string; payload : JsonValue ?) {
             // Plot is read-only; no L2/L3 actions. Dispatcher is a no-op.
