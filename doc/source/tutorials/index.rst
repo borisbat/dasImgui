@@ -13,6 +13,7 @@ construction.
 
    boost_basics.rst
    widgets_tour.rst
+   custom_widgets.rst
    layout.rst
    docking.rst
    with_style.rst

@@ -212,32 +212,56 @@ with_id("section_a") {
 
 ### 4.9 User-extensible widgets
 
-The boost provides `define_widget` as the canonical extension mechanism. **Built-in widgets are defined using it** — no internal-only path:
+The boost provides the **`[widget]` function-annotation** as the canonical extension mechanism. **Every built-in is defined using it** — no internal-only path. (Original sketches in earlier drafts of this section used a `define_widget(name, State) $(state, label)` block-arg shape; daslang call_macros only fire inside expressions, not at top-level `def`, so the function-annotation form is what actually shipped.)
 
 ```das
-// shipped with the boost
-define_widget(button, ButtonState) $(state, label : string) {
-    let clicked = ImGui::Button(label)
-    if (state.pending_click) {
-        state.pending_click = false
-        return true   // L2 short-circuit (see §6)
+// shipped with the boost (widgets/imgui_widgets_builtin.das)
+[widget]
+def slider_float(var state : SliderStateFloat; text : string;
+                 format : string = "%.3f";
+                 flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    if (state.has_pending) {
+        state.value = state.pending_value
+        state.has_pending = false
     }
-    return clicked
+    let (mn, mx) = state.bounds
+    let changed = SliderFloat(text, unsafe(addr(state.value)), mn, mx, format, flags)
+    state.changed = changed
+    pending_value_finalize(widget_ident, "slider_float", state)
+    return changed
 }
 
-// user-defined custom widget
-define_widget(my_color_picker, MyColorPickerState) $(state, label : string) {
-    invisible_button(label, ImVec2(60, 20))
-    if (is_item_clicked()) { state.open = !state.open }
-    let dl = get_window_draw_list()
-    add_rect_filled(dl, get_item_rect_min(), get_item_rect_max(), state.color)
-    if (state.open) { /* popup with sliders */ }
+// user-defined custom widget (examples/tutorial/custom_widgets.das)
+[widget]
+def knob(var state : VolumeKnobState; text : string) : bool {
+    if (state.has_pending) {
+        state.value = state.pending_value
+        state.has_pending = false
+    }
+    // InvisibleButton + DrawList — the canonical pattern.
+    InvisibleButton(text, ImVec2(72.0f, 96.0f))
+    if (IsItemActive()) { /* update state.value from GetIO().MouseDelta */ }
+    /* drawlist primitives: AddCircleFilled, AddLine, AddText */
+    pending_value_finalize(widget_ident, "knob", state)
+    return state.changed
 }
 ```
 
-Power users can hand-write the call_macro if `define_widget` doesn't fit — the escape hatch stays open.
+**Contract** — the `[widget]` annotation injects:
 
-The exact contract — what the macro injects around the user body (id push, hex_id/bbox capture, hover/active/focus, registry insert), what the user body sees as `state`, how state-pending fields like `pending_click` flow back — is **deferred to Phase 0a**. The button case above is enough to anchor design; the stateful contract lands as code, then doc backfills.
+- `widget_ident : string` parameter at position 1 (between `state` and user-facing args). The body passes it to the finalize call.
+- `widget_prelude(widget_ident)` at the top of the body — pushes ImGui ID, applies pending focus.
+- Registers a per-kind `WidgetCallMacro` that intercepts `<kind>(IDENT, ...)` call sites, auto-emits the named global on first use, and parses dotted-suffix flags (`.PUBLIC` / `.NOTLIVE`).
+
+`pending_value_finalize(widget_ident, kind, state)` (in `widgets/imgui_boost_runtime.das`) does:
+
+- bbox / hex_id / hover / active / focus capture from the **last ImGui item** (your `InvisibleButton` or stock call).
+- Registry insert keyed on the widget path.
+- Installs serializer (drives `imgui_snapshot`) + dispatcher (drives `imgui_set`) lambdas — both generic on the state-struct type, picking up every field via `typedecl`.
+
+Power users can hand-write `<kind>_finalize` directly if `pending_value_finalize` doesn't fit (boolean toggles, multi-action widgets, plots) — `click_finalize` / `toggle_finalize` / `plot_finalize` in `widgets/imgui_widgets_builtin.das` are the in-tree templates.
+
+See **:ref:`tutorial_custom_widgets`** for the full walkthrough.
 
 ---
 

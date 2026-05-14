@@ -109,7 +109,8 @@ Next steps
 ==========
 
 Layout helpers — splitters, columns, child windows — are next on top of the
-same widget set.
+same widget set. To write your own widget kind on the same rails — a rotary
+knob, an XY-pad, a meter — see :ref:`tutorial_custom_widgets`.
 
 .. seealso::
 
@@ -120,7 +121,7 @@ same widget set.
 
    Previous tutorial: :ref:`tutorial_boost_basics`
 
-   Next tutorial: :ref:`tutorial_layout`
+   Next tutorial: :ref:`tutorial_custom_widgets`
 
    :ref:`Boost macros <stdlib_imgui_boost_section>` — the macro layer.
 
