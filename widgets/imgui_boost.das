@@ -148,60 +148,122 @@ class WidgetCallMacro : AstCallMacro {
         return argIndex != 0
     }
 
+    // Auto-gen state-global identifier for no-ident call forms. `__widget_`
+    // prefix + line + column packs a unique-within-module name into a legal
+    // daslang identifier. Two widget calls on the same line use different
+    // columns so they don't collide.
+    def private synth_bare_name(at : LineInfo) : string {
+        return "__widget_{at.line:d}_{at.column:d}"
+    }
+
+    // Auto-gen telemetry path key: `<module>:<line>:<column>`. Surfaces in
+    // imgui_snapshot under `<window>/<this>`. Shifts on edits — explicit
+    // idents remain the right answer when path stability matters
+    // (interactive widgets driven by test commands).
+    def private synth_path_key(mod : Module?; at : LineInfo) : string {
+        let modName = mod == null ? "anon" : string(mod.name)
+        return "{modName}:{at.line:d}:{at.column:d}"
+    }
+
+    // Positional-string sugar (`text("hello")` etc.) is only valid when the
+    // user-facing signature is exactly a single `string` argument — i.e. the
+    // narrative-text family. Signature after widget_ident injection:
+    // (state; widget_ident; text : string) — length 3, last arg is string.
+    def private accepts_positional_string() : bool {
+        return false if (render_fn == null)
+        return false if (length(render_fn.arguments) != 3)
+        let argT = render_fn.arguments[2]._type
+        return false if (argT == null)
+        return argT.baseType == Type.tString
+    }
+
     def override visit(prog : ProgramPtr; mod : Module?; var expr : ExprCallMacro?) : ExpressionPtr {
         if (empty(expr.arguments)) {
-            macro_error(prog, expr.at, "{kind_name}(IDENT, ...): missing widget identifier")
+            macro_error(prog, expr.at, "{kind_name}(...): missing widget body — pass `(named=arg, …)` or, for narrative widgets, a single string literal")
             return <- default<ExpressionPtr>
         }
-        // Walk the leading-arg AST to extract:
-        //   IDENT                  → bareName = IDENT (single-global)
-        //   IDENT.FLAG[.FLAG2...]  → bareName = IDENT, flags = [FLAG, FLAG2, ...]
-        //   IDENT[expr]            → bareName = IDENT, indexExpr = expr (table form, §4.4)
-        // Parse layout: outermost is optionally ExprAt (subscript); inside it
-        // is an optional ExprField chain (dotted flags); the leaf is ExprVar.
-        // Flags + subscript not allowed together (flags belong on the user's
-        // declared table, not the indexed reference).
+        // Three call forms:
+        //   1. EXPLICIT      kind(IDENT, (...))              — leading ident drives state global
+        //   2. AUTO-GEN      kind((...))                     — first arg is a named-tuple; ident synthesized from source location
+        //   3. POSITIONAL    kind("string")                  — single-string sugar for narrative-text family; rewrites to AUTO-GEN
+        // When the user wants to read state (`.value`/`.click_count`), they
+        // must use form 1; the synthesized name in forms 2/3 is internal and
+        // shifts on edits. Documented as "want state, name state".
         var bareName : string
+        var widgetIdentOverride : string
         var rawName : string
         var flagsReversed : array<string>
         var indexExpr : ExpressionPtr
-        var cursor : Expression const? = expr.arguments[0]
-        if (cursor is ExprAt) {
-            let ea = cursor as ExprAt
-            // ExprSafeAt (?[]) is a subclass of ExprAt in C++; reject explicitly.
-            if (cursor.__rtti != "ExprAt") {
-                macro_error(prog, expr.at, "{kind_name}(IDENT[k]): safe subscript ?[k] not supported on indexed widgets")
+        var firstUserArg = 1
+        let head = expr.arguments[0]
+        if (head is ExprConstString) {
+            // Form 3: positional-string sugar. Valid only when the widget
+            // signature is exactly (state; widget_ident; text : string).
+            if (!accepts_positional_string()) {
+                macro_error(prog, head.at, "{kind_name}: positional-string form `{kind_name}(\"…\")` is only valid for single-string narrative widgets (text/text_unformatted/text_wrapped/text_disabled/bullet_text/separator_text). Use the named-tuple form `{kind_name}((…))` instead.")
                 return <- default<ExpressionPtr>
             }
-            indexExpr = clone_expression(ea.index)
-            cursor = ea.subexpr
+            bareName = synth_bare_name(expr.at)
+            widgetIdentOverride = synth_path_key(mod, expr.at)
+            firstUserArg = 0
+            // Rewrite expr.arguments[0] from the bare string to a synthesized
+            // named-tuple `(text = "literal")` so the destructure loop below
+            // emits a single positional `text` arg into the rewritten call.
+            var synth = new ExprMakeTuple(at = head.at)
+            synth.recordNames.resize(1)
+            synth.recordNames[0] := "text"
+            synth.values |> push(clone_expression(head))
+            expr.arguments[0] = synth
+        } elif (head is ExprMakeTuple && (head as ExprMakeTuple) != null
+                && length((head as ExprMakeTuple).recordNames) == length((head as ExprMakeTuple).values)
+                && !empty((head as ExprMakeTuple).recordNames)) {
+            // Form 2: auto-gen ident from source location. The first arg is a
+            // named-tuple — user did not supply an ident.
+            bareName = synth_bare_name(expr.at)
+            widgetIdentOverride = synth_path_key(mod, expr.at)
+            firstUserArg = 0
         }
-        while (cursor is ExprField) {
-            let fld = cursor as ExprField
-            flagsReversed |> push(string(fld.name))
-            cursor = fld.value
-        }
-        if (cursor is ExprVar) {
-            bareName = string((cursor as ExprVar).name)
-        } else {
-            macro_error(prog, expr.at, "{kind_name}(IDENT...): first argument must be an identifier, `IDENT.FLAG[.FLAG...]`, or `IDENT[key]`, got {describe(expr.arguments[0])}")
-            return <- default<ExpressionPtr>
-        }
-        if (indexExpr != null && !empty(flagsReversed)) {
-            macro_error(prog, expr.at, "{kind_name}({bareName}[k]): dotted flags (.PUBLIC/.NOTLIVE) not supported on indexed form — declare the table global with required annotations directly")
-            return <- default<ExpressionPtr>
-        }
-        // Indexed (table-form) widget: distinct path from single-global —
-        // table global is user-declared, wrapper helper is generated per
-        // (kind, IDENT), no init=/bounds= sugar (use [init] for imperative
-        // pre-population). Returns the wrapper-call rewrite.
-        return <- emit_indexed_call(prog, mod, expr, bareName, indexExpr) if (indexExpr != null)
-        // Reconstruct rawName for error messages (source order).
-        rawName = build_string() $(var w) {
-            w |> write(bareName)
-            for (i in range(0, length(flagsReversed))) {
-                w |> write(".")
-                w |> write(flagsReversed[length(flagsReversed) - 1 - i])
+        // Form 1: explicit ident — leading-arg parser. Skipped when bareName
+        // is already populated by the auto-gen / positional-string branches.
+        if (empty(bareName)) {
+            var cursor : Expression const? = expr.arguments[0]
+            if (cursor is ExprAt) {
+                let ea = cursor as ExprAt
+                // ExprSafeAt (?[]) is a subclass of ExprAt in C++; reject explicitly.
+                if (cursor.__rtti != "ExprAt") {
+                    macro_error(prog, expr.at, "{kind_name}(IDENT[k]): safe subscript ?[k] not supported on indexed widgets")
+                    return <- default<ExpressionPtr>
+                }
+                indexExpr = clone_expression(ea.index)
+                cursor = ea.subexpr
+            }
+            while (cursor is ExprField) {
+                let fld = cursor as ExprField
+                flagsReversed |> push(string(fld.name))
+                cursor = fld.value
+            }
+            if (cursor is ExprVar) {
+                bareName = string((cursor as ExprVar).name)
+            } else {
+                macro_error(prog, expr.at, "{kind_name}(...): first argument must be an identifier, named-tuple `(…)`, dotted-flag `IDENT.FLAG[.FLAG…]`, indexed `IDENT[key]`, or (for narrative widgets) a string literal; got {describe(expr.arguments[0])}")
+                return <- default<ExpressionPtr>
+            }
+            if (indexExpr != null && !empty(flagsReversed)) {
+                macro_error(prog, expr.at, "{kind_name}({bareName}[k]): dotted flags (.PUBLIC/.NOTLIVE) not supported on indexed form — declare the table global with required annotations directly")
+                return <- default<ExpressionPtr>
+            }
+            // Indexed (table-form) widget: distinct path from single-global —
+            // table global is user-declared, wrapper helper is generated per
+            // (kind, IDENT), no init=/bounds= sugar (use [init] for imperative
+            // pre-population). Returns the wrapper-call rewrite.
+            return <- emit_indexed_call(prog, mod, expr, bareName, indexExpr) if (indexExpr != null)
+            // Reconstruct rawName for error messages (source order).
+            rawName = build_string() $(var w) {
+                w |> write(bareName)
+                for (i in range(0, length(flagsReversed))) {
+                    w |> write(".")
+                    w |> write(flagsReversed[length(flagsReversed) - 1 - i])
+                }
             }
         }
         if (empty(bareName)) {
@@ -267,7 +329,7 @@ class WidgetCallMacro : AstCallMacro {
         var idOverridePresent = false
         var pathOverride : string
         var pathOverridePresent = false
-        for (i in range(1, length(expr.arguments))) {
+        for (i in range(firstUserArg, length(expr.arguments))) {
             let a = expr.arguments[i]
             if (a is ExprMakeTuple) {
                 let mt = a as ExprMakeTuple
@@ -380,14 +442,19 @@ class WidgetCallMacro : AstCallMacro {
         // ExprNamedCall and bypasses call_macro dispatch entirely. Destructure
         // named tuples into positional args (in source order — matches the
         // user-facing parameter order).
+        // widgetIdent precedence: user `path=` override → auto-gen
+        // `mod:line:col` synthesized at the top → fallback to bareName.
         var widgetIdent = bareName
+        if (!empty(widgetIdentOverride)) {
+            widgetIdent = widgetIdentOverride
+        }
         if (pathOverridePresent) {
             widgetIdent = pathOverride
         }
         var newCall = new ExprCall(at = expr.at, name := render_fn_name)
         newCall.arguments |> push(new ExprVar(at = expr.at, name := bareName))
         newCall.arguments |> push(new ExprConstString(at = expr.at, value := widgetIdent))
-        for (i in range(1, length(expr.arguments))) {
+        for (i in range(firstUserArg, length(expr.arguments))) {
             let a = expr.arguments[i]
             if (a is ExprMakeTuple) {
                 let mt = a as ExprMakeTuple
