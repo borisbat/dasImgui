@@ -1317,6 +1317,38 @@ def image(var state : ImageState; user_texture_id : void?; size : float2;
     image_finalize(widget_ident, "image", state)
 }
 
+// ===== Display: tooltip (flat form) =====
+//
+// Stateless one-liner tooltips. `set_tooltip` always shows the tooltip
+// (override any previous SetTooltip in the same frame). `set_item_tooltip`
+// only shows when the immediately-preceding widget is hovered — ImGui's
+// `if (IsItemHovered(ForTooltip)) SetTooltip(text)` shortcut.
+//
+// Block-form tooltips (drawing arbitrary widgets inside the tooltip
+// window) live in `imgui_containers_builtin.das` as the `tooltip` and
+// `item_tooltip` [container]s. Use flat form for simple text-only popups.
+
+[widget]
+def set_tooltip(var state : NarrativeState; text : string) {
+    //! Show `text` as the active tooltip; overrides any previous SetTooltip
+    //! in the same frame. For hover-gated tooltips use `set_item_tooltip`.
+    state.value := text
+    SetTooltip(text)
+    narrative_finalize(widget_ident, "set_tooltip", state)
+}
+
+[widget]
+def set_item_tooltip(var state : NarrativeState; text : string) {
+    //! Show `text` as a tooltip when the immediately-preceding widget is
+    //! hovered. ImGui's `if (IsItemHovered(ForTooltip)) SetTooltip(text)`
+    //! idiom — `SetItemTooltip` isn't in the daslang bindings, so we inline.
+    state.value := text
+    if (IsItemHovered(ImGuiHoveredFlags.ForTooltip)) {
+        SetTooltip(text)
+    }
+    narrative_finalize(widget_ident, "set_item_tooltip", state)
+}
+
 // ===== Plot lines / histogram (array form) =====
 //
 // Display widgets backed by `PlotState`. Plotted values come per-frame as
