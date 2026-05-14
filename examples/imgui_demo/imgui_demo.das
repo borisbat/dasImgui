@@ -46,16 +46,3 @@ def RunImGuiDemo() {
         ShowDemoWindowInputs()
     }
 }
-
-// Tooltip helper used across all sections. Mirrors imgui_demo.cpp:181-191
-// HelpMarker(). Public so any section file can use it without redefining.
-def HelpMarker(desc : string) {
-    TextDisabled("(?)")
-    if (IsItemHovered()) {
-        BeginTooltip()
-        PushTextWrapPos(GetFontSize() * 35.0)
-        TextUnformatted(desc)
-        PopTextWrapPos()
-        EndTooltip()
-    }
-}

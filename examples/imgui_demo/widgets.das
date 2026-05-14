@@ -80,22 +80,6 @@ var private WIDGETS_IMAGES_BTN : table<int; ClickState>
 // Helpers
 // =============================================================================
 
-// Mirrors imgui_demo.cpp:181-191 HelpMarker(). Local rename kept distinct
-// from the (currently non-compileable) v1 `HelpMarker(desc, qsign : bool)`
-// so the demo still compiles cleanly when v1 is restored. Uses Phase 1
-// `with_text_wrap_pos` to scope PushTextWrapPos/Pop.
-def private demo_help_marker(desc : string) {
-    TextDisabled("(?)")
-    if (IsItemHovered()) {
-        BeginTooltip()
-        with_text_wrap_pos(GetFontSize() * 35.0f) {
-            TextUnformatted(desc)
-        }
-        EndTooltip()
-    }
-}
-
-
 // =============================================================================
 // ShowDemoWindowWidgets — dispatcher
 // =============================================================================
@@ -187,19 +171,25 @@ def private BasicSection() {
         SeparatorText("Inputs")
 
         input_text(WIDGETS_BASIC_STR0, (text = "input text", init = "Hello, world!"))
-        SameLine(); demo_help_marker(
-            "USER:\n" +
-            "Hold SHIFT or use mouse to select text.\n" +
-            "CTRL+Left/Right to word jump.\n" +
-            "CTRL+A or Double-Click to select all.\n" +
-            "CTRL+X,CTRL+C,CTRL+V clipboard.\n" +
-            "CTRL+Z,CTRL+Y undo/redo.\n" +
-            "ESCAPE to revert.\n\n" +
-            "PROGRAMMER:\n" +
-            "You can use the ImGuiInputTextFlags_CallbackResize facility if you " +
-            "need to wire InputText() to a dynamic string type. See misc/cpp/" +
-            "imgui_stdlib.h for an example (this is not demonstrated in " +
-            "imgui_demo.cpp).")
+        SameLine()
+        text_disabled(WIDGETS_BASIC_HM1_HINT, (text = "(?)"))
+        item_tooltip(WIDGETS_BASIC_HM1_TIP) {
+            with_text_wrap_pos(GetFontSize() * 35.0f) {
+                text_unformatted(WIDGETS_BASIC_HM1_TEXT, (text =
+                    "USER:\n" +
+                    "Hold SHIFT or use mouse to select text.\n" +
+                    "CTRL+Left/Right to word jump.\n" +
+                    "CTRL+A or Double-Click to select all.\n" +
+                    "CTRL+X,CTRL+C,CTRL+V clipboard.\n" +
+                    "CTRL+Z,CTRL+Y undo/redo.\n" +
+                    "ESCAPE to revert.\n\n" +
+                    "PROGRAMMER:\n" +
+                    "You can use the ImGuiInputTextFlags_CallbackResize facility if you " +
+                    "need to wire InputText() to a dynamic string type. See misc/cpp/" +
+                    "imgui_stdlib.h for an example (this is not demonstrated in " +
+                    "imgui_demo.cpp)."))
+            }
+        }
 
         input_text_with_hint(WIDGETS_BASIC_STR1,
             (text = "input text (w/ hint)", hint = "enter text here"))
@@ -214,19 +204,31 @@ def private BasicSection() {
         input_float(WIDGETS_BASIC_F_SCI,
             (text = "input scientific", init = 1.0e10f,
              step = 0.0f, step_fast = 0.0f, format = "%e"))
-        SameLine(); demo_help_marker(
-            "You can input value using the scientific notation,\n" +
-            "  e.g. \"1e+8\" becomes \"100000000\".")
+        SameLine()
+        text_disabled(WIDGETS_BASIC_HM2_HINT, (text = "(?)"))
+        item_tooltip(WIDGETS_BASIC_HM2_TIP) {
+            with_text_wrap_pos(GetFontSize() * 35.0f) {
+                text_unformatted(WIDGETS_BASIC_HM2_TEXT, (text =
+                    "You can input value using the scientific notation,\n" +
+                    "  e.g. \"1e+8\" becomes \"100000000\"."))
+            }
+        }
         input_float3(WIDGETS_BASIC_VEC4A,
             (text = "input float3", init = float3(0.10f, 0.20f, 0.30f)))
 
         SeparatorText("Drags")
 
         drag_int(WIDGETS_BASIC_DRAG_I1, (text = "drag int", init = 50, speed = 1.0f))
-        SameLine(); demo_help_marker(
-            "Click and drag to edit value.\n" +
-            "Hold SHIFT/ALT for faster/slower edit.\n" +
-            "Double-click or CTRL+click to input value.")
+        SameLine()
+        text_disabled(WIDGETS_BASIC_HM3_HINT, (text = "(?)"))
+        item_tooltip(WIDGETS_BASIC_HM3_TIP) {
+            with_text_wrap_pos(GetFontSize() * 35.0f) {
+                text_unformatted(WIDGETS_BASIC_HM3_TEXT, (text =
+                    "Click and drag to edit value.\n" +
+                    "Hold SHIFT/ALT for faster/slower edit.\n" +
+                    "Double-click or CTRL+click to input value."))
+            }
+        }
 
         drag_int(WIDGETS_BASIC_DRAG_I2,
             (text = "drag int 0..100", init = 42, speed = 1.0f, bounds = (0, 100),
@@ -241,7 +243,13 @@ def private BasicSection() {
 
         slider_int(WIDGETS_BASIC_SLIDER_I1,
             (text = "slider int", init = 0, bounds = (-1, 3)))
-        SameLine(); demo_help_marker("CTRL+click to input value.")
+        SameLine()
+        text_disabled(WIDGETS_BASIC_HM4_HINT, (text = "(?)"))
+        item_tooltip(WIDGETS_BASIC_HM4_TIP) {
+            with_text_wrap_pos(GetFontSize() * 35.0f) {
+                text_unformatted(WIDGETS_BASIC_HM4_TEXT, (text = "CTRL+click to input value."))
+            }
+        }
 
         slider_float(WIDGETS_BASIC_SLIDER_F1,
             (text = "slider float", init = 0.123f, bounds = (0.0f, 1.0f),
@@ -261,19 +269,31 @@ def private BasicSection() {
         let elem_name = (elem_v >= 0 && elem_v < 4) ? elem_names[elem_v] : "Unknown"
         slider_int(WIDGETS_BASIC_ELEM,
             (text = "slider enum", init = 0, bounds = (0, 3), format = elem_name))
-        SameLine(); demo_help_marker(
-            "Using the format string parameter to display a name instead of the " +
-            "underlying integer.")
+        SameLine()
+        text_disabled(WIDGETS_BASIC_HM5_HINT, (text = "(?)"))
+        item_tooltip(WIDGETS_BASIC_HM5_TIP) {
+            with_text_wrap_pos(GetFontSize() * 35.0f) {
+                text_unformatted(WIDGETS_BASIC_HM5_TEXT, (text =
+                    "Using the format string parameter to display a name instead of the " +
+                    "underlying integer."))
+            }
+        }
 
         SeparatorText("Selectors/Pickers")
 
         color_edit3(WIDGETS_BASIC_COL1,
             (text = "color 1", init = float3(1.0f, 0.0f, 0.2f)))
-        SameLine(); demo_help_marker(
-            "Click on the color square to open a color picker.\n" +
-            "Click and hold to use drag and drop.\n" +
-            "Right-click on the color square to show options.\n" +
-            "CTRL+click on individual component to input value.\n")
+        SameLine()
+        text_disabled(WIDGETS_BASIC_HM6_HINT, (text = "(?)"))
+        item_tooltip(WIDGETS_BASIC_HM6_TIP) {
+            with_text_wrap_pos(GetFontSize() * 35.0f) {
+                text_unformatted(WIDGETS_BASIC_HM6_TEXT, (text =
+                    "Click on the color square to open a color picker.\n" +
+                    "Click and hold to use drag and drop.\n" +
+                    "Right-click on the color square to show options.\n" +
+                    "CTRL+click on individual component to input value.\n"))
+            }
+        }
         color_edit4(WIDGETS_BASIC_COL2,
             (text = "color 2", init = float4(0.4f, 0.7f, 0.0f, 0.5f)))
 
@@ -282,10 +302,16 @@ def private BasicSection() {
             (text = "combo", init = 0,
              items <- ["AAAA", "BBBB", "CCCC", "DDDD", "EEEE", "FFFF", "GGGG",
                        "HHHH", "IIIIIII", "JJJJ", "KKKKKKK"]))
-        SameLine(); demo_help_marker(
-            "Using the simplified one-liner Combo API here.\n" +
-            "Refer to the \"Combo\" section below for an explanation of how to " +
-            "use the more flexible and general BeginCombo/EndCombo API.")
+        SameLine()
+        text_disabled(WIDGETS_BASIC_HM7_HINT, (text = "(?)"))
+        item_tooltip(WIDGETS_BASIC_HM7_TIP) {
+            with_text_wrap_pos(GetFontSize() * 35.0f) {
+                text_unformatted(WIDGETS_BASIC_HM7_TEXT, (text =
+                    "Using the simplified one-liner Combo API here.\n" +
+                    "Refer to the \"Combo\" section below for an explanation of how to " +
+                    "use the more flexible and general BeginCombo/EndCombo API."))
+            }
+        }
 
         // One-liner ListBox — the [widget] items-array form was retired in Phase 1
         // (boost `list_box` is now the manual BeginListBox/EndListBox container).
@@ -302,9 +328,15 @@ def private BasicSection() {
                 }
             }
         }
-        SameLine(); demo_help_marker(
-            "Using the manual BeginListBox/EndListBox idiom here.\n" +
-            "Refer to the \"List boxes\" section below for the full discussion.")
+        SameLine()
+        text_disabled(WIDGETS_BASIC_HM8_HINT, (text = "(?)"))
+        item_tooltip(WIDGETS_BASIC_HM8_TIP) {
+            with_text_wrap_pos(GetFontSize() * 35.0f) {
+                text_unformatted(WIDGETS_BASIC_HM8_TEXT, (text =
+                    "Using the manual BeginListBox/EndListBox idiom here.\n" +
+                    "Refer to the \"List boxes\" section below for the full discussion."))
+            }
+        }
     }
 }
 
@@ -318,10 +350,15 @@ def private TooltipsSection() {
         (text = "Tooltips", flags = ImGuiTreeNodeFlags.None)) {
 
         SeparatorText("General")
-        demo_help_marker(
-            "Tooltip are typically created by using a IsItemHovered() + " +
-            "SetTooltip() sequence.\n\nWe provide a helper SetItemTooltip() " +
-            "function to perform the two with standards flags.")
+        text_disabled(WIDGETS_TIPS_HM1_HINT, (text = "(?)"))
+        item_tooltip(WIDGETS_TIPS_HM1_TIP) {
+            with_text_wrap_pos(GetFontSize() * 35.0f) {
+                text_unformatted(WIDGETS_TIPS_HM1_TEXT, (text =
+                    "Tooltip are typically created by using a IsItemHovered() + " +
+                    "SetTooltip() sequence.\n\nWe provide a helper SetItemTooltip() " +
+                    "function to perform the two with standards flags."))
+            }
+        }
 
         // The C++ demo passes `ImVec2(-FLT_MIN, 0.0f)` to give every button
         // full row width; the boost `button` widget doesn't expose `size` yet, so
@@ -360,11 +397,16 @@ def private TooltipsSection() {
         }
 
         SeparatorText("Custom")
-        demo_help_marker(
-            "Passing ImGuiHoveredFlags_ForTooltip to IsItemHovered() is the " +
-            "preferred way to standardize tooltip activation details across " +
-            "your application. You may however decide to use custom flags for " +
-            "a specific tooltip instance.")
+        text_disabled(WIDGETS_TIPS_HM2_HINT, (text = "(?)"))
+        item_tooltip(WIDGETS_TIPS_HM2_TIP) {
+            with_text_wrap_pos(GetFontSize() * 35.0f) {
+                text_unformatted(WIDGETS_TIPS_HM2_TEXT, (text =
+                    "Passing ImGuiHoveredFlags_ForTooltip to IsItemHovered() is the " +
+                    "preferred way to standardize tooltip activation details across " +
+                    "your application. You may however decide to use custom flags for " +
+                    "a specific tooltip instance."))
+            }
+        }
 
         button(WIDGETS_TIP_MANUAL, (text = "Manual"))
         if (IsItemHovered(ImGuiHoveredFlags.ForTooltip)) {
@@ -432,10 +474,15 @@ def private TreeNodesSection() {
         tree_node(WIDGETS_TREES_ADVANCED,
             (text = "Advanced, with Selectable nodes",
              flags = ImGuiTreeNodeFlags.None)) {
-            demo_help_marker(
-                "This is a more typical looking tree with selectable nodes.\n" +
-                "Click to select, CTRL+Click to toggle, click on arrows or " +
-                "double-click to open.")
+            text_disabled(WIDGETS_TREE_HM1_HINT, (text = "(?)"))
+            item_tooltip(WIDGETS_TREE_HM1_TIP) {
+                with_text_wrap_pos(GetFontSize() * 35.0f) {
+                    text_unformatted(WIDGETS_TREE_HM1_TEXT, (text =
+                        "This is a more typical looking tree with selectable nodes.\n" +
+                        "Click to select, CTRL+Click to toggle, click on arrows or " +
+                        "double-click to open."))
+                }
+            }
 
             // CheckboxFlags / Checkbox here drive a single shared int (base_flags)
             // and two bool flags. The boost layer has no `checkbox_flags` widget
@@ -450,27 +497,51 @@ def private TreeNodesSection() {
             CheckboxFlags("ImGuiTreeNodeFlags_SpanAvailWidth",
                           safe_addr(WIDGETS_TREE_BASE_FLAGS),
                           int(ImGuiTreeNodeFlags.SpanAvailWidth))
-            SameLine(); demo_help_marker(
-                "Extend hit area to all available width instead of allowing " +
-                "more items to be laid out after the node.")
+            SameLine()
+            text_disabled(WIDGETS_TREE_HM2_HINT, (text = "(?)"))
+            item_tooltip(WIDGETS_TREE_HM2_TIP) {
+                with_text_wrap_pos(GetFontSize() * 35.0f) {
+                    text_unformatted(WIDGETS_TREE_HM2_TEXT, (text =
+                        "Extend hit area to all available width instead of allowing " +
+                        "more items to be laid out after the node."))
+                }
+            }
             CheckboxFlags("ImGuiTreeNodeFlags_SpanFullWidth",
                           safe_addr(WIDGETS_TREE_BASE_FLAGS),
                           int(ImGuiTreeNodeFlags.SpanFullWidth))
             CheckboxFlags("ImGuiTreeNodeFlags_SpanTextWidth",
                           safe_addr(WIDGETS_TREE_BASE_FLAGS),
                           int(ImGuiTreeNodeFlags.SpanTextWidth))
-            SameLine(); demo_help_marker("Reduce hit area to the text label and a bit of margin.")
+            SameLine()
+            text_disabled(WIDGETS_TREE_HM3_HINT, (text = "(?)"))
+            item_tooltip(WIDGETS_TREE_HM3_TIP) {
+                with_text_wrap_pos(GetFontSize() * 35.0f) {
+                    text_unformatted(WIDGETS_TREE_HM3_TEXT, (text = "Reduce hit area to the text label and a bit of margin."))
+                }
+            }
             CheckboxFlags("ImGuiTreeNodeFlags_SpanAllColumns",
                           safe_addr(WIDGETS_TREE_BASE_FLAGS),
                           int(ImGuiTreeNodeFlags.SpanAllColumns))
-            SameLine(); demo_help_marker("For use in Tables only.")
+            SameLine()
+            text_disabled(WIDGETS_TREE_HM4_HINT, (text = "(?)"))
+            item_tooltip(WIDGETS_TREE_HM4_TIP) {
+                with_text_wrap_pos(GetFontSize() * 35.0f) {
+                    text_unformatted(WIDGETS_TREE_HM4_TEXT, (text = "For use in Tables only."))
+                }
+            }
             CheckboxFlags("ImGuiTreeNodeFlags_AllowOverlap",
                           safe_addr(WIDGETS_TREE_BASE_FLAGS),
                           int(ImGuiTreeNodeFlags.AllowOverlap))
             CheckboxFlags("ImGuiTreeNodeFlags_Framed",
                           safe_addr(WIDGETS_TREE_BASE_FLAGS),
                           int(ImGuiTreeNodeFlags.Framed))
-            SameLine(); demo_help_marker("Draw frame with background (e.g. for CollapsingHeader)")
+            SameLine()
+            text_disabled(WIDGETS_TREE_HM5_HINT, (text = "(?)"))
+            item_tooltip(WIDGETS_TREE_HM5_TIP) {
+                with_text_wrap_pos(GetFontSize() * 35.0f) {
+                    text_unformatted(WIDGETS_TREE_HM5_TEXT, (text = "Draw frame with background (e.g. for CollapsingHeader)"))
+                }
+            }
 
             checkbox(WIDGETS_TREE_ALIGN, (text = "Align label with current X position"))
             checkbox(WIDGETS_TREE_DRAG_TEST, (text = "Test tree node as drag source"))
@@ -615,7 +686,12 @@ def private TextSection() {
                 TextColored(float4(1.0f, 1.0f, 0.0f, 1.0f), "Yellow")
                 TextDisabled("Disabled")
                 SameLine()
-                demo_help_marker("The TextDisabled color is stored in ImGuiStyle.")
+                text_disabled(WIDGETS_TEXT_HM1_HINT, (text = "(?)"))
+                item_tooltip(WIDGETS_TEXT_HM1_TIP) {
+                    with_text_wrap_pos(GetFontSize() * 35.0f) {
+                        text_unformatted(WIDGETS_TEXT_HM1_TEXT, (text = "The TextDisabled color is stored in ImGuiStyle."))
+                    }
+                }
             }
 
             tree_node(WIDGETS_TEXT_WORDWRAP,
