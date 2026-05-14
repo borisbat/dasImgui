@@ -456,6 +456,24 @@ struct TooltipState {
     @optional _placeholder : bool             //! unused; keeps the struct non-empty for [container] auto-emit
 }
 
+struct PopupContextItemState {
+    //! Backs `popup_context_item`. Right-click attaches to the previous item
+    //! and ImGui drives open/close internally; no pending flags needed.
+    @optional _placeholder : bool             //! unused; keeps the struct non-empty for [container] auto-emit
+}
+
+struct DragDropSourceState {
+    //! Backs `drag_drop_source`. Drag activation lives entirely in ImGui's
+    //! internal drag-drop state machine; body runs only on active drag.
+    @optional _placeholder : bool             //! unused; keeps the struct non-empty for [container] auto-emit
+}
+
+struct DragDropTargetState {
+    //! Backs `drag_drop_target`. Body runs only when a payload-bearing drag
+    //! is hovering this target — caller still calls AcceptDragDropPayload inside.
+    @optional _placeholder : bool             //! unused; keeps the struct non-empty for [container] auto-emit
+}
+
 struct TreeNodeState {
     //! Backs the `tree_node` container. ImGui owns the open/close state
     //! internally; we mirror what's observable so snapshots reflect truth,

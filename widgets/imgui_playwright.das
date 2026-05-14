@@ -367,6 +367,21 @@ def public drag(app : ImguiApp; target : string;
                               JV((target = target, dx = dx, dy = dy, steps = steps, button = button)))
 }
 
+def public drag_to(app : ImguiApp; source : string; target : string;
+                   steps : int = 6; button : int = 0) : JsonValue? {
+    //! Drag from ``source`` widget center to ``target`` widget center. Reads
+    //! both bboxes from a fresh snapshot, computes the delta, and dispatches
+    //! the L1 drag coroutine (press at source → interpolated moves → release).
+    var snap = snapshot(app)
+    let sb = snap?["globals"]?[source]?["bbox"]
+    let tb = snap?["globals"]?[target]?["bbox"]
+    let sx = ((sb?["x"] ?? 0.0f) + (sb?["z"] ?? 0.0f)) * 0.5f
+    let sy = ((sb?["y"] ?? 0.0f) + (sb?["w"] ?? 0.0f)) * 0.5f
+    let tx = ((tb?["x"] ?? 0.0f) + (tb?["z"] ?? 0.0f)) * 0.5f
+    let ty = ((tb?["y"] ?? 0.0f) + (tb?["w"] ?? 0.0f)) * 0.5f
+    return drag(app, source, tx - sx, ty - sy, steps, button)
+}
+
 def public focus(app : ImguiApp; target : string) : JsonValue? {
     //! Force keyboard focus to the next render of ``target`` (``imgui_focus`` verb); display-only widgets reply ``Result.err("not focusable")``.
     return send_imgui_command(app.transport, "imgui_focus", JV((target = target)))

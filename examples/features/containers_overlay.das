@@ -18,7 +18,7 @@ require imgui/imgui_containers_builtin
 
 // =============================================================================
 // FEATURE: containers_overlay — Phase 0b.3 popup / popup_modal / tooltip /
-//          item_tooltip / combo_select / list_box_select containers.
+//          item_tooltip / combo_select / list_box containers.
 // SHOWS:   imgui_open / imgui_close on popups, hover-driven tooltips, block-
 //          arg combo + list_box variants for procedural-item lists.
 // DRIVE:   curl -X POST -d '{"name":"imgui_open","args":{"target":"OVERLAY_WIN/OPTIONS_POPUP"}}' \
@@ -114,7 +114,7 @@ def update() {
         Spacing()
 
         // ----- Block-arg combo + list_box -----
-        Text("combo_select / list_box_select — body emits Selectables")
+        Text("combo_select / list_box — body emits Selectables")
         Separator()
         var palette_label = "(none)"
         if (PALETTE_COMBO.value >= 0 && PALETTE_COMBO.value < length(PALETTE_NAMES)) {
@@ -134,8 +134,8 @@ def update() {
         }
         Text("palette = {palette_label} (idx {PALETTE_COMBO.value})")
 
-        list_box_select(TASK_LIST, (text = "tasks",
-                                    size = float2(220.0f, 110.0f))) {
+        list_box(TASK_LIST, (text = "tasks",
+                             size = float2(220.0f, 110.0f))) {
             for (i in range(length(TASK_NAMES))) {
                 let is_sel = (i == TASK_LIST.value)
                 if (Selectable(TASK_NAMES[i], is_sel,

@@ -17,10 +17,11 @@ require imgui/imgui_widgets_builtin
 require imgui/imgui_containers_builtin
 
 // =============================================================================
-// FEATURE: inputs_choice — Phase 0b.2 Combo + ListBox (deprecated single-call
-//          forms). Both widgets take `items : array<string>` directly — daslang
-//          marshals it C-side without a shim.
-// SHOWS:   combo / list_box
+// FEATURE: inputs_choice — combo (items-array, single-call) + list_box
+//          (Begin/End + Selectable, unified block-arg form). list_box was
+//          unified onto BeginListBox/EndListBox in the boost scope-wrappers
+//          pass; body emits per-item Selectables, click writes state.value.
+// SHOWS:   combo (items-array sugar) / list_box (block-arg + Selectable)
 // DRIVE:   curl -X POST -d '{"name":"imgui_set","args":{"target":"MAIN_WIN/FRUIT","value":2}}' \
 //               localhost:9090/command
 //          curl -X POST -d '{"name":"imgui_set","args":{"target":"MAIN_WIN/SHIRT_SIZE","value":1}}' \
@@ -29,10 +30,11 @@ require imgui/imgui_containers_builtin
 // LIVE:       daslang-live modules/dasImgui/examples/features/inputs_choice.das
 //
 // NOT YET COVERED HERE:
-//   - BeginCombo/EndCombo (block-arg manual loop) → 0b.3 containers
-//   - BeginListBox/EndListBox (block-arg)         → 0b.3 containers
+//   - BeginCombo/EndCombo (block-arg manual loop) → combo_select container
 //   - _builtin_Combo (callback-getter)            → 0b.4 ABI shim
 // =============================================================================
+
+let SHIRT_NAMES : array<string> <- ["XS", "S", "M", "L", "XL", "XXL"]
 
 [export]
 def init() {
@@ -72,8 +74,16 @@ def update() {
         Separator()
 
         list_box(SHIRT_SIZE, (text = "Shirt size",
-                              items <- ["XS", "S", "M", "L", "XL", "XXL"],
-                              height_in_items = 4))
+                              size = float2(0.0f, 0.0f))) {
+            for (i in range(length(SHIRT_NAMES))) {
+                let is_sel = (i == SHIRT_SIZE.value)
+                if (Selectable(SHIRT_NAMES[i], is_sel,
+                               ImGuiSelectableFlags.None,
+                               float2(0.0f, 0.0f))) {
+                    SHIRT_SIZE.value = i
+                }
+            }
+        }
         Text("shirt size index = {SHIRT_SIZE.value}")
 
         Spacing()

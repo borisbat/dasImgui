@@ -20,6 +20,7 @@ construction.
    with_id.rst
    state_telemetry.rst
    containers.rst
+   drag_drop.rst
    live_reload.rst
    driving_outside.rst
    visual_aids_tour.rst
