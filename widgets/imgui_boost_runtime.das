@@ -360,6 +360,54 @@ struct PlotState {
     @optional samples : int                            //! length(values) last frame
 }
 
+struct NarrativeState {
+    //! Backs every text-bearing narrative widget — text / text_unformatted /
+    //! text_wrapped / text_colored / text_disabled / bullet_text /
+    //! separator_text / set_tooltip / set_item_tooltip. The displayed string
+    //! is per-call (the call site is the source of truth) and echoed into
+    //! `value` every frame for telemetry. `expect_value(MSG, "literal")`
+    //! works uniformly across the family. Read-only — no dispatcher.
+    @optional value : string                           //! per-frame echo of call-site `text` arg
+}
+
+struct LabelTextState {
+    //! Backs the `label_text` display widget. ImGui's `LabelText(label, fmt)`
+    //! displays the label-key on the left and the value-text on the right;
+    //! both strings are per-call and echoed for telemetry. Read-only — no
+    //! dispatcher. (Field is `key` not `label` — `label` is reserved in gen2.)
+    @optional key : string                             //! per-frame echo of the left-side label string
+    @optional value : string                           //! per-frame echo of the right-side value string
+}
+
+struct EmptyMarkerState {
+    //! Backs the stateless decoration widgets — `separator`, `spacing`,
+    //! `new_line`, `dummy`, `same_line`, `bullet`. The state global exists
+    //! only because [widget] auto-emit needs something to instantiate;
+    //! mirrors GroupState / MenuBarState / TooltipState shape.
+    @optional _placeholder : bool                      //! unused; keeps the struct non-empty for [widget] auto-emit
+}
+
+struct ImageState {
+    //! Backs the `image` display widget. Texture handle is opaque (void?),
+    //! so telemetry echoes only the actionable per-call args — size, uv
+    //! rectangle, tint/border colors. Read-only — no dispatcher.
+    @optional size : float2                            //! per-call display size
+    @optional uv0 : float2                             //! upper-left uv
+    @optional uv1 : float2                             //! lower-right uv
+    @optional tint_col : float4                        //! tint applied to texels
+    @optional border_col : float4                      //! border color (zero alpha = no border)
+}
+
+struct ProgressBarState {
+    //! Backs the `progress_bar` display widget. `fraction` is per-frame
+    //! per-call (the caller drives progress); `overlay` is the optional
+    //! center-aligned label; `size` is the per-call display size. Read-only
+    //! — no dispatcher.
+    @optional fraction : float                         //! per-frame progress in [0,1]; -1 means indeterminate
+    @optional overlay : string                         //! optional overlay text (e.g. "42/100")
+    @optional size : float2                            //! per-call display size; (-1, 0) defaults to full-width
+}
+
 // ===== Container family (Phase 0b.3) =====
 //
 // `[container]` widgets wrap a daslang block argument and push themselves onto
@@ -491,6 +539,13 @@ struct CollapsingHeaderState {
     @optional opened : bool                   //! observed per-frame: CollapsingHeader returned true
     @optional pending_open : bool             //! imgui_open queued; SetNextItemOpen(true) fires next frame
     @optional pending_close : bool            //! imgui_close queued; SetNextItemOpen(false) fires next frame
+}
+
+struct MainMenuBarState {
+    //! Backs the `main_menu_bar` container — `BeginMainMenuBar()` /
+    //! `EndMainMenuBar()`. Screen-top, persistent; ImGui owns visibility,
+    //! we just register the container path. Stateless wrapper.
+    @optional _placeholder : bool             //! unused; keeps the struct non-empty for [container] auto-emit
 }
 
 // ===== Per-frame registry =====
