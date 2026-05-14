@@ -3,6 +3,9 @@
 dasImgui documentation
 ======================
 
+Part of the daslang ecosystem. See also the `daslang documentation
+<https://daslang.io/doc/>`_ and `daslang.io <https://daslang.io>`_.
+
 dasImgui is the daslang binding for `Dear ImGui <https://github.com/ocornut/imgui>`_,
 including the boost macro layer, live-reload integration, and a Playwright-style
 testing harness.
