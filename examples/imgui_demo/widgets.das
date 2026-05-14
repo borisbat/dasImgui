@@ -102,7 +102,7 @@ def private demo_help_marker(desc : string) {
 
 def ShowDemoWindowWidgets() {
     collapsing_header(WIDGETS_SECTION,
-        (text = "Widgets", flags = ImGuiTreeNodeFlags.None)) {
+        (text = "Widgets", closable = false, flags = ImGuiTreeNodeFlags.None)) {
             if (WIDGETS_DISABLE_ALL) BeginDisabled()
 
             BasicSection()
@@ -561,7 +561,7 @@ def private CollapsingHeadersSection() {
             checkbox(WIDGETS_CH_CLOSABLE_GROUP,
                 (text = "Show 2nd header", init = true))
             collapsing_header(WIDGETS_CH_HEADER,
-                (text = "Header", flags = ImGuiTreeNodeFlags.None)) {
+                (text = "Header", closable = false, flags = ImGuiTreeNodeFlags.None)) {
                 Text("IsItemHovered: {IsItemHovered()}")
                 for (i in range(5)) {
                     Text("Some content {i}")

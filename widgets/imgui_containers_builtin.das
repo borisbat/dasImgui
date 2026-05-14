@@ -399,12 +399,16 @@ def tree_node(var state : TreeNodeState; text : string;
 
 [container]
 def collapsing_header(var state : CollapsingHeaderState; text : string;
-                      flags : ImGuiTreeNodeFlags; blk : block) {
-    //! `CollapsingHeader(label, flags) : bool` — same shape as TreeNode but
-    //! WITHOUT a TreePop pair (ImGui handles the close on its own). The
-    //! body runs only when the header is expanded.
+                      closable : bool; flags : ImGuiTreeNodeFlags; blk : block) {
+    //! `CollapsingHeader(label, p_visible, flags) : bool` — same shape as
+    //! TreeNode but WITHOUT a TreePop pair (ImGui handles the close on its
+    //! own). When `closable=true`, ImGui renders an X-button that flips
+    //! `state.open` to false; while `state.open` is false the section is
+    //! hidden entirely. Body runs only when the header is expanded AND
+    //! (for closable headers) still open.
     if (state.pending_open) {
         SetNextItemOpen(true, ImGuiCond.Always)
+        state.open = true
         state.pending_open = false
     }
     if (state.pending_close) {
@@ -412,7 +416,19 @@ def collapsing_header(var state : CollapsingHeaderState; text : string;
         state.pending_close = false
     }
     state.flags = flags
-    let im_open = CollapsingHeader(text, flags)
+    var im_open : bool
+    if (closable) {
+        if (state.open) {
+            unsafe {
+                im_open = CollapsingHeader(text, addr(state.open), flags)
+            }
+        }
+        // If state.open is false, the section is hidden — don't issue the
+        // ImGui call. CollapsingHeader-with-p_visible only renders while
+        // *p_visible is true; we mirror that gate exactly.
+    } else {
+        im_open = CollapsingHeader(text, flags)
+    }
     state.opened = im_open
     if (im_open) {
         invoke(blk)

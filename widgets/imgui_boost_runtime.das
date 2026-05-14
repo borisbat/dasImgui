@@ -534,7 +534,11 @@ struct TreeNodeState {
 
 struct CollapsingHeaderState {
     //! Backs the `collapsing_header` container. Same shape as TreeNodeState
-    //! since the imgui call structurally mirrors it (returns bool, no End()).
+    //! plus a TabItemState-style `@live open` slot for the X-button form
+    //! (CollapsingHeader(label, bool* p_visible, flags)). `open` defaults
+    //! to true so a closable section renders from frame 1; the X-button
+    //! or `imgui_close` flips it false.
+    @live open : bool = true                  //! closable form's p_visible state; preserved across reload
     @optional flags : ImGuiTreeNodeFlags      //! per-call ImGuiTreeNodeFlags
     @optional opened : bool                   //! observed per-frame: CollapsingHeader returned true
     @optional pending_open : bool             //! imgui_open queued; SetNextItemOpen(true) fires next frame

@@ -115,7 +115,7 @@ def update() {
         Spacing()
         Text("collapsing_header — like tree_node but no End-pair")
         Separator()
-        collapsing_header(LOG_HEADER, (text = "Log",
+        collapsing_header(LOG_HEADER, (text = "Log", closable = false,
                                        flags = ImGuiTreeNodeFlags.DefaultOpen)) {
             Text("frame: {LAYOUT_WIN.size.x} x {LAYOUT_WIN.size.y}")
             Text("settings tab is open: yes (tab_item.open = {SETTINGS_TAB.open})")
