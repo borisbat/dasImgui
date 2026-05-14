@@ -225,6 +225,7 @@ def imgui_mouse_play(input : JsonValue?) : JsonValue? {
     }
     mouse_play_start = get_uptime()
     mouse_playing    = true
+    warn_if_synth_tick_missing("imgui_mouse_play")
     return JV((queued = length(mouse_timeline)))
 }
 
@@ -538,6 +539,7 @@ def imgui_key_type(input : JsonValue?) : JsonValue? {
     }
     key_play_start = get_uptime()
     key_playing    = true
+    warn_if_synth_tick_missing("imgui_key_type")
     return JV((queued = length(key_timeline), per_char_ms = per_char_ms, chars = n_chars))
 }
 
@@ -584,6 +586,7 @@ def imgui_key_chord(input : JsonValue?) : JsonValue? {
     }
     key_play_start = get_uptime()
     key_playing    = true
+    warn_if_synth_tick_missing("imgui_key_chord")
     return JV((queued = length(key_timeline)))
 }
 
@@ -627,6 +630,7 @@ def imgui_key_play(input : JsonValue?) : JsonValue? {
     }
     key_play_start = get_uptime()
     key_playing    = true
+    warn_if_synth_tick_missing("imgui_key_play")
     return JV((queued = length(key_timeline)))
 }
 
@@ -687,8 +691,17 @@ def private advance_key_timeline() {
 // Per-frame entry point
 // ---------------------------------------------------------------------------
 
+// One-shot trap detector: a tutorial author that never calls
+// apply_synth_io_override() in update() will get cursor sprites, trails,
+// and synth clicks that silently no-op. Synth-event-queueing live_commands
+// call warn_if_synth_tick_missing() so the first such command logs a
+// single LOG_WARNING pointing at the fix.
+var private g_synth_tick_run_count : int = 0
+var private g_synth_warned_no_override : bool = false
+
 def public imgui_synth_tick() {
     //! Per-frame entry point — advance synth mouse/key timelines and re-assert held state. Call between the backend's ``*_NewFrame()`` and ``ImGui::NewFrame()``; no-op when no synth command has fired.
+    g_synth_tick_run_count++
     advance_mouse_timeline()
     advance_key_timeline()
     let synth_armed = synth_cursor_owned || !empty(synth_held_keys) || !empty(synth_held_buttons)
@@ -704,4 +717,30 @@ def public imgui_synth_tick() {
     for (k in keys(synth_held_keys)) {
         imgui_synth_key(k, true)
     }
+}
+
+def public synth_tick_run_count() : int {
+    //! Number of times :ref:`imgui_synth_tick <function-imgui_live_core_imgui_synth_tick>` has run this process. Zero means ``apply_synth_io_override()`` has never fired — any queued synth event will silently no-op.
+    return g_synth_tick_run_count
+}
+
+def public synth_warned_no_override() : bool {
+    //! True iff the no-override warning has been emitted this process. One-shot — only the first synth command on a process that hasn't ticked flips this.
+    return g_synth_warned_no_override
+}
+
+def public warn_if_synth_tick_missing(cmd : string) {
+    //! Emit a one-shot ``LOG_WARNING`` if ``cmd`` queued synth events before :ref:`imgui_synth_tick <function-imgui_live_core_imgui_synth_tick>` has ever run. Called from every synth-event-queueing live_command to surface the boost_basics-style trap (tutorial author forgot ``apply_synth_io_override()`` in ``update()``).
+    return if (g_synth_warned_no_override || g_synth_tick_run_count > 0)
+    g_synth_warned_no_override = true
+    to_log(LOG_WARNING,
+        "{cmd}: synth events queued but apply_synth_io_override() has never run. " +
+        "Call apply_synth_io_override() between ImGui_Impl*_NewFrame() and ImGui::NewFrame() in your update() loop. " +
+        "Without it the synth timeline never drains — cursor sprite, mouse trail, and synth clicks will silently no-op.")
+}
+
+def public reset_synth_warning_state() {
+    //! Reset the one-shot tick-counter and warned flag. Intended for tests that re-exercise the trap detector within a single process.
+    g_synth_tick_run_count = 0
+    g_synth_warned_no_override = false
 }
