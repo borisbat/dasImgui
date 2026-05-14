@@ -826,7 +826,7 @@ def public lookup_state_addr(path : string) : void? {
 }
 
 def public state_jv(path : string; t : type<auto(T)>) : JsonValue? {
-    //! Safe serializer-side helper for ``[widget]`` finalize lambdas — resolves the live state-struct address at ``path`` and returns ``JV(state)``. Returns ``null`` when the slot is gone (erased indexed key) so the snapshot reports the widget without a payload instead of dereferencing a stale capture. Pair with :ref:`with_state <function-imgui_boost_runtime_with_state>` on the dispatcher side; together they let custom-widget finalize helpers stay free of ``unsafe`` / ``reinterpret``.
+    //! Safe serializer-side helper for ``[widget]`` finalize lambdas — resolves the live state-struct address at ``path`` and returns ``JV(state)``. Returns ``null`` when the slot is gone (erased indexed key) so the snapshot reports the widget without a payload instead of dereferencing a stale capture. Pair with ``with_state`` on the dispatcher side; together they let custom-widget finalize helpers stay free of ``unsafe`` / ``reinterpret``.
     let raw = lookup_state_addr(path)
     return null if (raw == null)
     unsafe {
