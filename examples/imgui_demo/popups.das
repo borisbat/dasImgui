@@ -4,10 +4,371 @@ options indenting = 4
 module popups
 
 require imgui
+require imgui/imgui_widgets_builtin
+require imgui/imgui_containers_builtin
+require imgui/imgui_scope_builtin
+require imgui/imgui_style_builtin
+require app_main_menu
 
-// Mirrors imgui_demo.cpp:3695-4153 — static void ShowDemoWindowPopups().
+// Mirrors imgui_demo.cpp:3695-3990 — static void ShowDemoWindowPopups().
+//
+// Four TreeNode'd sub-sections:
+//   - Popups               (cpp:3719-3810)
+//   - Context menus        (cpp:3812-3897)
+//   - Modals               (cpp:3899-3973)
+//   - Menus inside a window (cpp:3975-3989)
+//
+// Boost-surface conventions applied here:
+//   - `popup` / `popup_modal` / `popup_context_item` containers replace the
+//     raw Begin*/End* pairs. Opening a popup is still a raw `OpenPopup(name)`
+//     call from the trigger Button — ImGui owns popup visibility, not the
+//     state struct, so we mirror the C++ idiom 1:1.
+//   - `menu` / `menu_bar` containers wrap the dropdown bodies.
+//   - `tree_node` containers wrap each sub-section (no test-engine markers).
+//   - `with_style((ImGuiStyleVar.FramePadding, …))` scopes the (0,0) padding
+//     push around the "Don't ask me next time" checkbox.
+//   - Loop-driven selection rows use raw `Selectable(name)` (matching the
+//     `widgets.das` listbox precedent at line 336) — every row reads/writes
+//     a single shared `int` state, no per-row widget state needed.
+
+// =============================================================================
+// Module-scope state (plain non-widget vars + indexed widget tables).
+// `[widget]`/`[container]`-managed state is auto-emitted from the IDENT arg.
+// =============================================================================
+
+// "Popups" sub-section
+var private POPUPS_SELECTED_FISH = -1
+let private FISH_NAMES <- ["Bream", "Haddock", "Mackerel", "Pollock", "Tilefish"]
+// Loop indices for the Toggle/Sub-menu/Stacked popups — one toggle per fish.
+var private POPUPS_TOGGLE_ITEM : table<int; ToggleState>
+var private POPUPS_STACKED_TOGGLE_ITEM : table<int; ToggleState>
+
+// "Context menus" sub-section
+var private POPUPS_CTX1_SELECTED = -1
+var private POPUPS_CTX2_VALUE = 0.5f
+// Example 1: 5 rows, each row has its own popup_context_item (right-click
+// the row to open). Indexed state per row.
+var private POPUPS_CTX1_POPUP : table<int; PopupContextItemState>
+
+// "Modals" sub-section — Stacked combo & color editor
+var private POPUPS_STACKED_COMBO_ITEMS <- ["aaaa", "bbbb", "cccc", "dddd", "eeee"]
+
+// =============================================================================
+// ShowDemoWindowPopups — dispatcher
+// =============================================================================
 def ShowDemoWindowPopups() {
-    if (CollapsingHeader("Popups & Modal windows")) {
-        Text("TODO: port section (imgui_demo.cpp:3695-4153)")
+    collapsing_header(POPUPS_SECTION,
+        (text = "Popups & Modal windows", closable = false,
+         flags = ImGuiTreeNodeFlags.None)) {
+
+        PopupsSection()
+        ContextMenusSection()
+        ModalsSection()
+        MenusInRegularWindowSection()
+    }
+}
+
+
+// =============================================================================
+// Popups — cpp:3719-3810
+// =============================================================================
+def private PopupsSection() {
+    tree_node(POPUPS_POPUPS_SUB,
+        (text = "Popups", flags = ImGuiTreeNodeFlags.None)) {
+
+        TextWrapped(
+            "When a popup is active, it inhibits interacting with windows " +
+            "that are behind the popup. Clicking outside the popup closes it.")
+
+        // ----- "Select.." popup -----
+        if (button(POPUPS_SELECT_BTN, (text = "Select.."))) {
+            OpenPopup("my_select_popup", ImGuiPopupFlags.None)
+        }
+        same_line(POPUPS_SL_1)
+        let fish_label = (POPUPS_SELECTED_FISH == -1) ? "<None>" : FISH_NAMES[POPUPS_SELECTED_FISH]
+        TextUnformatted(fish_label)
+        popup(POPUPS_SELECT_POPUP,
+              (text = "my_select_popup", flags = ImGuiWindowFlags.None)) {
+            SeparatorText("Aquarium")
+            for (i in range(length(FISH_NAMES))) {
+                if (Selectable(FISH_NAMES[i])) {
+                    POPUPS_SELECTED_FISH = i
+                }
+            }
+        }
+
+        // ----- "Toggle.." popup -----
+        if (button(POPUPS_TOGGLE_BTN, (text = "Toggle.."))) {
+            OpenPopup("my_toggle_popup", ImGuiPopupFlags.None)
+        }
+        popup(POPUPS_TOGGLE_POPUP,
+              (text = "my_toggle_popup", flags = ImGuiWindowFlags.None)) {
+            for (i in range(length(FISH_NAMES))) {
+                menu_item(POPUPS_TOGGLE_ITEM[i], (text = FISH_NAMES[i]))
+            }
+            menu(POPUPS_TOGGLE_SUBMENU, (text = "Sub-menu", enabled = true)) {
+                menu_label(POPUPS_TOGGLE_SUBMENU_CLICK,
+                           (text = "Click me", shortcut = "",
+                            selected = false, enabled = true))
+            }
+
+            separator(POPUPS_TOGGLE_SEP)
+            text("Tooltip here")
+            set_item_tooltip(POPUPS_TOGGLE_TIP, (text = "I am a tooltip over a popup"))
+
+            // Stacked popup nested inside the toggle popup.
+            if (button(POPUPS_STACKED_BTN, (text = "Stacked Popup"))) {
+                OpenPopup("another popup", ImGuiPopupFlags.None)
+            }
+            popup(POPUPS_STACKED_POPUP,
+                  (text = "another popup", flags = ImGuiWindowFlags.None)) {
+                for (i in range(length(FISH_NAMES))) {
+                    menu_item(POPUPS_STACKED_TOGGLE_ITEM[i],
+                              (text = FISH_NAMES[i]))
+                }
+                menu(POPUPS_STACKED_SUBMENU, (text = "Sub-menu", enabled = true)) {
+                    menu_label(POPUPS_STACKED_SUBMENU_CLICK,
+                               (text = "Click me", shortcut = "",
+                                selected = false, enabled = true))
+                    // C++ nests yet another "Stacked Popup" button + another
+                    // popup. The deepest level renders "I am the last one
+                    // here." Same idents would alias the outer level — drop
+                    // the deepest recursion (parity with the lint we'd hit
+                    // on duplicate-IDENT at the same scope; ImGui's nesting
+                    // semantics are already demonstrated by this level).
+                    // TODO Phase 3: surface a deeper nested-popup pattern
+                    // (probably indexed by a synthetic depth counter) if
+                    // tests want the full three-level stack.
+                }
+            }
+        }
+
+        // ----- "With a menu.." popup (has a MenuBar inside) -----
+        if (button(POPUPS_MENUBAR_BTN, (text = "With a menu.."))) {
+            OpenPopup("my_file_popup", ImGuiPopupFlags.None)
+        }
+        popup(POPUPS_MENUBAR_POPUP,
+              (text = "my_file_popup", flags = ImGuiWindowFlags.MenuBar)) {
+            menu_bar(POPUPS_MENUBAR_BAR) {
+                menu(POPUPS_MENUBAR_FILE, (text = "File", enabled = true)) {
+                    ShowExampleMenuFile()
+                }
+                menu(POPUPS_MENUBAR_EDIT, (text = "Edit", enabled = true)) {
+                    menu_item(POPUPS_MENUBAR_DUMMY, (text = "Dummy"))
+                }
+            }
+            text("Hello from popup!")
+            button(POPUPS_MENUBAR_DUMMY_BTN, (text = "This is a dummy button.."))
+        }
+    }
+}
+
+
+// =============================================================================
+// Context menus — cpp:3812-3897
+// =============================================================================
+def private ContextMenusSection() {
+    tree_node(POPUPS_CTX_SUB,
+        (text = "Context menus", flags = ImGuiTreeNodeFlags.None)) {
+
+        // Inlined HelpMarker — TextDisabled "(?)" + hover tooltip.
+        text_disabled("(?)")
+        item_tooltip(POPUPS_CTX_HM_INTRO_TIP) {
+            with_text_wrap_pos(GetFontSize() * 35.0f) {
+                text_unformatted((text =
+                    "\"Context\" functions are simple helpers to associate a Popup to " +
+                    "a given Item or Window identifier."))
+            }
+        }
+
+        // ----- Example 1 — popup attached to last-item ID (no str_id) -----
+        let ex1_names = fixed_array("Label1", "Label2", "Label3", "Label4", "Label5")
+        for (n in range(5)) {
+            if (Selectable(ex1_names[n], POPUPS_CTX1_SELECTED == n)) {
+                POPUPS_CTX1_SELECTED = n
+            }
+            // BeginPopupContextItem() with no str_id binds to the previous
+            // item's ID. The boost container always takes a string — passing
+            // "" means "use last-item ID" (matches the C++ NULL semantics).
+            popup_context_item(POPUPS_CTX1_POPUP[n],
+                               (str_id = "", flags = ImGuiPopupFlags.MouseButtonRight)) {
+                POPUPS_CTX1_SELECTED = n
+                Text("This a popup for \"{ex1_names[n]}\"!")
+                if (Button("Close")) {
+                    CloseCurrentPopup()
+                }
+            }
+            set_item_tooltip(POPUPS_CTX1_TIP, (text = "Right-click to open popup"))
+        }
+
+        // ----- Example 2 — popup on Text() with an explicit str_id -----
+        text_disabled("(?)")
+        item_tooltip(POPUPS_CTX2_HM_TIP) {
+            with_text_wrap_pos(GetFontSize() * 35.0f) {
+                text_unformatted((text =
+                    "Text() elements don't have stable identifiers so we need to provide one."))
+            }
+        }
+        Text("Value = {POPUPS_CTX2_VALUE} <-- (1) right-click this text")
+        popup_context_item(POPUPS_CTX2_POPUP,
+                           (str_id = "my popup",
+                            flags = ImGuiPopupFlags.MouseButtonRight)) {
+            if (Selectable("Set to zero")) {
+                POPUPS_CTX2_VALUE = 0.0f
+            }
+            if (Selectable("Set to PI")) {
+                POPUPS_CTX2_VALUE = 3.1415f
+            }
+            SetNextItemWidth(-3.40282347e38f)
+            DragFloat("##Value", unsafe(addr(POPUPS_CTX2_VALUE)),
+                      0.1f, 0.0f, 0.0f, "%.3f", ImGuiSliderFlags.None)
+        }
+
+        // Second text triggers the same popup via OpenPopupOnItemClick.
+        Text("(2) Or right-click this text")
+        OpenPopupOnItemClick("my popup", ImGuiPopupFlags.MouseButtonRight)
+
+        // Third trigger: a plain Button that manually opens the same popup.
+        if (button(POPUPS_CTX2_BTN, (text = "(3) Or click this button"))) {
+            OpenPopup("my popup", ImGuiPopupFlags.None)
+        }
+
+        // ----- Example 3 — last-item ID popup, dynamic label / stable ID -----
+        text_disabled("(?)")
+        item_tooltip(POPUPS_CTX3_HM_TIP) {
+            with_text_wrap_pos(GetFontSize() * 35.0f) {
+                text_unformatted((text =
+                    "Showcase using a popup ID linked to item ID, with the item having " +
+                    "a changing label + stable ID using the ### operator."))
+            }
+        }
+        // ### operator: label-before-### changes per frame, ID-after-### stays
+        // stable, so popup_context_item keeps binding to the same Button.
+        // The editable name lives in the input_text widget's `.value`; we
+        // read it for the dynamic label (and the C++ static-char-buffer
+        // round-trip falls away — v2 owns the buffer per-widget).
+        Button("Button: {POPUPS_CTX3_INPUT.value}###Button")
+        popup_context_item(POPUPS_CTX3_POPUP,
+                           (str_id = "", flags = ImGuiPopupFlags.MouseButtonRight)) {
+            text("Edit name:")
+            input_text(POPUPS_CTX3_INPUT, (text = "##edit", init = "Label1"))
+            if (Button("Close")) {
+                CloseCurrentPopup()
+            }
+        }
+        same_line(POPUPS_CTX3_SL)
+        text("(<-- right-click here)")
+    }
+}
+
+
+// =============================================================================
+// Modals — cpp:3899-3973
+// =============================================================================
+def private ModalsSection() {
+    tree_node(POPUPS_MODALS_SUB,
+        (text = "Modals", flags = ImGuiTreeNodeFlags.None)) {
+
+        TextWrapped("Modal windows are like popups but the user cannot close them by clicking outside.")
+
+        // ----- "Delete?" modal -----
+        if (button(POPUPS_MODAL_DELETE_BTN, (text = "Delete.."))) {
+            OpenPopup("Delete?", ImGuiPopupFlags.None)
+        }
+        // Center this window when appearing — compute the viewport center
+        // from Pos + Size * 0.5 (the C++ helper ImGuiViewport::GetCenter()
+        // isn't surfaced through the daslang binding).
+        let vp = GetMainViewport()
+        let vp_pos = vp.Pos
+        let vp_size = vp.Size
+        let center = float2(vp_pos.x + vp_size.x * 0.5f,
+                            vp_pos.y + vp_size.y * 0.5f)
+        SetNextWindowPos(center, ImGuiCond.Appearing, float2(0.5f, 0.5f))
+        popup_modal(POPUPS_MODAL_DELETE,
+                    (text = "Delete?", closable = false,
+                     flags = ImGuiWindowFlags.AlwaysAutoResize)) {
+            text((text = "All those beautiful files will be deleted.\n" +
+                         "This operation cannot be undone!"))
+            separator(POPUPS_MODAL_DELETE_SEP)
+            with_style((ImGuiStyleVar.FramePadding, float2(0.0f, 0.0f))) {
+                checkbox(POPUPS_MODAL_DONT_ASK, (text = "Don't ask me next time"))
+            }
+            if (Button("OK", float2(120.0f, 0.0f))) {
+                CloseCurrentPopup()
+            }
+            SetItemDefaultFocus()
+            same_line(POPUPS_MODAL_DELETE_SL)
+            if (Button("Cancel", float2(120.0f, 0.0f))) {
+                CloseCurrentPopup()
+            }
+        }
+
+        // ----- "Stacked 1" / "Stacked 2" modals -----
+        if (button(POPUPS_MODAL_STACK1_BTN, (text = "Stacked modals.."))) {
+            OpenPopup("Stacked 1", ImGuiPopupFlags.None)
+        }
+        popup_modal(POPUPS_MODAL_STACK1,
+                    (text = "Stacked 1", closable = false,
+                     flags = ImGuiWindowFlags.MenuBar)) {
+            menu_bar(POPUPS_MODAL_STACK1_BAR) {
+                menu(POPUPS_MODAL_STACK1_FILE, (text = "File", enabled = true)) {
+                    menu_label(POPUPS_MODAL_STACK1_FILE_ITEM,
+                               (text = "Some menu item", shortcut = "",
+                                selected = false, enabled = true))
+                }
+            }
+            text((text = "Hello from Stacked The First\n" +
+                         "Using style.Colors[ImGuiCol_ModalWindowDimBg] behind it."))
+
+            // C++ inline combo + ColorEdit4 with raw bindings — keep them
+            // raw here too; this demonstrates that ordinary widgets inside
+            // a modal can still spawn their own regular popups.
+            combo(POPUPS_MODAL_STACK1_COMBO,
+                  (text = "Combo", init = 1,
+                   items <- POPUPS_STACKED_COMBO_ITEMS))
+            color_edit4(POPUPS_MODAL_STACK1_COLOR,
+                        (text = "color",
+                         init = float4(0.4f, 0.7f, 0.0f, 0.5f)))
+
+            if (button(POPUPS_MODAL_STACK2_BTN, (text = "Add another modal.."))) {
+                OpenPopup("Stacked 2", ImGuiPopupFlags.None)
+            }
+            // Stacked 2 — closable=true to demonstrate ImGui's X-button. The
+            // C++ passes &unused_open through to BeginPopupModal; v2 wires
+            // closable to state.open and X-button toggles it.
+            popup_modal(POPUPS_MODAL_STACK2,
+                        (text = "Stacked 2", closable = true,
+                         flags = ImGuiWindowFlags.None)) {
+                text("Hello from Stacked The Second!")
+                if (Button("Close")) {
+                    CloseCurrentPopup()
+                }
+            }
+
+            if (Button("Close")) {
+                CloseCurrentPopup()
+            }
+        }
+    }
+}
+
+
+// =============================================================================
+// Menus inside a regular window — cpp:3975-3989
+// =============================================================================
+def private MenusInRegularWindowSection() {
+    tree_node(POPUPS_MENUS_IN_WIN_SUB,
+        (text = "Menus inside a regular window", flags = ImGuiTreeNodeFlags.None)) {
+
+        TextWrapped("Below we are testing adding menu items to a regular window. It's rather unusual but should work!")
+        separator(POPUPS_MENUS_IN_WIN_SEP)
+
+        menu_label(POPUPS_MENUS_IN_WIN_ITEM,
+                   (text = "Menu item", shortcut = "CTRL+M",
+                    selected = false, enabled = true))
+        menu(POPUPS_MENUS_IN_WIN_MENU,
+             (text = "Menu inside a regular window", enabled = true)) {
+            ShowExampleMenuFile()
+        }
     }
 }
