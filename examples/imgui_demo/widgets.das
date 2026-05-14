@@ -32,9 +32,10 @@ require math
 //     `drag_drop_source` (Phase 1) — replace raw `Begin*/End*` pairs.
 //   - Scope wrappers — `with_id` / `with_style` (color + var) / `with_text_wrap_pos`
 //     (Phase 1) — replace raw `Push*/Pop*`.
-//   - External-pointer cases — `CheckboxFlags` (Tree Nodes/Advanced),
-//     `SliderAngle` (Basic) — kept raw with `safe_addr(...)`; Phase 3 will add
-//     `external-pointer` boost variants and these get migrated then.
+//   - External-pointer cases — `edit_checkbox_flags` (Tree Nodes/Advanced),
+//     `edit_slider_angle` (Basic) — boost variants taking `safe_addr(...)`
+//     against module-scope plain vars. `CollapsingHeader(p_open=)` still raw
+//     because no boost equivalent ships yet.
 //   - `IMGUI_DEMO_MARKER` test-engine markers dropped (off-limits per CLAUDE.md).
 //   - `SetItemTooltip(s)` → `item_tooltip(IDENT) { Text(s) }` (binding gap).
 // =============================================================================
@@ -45,17 +46,16 @@ require math
 // state global that's read but not edited within this slice.
 var WIDGETS_DISABLE_ALL = false
 
-// ----- Tree Nodes/Advanced — external-pointer state (Phase 3 will migrate) -----
-// `CheckboxFlags` only binds an `int?` / `uint?` form (no enum-typed
-// overload), so the base-flags state is stored as `int` and converted back
-// to `ImGuiTreeNodeFlags` at the TreeNodeEx call site. The boost layer has
-// no `checkbox_flags` widget yet — Phase 3 adds external-pointer overloads.
+// ----- Tree Nodes/Advanced — external-pointer state -----
+// `CheckboxFlags` (now `edit_checkbox_flags`) binds an `int?` form, so the
+// base-flags state is stored as `int` and converted back to
+// `ImGuiTreeNodeFlags` at the TreeNodeEx call site.
 var WIDGETS_TREE_BASE_FLAGS = (int(ImGuiTreeNodeFlags.OpenOnArrow) |
                                int(ImGuiTreeNodeFlags.OpenOnDoubleClick) |
                                int(ImGuiTreeNodeFlags.SpanAvailWidth))
 var WIDGETS_TREE_SELECTION_MASK = 1 << 2
 
-// ----- Basic/SliderAngle external-pointer (Phase 3 will migrate) -----
+// ----- Basic/SliderAngle external-pointer -----
 var WIDGETS_BASIC_ANGLE = 0.0f
 
 // ----- Plain counters (not widget state) -----
@@ -269,9 +269,8 @@ def private BasicSection() {
             (text = "slider float (log)", init = 0.0f, bounds = (-10.0f, 10.0f),
              format = "%.4f", flags = ImGuiSliderFlags.Logarithmic))
 
-        // SliderAngle has no boost equivalent yet — Phase 3 external-pointer rail
-        // will cover the radian↔degree wrappers. Raw + safe_addr in the meantime.
-        SliderAngle("slider angle", safe_addr(WIDGETS_BASIC_ANGLE))
+        edit_slider_angle(safe_addr(WIDGETS_BASIC_ANGLE),
+            (id = "WIDGETS_BASIC_ANGLE_SLIDER", text = "slider angle"))
 
         // Slider (enum) — the format-string trick: omit %d so the label IS the
         // value. Format is dynamic so it goes in the regular arg, not init=.
@@ -498,19 +497,22 @@ def private TreeNodesSection() {
                 }
             }
 
-            // CheckboxFlags / Checkbox here drive a single shared int (base_flags)
-            // and two bool flags. The boost layer has no `checkbox_flags` widget
-            // (Phase 3 external-pointer rail will cover it); raw with safe_addr
-            // until then. The two plain bool checkboxes use the boost form.
-            CheckboxFlags("ImGuiTreeNodeFlags_OpenOnArrow",
-                          safe_addr(WIDGETS_TREE_BASE_FLAGS),
-                          int(ImGuiTreeNodeFlags.OpenOnArrow))
-            CheckboxFlags("ImGuiTreeNodeFlags_OpenOnDoubleClick",
-                          safe_addr(WIDGETS_TREE_BASE_FLAGS),
-                          int(ImGuiTreeNodeFlags.OpenOnDoubleClick))
-            CheckboxFlags("ImGuiTreeNodeFlags_SpanAvailWidth",
-                          safe_addr(WIDGETS_TREE_BASE_FLAGS),
-                          int(ImGuiTreeNodeFlags.SpanAvailWidth))
+            // CheckboxFlags drives a single shared int (base_flags) through
+            // the boost `edit_checkbox_flags` external-pointer rail; each call
+            // toggles one specific bit. The two plain bool checkboxes below
+            // use the regular `checkbox` widget form.
+            edit_checkbox_flags(safe_addr(WIDGETS_TREE_BASE_FLAGS),
+                (id = "WIDGETS_TREE_FLAG_OPEN_ON_ARROW",
+                 text = "ImGuiTreeNodeFlags_OpenOnArrow",
+                 flags_value = int(ImGuiTreeNodeFlags.OpenOnArrow)))
+            edit_checkbox_flags(safe_addr(WIDGETS_TREE_BASE_FLAGS),
+                (id = "WIDGETS_TREE_FLAG_OPEN_ON_DOUBLE_CLICK",
+                 text = "ImGuiTreeNodeFlags_OpenOnDoubleClick",
+                 flags_value = int(ImGuiTreeNodeFlags.OpenOnDoubleClick)))
+            edit_checkbox_flags(safe_addr(WIDGETS_TREE_BASE_FLAGS),
+                (id = "WIDGETS_TREE_FLAG_SPAN_AVAIL_WIDTH",
+                 text = "ImGuiTreeNodeFlags_SpanAvailWidth",
+                 flags_value = int(ImGuiTreeNodeFlags.SpanAvailWidth)))
             same_line(WIDGETS_SL_17)
             text_disabled("(?)")
             item_tooltip(WIDGETS_TREE_HM2_TIP) {
@@ -520,12 +522,14 @@ def private TreeNodesSection() {
                         "more items to be laid out after the node."))
                 }
             }
-            CheckboxFlags("ImGuiTreeNodeFlags_SpanFullWidth",
-                          safe_addr(WIDGETS_TREE_BASE_FLAGS),
-                          int(ImGuiTreeNodeFlags.SpanFullWidth))
-            CheckboxFlags("ImGuiTreeNodeFlags_SpanTextWidth",
-                          safe_addr(WIDGETS_TREE_BASE_FLAGS),
-                          int(ImGuiTreeNodeFlags.SpanTextWidth))
+            edit_checkbox_flags(safe_addr(WIDGETS_TREE_BASE_FLAGS),
+                (id = "WIDGETS_TREE_FLAG_SPAN_FULL_WIDTH",
+                 text = "ImGuiTreeNodeFlags_SpanFullWidth",
+                 flags_value = int(ImGuiTreeNodeFlags.SpanFullWidth)))
+            edit_checkbox_flags(safe_addr(WIDGETS_TREE_BASE_FLAGS),
+                (id = "WIDGETS_TREE_FLAG_SPAN_TEXT_WIDTH",
+                 text = "ImGuiTreeNodeFlags_SpanTextWidth",
+                 flags_value = int(ImGuiTreeNodeFlags.SpanTextWidth)))
             same_line(WIDGETS_SL_18)
             text_disabled("(?)")
             item_tooltip(WIDGETS_TREE_HM3_TIP) {
@@ -533,9 +537,10 @@ def private TreeNodesSection() {
                     text_unformatted("Reduce hit area to the text label and a bit of margin.")
                 }
             }
-            CheckboxFlags("ImGuiTreeNodeFlags_SpanAllColumns",
-                          safe_addr(WIDGETS_TREE_BASE_FLAGS),
-                          int(ImGuiTreeNodeFlags.SpanAllColumns))
+            edit_checkbox_flags(safe_addr(WIDGETS_TREE_BASE_FLAGS),
+                (id = "WIDGETS_TREE_FLAG_SPAN_ALL_COLUMNS",
+                 text = "ImGuiTreeNodeFlags_SpanAllColumns",
+                 flags_value = int(ImGuiTreeNodeFlags.SpanAllColumns)))
             same_line(WIDGETS_SL_19)
             text_disabled("(?)")
             item_tooltip(WIDGETS_TREE_HM4_TIP) {
@@ -543,12 +548,14 @@ def private TreeNodesSection() {
                     text_unformatted("For use in Tables only.")
                 }
             }
-            CheckboxFlags("ImGuiTreeNodeFlags_AllowOverlap",
-                          safe_addr(WIDGETS_TREE_BASE_FLAGS),
-                          int(ImGuiTreeNodeFlags.AllowOverlap))
-            CheckboxFlags("ImGuiTreeNodeFlags_Framed",
-                          safe_addr(WIDGETS_TREE_BASE_FLAGS),
-                          int(ImGuiTreeNodeFlags.Framed))
+            edit_checkbox_flags(safe_addr(WIDGETS_TREE_BASE_FLAGS),
+                (id = "WIDGETS_TREE_FLAG_ALLOW_OVERLAP",
+                 text = "ImGuiTreeNodeFlags_AllowOverlap",
+                 flags_value = int(ImGuiTreeNodeFlags.AllowOverlap)))
+            edit_checkbox_flags(safe_addr(WIDGETS_TREE_BASE_FLAGS),
+                (id = "WIDGETS_TREE_FLAG_FRAMED",
+                 text = "ImGuiTreeNodeFlags_Framed",
+                 flags_value = int(ImGuiTreeNodeFlags.Framed)))
             same_line(WIDGETS_SL_20)
             text_disabled("(?)")
             item_tooltip(WIDGETS_TREE_HM5_TIP) {
