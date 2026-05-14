@@ -1251,6 +1251,72 @@ def dummy(var state : EmptyMarkerState; size : float2) {
     marker_finalize(widget_ident, "dummy", state)
 }
 
+// ===== Display: progress / image =====
+//
+// Content display widgets — `progress_bar` shows a fraction in [0,1] (or
+// indeterminate when `fraction < 0`); `image` blits a texture handle.
+// Per-call args echo into state for telemetry; no dispatcher (read-only).
+
+def private progress_bar_finalize(widget_ident : string; kind : string; var state : ProgressBarState) {
+    var entry : WidgetEntry
+    unsafe {
+        let ser <- @ capture(& state) () : JsonValue ? {
+            return JV(state)
+        }
+        let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
+            // Read-only display; no L2/L3 actions.
+        }
+        widget_finalize(widget_ident, kind, entry, ser, disp)
+    }
+}
+
+def private image_finalize(widget_ident : string; kind : string; var state : ImageState) {
+    var entry : WidgetEntry
+    unsafe {
+        let ser <- @ capture(& state) () : JsonValue ? {
+            return JV(state)
+        }
+        let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
+            // Read-only display; no L2/L3 actions.
+        }
+        widget_finalize(widget_ident, kind, entry, ser, disp)
+    }
+}
+
+[widget]
+def progress_bar(var state : ProgressBarState; fraction : float;
+                 size : float2 = float2(-1.0f, 0.0f);
+                 overlay : string = "") {
+    //! Progress bar in [0, 1]; pass a negative fraction for indeterminate
+    //! animation. `size` defaults to (-1, 0) — full content-region width,
+    //! one-frame-tall. `overlay` is optional center-aligned text (e.g. "42%").
+    state.fraction = fraction
+    state.size = size
+    state.overlay := overlay
+    ProgressBar(fraction, size, overlay)
+    progress_bar_finalize(widget_ident, "progress_bar", state)
+}
+
+[widget]
+def image(var state : ImageState; user_texture_id : void?; size : float2;
+          uv0 : float2 = float2(0.0f, 0.0f);
+          uv1 : float2 = float2(1.0f, 1.0f);
+          tint_col : float4 = float4(1.0f, 1.0f, 1.0f, 1.0f);
+          border_col : float4 = float4(0.0f, 0.0f, 0.0f, 0.0f)) {
+    //! Blit `user_texture_id` (an opaque ``ImTextureID``) into a `size`-pixel
+    //! rect with `uv0`/`uv1` sampling coordinates. `tint_col` modulates texel
+    //! color; `border_col` draws a border (zero alpha = none). The texture
+    //! handle is not part of telemetry (opaque); the rest of the args echo
+    //! for snapshot assertions.
+    state.size = size
+    state.uv0 = uv0
+    state.uv1 = uv1
+    state.tint_col = tint_col
+    state.border_col = border_col
+    Image(user_texture_id, size, uv0, uv1, tint_col, border_col)
+    image_finalize(widget_ident, "image", state)
+}
+
 // ===== Plot lines / histogram (array form) =====
 //
 // Display widgets backed by `PlotState`. Plotted values come per-frame as
