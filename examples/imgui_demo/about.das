@@ -20,12 +20,12 @@ var ABOUT_SHOW_CONFIG_INFO = false
 def ShowAboutWindow() {
     window(ABOUT_WINDOW, (text = "About Dear ImGui", closable = false,
                           flags = ImGuiWindowFlags.AlwaysAutoResize)) {
-        text(ABOUT_VERSION, (text = "Dear ImGui {IMGUI_VERSION} ({IMGUI_VERSION_NUM})"))
+        text((text = "Dear ImGui {IMGUI_VERSION} ({IMGUI_VERSION_NUM})"))
         separator(ABOUT_SEP_1)
-        text(ABOUT_TEXT_2, (text = "By Omar Cornut and all Dear ImGui contributors."))
-        text(ABOUT_TEXT_3, (text = "Dear ImGui is licensed under the MIT License, " +
-             "see LICENSE for more information."))
-        text(ABOUT_TEXT_4, (text = "If your company uses this, please consider funding the project."))
+        text("By Omar Cornut and all Dear ImGui contributors.")
+        text((text = "Dear ImGui is licensed under the MIT License, " +
+                     "see LICENSE for more information."))
+        text("If your company uses this, please consider funding the project.")
 
         Checkbox("Config/Build Information", safe_addr(ABOUT_SHOW_CONFIG_INFO))
         if (ABOUT_SHOW_CONFIG_INFO) {
@@ -43,92 +43,92 @@ def ShowAboutWindow() {
                 LogText("```\n")
             }
 
-            text(ABOUT_CFG_VERSION, (text = "Dear ImGui {IMGUI_VERSION} ({IMGUI_VERSION_NUM})"))
+            text((text = "Dear ImGui {IMGUI_VERSION} ({IMGUI_VERSION_NUM})"))
             separator(ABOUT_SEP_2)
-            text(ABOUT_TEXT_6, (text = "define: __cplusplus elided (daslang port)"))
-            text(ABOUT_TEXT_7, (text = "(C++ build-define block elided; see imgui_demo.cpp:6494-6565)"))
+            text("define: __cplusplus elided (daslang port)")
+            text("(C++ build-define block elided; see imgui_demo.cpp:6494-6565)")
             separator(ABOUT_SEP_3)
-            text(ABOUT_TEXT_8, (text = "io.BackendPlatformName: {io.BackendPlatformName}"))
-            text(ABOUT_TEXT_9, (text = "io.BackendRendererName: {io.BackendRendererName}"))
-            text(ABOUT_TEXT_10, (text = "io.ConfigFlags: {fmt_hex(uint(io.ConfigFlags))}"))
+            text((text = "io.BackendPlatformName: {io.BackendPlatformName}"))
+            text((text = "io.BackendRendererName: {io.BackendRendererName}"))
+            text((text = "io.ConfigFlags: {fmt_hex(uint(io.ConfigFlags))}"))
             if (uint(io.ConfigFlags & ImGuiConfigFlags.NavEnableKeyboard) != 0u) {
-                text(ABOUT_TEXT_11, (text = " NavEnableKeyboard"))
+                text(" NavEnableKeyboard")
             }
             if (uint(io.ConfigFlags & ImGuiConfigFlags.NavEnableGamepad) != 0u) {
-                text(ABOUT_TEXT_12, (text = " NavEnableGamepad"))
+                text(" NavEnableGamepad")
             }
             if (uint(io.ConfigFlags & ImGuiConfigFlags.NavEnableSetMousePos) != 0u) {
-                text(ABOUT_TEXT_13, (text = " NavEnableSetMousePos"))
+                text(" NavEnableSetMousePos")
             }
             if (uint(io.ConfigFlags & ImGuiConfigFlags.NavNoCaptureKeyboard) != 0u) {
-                text(ABOUT_TEXT_14, (text = " NavNoCaptureKeyboard"))
+                text(" NavNoCaptureKeyboard")
             }
             if (uint(io.ConfigFlags & ImGuiConfigFlags.NoMouse) != 0u) {
-                text(ABOUT_TEXT_15, (text = " NoMouse"))
+                text(" NoMouse")
             }
             if (uint(io.ConfigFlags & ImGuiConfigFlags.NoMouseCursorChange) != 0u) {
-                text(ABOUT_TEXT_16, (text = " NoMouseCursorChange"))
+                text(" NoMouseCursorChange")
             }
             if (uint(io.ConfigFlags & ImGuiConfigFlags.DockingEnable) != 0u) {
-                text(ABOUT_TEXT_17, (text = " DockingEnable"))
+                text(" DockingEnable")
             }
             if (uint(io.ConfigFlags & ImGuiConfigFlags.ViewportsEnable) != 0u) {
-                text(ABOUT_TEXT_18, (text = " ViewportsEnable"))
+                text(" ViewportsEnable")
             }
             if (io.MouseDrawCursor) {
-                text(ABOUT_TEXT_19, (text = "io.MouseDrawCursor"))
+                text("io.MouseDrawCursor")
             }
             if (io.ConfigViewportsNoAutoMerge) {
-                text(ABOUT_TEXT_20, (text = "io.ConfigViewportsNoAutoMerge"))
+                text("io.ConfigViewportsNoAutoMerge")
             }
             if (io.ConfigViewportsNoTaskBarIcon) {
-                text(ABOUT_TEXT_21, (text = "io.ConfigViewportsNoTaskBarIcon"))
+                text("io.ConfigViewportsNoTaskBarIcon")
             }
             if (io.ConfigDockingNoSplit) {
-                text(ABOUT_TEXT_22, (text = "io.ConfigDockingNoSplit"))
+                text("io.ConfigDockingNoSplit")
             }
             if (io.ConfigDockingWithShift) {
-                text(ABOUT_TEXT_23, (text = "io.ConfigDockingWithShift"))
+                text("io.ConfigDockingWithShift")
             }
             if (io.ConfigDockingAlwaysTabBar) {
-                text(ABOUT_TEXT_24, (text = "io.ConfigDockingAlwaysTabBar"))
+                text("io.ConfigDockingAlwaysTabBar")
             }
             if (io.ConfigMacOSXBehaviors) {
-                text(ABOUT_TEXT_25, (text = "io.ConfigMacOSXBehaviors"))
+                text("io.ConfigMacOSXBehaviors")
             }
             if (io.ConfigInputTextCursorBlink) {
-                text(ABOUT_TEXT_26, (text = "io.ConfigInputTextCursorBlink"))
+                text("io.ConfigInputTextCursorBlink")
             }
-            text(ABOUT_TEXT_27, (text = "io.BackendFlags: {fmt_hex(uint(io.BackendFlags))}"))
+            text((text = "io.BackendFlags: {fmt_hex(uint(io.BackendFlags))}"))
             if (uint(io.BackendFlags & ImGuiBackendFlags.HasGamepad) != 0u) {
-                text(ABOUT_TEXT_28, (text = " HasGamepad"))
+                text(" HasGamepad")
             }
             if (uint(io.BackendFlags & ImGuiBackendFlags.HasMouseCursors) != 0u) {
-                text(ABOUT_TEXT_29, (text = " HasMouseCursors"))
+                text(" HasMouseCursors")
             }
             if (uint(io.BackendFlags & ImGuiBackendFlags.HasSetMousePos) != 0u) {
-                text(ABOUT_TEXT_30, (text = " HasSetMousePos"))
+                text(" HasSetMousePos")
             }
             if (uint(io.BackendFlags & ImGuiBackendFlags.PlatformHasViewports) != 0u) {
-                text(ABOUT_TEXT_31, (text = " PlatformHasViewports"))
+                text(" PlatformHasViewports")
             }
             if (uint(io.BackendFlags & ImGuiBackendFlags.RendererHasVtxOffset) != 0u) {
-                text(ABOUT_TEXT_32, (text = " RendererHasVtxOffset"))
+                text(" RendererHasVtxOffset")
             }
             if (uint(io.BackendFlags & ImGuiBackendFlags.RendererHasViewports) != 0u) {
-                text(ABOUT_TEXT_33, (text = " RendererHasViewports"))
+                text(" RendererHasViewports")
             }
             separator(ABOUT_SEP_4)
-            text(ABOUT_TEXT_34, (text = "io.DisplaySize: {io.DisplaySize.x},{io.DisplaySize.y}"))
-            text(ABOUT_TEXT_35, (text = "io.DisplayFramebufferScale: {io.DisplayFramebufferScale.x},{io.DisplayFramebufferScale.y}"))
+            text((text = "io.DisplaySize: {io.DisplaySize.x},{io.DisplaySize.y}"))
+            text((text = "io.DisplayFramebufferScale: {io.DisplayFramebufferScale.x},{io.DisplayFramebufferScale.y}"))
             separator(ABOUT_SEP_5)
-            text(ABOUT_TEXT_36, (text = "style.WindowPadding: {style.WindowPadding.x},{style.WindowPadding.y}"))
-            text(ABOUT_TEXT_37, (text = "style.WindowBorderSize: {style.WindowBorderSize}"))
-            text(ABOUT_TEXT_38, (text = "style.FramePadding: {style.FramePadding.x},{style.FramePadding.y}"))
-            text(ABOUT_TEXT_39, (text = "style.FrameRounding: {style.FrameRounding}"))
-            text(ABOUT_TEXT_40, (text = "style.FrameBorderSize: {style.FrameBorderSize}"))
-            text(ABOUT_TEXT_41, (text = "style.ItemSpacing: {style.ItemSpacing.x},{style.ItemSpacing.y}"))
-            text(ABOUT_TEXT_42, (text = "style.ItemInnerSpacing: {style.ItemInnerSpacing.x},{style.ItemInnerSpacing.y}"))
+            text((text = "style.WindowPadding: {style.WindowPadding.x},{style.WindowPadding.y}"))
+            text((text = "style.WindowBorderSize: {style.WindowBorderSize}"))
+            text((text = "style.FramePadding: {style.FramePadding.x},{style.FramePadding.y}"))
+            text((text = "style.FrameRounding: {style.FrameRounding}"))
+            text((text = "style.FrameBorderSize: {style.FrameBorderSize}"))
+            text((text = "style.ItemSpacing: {style.ItemSpacing.x},{style.ItemSpacing.y}"))
+            text((text = "style.ItemInnerSpacing: {style.ItemInnerSpacing.x},{style.ItemInnerSpacing.y}"))
 
             if (copy_to_clipboard) {
                 LogText("\n```\n")

@@ -82,9 +82,9 @@ def update() {
     SetNextWindowSize(ImVec2(700.0, 520.0), ImGuiCond.Always)
     window(EDITOR_WIN, (text = "External-data editor", closable = false,
                         flags = ImGuiWindowFlags.None)) {
-        text(LEAD, (text = "Every widget below edits a daslang `var private` directly via safe_addr."))
+        text("Every widget below edits a daslang `var private` directly via safe_addr.")
 
-        separator_text(SEP_SCALARS, (text = "Scalars"))
+        separator_text("Scalars")
 
         edit_slider_float(safe_addr(g_volume), (id = "VOL_SLIDER",
                                                 text = "Volume",
@@ -95,7 +95,7 @@ def update() {
         edit_checkbox(safe_addr(g_enabled), (id = "ENABLED_CHECK",
                                              text = "Enabled"))
 
-        separator_text(SEP_VECTORS, (text = "Vectors"))
+        separator_text("Vectors")
 
         edit_drag_float3(safe_addr(g_pos), (id = "POS_DRAG",
                                             text = "Position",
@@ -103,7 +103,7 @@ def update() {
         edit_color_edit3(safe_addr(g_accent), (id = "ACCENT_COLOR",
                                                text = "Accent"))
 
-        separator_text(SEP_SPECIAL, (text = "Combo and angle"))
+        separator_text("Combo and angle")
 
         edit_combo(safe_addr(g_quality_idx), (id = "QUALITY_COMBO",
                                               text = "Quality",
@@ -114,13 +114,13 @@ def update() {
                                                v_degrees_max = 180.0f))
 
         separator(SEP_READOUT)
-        text(READ_VOL, (text = "g_volume = {g_volume}"))
-        text(READ_COUNT, (text = "g_count = {g_count}"))
-        text(READ_ENABLED, (text = "g_enabled = {g_enabled}"))
-        text(READ_POS, (text = "g_pos = ({g_pos.x}, {g_pos.y}, {g_pos.z})"))
-        text(READ_ACCENT, (text = "g_accent = ({g_accent.x}, {g_accent.y}, {g_accent.z})"))
-        text(READ_QUALITY, (text = "g_quality_idx = {g_quality_idx} ({g_qualities[g_quality_idx]})"))
-        text(READ_ANGLE, (text = "g_angle = {g_angle} rad"))
+        text((text = "g_volume = {g_volume}"))
+        text((text = "g_count = {g_count}"))
+        text((text = "g_enabled = {g_enabled}"))
+        text((text = "g_pos = ({g_pos.x}, {g_pos.y}, {g_pos.z})"))
+        text((text = "g_accent = ({g_accent.x}, {g_accent.y}, {g_accent.z})"))
+        text((text = "g_quality_idx = {g_quality_idx} ({g_qualities[g_quality_idx]})"))
+        text((text = "g_angle = {g_angle} rad"))
     }
 
     end_of_frame()

@@ -58,7 +58,7 @@ def update() {
         // Slider — VOLUME state lives in a generated daslang global.
         VOLUME.bounds = (0.0f, 1.0f)
         slider_float(VOLUME, (text = "Volume"))
-        text(BB_TEXT_VOL, (text = "volume = {VOLUME.value}"))
+        text((text = "volume = {VOLUME.value}"))
 
         spacing(BB_SP_1)
 
@@ -66,7 +66,7 @@ def update() {
         if (button(BUMP_BTN, (text = "Bump"))) {
             print("bump clicked\n")
         }
-        text(BB_TEXT_BUMPS, (text = "bumps = {BUMP_BTN.click_count}"))
+        text((text = "bumps = {BUMP_BTN.click_count}"))
     }
 
     end_of_frame()

@@ -81,7 +81,7 @@ def update() {
         tab_bar(MAIN_TABS, (text = "MainTabs", flags = ImGuiTabBarFlags.None)) {
             tab_item(GENERAL_TAB, (text = "General", closable = false,
                                    flags = ImGuiTabItemFlags.None)) {
-                text(CT_TEXT_1, (text = "Tabs share a window; only the active tab renders."))
+                text("Tabs share a window; only the active tab renders.")
                 checkbox(WIRE, (text = "Wireframe"))
             }
             tab_item(AUDIO_TAB, (text = "Audio", closable = false,
@@ -91,8 +91,8 @@ def update() {
             }
             tab_item(INFO_TAB, (text = "Info", closable = false,
                                 flags = ImGuiTabItemFlags.None)) {
-                text(CT_TEXT_2, (text = "containers tutorial"))
-                text(CT_TEXT_3, (text = "each tab is a block — exclusive render"))
+                text("containers tutorial")
+                text("each tab is a block — exclusive render")
             }
         }
 
@@ -103,13 +103,13 @@ def update() {
         // next frame when ImGui sees `pending_open = true` and runs its
         // OpenPopup() call. The same channel handles imgui_open from
         // outside (curl example in the DRIVE block).
-        text(CT_TEXT_4, (text = "Popup — open via pending_open or imgui_open:"))
+        text("Popup — open via pending_open or imgui_open:")
         if (button(OPEN_POPUP_BTN, (text = "Open options"))) {
             OPTIONS_POPUP.pending_open = true
         }
         popup(OPTIONS_POPUP, (text = "OptionsPopup",
                               flags = ImGuiWindowFlags.None)) {
-            text(CT_TEXT_5, (text = "Options"))
+            text("Options")
             separator(CT_SEP_2)
             checkbox(OPT_VSYNC, (text = "VSync"))
             checkbox(OPT_HIDPI, (text = "HiDPI"))
@@ -123,11 +123,11 @@ def update() {
         // ---- item_tooltip — hover-gated overlay ----
         // BeginItemTooltip auto-checks IsItemHovered() under the hood, so
         // the block only runs while the previous widget is hovered.
-        text(CT_TEXT_6, (text = "Tooltip — hover the button below:"))
+        text("Tooltip — hover the button below:")
         button(HOVER_BTN, (text = "Hover me"))
         item_tooltip(HOVER_TIP) {
-            text(CT_TEXT_7, (text = "This text appears on hover."))
-            text(CT_TEXT_8, (text = "Driven by BeginItemTooltip (auto-gated)."))
+            text("This text appears on hover.")
+            text("Driven by BeginItemTooltip (auto-gated).")
         }
     }
 

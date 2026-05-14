@@ -80,20 +80,20 @@ def update() {
         // scope contributes a path segment AND a PushID, so the registry
         // sees ID_WIN/section_a/SAVE_BTN and ID_WIN/section_b/SAVE_BTN as
         // distinct entries with distinct ImGui hashes.
-        text(WI_TEXT_1, (text = "Same SAVE_BTN, two scopes:"))
+        text("Same SAVE_BTN, two scopes:")
         with_id("section_a") {
             button(SAVE_BTN, (text = "Save in A"))
         }
         with_id("section_b") {
             button(SAVE_BTN, (text = "Save in B"))
         }
-        text(WI_TEXT_2, (text = "SAVE_BTN.click_count aggregates: {SAVE_BTN.click_count}"))
+        text((text = "SAVE_BTN.click_count aggregates: {SAVE_BTN.click_count}"))
 
         separator(WI_SEP_1)
 
         // ---- Nested chains: outer scope, inner scope, leaf widget ----
         // The path is the chain joined by "/": ID_WIN/outer/inner/NESTED_BTN.
-        text(WI_TEXT_3, (text = "Nested with_id chains:"))
+        text("Nested with_id chains:")
         with_id("outer") {
             with_id("inner") {
                 button(NESTED_BTN, (text = "Nested deep"))
@@ -108,7 +108,7 @@ def update() {
         // scripts targeting the widget by hex_id, and imgui.ini state for
         // this button, stay stable even if HASHED_BTN is later renamed.
         // Telemetry path stays ID_WIN/HASHED_BTN.
-        text(WI_TEXT_4, (text = "Per-call id= — script-stable ImGui hash:"))
+        text("Per-call id= — script-stable ImGui hash:")
         button(HASHED_BTN, (text = "Hashed via id=", id = "stable_v1"))
 
         separator(WI_SEP_3)
@@ -118,7 +118,7 @@ def update() {
         // reference breaks). "rps_stable" is the registry path leaf — the
         // imgui_set / imgui_click string used by external drivers. Both the
         // path AND the ImGui hash adopt "rps_stable".
-        text(WI_TEXT_5, (text = "Per-call path= — script-stable telemetry path:"))
+        text("Per-call path= — script-stable telemetry path:")
         slider_float(RPS_PATH, (text = "Speed (path=)",
                                 path = "rps_stable"))
     }

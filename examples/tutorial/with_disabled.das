@@ -59,9 +59,9 @@ def update() {
     SetNextWindowSize(ImVec2(640.0, 440.0), ImGuiCond.Always)
     window(SCOPES_WIN, (text = "Scope wrappers", closable = false,
                         flags = ImGuiWindowFlags.None)) {
-        separator_text(SEP_DISABLED, (text = "with_disabled"))
+        separator_text("with_disabled")
 
-        text(LEAD_DIS, (text = "Toggle ENABLED_MASTER; child widgets follow."))
+        text("Toggle ENABLED_MASTER; child widgets follow.")
         checkbox(ENABLED_MASTER, (text = "Enable child group"))
 
         // The whole block inside `with_disabled(...)` is rendered greyed-out
@@ -77,26 +77,26 @@ def update() {
             slider_float(CHILD_VOL, (text = "Volume"))
         }
 
-        separator_text(SEP_REPEAT, (text = "with_button_repeat"))
+        separator_text("with_button_repeat")
 
         // Inside with_button_repeat(true), holding the button fires click
         // events repeatedly — useful for steppers.
-        text(LEAD_REP, (text = "Hold the button — click_count keeps rising."))
+        text("Hold the button — click_count keeps rising.")
         with_button_repeat(true) {
             if (button(STEP_UP, (text = "+"))) {
                 print("step up: {STEP_UP.click_count}\n")
             }
         }
 
-        text(STEP_OUT, (text = "STEP_UP.click_count = {STEP_UP.click_count}"))
+        text((text = "STEP_UP.click_count = {STEP_UP.click_count}"))
 
-        separator_text(SEP_FONT, (text = "with_font"))
+        separator_text("with_font")
 
         // The default font is the same as GetFont() — change to any loaded
         // font handle to switch scope-local typography.
-        text(LEAD_FONT, (text = "with_font(...) swaps the active font for one scope."))
+        text("with_font(...) swaps the active font for one scope.")
         with_font(GetFont()) {
-            text(IN_FONT, (text = "Inside the with_font scope."))
+            text("Inside the with_font scope.")
         }
     }
 

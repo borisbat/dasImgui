@@ -89,13 +89,13 @@ def update() {
 
         // ---- A text input — driven by `imgui_set` with a string value ----
         input_text(USER, (text = "User"))
-        text(DR_TEXT_USER, (text = "USER.value = \"{USER.value}\""))
+        text((text = "USER.value = \"{USER.value}\""))
 
         separator(DR_SEP_1)
 
         // ---- A slider — driven by `imgui_set` with a number value ----
         slider_int(SPEED, (text = "Speed"))
-        text(DR_TEXT_SPEED, (text = "SPEED.value = {SPEED.value}"))
+        text((text = "SPEED.value = {SPEED.value}"))
 
         separator(DR_SEP_2)
 
@@ -116,23 +116,23 @@ def update() {
                 }
             }
         }
-        text(DR_TEXT_PRESET, (text = "PRESET = {preset_label} (idx {PRESET.value})"))
+        text((text = "PRESET = {preset_label} (idx {PRESET.value})"))
 
         separator(DR_SEP_3)
 
         // ---- A button — fired by `imgui_click` ----
         if (button(RUN_BTN, (text = "Run"))) {}
-        text(DR_TEXT_RUN, (text = "RUN_BTN.click_count = {RUN_BTN.click_count}"))
+        text((text = "RUN_BTN.click_count = {RUN_BTN.click_count}"))
 
         separator(DR_SEP_4)
 
         // ---- A popup — opened/closed via `imgui_open` / `imgui_close` ----
-        text(DR_TEXT_POPUP_HINT, (text = "STATUS_POPUP — driven by imgui_open / imgui_close."))
+        text("STATUS_POPUP — driven by imgui_open / imgui_close.")
         popup(STATUS_POPUP, (text = "StatusPopup",
                              flags = ImGuiWindowFlags.None)) {
-            text(DR_TEXT_POPUP_BODY, (text = "Driven from outside via imgui_open."))
+            text("Driven from outside via imgui_open.")
             separator(DR_SEP_5)
-            text(DR_TEXT_POPUP_RUN, (text = "RUN_BTN.click_count = {RUN_BTN.click_count}"))
+            text((text = "RUN_BTN.click_count = {RUN_BTN.click_count}"))
         }
     }
 

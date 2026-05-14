@@ -65,7 +65,7 @@ def update() {
     SetNextWindowSize(float2(440.0f, 360.0f), ImGuiCond.FirstUseEver)
     window(SUBJECT_WIN, (text = "Demoed widgets", closable = false,
                          flags = ImGuiWindowFlags.None)) {
-        text(VA_TEXT_1, (text = "These widgets get highlighted, narrated, typed-into, etc."))
+        text("These widgets get highlighted, narrated, typed-into, etc.")
         separator(VA_SEP_1)
         text_show(STATUS, (value = "ready"))
         VOLUME.bounds = (0.0f, 100.0f)
@@ -75,7 +75,7 @@ def update() {
         }
         separator(VA_SEP_2)
         input_text(NAME_INPUT, (text = "Name"))
-        text(VA_TEXT_2, (text = "buffer = {NAME_INPUT.value}"))
+        text((text = "buffer = {NAME_INPUT.value}"))
     }
 
     // ===== Controls window — driver buttons for the aids =====
@@ -83,7 +83,7 @@ def update() {
     SetNextWindowSize(float2(440.0f, 560.0f), ImGuiCond.FirstUseEver)
     window(CONTROLS_WIN, (text = "Visual aids controls", closable = false,
                           flags = ImGuiWindowFlags.None)) {
-        text(VA_TEXT_3, (text = "Highlight a widget (yellow rect, 60 frames):"))
+        text("Highlight a widget (yellow rect, 60 frames):")
         separator(VA_SEP_3)
         if (button(BTN_HIGHLIGHT_STATUS, (text = "highlight STATUS"))) {
             highlight("SUBJECT_WIN/STATUS")
@@ -101,7 +101,7 @@ def update() {
         }
 
         spacing(VA_SP_1)
-        text(VA_TEXT_4, (text = "Mouse trail (fading dots following cursor):"))
+        text("Mouse trail (fading dots following cursor):")
         separator(VA_SEP_4)
         if (button(BTN_TRAIL_ON, (text = "mouse trail ON"))) {
             mouse_trail(true)
@@ -111,7 +111,7 @@ def update() {
         }
 
         spacing(VA_SP_2)
-        text(VA_TEXT_5, (text = "Narrate callout (overlay box + connector line):"))
+        text("Narrate callout (overlay box + connector line):")
         separator(VA_SEP_5)
         if (button(BTN_NARRATE_VOLUME, (text = "narrate VOLUME"))) {
             narrate("Drag this to set volume.", "SUBJECT_WIN/VOLUME")
@@ -124,7 +124,7 @@ def update() {
         }
 
         spacing(VA_SP_3)
-        text(VA_TEXT_6, (text = "Auto-highlight on command (flag, currently {imgui_auto_highlight_on_command}):"))
+        text((text = "Auto-highlight on command (flag, currently {imgui_auto_highlight_on_command}):"))
         separator(VA_SEP_6)
         if (button(BTN_AUTO_ON, (text = "auto-highlight ON"))) {
             imgui_auto_highlight_on_command = true

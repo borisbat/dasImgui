@@ -93,12 +93,12 @@ def update() {
     SetNextWindowSize(ImVec2(680.0, 320.0), ImGuiCond.Always)
     window(BODY, (text = "State readout", closable = false,
                   flags = ImGuiWindowFlags.None)) {
-        text(LEAD, (text = "Click items in the bar above; the snapshot updates below."))
+        text("Click items in the bar above; the snapshot updates below.")
         separator(BODY_SEP)
-        text(STATE_DARK, (text = "MI_DARKMODE.value = {MI_DARKMODE.value}"))
-        text(STATE_AUTO, (text = "MI_AUTOSAVE.value = {MI_AUTOSAVE.value}"))
-        text(STATE_UNDO, (text = "EDIT_UNDO.click_count = {EDIT_UNDO.click_count}"))
-        text(STATE_QUIT, (text = "MI_QUIT.value = {MI_QUIT.value}"))
+        text((text = "MI_DARKMODE.value = {MI_DARKMODE.value}"))
+        text((text = "MI_AUTOSAVE.value = {MI_AUTOSAVE.value}"))
+        text((text = "EDIT_UNDO.click_count = {EDIT_UNDO.click_count}"))
+        text((text = "MI_QUIT.value = {MI_QUIT.value}"))
     }
 
     end_of_frame()

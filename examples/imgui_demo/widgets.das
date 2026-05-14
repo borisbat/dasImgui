@@ -121,7 +121,7 @@ def private BasicSection() {
     tree_node(WIDGETS_BASIC_SECTION,
         (text = "Basic", flags = ImGuiTreeNodeFlags.None)) {
 
-        separator_text(WIDGETS_SEP_1, (text = "General"))
+        separator_text("General")
 
         // Button + click counter
         if (button(WIDGETS_BASIC_BUTTON, (text = "Button"))) {
@@ -129,7 +129,7 @@ def private BasicSection() {
         }
         if ((WIDGETS_BASIC_BUTTON.click_count & 1) != 0) {
             same_line(WIDGETS_SL_1)
-            text(WIDGETS_TEXT_1, (text = "Thanks for clicking me!"))
+            text("Thanks for clicking me!")
         }
 
         // Checkbox
@@ -156,37 +156,37 @@ def private BasicSection() {
         // Arrow buttons with the Repeater flag — wrapped by with_button_repeat
         // scope wrapper; the arrow buttons themselves go through boost.
         AlignTextToFramePadding()
-        text(WIDGETS_TEXT_2, (text = "Hold to repeat:"))
+        text("Hold to repeat:")
         same_line(WIDGETS_SL_4)
         let spacing = unsafe(GetStyle()).ItemInnerSpacing.x
         with_button_repeat(true) {
             if (arrow_button(WIDGETS_BASIC_ARROW_L, (text = "##left", dir = ImGuiDir.Left))) {
                 WIDGETS_BASIC_ARROW_COUNTER--
             }
-            same_line(WIDGETS_SL_5, (offset_from_start_x = 0.0f, spacing = spacing))
+            same_line((offset_from_start_x = 0.0f, spacing = spacing))
             if (arrow_button(WIDGETS_BASIC_ARROW_R, (text = "##right", dir = ImGuiDir.Right))) {
                 WIDGETS_BASIC_ARROW_COUNTER++
             }
         }
         same_line(WIDGETS_SL_6)
-        text(WIDGETS_TEXT_3, (text = "{WIDGETS_BASIC_ARROW_COUNTER}"))
+        text((text = "{WIDGETS_BASIC_ARROW_COUNTER}"))
 
         // SetItemTooltip → item_tooltip container (binding-gap shim).
         button(WIDGETS_BASIC_TOOLTIP_BTN, (text = "Tooltip"))
         item_tooltip(WIDGETS_BASIC_TOOLTIP_TIP) {
-            text(WIDGETS_TEXT_4, (text = "I am a tooltip"))
+            text("I am a tooltip")
         }
 
         LabelText("label", "Value")
 
-        separator_text(WIDGETS_SEP_2, (text = "Inputs"))
+        separator_text("Inputs")
 
         input_text(WIDGETS_BASIC_STR0, (text = "input text", init = "Hello, world!"))
         same_line(WIDGETS_SL_7)
-        text_disabled(WIDGETS_BASIC_HM1_HINT, (text = "(?)"))
+        text_disabled("(?)")
         item_tooltip(WIDGETS_BASIC_HM1_TIP) {
             with_text_wrap_pos(GetFontSize() * 35.0f) {
-                text_unformatted(WIDGETS_BASIC_HM1_TEXT, (text =
+                text_unformatted((text =
                     "USER:\n" +
                     "Hold SHIFT or use mouse to select text.\n" +
                     "CTRL+Left/Right to word jump.\n" +
@@ -216,10 +216,10 @@ def private BasicSection() {
             (text = "input scientific", init = 1.0e10f,
              step = 0.0f, step_fast = 0.0f, format = "%e"))
         same_line(WIDGETS_SL_8)
-        text_disabled(WIDGETS_BASIC_HM2_HINT, (text = "(?)"))
+        text_disabled("(?)")
         item_tooltip(WIDGETS_BASIC_HM2_TIP) {
             with_text_wrap_pos(GetFontSize() * 35.0f) {
-                text_unformatted(WIDGETS_BASIC_HM2_TEXT, (text =
+                text_unformatted((text =
                     "You can input value using the scientific notation,\n" +
                     "  e.g. \"1e+8\" becomes \"100000000\"."))
             }
@@ -227,14 +227,14 @@ def private BasicSection() {
         input_float3(WIDGETS_BASIC_VEC4A,
             (text = "input float3", init = float3(0.10f, 0.20f, 0.30f)))
 
-        separator_text(WIDGETS_SEP_3, (text = "Drags"))
+        separator_text("Drags")
 
         drag_int(WIDGETS_BASIC_DRAG_I1, (text = "drag int", init = 50, speed = 1.0f))
         same_line(WIDGETS_SL_9)
-        text_disabled(WIDGETS_BASIC_HM3_HINT, (text = "(?)"))
+        text_disabled("(?)")
         item_tooltip(WIDGETS_BASIC_HM3_TIP) {
             with_text_wrap_pos(GetFontSize() * 35.0f) {
-                text_unformatted(WIDGETS_BASIC_HM3_TEXT, (text =
+                text_unformatted((text =
                     "Click and drag to edit value.\n" +
                     "Hold SHIFT/ALT for faster/slower edit.\n" +
                     "Double-click or CTRL+click to input value."))
@@ -250,15 +250,15 @@ def private BasicSection() {
             (text = "drag small float", init = 0.0067f, speed = 0.0001f,
              format = "%.06f ns"))
 
-        separator_text(WIDGETS_SEP_4, (text = "Sliders"))
+        separator_text("Sliders")
 
         slider_int(WIDGETS_BASIC_SLIDER_I1,
             (text = "slider int", init = 0, bounds = (-1, 3)))
         same_line(WIDGETS_SL_10)
-        text_disabled(WIDGETS_BASIC_HM4_HINT, (text = "(?)"))
+        text_disabled("(?)")
         item_tooltip(WIDGETS_BASIC_HM4_TIP) {
             with_text_wrap_pos(GetFontSize() * 35.0f) {
-                text_unformatted(WIDGETS_BASIC_HM4_TEXT, (text = "CTRL+click to input value."))
+                text_unformatted("CTRL+click to input value.")
             }
         }
 
@@ -281,24 +281,24 @@ def private BasicSection() {
         slider_int(WIDGETS_BASIC_ELEM,
             (text = "slider enum", init = 0, bounds = (0, 3), format = elem_name))
         same_line(WIDGETS_SL_11)
-        text_disabled(WIDGETS_BASIC_HM5_HINT, (text = "(?)"))
+        text_disabled("(?)")
         item_tooltip(WIDGETS_BASIC_HM5_TIP) {
             with_text_wrap_pos(GetFontSize() * 35.0f) {
-                text_unformatted(WIDGETS_BASIC_HM5_TEXT, (text =
+                text_unformatted((text =
                     "Using the format string parameter to display a name instead of the " +
                     "underlying integer."))
             }
         }
 
-        separator_text(WIDGETS_SEP_5, (text = "Selectors/Pickers"))
+        separator_text("Selectors/Pickers")
 
         color_edit3(WIDGETS_BASIC_COL1,
             (text = "color 1", init = float3(1.0f, 0.0f, 0.2f)))
         same_line(WIDGETS_SL_12)
-        text_disabled(WIDGETS_BASIC_HM6_HINT, (text = "(?)"))
+        text_disabled("(?)")
         item_tooltip(WIDGETS_BASIC_HM6_TIP) {
             with_text_wrap_pos(GetFontSize() * 35.0f) {
-                text_unformatted(WIDGETS_BASIC_HM6_TEXT, (text =
+                text_unformatted((text =
                     "Click on the color square to open a color picker.\n" +
                     "Click and hold to use drag and drop.\n" +
                     "Right-click on the color square to show options.\n" +
@@ -314,10 +314,10 @@ def private BasicSection() {
              items <- ["AAAA", "BBBB", "CCCC", "DDDD", "EEEE", "FFFF", "GGGG",
                        "HHHH", "IIIIIII", "JJJJ", "KKKKKKK"]))
         same_line(WIDGETS_SL_13)
-        text_disabled(WIDGETS_BASIC_HM7_HINT, (text = "(?)"))
+        text_disabled("(?)")
         item_tooltip(WIDGETS_BASIC_HM7_TIP) {
             with_text_wrap_pos(GetFontSize() * 35.0f) {
-                text_unformatted(WIDGETS_BASIC_HM7_TEXT, (text =
+                text_unformatted((text =
                     "Using the simplified one-liner Combo API here.\n" +
                     "Refer to the \"Combo\" section below for an explanation of how to " +
                     "use the more flexible and general BeginCombo/EndCombo API."))
@@ -340,10 +340,10 @@ def private BasicSection() {
             }
         }
         same_line(WIDGETS_SL_14)
-        text_disabled(WIDGETS_BASIC_HM8_HINT, (text = "(?)"))
+        text_disabled("(?)")
         item_tooltip(WIDGETS_BASIC_HM8_TIP) {
             with_text_wrap_pos(GetFontSize() * 35.0f) {
-                text_unformatted(WIDGETS_BASIC_HM8_TEXT, (text =
+                text_unformatted((text =
                     "Using the manual BeginListBox/EndListBox idiom here.\n" +
                     "Refer to the \"List boxes\" section below for the full discussion."))
             }
@@ -360,11 +360,11 @@ def private TooltipsSection() {
     tree_node(WIDGETS_TOOLTIPS_SECTION,
         (text = "Tooltips", flags = ImGuiTreeNodeFlags.None)) {
 
-        separator_text(WIDGETS_SEP_6, (text = "General"))
-        text_disabled(WIDGETS_TIPS_HM1_HINT, (text = "(?)"))
+        separator_text("General")
+        text_disabled("(?)")
         item_tooltip(WIDGETS_TIPS_HM1_TIP) {
             with_text_wrap_pos(GetFontSize() * 35.0f) {
-                text_unformatted(WIDGETS_TIPS_HM1_TEXT, (text =
+                text_unformatted((text =
                     "Tooltip are typically created by using a IsItemHovered() + " +
                     "SetTooltip() sequence.\n\nWe provide a helper SetItemTooltip() " +
                     "function to perform the two with standards flags."))
@@ -377,21 +377,21 @@ def private TooltipsSection() {
         // load-bearing here.
         button(WIDGETS_TIP_BASIC, (text = "Basic"))
         item_tooltip(WIDGETS_TIP_BASIC_TIP) {
-            text(WIDGETS_TEXT_5, (text = "I am a tooltip"))
+            text("I am a tooltip")
         }
 
         button(WIDGETS_TIP_FANCY, (text = "Fancy"))
         item_tooltip(WIDGETS_TIP_FANCY_TIP) {
-            text(WIDGETS_TEXT_6, (text = "I am a fancy tooltip"))
+            text("I am a fancy tooltip")
             let arr = fixed_array<float>(0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f)
             // PlotLines's binding takes the full overload — no defaults — so all
             // 9 args are supplied. stride is sizeof(float) = 4.
             PlotLines("Curve", unsafe(addr(arr[0])), length(arr),
                       0, "", FLT_MAX, FLT_MAX, float2(0.0f, 0.0f), 4)
-            text(WIDGETS_TEXT_7, (text = "Sin(time) = {sin(float(GetTime()))}"))
+            text((text = "Sin(time) = {sin(float(GetTime()))}"))
         }
 
-        separator_text(WIDGETS_SEP_7, (text = "Always On"))
+        separator_text("Always On")
 
         // Three-way radio: Off / Always On (Simple) / Always On (Advanced)
         radio_button_int(WIDGETS_TIP_ALWAYS_ON, (text = "Off", v_button = 0)); same_line(WIDGETS_SL_15)
@@ -404,17 +404,17 @@ def private TooltipsSection() {
             // IsItemHovered()-gated — the boost `tooltip` container handles
             // BeginTooltip/EndTooltip itself.
             tooltip(WIDGETS_TIP_1) {
-                progress_bar(WIDGETS_PROG_1, (fraction = sin(float(GetTime())) * 0.5f + 0.5f,
-                                              size = float2(GetFontSize() * 25.0f, 0.0f),
-                                              overlay = ""))
+                progress_bar((fraction = sin(float(GetTime())) * 0.5f + 0.5f,
+                              size = float2(GetFontSize() * 25.0f, 0.0f),
+                              overlay = ""))
             }
         }
 
-        separator_text(WIDGETS_SEP_8, (text = "Custom"))
-        text_disabled(WIDGETS_TIPS_HM2_HINT, (text = "(?)"))
+        separator_text("Custom")
+        text_disabled("(?)")
         item_tooltip(WIDGETS_TIPS_HM2_TIP) {
             with_text_wrap_pos(GetFontSize() * 35.0f) {
-                text_unformatted(WIDGETS_TIPS_HM2_TEXT, (text =
+                text_unformatted((text =
                     "Passing ImGuiHoveredFlags_ForTooltip to IsItemHovered() is the " +
                     "preferred way to standardize tooltip activation details across " +
                     "your application. You may however decide to use custom flags for " +
@@ -488,10 +488,10 @@ def private TreeNodesSection() {
         tree_node(WIDGETS_TREES_ADVANCED,
             (text = "Advanced, with Selectable nodes",
              flags = ImGuiTreeNodeFlags.None)) {
-            text_disabled(WIDGETS_TREE_HM1_HINT, (text = "(?)"))
+            text_disabled("(?)")
             item_tooltip(WIDGETS_TREE_HM1_TIP) {
                 with_text_wrap_pos(GetFontSize() * 35.0f) {
-                    text_unformatted(WIDGETS_TREE_HM1_TEXT, (text =
+                    text_unformatted((text =
                         "This is a more typical looking tree with selectable nodes.\n" +
                         "Click to select, CTRL+Click to toggle, click on arrows or " +
                         "double-click to open."))
@@ -512,10 +512,10 @@ def private TreeNodesSection() {
                           safe_addr(WIDGETS_TREE_BASE_FLAGS),
                           int(ImGuiTreeNodeFlags.SpanAvailWidth))
             same_line(WIDGETS_SL_17)
-            text_disabled(WIDGETS_TREE_HM2_HINT, (text = "(?)"))
+            text_disabled("(?)")
             item_tooltip(WIDGETS_TREE_HM2_TIP) {
                 with_text_wrap_pos(GetFontSize() * 35.0f) {
-                    text_unformatted(WIDGETS_TREE_HM2_TEXT, (text =
+                    text_unformatted((text =
                         "Extend hit area to all available width instead of allowing " +
                         "more items to be laid out after the node."))
                 }
@@ -527,20 +527,20 @@ def private TreeNodesSection() {
                           safe_addr(WIDGETS_TREE_BASE_FLAGS),
                           int(ImGuiTreeNodeFlags.SpanTextWidth))
             same_line(WIDGETS_SL_18)
-            text_disabled(WIDGETS_TREE_HM3_HINT, (text = "(?)"))
+            text_disabled("(?)")
             item_tooltip(WIDGETS_TREE_HM3_TIP) {
                 with_text_wrap_pos(GetFontSize() * 35.0f) {
-                    text_unformatted(WIDGETS_TREE_HM3_TEXT, (text = "Reduce hit area to the text label and a bit of margin."))
+                    text_unformatted("Reduce hit area to the text label and a bit of margin.")
                 }
             }
             CheckboxFlags("ImGuiTreeNodeFlags_SpanAllColumns",
                           safe_addr(WIDGETS_TREE_BASE_FLAGS),
                           int(ImGuiTreeNodeFlags.SpanAllColumns))
             same_line(WIDGETS_SL_19)
-            text_disabled(WIDGETS_TREE_HM4_HINT, (text = "(?)"))
+            text_disabled("(?)")
             item_tooltip(WIDGETS_TREE_HM4_TIP) {
                 with_text_wrap_pos(GetFontSize() * 35.0f) {
-                    text_unformatted(WIDGETS_TREE_HM4_TEXT, (text = "For use in Tables only."))
+                    text_unformatted("For use in Tables only.")
                 }
             }
             CheckboxFlags("ImGuiTreeNodeFlags_AllowOverlap",
@@ -550,17 +550,17 @@ def private TreeNodesSection() {
                           safe_addr(WIDGETS_TREE_BASE_FLAGS),
                           int(ImGuiTreeNodeFlags.Framed))
             same_line(WIDGETS_SL_20)
-            text_disabled(WIDGETS_TREE_HM5_HINT, (text = "(?)"))
+            text_disabled("(?)")
             item_tooltip(WIDGETS_TREE_HM5_TIP) {
                 with_text_wrap_pos(GetFontSize() * 35.0f) {
-                    text_unformatted(WIDGETS_TREE_HM5_TEXT, (text = "Draw frame with background (e.g. for CollapsingHeader)"))
+                    text_unformatted("Draw frame with background (e.g. for CollapsingHeader)")
                 }
             }
 
             checkbox(WIDGETS_TREE_ALIGN, (text = "Align label with current X position"))
             checkbox(WIDGETS_TREE_DRAG_TEST, (text = "Test tree node as drag source"))
 
-            text(WIDGETS_TEXT_8, (text = "Hello!"))
+            text("Hello!")
             if (WIDGETS_TREE_ALIGN.value) Unindent(GetTreeNodeToLabelSpacing())
 
             var node_clicked = -1
@@ -647,7 +647,7 @@ def private CollapsingHeadersSection() {
                 (text = "Show 2nd header", init = true))
             collapsing_header(WIDGETS_CH_HEADER,
                 (text = "Header", closable = false, flags = ImGuiTreeNodeFlags.None)) {
-                text(WIDGETS_TEXT_9, (text = "IsItemHovered: {IsItemHovered()}"))
+                text((text = "IsItemHovered: {IsItemHovered()}"))
                 for (i in range(5)) {
                     text(WIDGETS_LOOP_CH_TEXT_INNER[i], (text = "Some content {i}"))
                 }
@@ -657,7 +657,7 @@ def private CollapsingHeadersSection() {
             // p_open pointer for CollapsingHeader. Raw + safe_addr until Phase 3.
             if (CollapsingHeader("Header with a close button",
                                  safe_addr(WIDGETS_CH_CLOSABLE_GROUP.value))) {
-                text(WIDGETS_TEXT_10, (text = "IsItemHovered: {IsItemHovered()}"))
+                text((text = "IsItemHovered: {IsItemHovered()}"))
                 for (i in range(5)) {
                     text(WIDGETS_LOOP_CH_TEXT_INNER2[i], (text = "More content {i}"))
                 }
@@ -673,13 +673,13 @@ def private CollapsingHeadersSection() {
 def private BulletsSection() {
     tree_node(WIDGETS_BULLETS_SECTION,
         (text = "Bullets", flags = ImGuiTreeNodeFlags.None)) {
-            bullet_text(WIDGETS_BULLET_1, (text = "Bullet point 1"))
-            bullet_text(WIDGETS_BULLET_2, (text = "Bullet point 2\nOn multiple lines"))
+            bullet_text("Bullet point 1")
+            bullet_text("Bullet point 2\nOn multiple lines")
             tree_node(WIDGETS_BULLETS_INNER,
                 (text = "Tree node", flags = ImGuiTreeNodeFlags.None)) {
-                bullet_text(WIDGETS_BULLET_3, (text = "Another bullet point"))
+                bullet_text("Another bullet point")
             }
-        bullet(WIDGETS_BULLET_4); text(WIDGETS_TEXT_11, (text = "Bullet point 3 (two calls)"))
+        bullet(WIDGETS_BULLET_4); text("Bullet point 3 (two calls)")
         bullet(WIDGETS_BULLET_5); small_button(WIDGETS_BULLETS_BTN, (text = "Button"))
 
     }
@@ -700,10 +700,10 @@ def private TextSection() {
                 TextColored(float4(1.0f, 1.0f, 0.0f, 1.0f), "Yellow")
                 TextDisabled("Disabled")
                 same_line(WIDGETS_SL_22)
-                text_disabled(WIDGETS_TEXT_HM1_HINT, (text = "(?)"))
+                text_disabled("(?)")
                 item_tooltip(WIDGETS_TEXT_HM1_TIP) {
                     with_text_wrap_pos(GetFontSize() * 35.0f) {
-                        text_unformatted(WIDGETS_TEXT_HM1_TEXT, (text = "The TextDisabled color is stored in ImGuiStyle."))
+                        text_unformatted("The TextDisabled color is stored in ImGuiStyle.")
                     }
                 }
             }
@@ -730,13 +730,13 @@ def private TextSection() {
                                             pos.y + GetTextLineHeight())
                     with_text_wrap_pos(GetCursorPos().x + wrap) {
                         if (n == 0) {
-                            text(WIDGETS_TEXT_12, (text = "The lazy dog is a good dog. This paragraph " +
-                                 "should fit within {wrap} pixels. Testing a 1 " +
-                                 "character word. The quick brown fox jumps over " +
-                                 "the lazy dog."))
+                            text((text = "The lazy dog is a good dog. This paragraph " +
+                                         "should fit within {wrap} pixels. Testing a 1 " +
+                                         "character word. The quick brown fox jumps over " +
+                                         "the lazy dog."))
                         } else {
-                            text(WIDGETS_TEXT_13, (text = "aaaaaaaa bbbbbbbb, c cccccccc,dddddddd. d " +
-                                 "eeeeeeee   ffffffff. gggggggg!hhhhhhhh"))
+                            text((text = "aaaaaaaa bbbbbbbb, c cccccccc,dddddddd. d " +
+                                         "eeeeeeee   ffffffff. gggggggg!hhhhhhhh"))
                         }
                         // Inline `*GetWindowDrawList()` so the receiver doesn't
                         // pick up `let`-const from a binding — AddRect/Filled
@@ -757,8 +757,8 @@ def private TextSection() {
                     "AddFontFromFileTTF() manually to load extra character ranges. " +
                     "Read docs/FONTS.md for details.")
                 // daslang source files are UTF-8 so the literals are stored as-is.
-                text(WIDGETS_TEXT_14, (text = "Hiragana: かきくけこ (kakikukeko)"))
-                text(WIDGETS_TEXT_15, (text = "Kanjis: 日本語 (nihongo)"))
+                text("Hiragana: かきくけこ (kakikukeko)")
+                text("Kanjis: 日本語 (nihongo)")
                 input_text(WIDGETS_TEXT_UTF8_INPUT,
                     (text = "UTF-8 input", init = "日本語"))
             }
@@ -786,17 +786,17 @@ def private ImagesSection() {
         let my_tex_h = float(unsafe(*io.Fonts).TexHeight)
 
         checkbox(WIDGETS_IMAGES_USE_TINT, (text = "Use Text Color for Tint"))
-        text(WIDGETS_TEXT_16, (text = "{int(my_tex_w)}x{int(my_tex_h)}"))
+        text((text = "{int(my_tex_w)}x{int(my_tex_h)}"))
         let pos = GetCursorScreenPos()
         let uv_min = float2(0.0f, 0.0f)
         let uv_max = float2(1.0f, 1.0f)
         let tint_col = WIDGETS_IMAGES_USE_TINT.value \
             ? GetStyleColorVec4(ImGuiCol.Text) : float4(1.0f, 1.0f, 1.0f, 1.0f)
         let border_col = GetStyleColorVec4(ImGuiCol.Border)
-        image(WIDGETS_IMG_1, (user_texture_id = my_tex_id,
-                              size = float2(my_tex_w, my_tex_h),
-                              uv0 = uv_min, uv1 = uv_max,
-                              tint_col = tint_col, border_col = border_col))
+        image((user_texture_id = my_tex_id,
+               size = float2(my_tex_w, my_tex_h),
+               uv0 = uv_min, uv1 = uv_max,
+               tint_col = tint_col, border_col = border_col))
         // Hover-to-zoom tooltip — fancy contents, so item_tooltip container.
         item_tooltip(WIDGETS_IMAGES_ZOOM_TIP) {
             let region_sz = 32.0f
@@ -813,15 +813,15 @@ def private ImagesSection() {
             } elif (region_y > my_tex_h - region_sz) {
                 region_y = my_tex_h - region_sz
             }
-            text(WIDGETS_TEXT_17, (text = "Min: ({region_x}, {region_y})"))
-            text(WIDGETS_TEXT_18, (text = "Max: ({region_x + region_sz}, {region_y + region_sz})"))
+            text((text = "Min: ({region_x}, {region_y})"))
+            text((text = "Max: ({region_x + region_sz}, {region_y + region_sz})"))
             let uv0 = float2(region_x / my_tex_w, region_y / my_tex_h)
             let uv1 = float2((region_x + region_sz) / my_tex_w,
                              (region_y + region_sz) / my_tex_h)
-            image(WIDGETS_IMG_2, (user_texture_id = my_tex_id,
-                                  size = float2(region_sz * zoom, region_sz * zoom),
-                                  uv0 = uv0, uv1 = uv1,
-                                  tint_col = tint_col, border_col = border_col))
+            image((user_texture_id = my_tex_id,
+                   size = float2(region_sz * zoom, region_sz * zoom),
+                   uv0 = uv0, uv1 = uv1,
+                   tint_col = tint_col, border_col = border_col))
         }
 
         TextWrapped("And now some textured buttons..")
@@ -838,7 +838,7 @@ def private ImagesSection() {
             same_line(WIDGETS_LOOP_IMG_SL[i])
         }
         new_line(WIDGETS_NL_1)
-        text(WIDGETS_TEXT_19, (text = "Pressed {WIDGETS_IMAGES_PRESSED_COUNT} times."))
+        text((text = "Pressed {WIDGETS_IMAGES_PRESSED_COUNT} times."))
     }
 }
 

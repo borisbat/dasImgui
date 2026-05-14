@@ -79,12 +79,12 @@ def update() {
         // struct's fields are then read directly:
         //   SAVE_BTN.click_count : cumulative (@live → preserved across reload)
         //   SAVE_BTN.clicked     : true on the frame the button fired
-        text(ST_TEXT_1, (text = "Auto-emit: SAVE_BTN is the macro-emitted global."))
+        text("Auto-emit: SAVE_BTN is the macro-emitted global.")
         if (button(SAVE_BTN, (text = "Save"))) {
             // `button(...)` returns bool — clicked-this-frame. Same info
             // as SAVE_BTN.clicked, just inline.
         }
-        text(ST_TEXT_2, (text = "SAVE_BTN.click_count = {SAVE_BTN.click_count}"))
+        text((text = "SAVE_BTN.click_count = {SAVE_BTN.click_count}"))
 
         separator(ST_SEP_1)
 
@@ -97,10 +97,10 @@ def update() {
         // VOLUME.NOTLIVE: skip @live on the emitted global. On live-reload
         // the source-side initial value wins (helps when you change bounds
         // and want them to take effect immediately, not be preserved).
-        text(ST_TEXT_3, (text = "Dotted flags tune visibility and live-reload behavior:"))
+        text("Dotted flags tune visibility and live-reload behavior:")
         slider_int(SPEED.PUBLIC,   (text = "Speed (int, PUBLIC)"))
         slider_float(VOLUME.NOTLIVE, (text = "Volume (NOTLIVE)"))
-        text(ST_TEXT_4, (text = "SPEED.value = {SPEED.value}   VOLUME.value = {VOLUME.value}"))
+        text((text = "SPEED.value = {SPEED.value}   VOLUME.value = {VOLUME.value}"))
 
         separator(ST_SEP_2)
 
@@ -110,7 +110,7 @@ def update() {
         // from outside, and the snapshot exposes it under the standard
         // payload.value field — so integration tests can assert against
         // computed status strings the same way they assert slider values.
-        text(ST_TEXT_5, (text = "text_show — app-driven status reaches the snapshot:"))
+        text("text_show — app-driven status reaches the snapshot:")
         text_show(STATUS_TEXT)
 
         // The bump button writes a computed string into STATUS_TEXT.value.

@@ -100,7 +100,7 @@ def update() {
         }
 
         spacing(WT_SP_6)
-        text(WT_TEXT_1, (text = "saves so far: {SAVE_BTN.click_count}"))
+        text((text = "saves so far: {SAVE_BTN.click_count}"))
     }
 
     end_of_frame()

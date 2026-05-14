@@ -52,7 +52,7 @@ def update() {
     SetNextWindowSize(ImVec2(600.0, 360.0), ImGuiCond.Always)
     window(LAYOUT_WIN, (text = "Layout primitives", closable = false,
                         flags = ImGuiWindowFlags.None)) {
-        text(LEAD, (text = "Three buttons on one row — same_line() keeps them inline."))
+        text("Three buttons on one row — same_line() keeps them inline.")
         if (button(BTN_A, (text = "A"))) {
             print("A\n")
         }
@@ -66,18 +66,18 @@ def update() {
         }
 
         spacing(SP_TOP)
-        text(MID, (text = "spacing() inserts a small vertical gap (1 line)."))
+        text("spacing() inserts a small vertical gap (1 line).")
 
         spacing(SP_MID)
         spacing(SP_MID2)
         spacing(SP_MID3)
-        text(AFTER_SP, (text = "Three spacing() calls stack; cheap if you don't want a Dummy."))
+        text("Three spacing() calls stack; cheap if you don't want a Dummy.")
 
         new_line(NL_INSERT)
-        text(AFTER_NL, (text = "new_line() == one full text-line of vertical space."))
+        text("new_line() == one full text-line of vertical space.")
 
-        dummy(GAP_BIG, (size = float2(0.0f, 40.0f)))
-        text(AFTER_DUMMY, (text = "dummy(size) reserves arbitrary cursor space."))
+        dummy((size = float2(0.0f, 40.0f)))
+        text("dummy(size) reserves arbitrary cursor space.")
     }
 
     end_of_frame()

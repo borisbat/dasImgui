@@ -34,7 +34,7 @@ require imgui/imgui_visual_aids
 //
 // DRIVE (when running live):
 //   curl -X POST -d '{"name":"imgui_snapshot"}' localhost:9090/command \
-//        | jq '.globals."DISPLAY_WIN/PB_DRIVEN".payload'
+//        | jq '.globals."DISPLAY_WIN".payload'
 // =============================================================================
 
 var private g_phase : float = 0.0f
@@ -64,45 +64,45 @@ def update() {
     SetNextWindowSize(ImVec2(680.0, 420.0), ImGuiCond.Always)
     window(DISPLAY_WIN, (text = "Display widgets", closable = false,
                          flags = ImGuiWindowFlags.None)) {
-        separator_text(SEP_PROGRESS, (text = "progress_bar"))
+        separator_text("progress_bar")
 
         // Static bar — 33% with auto-formatted overlay.
-        progress_bar(PB_STATIC, (fraction = 0.33f,
-                                 size = float2(-1.0f, 0.0f),
-                                 overlay = "33%"))
+        progress_bar((fraction = 0.33f,
+                      size = float2(-1.0f, 0.0f),
+                      overlay = "33%"))
 
         // Driven bar — sine-wave fraction, default overlay.
-        progress_bar(PB_DRIVEN, (fraction = driven_frac,
-                                 size = float2(-1.0f, 0.0f),
-                                 overlay = ""))
+        progress_bar((fraction = driven_frac,
+                      size = float2(-1.0f, 0.0f),
+                      overlay = ""))
 
         // Fixed-width bar with custom overlay text.
-        progress_bar(PB_LABELED, (fraction = 0.75f,
-                                  size = float2(240.0f, 0.0f),
-                                  overlay = "loading…"))
+        progress_bar((fraction = 0.75f,
+                      size = float2(240.0f, 0.0f),
+                      overlay = "loading…"))
 
-        separator_text(SEP_IMAGE, (text = "image"))
+        separator_text("image")
 
         // Use the ImGui font atlas as our texture — always built by frame 1.
         let io & = unsafe(GetIO())
         let font_tex = io.Fonts.TexID
         if (font_tex == null) {
-            text(IMG_WAIT, (text = "Font atlas not ready — wait for first frame."))
+            text("Font atlas not ready — wait for first frame.")
         } else {
-            text(IMG_INTRO, (text = "image() against the font atlas — varying uv + tint per call."))
-            image(IMG_FULL, (texture = font_tex,
-                             size = float2(96.0f, 96.0f),
-                             uv0 = float2(0.0f, 0.0f),
-                             uv1 = float2(1.0f, 1.0f),
-                             tint_col = float4(1.0f, 1.0f, 1.0f, 1.0f),
-                             border_col = float4(0.0f, 0.0f, 0.0f, 0.0f)))
+            text("image() against the font atlas — varying uv + tint per call.")
+            image((texture = font_tex,
+                   size = float2(96.0f, 96.0f),
+                   uv0 = float2(0.0f, 0.0f),
+                   uv1 = float2(1.0f, 1.0f),
+                   tint_col = float4(1.0f, 1.0f, 1.0f, 1.0f),
+                   border_col = float4(0.0f, 0.0f, 0.0f, 0.0f)))
             same_line(SL_IMG)
-            image(IMG_TINT, (texture = font_tex,
-                             size = float2(96.0f, 96.0f),
-                             uv0 = float2(0.0f, 0.0f),
-                             uv1 = float2(1.0f, 1.0f),
-                             tint_col = float4(0.3f, 0.9f, 0.6f, 1.0f),
-                             border_col = float4(1.0f, 1.0f, 1.0f, 0.5f)))
+            image((texture = font_tex,
+                   size = float2(96.0f, 96.0f),
+                   uv0 = float2(0.0f, 0.0f),
+                   uv1 = float2(1.0f, 1.0f),
+                   tint_col = float4(0.3f, 0.9f, 0.6f, 1.0f),
+                   border_col = float4(1.0f, 1.0f, 1.0f, 0.5f)))
         }
     }
 
