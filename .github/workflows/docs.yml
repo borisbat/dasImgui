@@ -34,12 +34,16 @@ permissions:
 # `cmake --install` needed. Mirrors the supported end-user flow (daspkg install
 # dasImgui --global) without nesting the source under daslang/modules/ at
 # cmake-configure time (which would trip the root-cmake INCLUDE).
+#
+# Split into build + deploy jobs: attaching `environment: github-pages` to a
+# job triggers GitHub's deployment-branch protection check *before* any step
+# runs, which instant-fails non-master refs (PRs, workflow_dispatch from a
+# branch). build runs on every push/PR; deploy only runs on master and is the
+# only job with the environment attached, so the protection rule still gates
+# the actual publish while PRs get full CI signal on the rest of the pipeline.
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: "Checkout daslang"
         uses: actions/checkout@v4
@@ -115,8 +119,7 @@ jobs:
             -b html -d build/sphinx-cache \
             doc/source build/site
 
-      - name: "Stage site for deployment"
-        if: github.ref == 'refs/heads/master'
+      - name: "Stage site"
         working-directory: ${{ github.workspace }}/daslang-src/modules/dasImgui
         run: |
           set -eux
@@ -132,7 +135,14 @@ jobs:
         with:
           path: ${{ github.workspace }}/daslang-src/modules/dasImgui/_site
 
+  deploy:
+    if: github.ref == 'refs/heads/master'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - name: "Deploy to GitHub Pages"
-        if: github.ref == 'refs/heads/master'
         id: deployment
         uses: actions/deploy-pages@v4
