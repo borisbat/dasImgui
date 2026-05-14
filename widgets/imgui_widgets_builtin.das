@@ -1788,3 +1788,167 @@ def edit_drag_int4(var ptr : int4? implicit; text : string = "";
     edit_finalize(widget_ident, "edit_drag_int4", ptr)
     return changed
 }
+
+// ===== External-pointer rail (10c: input vectors, color, combo, special) =====
+//
+// Remaining external-pointer overloads: ``input_*`` vector forms (no clamp,
+// 2/3/4 component), ``input_double`` scalar, the color family (3/4 + picker
+// variants), ``combo`` (array-of-string-pointers form so no per-frame buffer
+// packing — the C side reads ``items[i]`` lazily), plus ``slider_angle``
+// (float radians, displayed degrees) and ``checkbox_flags`` (bit-mask
+// toggle on an ``int?``).
+
+[edit_widget]
+def edit_input_float2(var ptr : float2? implicit; text : string = "";
+                      format : string = "%.3f";
+                      flags : ImGuiInputTextFlags = ImGuiInputTextFlags.None) : bool {
+    //! ``InputFloat2`` against a caller-owned ``float2?``. No clamping.
+    let lbl = empty(text) ? widget_ident : text
+    let changed = InputFloat2(lbl, unsafe(reinterpret<float?>(ptr)), format, flags)
+    edit_finalize(widget_ident, "edit_input_float2", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_input_float3(var ptr : float3? implicit; text : string = "";
+                      format : string = "%.3f";
+                      flags : ImGuiInputTextFlags = ImGuiInputTextFlags.None) : bool {
+    //! ``InputFloat3`` against a caller-owned ``float3?``.
+    let lbl = empty(text) ? widget_ident : text
+    let changed = InputFloat3(lbl, unsafe(reinterpret<float?>(ptr)), format, flags)
+    edit_finalize(widget_ident, "edit_input_float3", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_input_float4(var ptr : float4? implicit; text : string = "";
+                      format : string = "%.3f";
+                      flags : ImGuiInputTextFlags = ImGuiInputTextFlags.None) : bool {
+    //! ``InputFloat4`` against a caller-owned ``float4?``.
+    let lbl = empty(text) ? widget_ident : text
+    let changed = InputFloat4(lbl, unsafe(reinterpret<float?>(ptr)), format, flags)
+    edit_finalize(widget_ident, "edit_input_float4", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_input_int2(var ptr : int2? implicit; text : string = "";
+                    flags : ImGuiInputTextFlags = ImGuiInputTextFlags.None) : bool {
+    //! ``InputInt2`` against a caller-owned ``int2?``.
+    let lbl = empty(text) ? widget_ident : text
+    let changed = InputInt2(lbl, unsafe(reinterpret<int?>(ptr)), flags)
+    edit_finalize(widget_ident, "edit_input_int2", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_input_int3(var ptr : int3? implicit; text : string = "";
+                    flags : ImGuiInputTextFlags = ImGuiInputTextFlags.None) : bool {
+    //! ``InputInt3`` against a caller-owned ``int3?``.
+    let lbl = empty(text) ? widget_ident : text
+    let changed = InputInt3(lbl, unsafe(reinterpret<int?>(ptr)), flags)
+    edit_finalize(widget_ident, "edit_input_int3", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_input_int4(var ptr : int4? implicit; text : string = "";
+                    flags : ImGuiInputTextFlags = ImGuiInputTextFlags.None) : bool {
+    //! ``InputInt4`` against a caller-owned ``int4?``.
+    let lbl = empty(text) ? widget_ident : text
+    let changed = InputInt4(lbl, unsafe(reinterpret<int?>(ptr)), flags)
+    edit_finalize(widget_ident, "edit_input_int4", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_input_double(var ptr : double? implicit; text : string = "";
+                      step : double = 0.0lf;
+                      step_fast : double = 0.0lf;
+                      format : string = "%.6f";
+                      flags : ImGuiInputTextFlags = ImGuiInputTextFlags.None) : bool {
+    //! ``InputDouble`` against a caller-owned ``double?``.
+    let lbl = empty(text) ? widget_ident : text
+    let changed = InputDouble(lbl, ptr, step, step_fast, format, flags)
+    edit_finalize(widget_ident, "edit_input_double", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_color_edit3(var ptr : float3? implicit; text : string = "";
+                     flags : ImGuiColorEditFlags = ImGuiColorEditFlags.None) : bool {
+    //! ``ColorEdit3`` against a caller-owned ``float3?`` (RGB).
+    let lbl = empty(text) ? widget_ident : text
+    let changed = ColorEdit3(lbl, unsafe(reinterpret<float?>(ptr)), flags)
+    edit_finalize(widget_ident, "edit_color_edit3", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_color_edit4(var ptr : float4? implicit; text : string = "";
+                     flags : ImGuiColorEditFlags = ImGuiColorEditFlags.None) : bool {
+    //! ``ColorEdit4`` against a caller-owned ``float4?`` (RGBA).
+    let lbl = empty(text) ? widget_ident : text
+    let changed = ColorEdit4(lbl, unsafe(reinterpret<float?>(ptr)), flags)
+    edit_finalize(widget_ident, "edit_color_edit4", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_color_picker3(var ptr : float3? implicit; text : string = "";
+                       flags : ImGuiColorEditFlags = ImGuiColorEditFlags.None) : bool {
+    //! ``ColorPicker3`` against a caller-owned ``float3?`` (RGB).
+    let lbl = empty(text) ? widget_ident : text
+    let changed = ColorPicker3(lbl, unsafe(reinterpret<float?>(ptr)), flags)
+    edit_finalize(widget_ident, "edit_color_picker3", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_color_picker4(var ptr : float4? implicit; text : string = "";
+                       flags : ImGuiColorEditFlags = ImGuiColorEditFlags.None;
+                       ref_col : float4 = float4(0.0f, 0.0f, 0.0f, 0.0f);
+                       has_ref_col : bool = false) : bool {
+    //! ``ColorPicker4`` against a caller-owned ``float4?`` (RGBA). Optional reference swatch via ``has_ref_col`` + ``ref_col``.
+    let lbl = empty(text) ? widget_ident : text
+    var ref_local = ref_col
+    let ref_ptr = has_ref_col ? unsafe(addr(ref_local.x)) : null
+    let changed = ColorPicker4(lbl, unsafe(reinterpret<float?>(ptr)), flags, ref_ptr)
+    edit_finalize(widget_ident, "edit_color_picker4", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_combo(var ptr : int? implicit; text : string = "";
+               items : array<string>;
+               popup_max_height_in_items : int = -1) : bool {
+    //! ``Combo`` against a caller-owned ``int?`` index. ``items`` is passed as an array of C-string pointers (no per-frame zero-separated buffer; daslang ``string`` already carries the trailing null).
+    let lbl = empty(text) ? widget_ident : text
+    let changed = Combo(lbl, ptr, unsafe(addr(items[0])), length(items),
+                        popup_max_height_in_items)
+    edit_finalize(widget_ident, "edit_combo", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_slider_angle(var ptr : float? implicit; text : string = "";
+                      v_degrees_min : float = -360.0f;
+                      v_degrees_max : float = 360.0f;
+                      format : string = "%.0f deg";
+                      flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    //! ``SliderAngle`` against a caller-owned ``float?`` (radians on the pointer side; degrees on the UI side).
+    let lbl = empty(text) ? widget_ident : text
+    let changed = SliderAngle(lbl, ptr, v_degrees_min, v_degrees_max, format, flags)
+    edit_finalize(widget_ident, "edit_slider_angle", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_checkbox_flags(var ptr : int? implicit; text : string = "";
+                        flags_value : int = 0) : bool {
+    //! ``CheckboxFlags`` against a caller-owned ``int?`` bitfield; toggles the ``flags_value`` bit. Payload serializes the underlying ``int``; visual state on the bit is implicit.
+    let lbl = empty(text) ? widget_ident : text
+    let changed = CheckboxFlags(lbl, ptr, flags_value)
+    edit_finalize(widget_ident, "edit_checkbox_flags", ptr)
+    return changed
+}
