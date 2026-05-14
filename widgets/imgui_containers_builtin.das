@@ -183,6 +183,20 @@ def menu_bar(var state : MenuBarState; blk : block) {
 }
 
 [container]
+def main_menu_bar(var state : MainMenuBarState; blk : block) {
+    //! `BeginMainMenuBar()` / `EndMainMenuBar()` — screen-top persistent menu
+    //! bar; only-on-true pairing. Unlike `menu_bar` this does NOT require an
+    //! enclosing `window(...)` with the MenuBar flag — call it directly at
+    //! the top of the per-frame body (after NewFrame, before any window).
+    let im_open = BeginMainMenuBar()
+    if (im_open) {
+        invoke(blk)
+        EndMainMenuBar()
+    }
+    stateless_finalize(widget_ident, "main_menu_bar", state)
+}
+
+[container]
 def menu(var state : MenuState; text : string; enabled : bool; blk : block) {
     //! `BeginMenu(label, enabled)` / `EndMenu()` — only-on-true pairing.
     //! `enabled` is a per-call knob; `state.opened` mirrors the per-frame
