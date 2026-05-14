@@ -40,16 +40,23 @@ require math
 // shared `pending_value_finalize` helper is private to imgui_widgets_builtin.
 
 def private open_close_finalize(widget_ident : string; kind : string; var state : auto) {
+    let path = container_path_key()
     var entry : WidgetEntry
     unsafe {
-        let ser <- @ capture(& state) () : JsonValue ? {
-            return JV(state)
+        let ser <- @ capture(= path) () : JsonValue ? {
+            let raw = lookup_state_addr(path)
+            return null if (raw == null)
+            var s = unsafe(reinterpret<typedecl(state)?>(raw))
+            return JV(*s)
         }
-        let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
+        let disp <- @ capture(= path) (action : string; payload : JsonValue ?) {
+            let raw = lookup_state_addr(path)
+            return if (raw == null)
+            var s = unsafe(reinterpret<typedecl(state)?>(raw))
             if (action == "open") {
-                state.pending_open = true
+                s.pending_open = true
             } elif (action == "close") {
-                state.pending_close = true
+                s.pending_close = true
             }
         }
         container_finalize(widget_ident, kind, entry, ser, disp)
@@ -57,12 +64,16 @@ def private open_close_finalize(widget_ident : string; kind : string; var state 
 }
 
 def private stateless_finalize(widget_ident : string; kind : string; var state : auto) {
+    let path = container_path_key()
     var entry : WidgetEntry
     unsafe {
-        let ser <- @ capture(& state) () : JsonValue ? {
-            return JV(state)
+        let ser <- @ capture(= path) () : JsonValue ? {
+            let raw = lookup_state_addr(path)
+            return null if (raw == null)
+            var s = unsafe(reinterpret<typedecl(state)?>(raw))
+            return JV(*s)
         }
-        let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
+        let disp <- @ capture(= path) (action : string; payload : JsonValue ?) {
             // No actions; serializer is the only telemetry surface for stateless containers.
         }
         container_finalize(widget_ident, kind, entry, ser, disp)
@@ -417,15 +428,22 @@ def combo_select(var state : ComboState; text : string; preview_value : string;
         invoke(blk)
         EndCombo()
     }
+    let path = container_path_key()
     var entry : WidgetEntry
     unsafe {
-        let ser <- @ capture(& state) () : JsonValue ? {
-            return JV(state)
+        let ser <- @ capture(= path) () : JsonValue ? {
+            let raw = lookup_state_addr(path)
+            return null if (raw == null)
+            var s = unsafe(reinterpret<typedecl(state)?>(raw))
+            return JV(*s)
         }
-        let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
+        let disp <- @ capture(= path) (action : string; payload : JsonValue ?) {
+            let raw = lookup_state_addr(path)
+            return if (raw == null)
+            var s = unsafe(reinterpret<typedecl(state)?>(raw))
             if (action == "set") {
-                state.pending_value = payload?["value"] ?? 0
-                state.has_pending = true
+                s.pending_value = payload?["value"] ?? 0
+                s.has_pending = true
             }
         }
         container_finalize(widget_ident, "combo_select", entry, ser, disp)
@@ -446,15 +464,22 @@ def list_box_select(var state : ListBoxState; text : string; size : float2; blk 
         invoke(blk)
         EndListBox()
     }
+    let path = container_path_key()
     var entry : WidgetEntry
     unsafe {
-        let ser <- @ capture(& state) () : JsonValue ? {
-            return JV(state)
+        let ser <- @ capture(= path) () : JsonValue ? {
+            let raw = lookup_state_addr(path)
+            return null if (raw == null)
+            var s = unsafe(reinterpret<typedecl(state)?>(raw))
+            return JV(*s)
         }
-        let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
+        let disp <- @ capture(= path) (action : string; payload : JsonValue ?) {
+            let raw = lookup_state_addr(path)
+            return if (raw == null)
+            var s = unsafe(reinterpret<typedecl(state)?>(raw))
             if (action == "set") {
-                state.pending_value = payload?["value"] ?? 0
-                state.has_pending = true
+                s.pending_value = payload?["value"] ?? 0
+                s.has_pending = true
             }
         }
         container_finalize(widget_ident, "list_box_select", entry, ser, disp)

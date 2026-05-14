@@ -67,14 +67,21 @@ struct DockWindowState {
 // and matches the existing `open_close_finalize` shape in containers_builtin.
 
 def private dockspace_finalize(widget_ident : string; var state : DockSpaceState) {
+    let path = container_path_key()
     var entry : WidgetEntry
     unsafe {
-        let ser <- @ capture(& state) () : JsonValue ? {
-            return JV(state)
+        let ser <- @ capture(= path) () : JsonValue ? {
+            let raw = lookup_state_addr(path)
+            return null if (raw == null)
+            var s = unsafe(reinterpret<typedecl(state)?>(raw))
+            return JV(*s)
         }
-        let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
+        let disp <- @ capture(= path) (action : string; payload : JsonValue ?) {
+            let raw = lookup_state_addr(path)
+            return if (raw == null)
+            var s = unsafe(reinterpret<typedecl(state)?>(raw))
             if (action == "reset") {
-                state.pending_reset = true
+                s.pending_reset = true
             }
         }
         container_finalize(widget_ident, "dockspace", entry, ser, disp)
@@ -82,31 +89,38 @@ def private dockspace_finalize(widget_ident : string; var state : DockSpaceState
 }
 
 def private dock_window_finalize(widget_ident : string; var state : DockWindowState) {
+    let path = container_path_key()
     var entry : WidgetEntry
     unsafe {
-        let ser <- @ capture(& state) () : JsonValue ? {
-            return JV(state)
+        let ser <- @ capture(= path) () : JsonValue ? {
+            let raw = lookup_state_addr(path)
+            return null if (raw == null)
+            var s = unsafe(reinterpret<typedecl(state)?>(raw))
+            return JV(*s)
         }
-        let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
+        let disp <- @ capture(= path) (action : string; payload : JsonValue ?) {
+            let raw = lookup_state_addr(path)
+            return if (raw == null)
+            var s = unsafe(reinterpret<typedecl(state)?>(raw))
             if (action == "open") {
-                state.pending_open = true
+                s.pending_open = true
             } elif (action == "close") {
-                state.pending_close = true
+                s.pending_close = true
             } elif (action == "dock") {
-                state.pending_dock_to = from_JV(payload?["value"], type<uint>, 0u)
+                s.pending_dock_to = from_JV(payload?["value"], type<uint>, 0u)
             } elif (action == "undock") {
-                state.pending_undock = true
+                s.pending_undock = true
             } elif (action == "set_window_pos") {
                 //! Payload shape: `{x, y[, w, h]}` — pos always set, size optional.
                 let v = payload?["value"]
-                state.pending_pos = float2(v?["x"] ?? 0.0f, v?["y"] ?? 0.0f)
-                state.pending_pos_set = true
+                s.pending_pos = float2(v?["x"] ?? 0.0f, v?["y"] ?? 0.0f)
+                s.pending_pos_set = true
                 let has_w = v?["w"] != null
                 let has_h = v?["h"] != null
                 if (has_w || has_h) {
-                    state.pending_size = float2(v?["w"] ?? state.size.x,
-                                                v?["h"] ?? state.size.y)
-                    state.pending_size_set = true
+                    s.pending_size = float2(v?["w"] ?? s.size.x,
+                                            v?["h"] ?? s.size.y)
+                    s.pending_size_set = true
                 }
             }
         }

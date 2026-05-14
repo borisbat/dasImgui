@@ -363,7 +363,9 @@ class WidgetCallMacro : AstCallMacro {
                     $v(modLit),
                     $v(identLit),
                     $v(kindLit),
-                    unsafe(addr($i(identLit))),
+                    @() : void? {
+                        return unsafe(addr($i(identLit)))
+                    },
                     @() : JsonValue? {
                         return JV($i(identLit))
                     }
@@ -508,18 +510,24 @@ class WidgetCallMacro : AstCallMacro {
             bodyStmts |> push <| qmacro_expr(${
                 let path = imgui_boost_runtime::widget_path_key(bare)
             })
-            // First-touch / post-reload register. Serializer captures the
-            // key by value; table slot is re-resolved on every snapshot read
-            // so any rehashing-induced address churn doesn't desync state.
+            // First-touch / post-reload register. Both lambdas capture the
+            // key by value; the address getter and serializer guard with
+            // ``key_exists`` and re-resolve ``TABLE[k]`` on every invoke, so
+            // rehashing or erase+re-add never desyncs state.
             bodyStmts |> push <| qmacro_expr(${
                 if (!imgui_boost_runtime::widget_registered(path)) {
                     unsafe {
+                        let addr_getter <- @ capture(= k) () : void ? {
+                            return null if (!key_exists($i(bareNameLit), k))
+                            return unsafe(addr($i(bareNameLit)[k]))
+                        }
                         let ser <- @ capture(= k) () : JsonValue ? {
+                            return null if (!key_exists($i(bareNameLit), k))
                             return JV($i(bareNameLit)[k])
                         }
                         imgui_boost_runtime::register_widget(
                             $v(moduleName), path, $v(kindLit),
-                            addr($i(bareNameLit)[k]), ser)
+                            addr_getter, ser)
                     }
                 }
             })

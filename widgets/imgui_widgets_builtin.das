@@ -33,14 +33,21 @@ require math
 def private click_finalize(widget_ident : string; kind : string; var state : ClickState) {
     //! Lambda + dispatcher install for click-style widgets (Button family).
     //! Dispatcher action: "click" → state.pending_click = true (consumed next frame).
+    let path = widget_path_key(widget_ident)
     var entry : WidgetEntry
     unsafe {
-        let ser <- @ capture(& state) () : JsonValue ? {
-            return JV(state)
+        let ser <- @ capture(= path) () : JsonValue ? {
+            let raw = lookup_state_addr(path)
+            return null if (raw == null)
+            var s = unsafe(reinterpret<typedecl(state)?>(raw))
+            return JV(*s)
         }
-        let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
+        let disp <- @ capture(= path) (action : string; payload : JsonValue ?) {
+            let raw = lookup_state_addr(path)
+            return if (raw == null)
+            var s = unsafe(reinterpret<typedecl(state)?>(raw))
             if (action == "click") {
-                state.pending_click = true
+                s.pending_click = true
             }
         }
         widget_finalize(widget_ident, kind, entry, ser, disp)
@@ -51,15 +58,22 @@ def private click_finalize(widget_ident : string; kind : string; var state : Cli
 def private toggle_finalize(widget_ident : string; kind : string; var state : ToggleState) {
     //! Lambda + dispatcher install for bool-toggle widgets (Checkbox, RadioButton-bool,
     //! Selectable, MenuItem). Dispatcher action: "set" with bool payload.
+    let path = widget_path_key(widget_ident)
     var entry : WidgetEntry
     unsafe {
-        let ser <- @ capture(& state) () : JsonValue ? {
-            return JV(state)
+        let ser <- @ capture(= path) () : JsonValue ? {
+            let raw = lookup_state_addr(path)
+            return null if (raw == null)
+            var s = unsafe(reinterpret<typedecl(state)?>(raw))
+            return JV(*s)
         }
-        let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
+        let disp <- @ capture(= path) (action : string; payload : JsonValue ?) {
+            let raw = lookup_state_addr(path)
+            return if (raw == null)
+            var s = unsafe(reinterpret<typedecl(state)?>(raw))
             if (action == "set") {
-                state.pending_value = payload?["value"] ?? false
-                state.pending_toggle = true
+                s.pending_value = payload?["value"] ?? false
+                s.pending_toggle = true
             }
         }
         widget_finalize(widget_ident, kind, entry, ser, disp)
@@ -70,15 +84,22 @@ def private toggle_finalize(widget_ident : string; kind : string; var state : To
 def private radio_int_finalize(widget_ident : string; kind : string; var state : RadioIntState) {
     //! Lambda + dispatcher install for the int-form RadioButton.
     //! Dispatcher action: "set" with int payload; renderer applies before the imgui call.
+    let path = widget_path_key(widget_ident)
     var entry : WidgetEntry
     unsafe {
-        let ser <- @ capture(& state) () : JsonValue ? {
-            return JV(state)
+        let ser <- @ capture(= path) () : JsonValue ? {
+            let raw = lookup_state_addr(path)
+            return null if (raw == null)
+            var s = unsafe(reinterpret<typedecl(state)?>(raw))
+            return JV(*s)
         }
-        let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
+        let disp <- @ capture(= path) (action : string; payload : JsonValue ?) {
+            let raw = lookup_state_addr(path)
+            return if (raw == null)
+            var s = unsafe(reinterpret<typedecl(state)?>(raw))
             if (action == "set") {
-                state.pending_value = payload?["value"] ?? 0
-                state.pending_set = true
+                s.pending_value = payload?["value"] ?? 0
+                s.pending_set = true
             }
         }
         widget_finalize(widget_ident, kind, entry, ser, disp)
@@ -91,15 +112,22 @@ def private text_value_finalize(widget_ident : string; kind : string; var state 
     // underlying bytes drop when the dispatcher returns; we `:=` clone into
     // the widget context heap so `state.pending_value` is still valid when
     // the next widget body frame consumes it.
+    let path = widget_path_key(widget_ident)
     var entry : WidgetEntry
     unsafe {
-        let ser <- @ capture(& state) () : JsonValue ? {
-            return JV(state)
+        let ser <- @ capture(= path) () : JsonValue ? {
+            let raw = lookup_state_addr(path)
+            return null if (raw == null)
+            var s = unsafe(reinterpret<typedecl(state)?>(raw))
+            return JV(*s)
         }
-        let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
+        let disp <- @ capture(= path) (action : string; payload : JsonValue ?) {
+            let raw = lookup_state_addr(path)
+            return if (raw == null)
+            var s = unsafe(reinterpret<typedecl(state)?>(raw))
             if (action == "set") {
-                state.pending_value := payload?["value"] ?? ""
-                state.has_pending = true
+                s.pending_value := payload?["value"] ?? ""
+                s.has_pending = true
             }
         }
         widget_finalize(widget_ident, kind, entry, ser, disp)
@@ -1063,14 +1091,21 @@ def combo_getter(var state : ComboState; text : string;
 // fixtures programmatically.
 
 def private text_show_finalize(widget_ident : string; kind : string; var state : TextShowState) {
+    let path = widget_path_key(widget_ident)
     var entry : WidgetEntry
     unsafe {
-        let ser <- @ capture(& state) () : JsonValue ? {
-            return JV(state)
+        let ser <- @ capture(= path) () : JsonValue ? {
+            let raw = lookup_state_addr(path)
+            return null if (raw == null)
+            var s = unsafe(reinterpret<typedecl(state)?>(raw))
+            return JV(*s)
         }
-        let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
+        let disp <- @ capture(= path) (action : string; payload : JsonValue ?) {
+            let raw = lookup_state_addr(path)
+            return if (raw == null)
+            var s = unsafe(reinterpret<typedecl(state)?>(raw))
             if (action == "set") {
-                state.value := payload?["value"] ?? ""
+                s.value := payload?["value"] ?? ""
             }
         }
         widget_finalize(widget_ident, kind, entry, ser, disp)
@@ -1112,12 +1147,16 @@ def text_show(var state : TextShowState; value : string = "") {
 // _builtin_PlotLines_cb / _builtin_PlotHistogram_cb forwarders.
 
 def private plot_finalize(widget_ident : string; kind : string; var state : PlotState) {
+    let path = widget_path_key(widget_ident)
     var entry : WidgetEntry
     unsafe {
-        let ser <- @ capture(& state) () : JsonValue ? {
-            return JV(state)
+        let ser <- @ capture(= path) () : JsonValue ? {
+            let raw = lookup_state_addr(path)
+            return null if (raw == null)
+            var s = unsafe(reinterpret<typedecl(state)?>(raw))
+            return JV(*s)
         }
-        let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
+        let disp <- @ capture(= path) (action : string; payload : JsonValue ?) {
             // Plot is read-only; no L2/L3 actions. Dispatcher is a no-op.
         }
         widget_finalize(widget_ident, kind, entry, ser, disp)
