@@ -1210,6 +1210,47 @@ def separator_text(var state : NarrativeState; text : string) {
     narrative_finalize(widget_ident, "separator_text", state)
 }
 
+// ===== Display: layout =====
+//
+// Cursor-repositioning primitives. They don't draw glyphs themselves but
+// they ARE visible — every widget's bbox depends on where the cursor
+// lands. Wrapping them as `[widget]`s lets playwright assert "button X
+// is on the same row as label Y" by their telemetry idents instead of
+// fragile bbox arithmetic. All four use `EmptyMarkerState` + `marker_finalize`.
+
+[widget]
+def same_line(var state : EmptyMarkerState;
+              offset_from_start_x : float = 0.0f;
+              spacing : float = -1.0f) {
+    //! Stay on the same line as the previous widget. `offset_from_start_x`
+    //! pins the next widget to that x within the current window; `spacing`
+    //! is the horizontal gap (negative = use ``ItemSpacing.x`` style default).
+    SameLine(offset_from_start_x, spacing)
+    marker_finalize(widget_ident, "same_line", state)
+}
+
+[widget]
+def new_line(var state : EmptyMarkerState) {
+    //! Force a line break — undoes a preceding `same_line`.
+    NewLine()
+    marker_finalize(widget_ident, "new_line", state)
+}
+
+[widget]
+def spacing(var state : EmptyMarkerState) {
+    //! Vertical gap of one ``ItemSpacing.y`` unit.
+    Spacing()
+    marker_finalize(widget_ident, "spacing", state)
+}
+
+[widget]
+def dummy(var state : EmptyMarkerState; size : float2) {
+    //! Reserve a `size`-pixel rectangle of empty space (no draw, but the
+    //! cursor advances). Useful for spacing or to consume layout columns.
+    Dummy(size)
+    marker_finalize(widget_ident, "dummy", state)
+}
+
 // ===== Plot lines / histogram (array form) =====
 //
 // Display widgets backed by `PlotState`. Plotted values come per-frame as
