@@ -242,18 +242,45 @@ def selectable(var state : ToggleState; text : string;
 }
 
 [widget]
-def menu_item(var state : ToggleState; text : string; shortcut : string = "") : bool {
-    //! Non-block MenuItem with toggle semantics. The block-arg form (menu
-    //! container) lands in 0b.3. `enabled = true` always; the disabled
-    //! variant is a future per-call knob if real users hit it.
+def menu_item(var state : ToggleState; text : string;
+              shortcut : string = ""; enabled : bool = true) : bool {
+    //! Toggleable menu item — `state.value` is the check-mark state and
+    //! persists across reload; click toggles. `enabled=false` greys out
+    //! the item and disables clicks. For static (non-toggleable) menu
+    //! items — section headers or permanent-check labels — use the
+    //! sibling `menu_label` widget instead.
     if (state.pending_toggle) {
         state.value = state.pending_value
         state.pending_toggle = false
     }
-    let changed = MenuItem(text, shortcut, unsafe(addr(state.value)), true)
+    let changed = MenuItem(text, shortcut, unsafe(addr(state.value)), enabled)
     state.changed = changed
     toggle_finalize(widget_ident, "menu_item", state)
     return changed
+}
+
+[widget]
+def menu_label(var state : ClickState; text : string;
+               shortcut : string = ""; selected : bool = false;
+               enabled : bool = true) : bool {
+    //! Static (non-toggleable) menu item. `selected` is a plain bool —
+    //! renders a permanent check mark when true, no check when false; the
+    //! widget never mutates it. Use for section headers
+    //! (`enabled=false, selected=false`) and permanent-state labels
+    //! (`selected=true`). For toggleable menu items use `menu_item`.
+    //! State tracks click count for telemetry; no `state.value`.
+    let im_clicked = MenuItem(text, shortcut, selected, enabled)
+    var clicked = im_clicked
+    if (state.pending_click) {
+        state.pending_click = false
+        clicked = true
+    }
+    state.clicked = clicked
+    if (clicked) {
+        state.click_count++
+    }
+    click_finalize(widget_ident, "menu_label", state)
+    return clicked
 }
 
 // ===== Radio (int family) =====
