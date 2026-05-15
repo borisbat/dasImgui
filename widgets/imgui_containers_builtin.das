@@ -266,8 +266,10 @@ def popup_context_window(var state : PopupContextWindowState; str_id : string;
                          flags : ImGuiPopupFlags; blk : block) {
     //! `BeginPopupContextWindow(str_id, flags)` / `EndPopup()` — right-click
     //! anywhere inside the enclosing window opens a context popup. ImGui
-    //! drives open/close internally; body runs only while open. Empty
-    //! `str_id` falls back to ImGui's parent-window stack id.
+    //! drives open/close internally; body runs only while open. `str_id`
+    //! is the popup's stack id — pass a unique non-empty string per
+    //! consumer (the C-level `"##ContextWindow"` default fires only on a
+    //! NULL `const char*` which daslang's string binding doesn't expose).
     let im_open = BeginPopupContextWindow(str_id, flags)
     if (im_open) {
         invoke(blk)
