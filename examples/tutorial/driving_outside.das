@@ -18,6 +18,7 @@ require imgui/imgui_containers_builtin
 require imgui/imgui_visual_aids
 
 let PRESETS : array<string> <- ["Calm", "Mellow", "Active", "Frantic"]
+var PRESET_ROW : table<int; ClickState>
 
 // =============================================================================
 // TUTORIAL: driving_outside — every boost widget is also a JSON endpoint.
@@ -109,9 +110,7 @@ def update() {
                               flags = ImGuiComboFlags.None)) {
             for (i in range(length(PRESETS))) {
                 let is_sel = (i == PRESET.value)
-                if (Selectable(PRESETS[i], is_sel,
-                               ImGuiSelectableFlags.None,
-                               float2(0.0f, 0.0f))) {
+                if (selectable_label(PRESET_ROW[i], PRESETS[i], is_sel)) {
                     PRESET.value = i
                 }
             }

@@ -37,6 +37,7 @@ require imgui/imgui_containers_builtin
 // =============================================================================
 
 let SHIRT_NAMES : array<string> <- ["XS", "S", "M", "L", "XL", "XXL"]
+var SHIRT_ROW : table<int; ClickState>
 
 [export]
 def init() {
@@ -79,9 +80,7 @@ def update() {
                               size = float2(0.0f, 0.0f))) {
             for (i in range(length(SHIRT_NAMES))) {
                 let is_sel = (i == SHIRT_SIZE.value)
-                if (Selectable(SHIRT_NAMES[i], is_sel,
-                               ImGuiSelectableFlags.None,
-                               float2(0.0f, 0.0f))) {
+                if (selectable_label(SHIRT_ROW[i], SHIRT_NAMES[i], is_sel)) {
                     SHIRT_SIZE.value = i
                 }
             }
