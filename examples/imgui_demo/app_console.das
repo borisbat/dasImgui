@@ -234,7 +234,7 @@ def ShowExampleAppConsole() {
         // selection sets CONSOLE_REQUEST_CLOSE; the caller polls via
         // `take_close_request()` after this function returns and clears
         // its own visibility toggle.
-        popup_context_item(CONSOLE_TITLE_POPUP, (str_id = "", flags = ImGuiPopupFlags.None)) {
+        popup_context_item(CONSOLE_TITLE_POPUP, (str_id = "", flags = ImGuiPopupFlags.MouseButtonRight)) {
             if (menu_item(CONSOLE_CLOSE_MENU, (text = "Close Console"))) {
                 CONSOLE_REQUEST_CLOSE = true
             }
@@ -289,7 +289,7 @@ def ShowExampleAppConsole() {
                                       window_flags = ImGuiWindowFlags.HorizontalScrollbar)) {
 
             popup_context_window(CONSOLE_SCROLL_CTX_MENU,
-                                  (str_id = "", flags = ImGuiPopupFlags.MouseButtonRight)) {
+                                  (str_id = "##ConsoleScrollMenu", flags = ImGuiPopupFlags.MouseButtonRight)) {
                 if (selectable_label(CONSOLE_CTX_CLEAR, "Clear", false)) {
                     clear_log()
                 }
