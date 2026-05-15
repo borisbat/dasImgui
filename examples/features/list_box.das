@@ -1,6 +1,8 @@
 options gen2
+options _no_imgui_legacy = true
 
 require imgui
+require imgui/imgui_lint
 require imgui_app
 require glfw/glfw_boost
 require opengl/opengl_boost
@@ -53,8 +55,8 @@ def update() {
     SetNextWindowSize(ImVec2(660.0, 480.0), ImGuiCond.Always)
     window(MAIN_WIN, (text = "list_box", closable = false,
                       flags = ImGuiWindowFlags.None)) {
-        Text("Body emits Selectable rows; click writes LANG.value.")
-        Separator()
+        text("Body emits Selectable rows; click writes LANG.value.")
+        separator()
 
         list_box(LANG, (text = "Language", size = float2(-1.0f, 180.0f))) {
             for (i in range(length(LANG_NAMES))) {
@@ -68,13 +70,13 @@ def update() {
             }
         }
 
-        Separator()
+        separator()
         var picked = "(none)"
         if (LANG.value >= 0 && LANG.value < length(LANG_NAMES)) {
             picked = LANG_NAMES[LANG.value]
         }
-        Text("Picked: {picked} (idx {LANG.value})")
-        Text("imgui_set value=N steers next-frame selection.")
+        text("Picked: {picked} (idx {LANG.value})")
+        text("imgui_set value=N steers next-frame selection.")
     }
 
     end_of_frame()

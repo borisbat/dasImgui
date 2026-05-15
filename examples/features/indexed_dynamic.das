@@ -1,6 +1,8 @@
 options gen2
+options _no_imgui_legacy = true
 
 require imgui
+require imgui/imgui_lint
 require imgui_app
 require glfw/glfw_boost
 require opengl/opengl_boost
@@ -78,14 +80,14 @@ def update() {
                 CHANNEL_VOL[next_key].value = 0.5f
             }
         }
-        SameLine(0.0f, 12.0f)
+        same_line((spacing = 12.0f))
         if (button(REMOVE_CH, (text = "REMOVE channel"))) {
             let hi = find_max_key(CHANNEL_VOL)
             if (hi >= 0) {
                 CHANNEL_VOL |> erase(hi)
             }
         }
-        SameLine(0.0f, 12.0f)
+        same_line((spacing = 12.0f))
         if (button(BUMP_LAST, (text = "BUMP last"))) {
             let hi = find_max_key(CHANNEL_VOL)
             if (hi >= 0) {
@@ -94,8 +96,8 @@ def update() {
             }
         }
 
-        Text("channels: {length(CHANNEL_VOL)}")
-        Separator()
+        text("channels: {length(CHANNEL_VOL)}")
+        separator()
 
         // ----- Live render of every current key -----
         // Snapshot keys to an array first — the wrapper's `CHANNEL_VOL[k]`

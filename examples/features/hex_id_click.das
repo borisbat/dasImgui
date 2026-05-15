@@ -1,6 +1,8 @@
 options gen2
+options _no_imgui_legacy = true
 
 require imgui
+require imgui/imgui_lint
 require imgui_app
 require glfw/glfw_boost
 require opengl/opengl_boost
@@ -52,12 +54,12 @@ def update() {
     SetNextWindowSize(ImVec2(720.0, 220.0), ImGuiCond.Always)
     window(MAIN_WIN, (text = "hex_id_click — phase 2.3", closable = false,
                       flags = ImGuiWindowFlags.None)) {
-        Text("Click via name or hex_id: imgui_click resolves both forms.")
-        Text("Hex strings ('0x...') reverse-map through g_id_to_path to L2.")
+        text("Click via name or hex_id: imgui_click resolves both forms.")
+        text("Hex strings ('0x...') reverse-map through g_id_to_path to L2.")
         if (button(DEMO_BTN, (text = "Click me"))) {
             print("DEMO_BTN clicked, count={DEMO_BTN.click_count}\n")
         }
-        Text("clicks: {DEMO_BTN.click_count}")
+        text("clicks: {DEMO_BTN.click_count}")
     }
 
     end_of_frame()

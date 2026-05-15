@@ -187,6 +187,20 @@ def menu_bar(var state : MenuBarState; blk : block) {
 }
 
 [container]
+def main_menu_bar(var state : MainMenuBarState; blk : block) {
+    //! `BeginMainMenuBar()` / `EndMainMenuBar()` — screen-top persistent menu
+    //! bar; only-on-true pairing. Unlike `menu_bar` this does NOT require an
+    //! enclosing `window(...)` with the MenuBar flag — call it directly at
+    //! the top of the per-frame body (after NewFrame, before any window).
+    let im_open = BeginMainMenuBar()
+    if (im_open) {
+        invoke(blk)
+        EndMainMenuBar()
+    }
+    stateless_finalize(widget_ident, "main_menu_bar", state)
+}
+
+[container]
 def menu(var state : MenuState; text : string; enabled : bool; blk : block) {
     //! `BeginMenu(label, enabled)` / `EndMenu()` — only-on-true pairing.
     //! `enabled` is a per-call knob; `state.opened` mirrors the per-frame
@@ -389,12 +403,16 @@ def tree_node(var state : TreeNodeState; text : string;
 
 [container]
 def collapsing_header(var state : CollapsingHeaderState; text : string;
-                      flags : ImGuiTreeNodeFlags; blk : block) {
-    //! `CollapsingHeader(label, flags) : bool` — same shape as TreeNode but
-    //! WITHOUT a TreePop pair (ImGui handles the close on its own). The
-    //! body runs only when the header is expanded.
+                      closable : bool; flags : ImGuiTreeNodeFlags; blk : block) {
+    //! `CollapsingHeader(label, p_visible, flags) : bool` — same shape as
+    //! TreeNode but WITHOUT a TreePop pair (ImGui handles the close on its
+    //! own). When `closable=true`, ImGui renders an X-button that flips
+    //! `state.open` to false; while `state.open` is false the section is
+    //! hidden entirely. Body runs only when the header is expanded AND
+    //! (for closable headers) still open.
     if (state.pending_open) {
         SetNextItemOpen(true, ImGuiCond.Always)
+        state.open = true
         state.pending_open = false
     }
     if (state.pending_close) {
@@ -402,7 +420,19 @@ def collapsing_header(var state : CollapsingHeaderState; text : string;
         state.pending_close = false
     }
     state.flags = flags
-    let im_open = CollapsingHeader(text, flags)
+    var im_open : bool
+    if (closable) {
+        if (state.open) {
+            unsafe {
+                im_open = CollapsingHeader(text, addr(state.open), flags)
+            }
+        }
+        // If state.open is false, the section is hidden — don't issue the
+        // ImGui call. CollapsingHeader-with-p_visible only renders while
+        // *p_visible is true; we mirror that gate exactly.
+    } else {
+        im_open = CollapsingHeader(text, flags)
+    }
     state.opened = im_open
     if (im_open) {
         invoke(blk)

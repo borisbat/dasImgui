@@ -1,6 +1,8 @@
 options gen2
+options _no_imgui_legacy = true
 
 require imgui
+require imgui/imgui_lint
 require imgui_app
 require glfw/glfw_boost
 require opengl/opengl_boost
@@ -48,21 +50,21 @@ def update() {
     window(MAIN_WIN, (text = "Color inputs — phase 0b.2", closable = false,
                       flags = ImGuiWindowFlags.None)) {
         // ----- Editors (compact RGB / RGBA boxes) -----
-        Text("Editors")
-        Separator()
+        text("Editors")
+        separator()
         color_edit3(TINT_RGB, (text = "Tint RGB"))
-        Text("rgb = ({TINT_RGB.value.x}, {TINT_RGB.value.y}, {TINT_RGB.value.z})")
+        text("rgb = ({TINT_RGB.value.x}, {TINT_RGB.value.y}, {TINT_RGB.value.z})")
 
         color_edit4(BG_COLOR, (text = "Background"))
-        Text("bg = ({BG_COLOR.value.x}, {BG_COLOR.value.y}, {BG_COLOR.value.z}, {BG_COLOR.value.w})")
+        text("bg = ({BG_COLOR.value.x}, {BG_COLOR.value.y}, {BG_COLOR.value.z}, {BG_COLOR.value.w})")
 
-        Spacing()
+        spacing()
 
         // ----- Pickers (full popup-shaped wheels) -----
-        Text("Pickers")
-        Separator()
+        text("Pickers")
+        separator()
         color_picker3(SUN_RGB, (text = "Sun light"))
-        Text("sun = ({SUN_RGB.value.x}, {SUN_RGB.value.y}, {SUN_RGB.value.z})")
+        text("sun = ({SUN_RGB.value.x}, {SUN_RGB.value.y}, {SUN_RGB.value.z})")
 
         // ColorPicker4 with reference color (shows the [ref] swatch).
         // Named-tuple args are positional in SOURCE ORDER, so when
@@ -72,22 +74,22 @@ def update() {
                                     flags = ImGuiColorEditFlags.None,
                                     ref_col = float4(0.5f, 0.5f, 0.5f, 1.0f),
                                     has_ref_col = true))
-        Text("shirt = ({SHIRT_COLOR.value.x}, {SHIRT_COLOR.value.y}, {SHIRT_COLOR.value.z}, {SHIRT_COLOR.value.w})")
+        text("shirt = ({SHIRT_COLOR.value.x}, {SHIRT_COLOR.value.y}, {SHIRT_COLOR.value.z}, {SHIRT_COLOR.value.w})")
 
-        Spacing()
+        spacing()
 
         // ----- ColorButton swatches (click triggers; color is per-call) -----
-        Text("Palette (click swatches)")
-        Separator()
+        text("Palette (click swatches)")
+        separator()
         color_button(PALETTE_RED, (desc_id = "##red", col = float4(1.0f, 0.0f, 0.0f, 1.0f),
                                    size = float2(48.0f, 48.0f)))
-        SameLine(0.0f, 8.0f)
+        same_line((spacing = 8.0f))
         color_button(PALETTE_GREEN, (desc_id = "##green", col = float4(0.0f, 1.0f, 0.0f, 1.0f),
                                      size = float2(48.0f, 48.0f)))
-        SameLine(0.0f, 8.0f)
+        same_line((spacing = 8.0f))
         color_button(PALETTE_BLUE, (desc_id = "##blue", col = float4(0.0f, 0.0f, 1.0f, 1.0f),
                                     size = float2(48.0f, 48.0f)))
-        Text("palette clicks: red={PALETTE_RED.click_count}, green={PALETTE_GREEN.click_count}, blue={PALETTE_BLUE.click_count}")
+        text("palette clicks: red={PALETTE_RED.click_count}, green={PALETTE_GREEN.click_count}, blue={PALETTE_BLUE.click_count}")
     }
 
     end_of_frame()

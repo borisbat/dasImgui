@@ -1,6 +1,8 @@
 options gen2
+options _no_imgui_legacy = true
 
 require imgui
+require imgui/imgui_lint
 require imgui_app
 require glfw/glfw_boost
 require opengl/opengl_boost
@@ -53,14 +55,14 @@ def update() {
     SetNextWindowSize(ImVec2(720.0, 240.0), ImGuiCond.Always)
     window(MAIN_WIN, (text = "focus_widget — phase 2.4", closable = false,
                       flags = ImGuiWindowFlags.None)) {
-        Text("imgui_focus inserts into g_pending_focus; widget_prelude consumes.")
-        Text("DEMO_TEXT is display-only — focus dispatch returns Result.err.")
+        text("imgui_focus inserts into g_pending_focus; widget_prelude consumes.")
+        text("DEMO_TEXT is display-only — focus dispatch returns Result.err.")
         text_show(DEMO_TEXT, "static label")
         if (button(DEMO_BTN, (text = "I can be focused too"))) {
             print("DEMO_BTN clicked\n")
         }
         input_text(DEMO_INPUT, (text = "Type here"))
-        Text("buffer = {DEMO_INPUT.value}")
+        text("buffer = {DEMO_INPUT.value}")
     }
 
     end_of_frame()

@@ -119,6 +119,29 @@ def private text_value_finalize(widget_ident : string; kind : string; var state 
     register_focusable(widget_ident)
 }
 
+def private edit_finalize(widget_ident : string; kind : string; var ptr : auto(TT)? implicit) {
+    // External-pointer finalize: serializer captures the raw pointer and
+    // dereferences at snapshot time (snapshot reads `*ptr` live), dispatcher
+    // writes through `*ptr` on `set`. Caller owns the pointee — pass
+    // `safe_addr(local)` or `unsafe(addr(struct.field))` and accept lifetime
+    // responsibility. Generic on `TT` so the same body covers every scalar
+    // and vector type (`bool`/`int`/`float`/`float2`/etc.) via from_JV.
+    var entry : WidgetEntry
+    unsafe {
+        var p = ptr
+        let ser <- @ capture(= p) () : JsonValue ? {
+            return JV((value = *p))
+        }
+        let disp <- @ capture(= p) (action : string; payload : JsonValue ?) {
+            if (action == "set") {
+                *p = from_JV(payload?["value"], type<TT>, default<TT>)
+            }
+        }
+        widget_finalize(widget_ident, kind, entry, ser, disp)
+    }
+    register_focusable(widget_ident)
+}
+
 // ===== Triggers (click family) =====
 
 [widget]
@@ -254,18 +277,118 @@ def selectable(var state : ToggleState; text : string;
 }
 
 [widget]
-def menu_item(var state : ToggleState; text : string; shortcut : string = "") : bool {
-    //! Non-block MenuItem with toggle semantics. The block-arg form (menu
-    //! container) lands in 0b.3. `enabled = true` always; the disabled
-    //! variant is a future per-call knob if real users hit it.
+def menu_item(var state : ToggleState; text : string;
+              shortcut : string = ""; enabled : bool = true) : bool {
+    //! Toggleable menu item — `state.value` is the check-mark state and
+    //! persists across reload; click toggles. `enabled=false` greys out
+    //! the item and disables clicks. For static (non-toggleable) menu
+    //! items — section headers or permanent-check labels — use the
+    //! sibling `menu_label` widget instead.
     if (state.pending_toggle) {
         state.value = state.pending_value
         state.pending_toggle = false
     }
-    let changed = MenuItem(text, shortcut, unsafe(addr(state.value)), true)
+    let changed = MenuItem(text, shortcut, unsafe(addr(state.value)), enabled)
     state.changed = changed
     toggle_finalize(widget_ident, "menu_item", state)
     return changed
+}
+
+[widget]
+def menu_label(var state : ClickState; text : string;
+               shortcut : string = ""; selected : bool = false;
+               enabled : bool = true) : bool {
+    //! Static (non-toggleable) menu item. `selected` is a plain bool —
+    //! renders a permanent check mark when true, no check when false; the
+    //! widget never mutates it. Use for section headers
+    //! (`enabled=false, selected=false`) and permanent-state labels
+    //! (`selected=true`). For toggleable menu items use `menu_item`.
+    //! State tracks click count for telemetry; no `state.value`.
+    let im_clicked = MenuItem(text, shortcut, selected, enabled)
+    var clicked = im_clicked
+    if (state.pending_click) {
+        state.pending_click = false
+        clicked = true
+    }
+    state.clicked = clicked
+    if (clicked) {
+        state.click_count++
+    }
+    click_finalize(widget_ident, "menu_label", state)
+    return clicked
+}
+
+[widget]
+def selectable_label(var state : ClickState; text : string; selected : bool;
+                     flags : ImGuiSelectableFlags = ImGuiSelectableFlags.None;
+                     size : float2 = float2(0.0f, 0.0f)) : bool {
+    //! Selectable row whose selected-appearance is driven by a caller-owned
+    //! bool — the widget reports clicks but does not toggle its own state.
+    //! Use for exclusive-selection patterns (`selectable_label(ROW[i], name,
+    //! group.value == i)`) where one external int tracks the chosen index.
+    //! For the self-toggling form, use `selectable` instead. Parallels
+    //! `menu_label` (static) vs `menu_item` (toggling).
+    let im_clicked = Selectable(text, selected, flags, size)
+    var clicked = im_clicked
+    if (state.pending_click) {
+        state.pending_click = false
+        clicked = true
+    }
+    state.clicked = clicked
+    if (clicked) {
+        state.click_count++
+    }
+    click_finalize(widget_ident, "selectable_label", state)
+    return clicked
+}
+
+// ===== Tree leaf form =====
+//
+// `tree_node_ex` is the [widget] counterpart to the `tree_node` [container]:
+// it wraps a bare `TreeNodeEx(text, flags)` call and returns the open bool
+// without claiming a matching `TreePop()`. The caller is responsible for
+// `TreePop()` when the node opened AND `flags` don't include
+// `NoTreePushOnOpen` (the Leaf+NoTreePushOnOpen variant emits no push, so no
+// pop is needed either).
+//
+// Reach for `tree_node_ex` when you need the post-header most-recent-item
+// state (`IsItemClicked`, `drag_drop_source`, inline `same_line` + button) —
+// the container form hides the TreeNodeEx call site so those queries would
+// attach to the wrong item. For straightforward "open body, render kids,
+// close" use the container.
+
+[widget]
+def tree_node_ex(var state : TreeNodeState; text : string;
+                 flags : ImGuiTreeNodeFlags) : bool {
+    //! Leaf-form `TreeNodeEx` — returns the open bool, caller pairs `TreePop()`
+    //! manually when needed. See section comment above for when to choose this
+    //! over the `tree_node` container.
+    if (state.pending_open) {
+        SetNextItemOpen(true, ImGuiCond.Always)
+        state.pending_open = false
+    }
+    if (state.pending_close) {
+        SetNextItemOpen(false, ImGuiCond.Always)
+        state.pending_close = false
+    }
+    state.flags = flags
+    let im_open = TreeNodeEx(text, flags)
+    state.opened = im_open
+    var entry : WidgetEntry
+    unsafe {
+        let ser <- @ capture(& state) () : JsonValue ? {
+            return JV(state)
+        }
+        let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
+            if (action == "open") {
+                state.pending_open = true
+            } elif (action == "close") {
+                state.pending_close = true
+            }
+        }
+        widget_finalize(widget_ident, "tree_node_ex", entry, ser, disp)
+    }
+    return im_open
 }
 
 // ===== Radio (int family) =====
@@ -1092,6 +1215,309 @@ def text_show(var state : TextShowState; value : string = "") {
     text_show_finalize(widget_ident, "text_show", state)
 }
 
+// ===== Display: narrative =====
+//
+// Read-only display widgets that surface text or decoration to the user.
+// Standard serializer (`JV(state)`) emits payload for telemetry:
+//   - NarrativeState   → {value: "<text>"}
+//   - LabelTextState   → {key: "<left>", value: "<right>"}
+//   - EmptyMarkerState → {}  (placeholder elides at zero)
+// All dispatchers are no-ops — these widgets don't accept commands.
+// `register_focusable` is NOT called (display widgets are not focusable).
+
+def private narrative_finalize(widget_ident : string; kind : string; var state : NarrativeState) {
+    var entry : WidgetEntry
+    unsafe {
+        let ser <- @ capture(& state) () : JsonValue ? {
+            return JV(state)
+        }
+        let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
+            // Read-only display; no L2/L3 actions.
+        }
+        widget_finalize(widget_ident, kind, entry, ser, disp)
+    }
+}
+
+def private label_text_finalize(widget_ident : string; kind : string; var state : LabelTextState) {
+    var entry : WidgetEntry
+    unsafe {
+        let ser <- @ capture(& state) () : JsonValue ? {
+            return JV(state)
+        }
+        let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
+            // Read-only display; no L2/L3 actions.
+        }
+        widget_finalize(widget_ident, kind, entry, ser, disp)
+    }
+}
+
+def private marker_finalize(widget_ident : string; kind : string; var state : EmptyMarkerState) {
+    var entry : WidgetEntry
+    unsafe {
+        let ser <- @ capture(& state) () : JsonValue ? {
+            return JV(state)
+        }
+        let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
+            // Stateless decoration; no L2/L3 actions.
+        }
+        widget_finalize(widget_ident, kind, entry, ser, disp)
+    }
+}
+
+[widget]
+def text(var state : NarrativeState; text : string) {
+    //! Plain text display. `state.value` echoes the call-site string for
+    //! `expect_value(IDENT, "literal")` assertions.
+    state.value := text
+    Text(text)
+    narrative_finalize(widget_ident, "text", state)
+}
+
+[widget]
+def text_unformatted(var state : NarrativeState; text : string) {
+    //! Like `text` but bypasses ImGui's printf-style format parsing — no `%` escaping needed.
+    state.value := text
+    TextUnformatted(text)
+    narrative_finalize(widget_ident, "text_unformatted", state)
+}
+
+[widget]
+def text_wrapped(var state : NarrativeState; text : string) {
+    //! Text wrapped to the current window or content-region width.
+    state.value := text
+    TextWrapped(text)
+    narrative_finalize(widget_ident, "text_wrapped", state)
+}
+
+[widget]
+def text_colored(var state : NarrativeState; color : float4; text : string) {
+    //! Tinted text — `color` overrides ``ImGuiCol_Text`` for this draw.
+    state.value := text
+    TextColored(color, text)
+    narrative_finalize(widget_ident, "text_colored", state)
+}
+
+[widget]
+def text_disabled(var state : NarrativeState; text : string) {
+    //! Text rendered in the disabled style (``ImGuiCol_TextDisabled``).
+    state.value := text
+    TextDisabled(text)
+    narrative_finalize(widget_ident, "text_disabled", state)
+}
+
+[widget]
+def bullet_text(var state : NarrativeState; text : string) {
+    //! Bullet point followed by text — like `bullet` + `text` in one call.
+    state.value := text
+    BulletText(text)
+    narrative_finalize(widget_ident, "bullet_text", state)
+}
+
+[widget]
+def bullet(var state : EmptyMarkerState) {
+    //! Renders a bullet glyph and stays on the current line. Follow with
+    //! `same_line` + content for prefix bullets, or use `bullet_text` for
+    //! "bullet + text" in one call.
+    Bullet()
+    marker_finalize(widget_ident, "bullet", state)
+}
+
+[widget]
+def label_text(var state : LabelTextState; key : string; value : string) {
+    //! Two-part display: `key` on the left in the label gutter, `value`
+    //! on the right. Both echoed for telemetry. The struct field is `key`
+    //! (not `label`) because `label` is reserved in gen2.
+    state.key := key
+    state.value := value
+    LabelText(key, value)
+    label_text_finalize(widget_ident, "label_text", state)
+}
+
+[widget]
+def separator(var state : EmptyMarkerState) {
+    //! Full-width horizontal divider line.
+    Separator()
+    marker_finalize(widget_ident, "separator", state)
+}
+
+[widget]
+def separator_text(var state : NarrativeState; text : string) {
+    //! Horizontal divider with an inline label.
+    state.value := text
+    SeparatorText(text)
+    narrative_finalize(widget_ident, "separator_text", state)
+}
+
+// ===== Display: layout =====
+//
+// Cursor-repositioning primitives. They don't draw glyphs themselves but
+// they ARE visible — every widget's bbox depends on where the cursor
+// lands. Wrapping them as `[widget]`s lets playwright assert "button X
+// is on the same row as label Y" by their telemetry idents instead of
+// fragile bbox arithmetic. All four use `EmptyMarkerState` + `marker_finalize`.
+
+[widget]
+def same_line(var state : EmptyMarkerState;
+              offset_from_start_x : float = 0.0f;
+              spacing : float = -1.0f) {
+    //! Stay on the same line as the previous widget. `offset_from_start_x`
+    //! pins the next widget to that x within the current window; `spacing`
+    //! is the horizontal gap (negative = use ``ItemSpacing.x`` style default).
+    SameLine(offset_from_start_x, spacing)
+    marker_finalize(widget_ident, "same_line", state)
+}
+
+[widget]
+def new_line(var state : EmptyMarkerState) {
+    //! Force a line break — undoes a preceding `same_line`.
+    NewLine()
+    marker_finalize(widget_ident, "new_line", state)
+}
+
+[widget]
+def spacing(var state : EmptyMarkerState) {
+    //! Vertical gap of one ``ItemSpacing.y`` unit.
+    Spacing()
+    marker_finalize(widget_ident, "spacing", state)
+}
+
+[widget]
+def dummy(var state : EmptyMarkerState; size : float2) {
+    //! Reserve a `size`-pixel rectangle of empty space (no draw, but the
+    //! cursor advances). Useful for spacing or to consume layout columns.
+    Dummy(size)
+    marker_finalize(widget_ident, "dummy", state)
+}
+
+[widget]
+def align_text_to_frame_padding(var state : EmptyMarkerState) {
+    //! Vertically align the next text widget to fit a framed item's baseline —
+    //! the standard prefix when pairing `text(...)` with an inline input or
+    //! button so the label sits centred on the frame.
+    AlignTextToFramePadding()
+    marker_finalize(widget_ident, "align_text_to_frame_padding", state)
+}
+
+[widget]
+def indent(var state : EmptyMarkerState; indent_w : float = 0.0f) {
+    //! Push the cursor right by `indent_w` (or `IndentSpacing` style default
+    //! when `0.0f`) for the rest of the current scope. Pair with `unindent`
+    //! when done. For block-scoped indent prefer the `with_indent` wrapper.
+    Indent(indent_w)
+    marker_finalize(widget_ident, "indent", state)
+}
+
+[widget]
+def unindent(var state : EmptyMarkerState; indent_w : float = 0.0f) {
+    //! Pull the cursor left by `indent_w` (or `IndentSpacing` when `0.0f`).
+    //! Pair with `indent` to bracket a section manually; for block-scoped
+    //! indent prefer `with_indent`.
+    Unindent(indent_w)
+    marker_finalize(widget_ident, "unindent", state)
+}
+
+// ===== Display: progress / image =====
+//
+// Content display widgets — `progress_bar` shows a fraction in [0,1] (or
+// indeterminate when `fraction < 0`); `image` blits a texture handle.
+// Per-call args echo into state for telemetry; no dispatcher (read-only).
+
+def private progress_bar_finalize(widget_ident : string; kind : string; var state : ProgressBarState) {
+    var entry : WidgetEntry
+    unsafe {
+        let ser <- @ capture(& state) () : JsonValue ? {
+            return JV(state)
+        }
+        let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
+            // Read-only display; no L2/L3 actions.
+        }
+        widget_finalize(widget_ident, kind, entry, ser, disp)
+    }
+}
+
+def private image_finalize(widget_ident : string; kind : string; var state : ImageState) {
+    var entry : WidgetEntry
+    unsafe {
+        let ser <- @ capture(& state) () : JsonValue ? {
+            return JV(state)
+        }
+        let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
+            // Read-only display; no L2/L3 actions.
+        }
+        widget_finalize(widget_ident, kind, entry, ser, disp)
+    }
+}
+
+[widget]
+def progress_bar(var state : ProgressBarState; fraction : float;
+                 size : float2 = float2(-1.0f, 0.0f);
+                 overlay : string = "") {
+    //! Progress bar in [0, 1]; pass a negative fraction for indeterminate
+    //! animation. `size` defaults to (-1, 0) — full content-region width,
+    //! one-frame-tall. `overlay` is optional center-aligned text (e.g. "42%").
+    state.fraction = fraction
+    state.size = size
+    state.overlay := overlay
+    ProgressBar(fraction, size, overlay)
+    progress_bar_finalize(widget_ident, "progress_bar", state)
+}
+
+[widget]
+def image(var state : ImageState; user_texture_id : void?; size : float2;
+          uv0 : float2 = float2(0.0f, 0.0f);
+          uv1 : float2 = float2(1.0f, 1.0f);
+          tint_col : float4 = float4(1.0f, 1.0f, 1.0f, 1.0f);
+          border_col : float4 = float4(0.0f, 0.0f, 0.0f, 0.0f)) {
+    //! Blit `user_texture_id` (an opaque ``ImTextureID``) into a `size`-pixel
+    //! rect with `uv0`/`uv1` sampling coordinates. `tint_col` modulates texel
+    //! color; `border_col` draws a border (zero alpha = none). The texture
+    //! handle is not part of telemetry (opaque); the rest of the args echo
+    //! for snapshot assertions.
+    state.size = size
+    state.uv0 = uv0
+    state.uv1 = uv1
+    state.tint_col = tint_col
+    state.border_col = border_col
+    Image(user_texture_id, size, uv0, uv1, tint_col, border_col)
+    image_finalize(widget_ident, "image", state)
+}
+
+// ===== Display: tooltip (flat form) =====
+//
+// Stateless one-liner tooltips. `set_tooltip` always shows the tooltip
+// (override any previous SetTooltip in the same frame). `set_item_tooltip`
+// only shows when the immediately-preceding widget is hovered — ImGui's
+// `if (IsItemHovered(ForTooltip)) SetTooltip(text)` shortcut.
+//
+// Block-form tooltips (drawing arbitrary widgets inside the tooltip
+// window) live in `imgui_containers_builtin.das` as the `tooltip` and
+// `item_tooltip` [container]s. Use flat form for simple text-only popups.
+
+[widget]
+def set_tooltip(var state : NarrativeState; text : string) {
+    //! Show `text` as the active tooltip; overrides any previous SetTooltip
+    //! in the same frame. For hover-gated tooltips use `set_item_tooltip`.
+    state.value := text
+    SetTooltip(text)
+    narrative_finalize(widget_ident, "set_tooltip", state)
+}
+
+[widget]
+def set_item_tooltip(var state : NarrativeState; text : string;
+                     flags : ImGuiHoveredFlags = ImGuiHoveredFlags.ForTooltip) {
+    //! Show `text` as a tooltip when the immediately-preceding widget is
+    //! hovered. Default `flags = ForTooltip` pulls per-style delay/stationary;
+    //! override with `DelayNone`, `Stationary`, `DelayNormal | NoSharedDelay`
+    //! etc. for custom hover semantics. ImGui's `if (IsItemHovered(flags))
+    //! SetTooltip(text)` idiom — `SetItemTooltip` isn't in the daslang
+    //! bindings, so we inline.
+    state.value := text
+    if (IsItemHovered(flags)) {
+        SetTooltip(text)
+    }
+    narrative_finalize(widget_ident, "set_item_tooltip", state)
+}
+
 // ===== Plot lines / histogram (array form) =====
 //
 // Display widgets backed by `PlotState`. Plotted values come per-frame as
@@ -1204,4 +1630,464 @@ def plot_histogram_getter(var state : PlotState; text : string;
     _builtin_PlotHistogram_cb(text, values_count, 0, overlay_text,
                               scale_min, scale_max, graph_size, getter)
     plot_finalize(widget_ident, "plot_histogram_getter", state)
+}
+
+// ===== External-pointer rail (edit_* family) =====
+//
+// Sibling shape to the state-backed `[widget]` defs: caller owns the value
+// via `safe_addr(local)` / `unsafe(addr(struct.field))` and the renderer
+// reads/writes through the pointer directly. No auto-emit, no state struct,
+// no `@live` preservation — the external owner controls persistence.
+// Required `id="..."` at the call site keys the telemetry path.
+
+[edit_widget]
+def edit_checkbox(var ptr : bool? implicit; text : string = "") : bool {
+    //! ``Checkbox(label, ptr)`` against a caller-owned ``bool?``. Telemetry payload is ``{value}``; ``imgui_set`` writes through ``*ptr``.
+    let lbl = empty(text) ? widget_ident : text
+    let changed = Checkbox(lbl, ptr)
+    edit_finalize(widget_ident, "edit_checkbox", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_radio_button(var ptr : bool? implicit; text : string = "") : bool {
+    //! Bool-form ``RadioButton`` against a caller-owned ``bool?``; the widget flips ``*ptr`` on click (ImGui's RadioButton-bool doesn't mutate). For grouped int-form radios, declare a ``RadioIntState`` and use ``radio_button_int``.
+    let lbl = empty(text) ? widget_ident : text
+    let im_clicked = unsafe(RadioButton(lbl, *ptr))
+    if (im_clicked) {
+        unsafe {
+            *ptr = !*ptr
+        }
+    }
+    edit_finalize(widget_ident, "edit_radio_button", ptr)
+    return im_clicked
+}
+
+[edit_widget]
+def edit_slider_float(var ptr : float? implicit; text : string = "";
+                      v_min : float = 0.0f; v_max : float = 1.0f;
+                      format : string = "%.3f";
+                      flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    //! ``SliderFloat`` against a caller-owned ``float?``. Range is per-call (no state-side ``bounds``); other args mirror :ref:`slider_float <function-imgui_widgets_builtin_slider_float_SliderStateFloat_string_string_ImGuiSliderFlags>`.
+    let lbl = empty(text) ? widget_ident : text
+    let changed = SliderFloat(lbl, ptr, v_min, v_max, format, flags)
+    edit_finalize(widget_ident, "edit_slider_float", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_slider_int(var ptr : int? implicit; text : string = "";
+                    v_min : int = 0; v_max : int = 100;
+                    format : string = "%d";
+                    flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    //! ``SliderInt`` against a caller-owned ``int?``. Range is per-call.
+    let lbl = empty(text) ? widget_ident : text
+    let changed = SliderInt(lbl, ptr, v_min, v_max, format, flags)
+    edit_finalize(widget_ident, "edit_slider_int", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_drag_float(var ptr : float? implicit; text : string = "";
+                    speed : float = 1.0f;
+                    v_min : float = 0.0f; v_max : float = 0.0f;
+                    format : string = "%.3f";
+                    flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    //! ``DragFloat`` against a caller-owned ``float?``. ``v_min == v_max == 0`` ⇒ unbounded (ImGui convention).
+    let lbl = empty(text) ? widget_ident : text
+    let changed = DragFloat(lbl, ptr, speed, v_min, v_max, format, flags)
+    edit_finalize(widget_ident, "edit_drag_float", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_drag_int(var ptr : int? implicit; text : string = "";
+                  speed : float = 1.0f;
+                  v_min : int = 0; v_max : int = 0;
+                  format : string = "%d";
+                  flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    //! ``DragInt`` against a caller-owned ``int?``. ``v_min == v_max == 0`` ⇒ unbounded.
+    let lbl = empty(text) ? widget_ident : text
+    let changed = DragInt(lbl, ptr, speed, v_min, v_max, format, flags)
+    edit_finalize(widget_ident, "edit_drag_int", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_input_float(var ptr : float? implicit; text : string = "";
+                     step : float = 0.0f;
+                     step_fast : float = 0.0f;
+                     format : string = "%.3f";
+                     flags : ImGuiInputTextFlags = ImGuiInputTextFlags.None) : bool {
+    //! ``InputFloat`` against a caller-owned ``float?``. No clamping (matches :ref:`input_float <function-imgui_widgets_builtin_input_float_InputStateFloat_string_float_float_string_ImGuiInputTextFlags>`); ``step``/``step_fast`` drive the ±buttons.
+    let lbl = empty(text) ? widget_ident : text
+    let changed = InputFloat(lbl, ptr, step, step_fast, format, flags)
+    edit_finalize(widget_ident, "edit_input_float", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_input_int(var ptr : int? implicit; text : string = "";
+                   step : int = 1;
+                   step_fast : int = 100;
+                   flags : ImGuiInputTextFlags = ImGuiInputTextFlags.None) : bool {
+    //! ``InputInt`` against a caller-owned ``int?``. No clamping.
+    let lbl = empty(text) ? widget_ident : text
+    let changed = InputInt(lbl, ptr, step, step_fast, flags)
+    edit_finalize(widget_ident, "edit_input_int", ptr)
+    return changed
+}
+
+// ===== External-pointer rail (10b: vectors) =====
+//
+// Vector overloads (float2/3/4 + int2/3/4) for slider and drag. Each
+// `T2?`/`T3?`/`T4?` pointer is reinterpret-cast to `T?` at the ImGui call
+// site since ImGui's Slider* / Drag* family signatures all take a single
+// `T*` and treat it as a contiguous 2/3/4-component layout — no separate
+// vector binding. `edit_finalize` still takes the full vector pointer so
+// the serializer/dispatcher round-trip the whole tuple via from_JV.
+
+[edit_widget]
+def edit_slider_float2(var ptr : float2? implicit; text : string = "";
+                       v_min : float = 0.0f; v_max : float = 1.0f;
+                       format : string = "%.3f";
+                       flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    //! ``SliderFloat2`` against a caller-owned ``float2?``.
+    let lbl = empty(text) ? widget_ident : text
+    let changed = SliderFloat2(lbl, unsafe(reinterpret<float?>(ptr)),
+                               v_min, v_max, format, flags)
+    edit_finalize(widget_ident, "edit_slider_float2", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_slider_float3(var ptr : float3? implicit; text : string = "";
+                       v_min : float = 0.0f; v_max : float = 1.0f;
+                       format : string = "%.3f";
+                       flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    //! ``SliderFloat3`` against a caller-owned ``float3?``.
+    let lbl = empty(text) ? widget_ident : text
+    let changed = SliderFloat3(lbl, unsafe(reinterpret<float?>(ptr)),
+                               v_min, v_max, format, flags)
+    edit_finalize(widget_ident, "edit_slider_float3", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_slider_float4(var ptr : float4? implicit; text : string = "";
+                       v_min : float = 0.0f; v_max : float = 1.0f;
+                       format : string = "%.3f";
+                       flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    //! ``SliderFloat4`` against a caller-owned ``float4?``.
+    let lbl = empty(text) ? widget_ident : text
+    let changed = SliderFloat4(lbl, unsafe(reinterpret<float?>(ptr)),
+                               v_min, v_max, format, flags)
+    edit_finalize(widget_ident, "edit_slider_float4", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_slider_int2(var ptr : int2? implicit; text : string = "";
+                     v_min : int = 0; v_max : int = 100;
+                     format : string = "%d";
+                     flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    //! ``SliderInt2`` against a caller-owned ``int2?``.
+    let lbl = empty(text) ? widget_ident : text
+    let changed = SliderInt2(lbl, unsafe(reinterpret<int?>(ptr)),
+                             v_min, v_max, format, flags)
+    edit_finalize(widget_ident, "edit_slider_int2", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_slider_int3(var ptr : int3? implicit; text : string = "";
+                     v_min : int = 0; v_max : int = 100;
+                     format : string = "%d";
+                     flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    //! ``SliderInt3`` against a caller-owned ``int3?``.
+    let lbl = empty(text) ? widget_ident : text
+    let changed = SliderInt3(lbl, unsafe(reinterpret<int?>(ptr)),
+                             v_min, v_max, format, flags)
+    edit_finalize(widget_ident, "edit_slider_int3", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_slider_int4(var ptr : int4? implicit; text : string = "";
+                     v_min : int = 0; v_max : int = 100;
+                     format : string = "%d";
+                     flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    //! ``SliderInt4`` against a caller-owned ``int4?``.
+    let lbl = empty(text) ? widget_ident : text
+    let changed = SliderInt4(lbl, unsafe(reinterpret<int?>(ptr)),
+                             v_min, v_max, format, flags)
+    edit_finalize(widget_ident, "edit_slider_int4", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_drag_float2(var ptr : float2? implicit; text : string = "";
+                     speed : float = 1.0f;
+                     v_min : float = 0.0f; v_max : float = 0.0f;
+                     format : string = "%.3f";
+                     flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    //! ``DragFloat2`` against a caller-owned ``float2?``.
+    let lbl = empty(text) ? widget_ident : text
+    let changed = DragFloat2(lbl, unsafe(reinterpret<float?>(ptr)),
+                             speed, v_min, v_max, format, flags)
+    edit_finalize(widget_ident, "edit_drag_float2", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_drag_float3(var ptr : float3? implicit; text : string = "";
+                     speed : float = 1.0f;
+                     v_min : float = 0.0f; v_max : float = 0.0f;
+                     format : string = "%.3f";
+                     flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    //! ``DragFloat3`` against a caller-owned ``float3?``.
+    let lbl = empty(text) ? widget_ident : text
+    let changed = DragFloat3(lbl, unsafe(reinterpret<float?>(ptr)),
+                             speed, v_min, v_max, format, flags)
+    edit_finalize(widget_ident, "edit_drag_float3", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_drag_float4(var ptr : float4? implicit; text : string = "";
+                     speed : float = 1.0f;
+                     v_min : float = 0.0f; v_max : float = 0.0f;
+                     format : string = "%.3f";
+                     flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    //! ``DragFloat4`` against a caller-owned ``float4?``.
+    let lbl = empty(text) ? widget_ident : text
+    let changed = DragFloat4(lbl, unsafe(reinterpret<float?>(ptr)),
+                             speed, v_min, v_max, format, flags)
+    edit_finalize(widget_ident, "edit_drag_float4", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_drag_int2(var ptr : int2? implicit; text : string = "";
+                   speed : float = 1.0f;
+                   v_min : int = 0; v_max : int = 0;
+                   format : string = "%d";
+                   flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    //! ``DragInt2`` against a caller-owned ``int2?``.
+    let lbl = empty(text) ? widget_ident : text
+    let changed = DragInt2(lbl, unsafe(reinterpret<int?>(ptr)),
+                           speed, v_min, v_max, format, flags)
+    edit_finalize(widget_ident, "edit_drag_int2", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_drag_int3(var ptr : int3? implicit; text : string = "";
+                   speed : float = 1.0f;
+                   v_min : int = 0; v_max : int = 0;
+                   format : string = "%d";
+                   flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    //! ``DragInt3`` against a caller-owned ``int3?``.
+    let lbl = empty(text) ? widget_ident : text
+    let changed = DragInt3(lbl, unsafe(reinterpret<int?>(ptr)),
+                           speed, v_min, v_max, format, flags)
+    edit_finalize(widget_ident, "edit_drag_int3", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_drag_int4(var ptr : int4? implicit; text : string = "";
+                   speed : float = 1.0f;
+                   v_min : int = 0; v_max : int = 0;
+                   format : string = "%d";
+                   flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    //! ``DragInt4`` against a caller-owned ``int4?``.
+    let lbl = empty(text) ? widget_ident : text
+    let changed = DragInt4(lbl, unsafe(reinterpret<int?>(ptr)),
+                           speed, v_min, v_max, format, flags)
+    edit_finalize(widget_ident, "edit_drag_int4", ptr)
+    return changed
+}
+
+// ===== External-pointer rail (10c: input vectors, color, combo, special) =====
+//
+// Remaining external-pointer overloads: ``input_*`` vector forms (no clamp,
+// 2/3/4 component), ``input_double`` scalar, the color family (3/4 + picker
+// variants), ``combo`` (array-of-string-pointers form so no per-frame buffer
+// packing — the C side reads ``items[i]`` lazily), plus ``slider_angle``
+// (float radians, displayed degrees) and ``checkbox_flags`` (bit-mask
+// toggle on an ``int?``).
+
+[edit_widget]
+def edit_input_float2(var ptr : float2? implicit; text : string = "";
+                      format : string = "%.3f";
+                      flags : ImGuiInputTextFlags = ImGuiInputTextFlags.None) : bool {
+    //! ``InputFloat2`` against a caller-owned ``float2?``. No clamping.
+    let lbl = empty(text) ? widget_ident : text
+    let changed = InputFloat2(lbl, unsafe(reinterpret<float?>(ptr)), format, flags)
+    edit_finalize(widget_ident, "edit_input_float2", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_input_float3(var ptr : float3? implicit; text : string = "";
+                      format : string = "%.3f";
+                      flags : ImGuiInputTextFlags = ImGuiInputTextFlags.None) : bool {
+    //! ``InputFloat3`` against a caller-owned ``float3?``.
+    let lbl = empty(text) ? widget_ident : text
+    let changed = InputFloat3(lbl, unsafe(reinterpret<float?>(ptr)), format, flags)
+    edit_finalize(widget_ident, "edit_input_float3", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_input_float4(var ptr : float4? implicit; text : string = "";
+                      format : string = "%.3f";
+                      flags : ImGuiInputTextFlags = ImGuiInputTextFlags.None) : bool {
+    //! ``InputFloat4`` against a caller-owned ``float4?``.
+    let lbl = empty(text) ? widget_ident : text
+    let changed = InputFloat4(lbl, unsafe(reinterpret<float?>(ptr)), format, flags)
+    edit_finalize(widget_ident, "edit_input_float4", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_input_int2(var ptr : int2? implicit; text : string = "";
+                    flags : ImGuiInputTextFlags = ImGuiInputTextFlags.None) : bool {
+    //! ``InputInt2`` against a caller-owned ``int2?``.
+    let lbl = empty(text) ? widget_ident : text
+    let changed = InputInt2(lbl, unsafe(reinterpret<int?>(ptr)), flags)
+    edit_finalize(widget_ident, "edit_input_int2", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_input_int3(var ptr : int3? implicit; text : string = "";
+                    flags : ImGuiInputTextFlags = ImGuiInputTextFlags.None) : bool {
+    //! ``InputInt3`` against a caller-owned ``int3?``.
+    let lbl = empty(text) ? widget_ident : text
+    let changed = InputInt3(lbl, unsafe(reinterpret<int?>(ptr)), flags)
+    edit_finalize(widget_ident, "edit_input_int3", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_input_int4(var ptr : int4? implicit; text : string = "";
+                    flags : ImGuiInputTextFlags = ImGuiInputTextFlags.None) : bool {
+    //! ``InputInt4`` against a caller-owned ``int4?``.
+    let lbl = empty(text) ? widget_ident : text
+    let changed = InputInt4(lbl, unsafe(reinterpret<int?>(ptr)), flags)
+    edit_finalize(widget_ident, "edit_input_int4", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_input_double(var ptr : double? implicit; text : string = "";
+                      step : double = 0.0lf;
+                      step_fast : double = 0.0lf;
+                      format : string = "%.6f";
+                      flags : ImGuiInputTextFlags = ImGuiInputTextFlags.None) : bool {
+    //! ``InputDouble`` against a caller-owned ``double?``.
+    let lbl = empty(text) ? widget_ident : text
+    let changed = InputDouble(lbl, ptr, step, step_fast, format, flags)
+    edit_finalize(widget_ident, "edit_input_double", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_color_edit3(var ptr : float3? implicit; text : string = "";
+                     flags : ImGuiColorEditFlags = ImGuiColorEditFlags.None) : bool {
+    //! ``ColorEdit3`` against a caller-owned ``float3?`` (RGB).
+    let lbl = empty(text) ? widget_ident : text
+    let changed = ColorEdit3(lbl, unsafe(reinterpret<float?>(ptr)), flags)
+    edit_finalize(widget_ident, "edit_color_edit3", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_color_edit4(var ptr : float4? implicit; text : string = "";
+                     flags : ImGuiColorEditFlags = ImGuiColorEditFlags.None) : bool {
+    //! ``ColorEdit4`` against a caller-owned ``float4?`` (RGBA).
+    let lbl = empty(text) ? widget_ident : text
+    let changed = ColorEdit4(lbl, unsafe(reinterpret<float?>(ptr)), flags)
+    edit_finalize(widget_ident, "edit_color_edit4", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_color_picker3(var ptr : float3? implicit; text : string = "";
+                       flags : ImGuiColorEditFlags = ImGuiColorEditFlags.None) : bool {
+    //! ``ColorPicker3`` against a caller-owned ``float3?`` (RGB).
+    let lbl = empty(text) ? widget_ident : text
+    let changed = ColorPicker3(lbl, unsafe(reinterpret<float?>(ptr)), flags)
+    edit_finalize(widget_ident, "edit_color_picker3", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_color_picker4(var ptr : float4? implicit; text : string = "";
+                       flags : ImGuiColorEditFlags = ImGuiColorEditFlags.None;
+                       ref_col : float4 = float4(0.0f, 0.0f, 0.0f, 0.0f);
+                       has_ref_col : bool = false) : bool {
+    //! ``ColorPicker4`` against a caller-owned ``float4?`` (RGBA). Optional reference swatch via ``has_ref_col`` + ``ref_col``.
+    let lbl = empty(text) ? widget_ident : text
+    var ref_local = ref_col
+    let ref_ptr = has_ref_col ? unsafe(addr(ref_local.x)) : null
+    let changed = ColorPicker4(lbl, unsafe(reinterpret<float?>(ptr)), flags, ref_ptr)
+    edit_finalize(widget_ident, "edit_color_picker4", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_combo(var ptr : int? implicit; text : string = "";
+               items : array<string>;
+               popup_max_height_in_items : int = -1) : bool {
+    //! ``Combo`` against a caller-owned ``int?`` index. ``items`` is passed as an array of C-string pointers (no per-frame zero-separated buffer; daslang ``string`` already carries the trailing null).
+    let lbl = empty(text) ? widget_ident : text
+    let changed = Combo(lbl, ptr, unsafe(addr(items[0])), length(items),
+                        popup_max_height_in_items)
+    edit_finalize(widget_ident, "edit_combo", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_slider_angle(var ptr : float? implicit; text : string = "";
+                      v_degrees_min : float = -360.0f;
+                      v_degrees_max : float = 360.0f;
+                      format : string = "%.0f deg";
+                      flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    //! ``SliderAngle`` against a caller-owned ``float?`` (radians on the pointer side; degrees on the UI side).
+    let lbl = empty(text) ? widget_ident : text
+    let changed = SliderAngle(lbl, ptr, v_degrees_min, v_degrees_max, format, flags)
+    edit_finalize(widget_ident, "edit_slider_angle", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_checkbox_flags(var ptr : int? implicit; text : string = "";
+                        flags_value : int = 0) : bool {
+    //! ``CheckboxFlags`` against a caller-owned ``int?`` bitfield; toggles the ``flags_value`` bit. Payload serializes the underlying ``int``; visual state on the bit is implicit.
+    let lbl = empty(text) ? widget_ident : text
+    let changed = CheckboxFlags(lbl, ptr, flags_value)
+    edit_finalize(widget_ident, "edit_checkbox_flags", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_collapsing_header(var ptr : bool? implicit; text : string = "";
+                           flags : ImGuiTreeNodeFlags = ImGuiTreeNodeFlags.None) : bool {
+    //! ``CollapsingHeader(label, p_visible, flags)`` against a caller-owned
+    //! ``bool?`` p_open. While ``*ptr == false`` the header (and its body)
+    //! is hidden entirely. While ``*ptr == true`` the X close-button on the
+    //! header writes ``*ptr = false`` when clicked. Body of the
+    //! conditional ``if (edit_collapsing_header(...))`` runs only when the
+    //! section is both visible AND expanded. The state-owned sibling is the
+    //! ``collapsing_header(closable=true)`` container.
+    let lbl = empty(text) ? widget_ident : text
+    var im_open : bool = false
+    if (unsafe(*ptr)) {
+        im_open = CollapsingHeader(lbl, ptr, flags)
+    }
+    edit_finalize(widget_ident, "edit_collapsing_header", ptr)
+    return im_open
 }

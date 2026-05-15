@@ -79,14 +79,14 @@ def update() {
         // struct's fields are then read directly:
         //   SAVE_BTN.click_count : cumulative (@live → preserved across reload)
         //   SAVE_BTN.clicked     : true on the frame the button fired
-        Text("Auto-emit: SAVE_BTN is the macro-emitted global.")
+        text("Auto-emit: SAVE_BTN is the macro-emitted global.")
         if (button(SAVE_BTN, (text = "Save"))) {
             // `button(...)` returns bool — clicked-this-frame. Same info
             // as SAVE_BTN.clicked, just inline.
         }
-        Text("SAVE_BTN.click_count = {SAVE_BTN.click_count}")
+        text((text = "SAVE_BTN.click_count = {SAVE_BTN.click_count}"))
 
-        Separator()
+        separator(ST_SEP_1)
 
         // ---- Dotted flags ----
         // SPEED.PUBLIC: emit the global with `variable public` instead of
@@ -97,12 +97,12 @@ def update() {
         // VOLUME.NOTLIVE: skip @live on the emitted global. On live-reload
         // the source-side initial value wins (helps when you change bounds
         // and want them to take effect immediately, not be preserved).
-        Text("Dotted flags tune visibility and live-reload behavior:")
+        text("Dotted flags tune visibility and live-reload behavior:")
         slider_int(SPEED.PUBLIC,   (text = "Speed (int, PUBLIC)"))
         slider_float(VOLUME.NOTLIVE, (text = "Volume (NOTLIVE)"))
-        Text("SPEED.value = {SPEED.value}   VOLUME.value = {VOLUME.value}")
+        text((text = "SPEED.value = {SPEED.value}   VOLUME.value = {VOLUME.value}"))
 
-        Separator()
+        separator(ST_SEP_2)
 
         // ---- text_show: app-side value mirror ----
         // text_show is the read-only mirror of text_input. The state's
@@ -110,7 +110,7 @@ def update() {
         // from outside, and the snapshot exposes it under the standard
         // payload.value field — so integration tests can assert against
         // computed status strings the same way they assert slider values.
-        Text("text_show — app-driven status reaches the snapshot:")
+        text("text_show — app-driven status reaches the snapshot:")
         text_show(STATUS_TEXT)
 
         // The bump button writes a computed string into STATUS_TEXT.value.

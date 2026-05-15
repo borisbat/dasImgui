@@ -1,6 +1,8 @@
 options gen2
+options _no_imgui_legacy = true
 
 require imgui
+require imgui/imgui_lint
 require imgui_app
 require glfw/glfw_boost
 require opengl/opengl_boost
@@ -45,24 +47,24 @@ def update() {
     SetNextWindowSize(ImVec2(580.0, 420.0), ImGuiCond.Always)
     window(MAIN_WIN, (text = "with_indent", closable = false,
                       flags = ImGuiWindowFlags.None)) {
-        Text("Default indent (0.0f uses style IndentSpacing):")
+        text("Default indent (0.0f uses style IndentSpacing):")
         with_indent(0.0f) {
-            Text("Level 1")
+            text("Level 1")
             with_indent(0.0f) {
-                Text("Level 2")
+                text("Level 2")
                 with_indent(0.0f) {
-                    Text("Level 3")
+                    text("Level 3")
                 }
             }
         }
 
-        Separator()
-        Text("Custom amounts:")
+        separator()
+        text("Custom amounts:")
         with_indent(40.0f) {
-            Text("indent 40px")
+            text("indent 40px")
         }
         with_indent(80.0f) {
-            Text("indent 80px")
+            text("indent 80px")
         }
     }
 

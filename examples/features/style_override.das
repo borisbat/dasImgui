@@ -1,6 +1,8 @@
 options gen2
+options _no_imgui_legacy = true
 
 require imgui
+require imgui/imgui_lint
 require imgui_app
 require glfw/glfw_boost
 require opengl/opengl_boost
@@ -51,22 +53,22 @@ def update() {
     SetNextWindowSize(ImVec2(560.0f, 400.0f), ImGuiCond.FirstUseEver)
     window(STYLE_WIN, (text = "with_style demo", closable = false,
                        flags = ImGuiWindowFlags.None)) {
-        Text("Mixed color + var, single block:")
+        text("Mixed color + var, single block:")
         with_style((ImGuiCol.Button, ImVec4(0.8f, 0.2f, 0.2f, 1.0f)),
                    (ImGuiStyleVar.FrameRounding, 8.0f)) {
             button(STYLED_BTN, (text = "Red rounded"))
         }
 
-        Separator()
-        Text("Nested with_style — inner stacks on outer:")
+        separator()
+        text("Nested with_style — inner stacks on outer:")
         with_style((ImGuiCol.Text, ImVec4(1.0f, 1.0f, 0.0f, 1.0f))) {
             with_style((ImGuiCol.Button, ImVec4(0.2f, 0.4f, 0.8f, 1.0f))) {
                 button(NESTED_STYLED_BTN, (text = "Yellow text + blue button"))
             }
         }
 
-        Separator()
-        Text("After with_style — baseline style restored:")
+        separator()
+        text("After with_style — baseline style restored:")
         // If push/pop counts were off, this button would render with a stale
         // color/rounding. ImGui's style stack auto-asserts unbalanced pops
         // at EndFrame so the live process would crash; absent that, visual

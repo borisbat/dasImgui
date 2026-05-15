@@ -1,6 +1,8 @@
 options gen2
+options _no_imgui_legacy = true
 
 require imgui
+require imgui/imgui_lint
 require imgui_app
 require glfw/glfw_boost
 require opengl/opengl_boost
@@ -47,22 +49,22 @@ def update() {
     SetNextWindowSize(ImVec2(660.0, 420.0), ImGuiCond.Always)
     window(MAIN_WIN, (text = "with_item_width", closable = false,
                       flags = ImGuiWindowFlags.None)) {
-        Text("Default width (ImGui style):")
+        text("Default width (ImGui style):")
         slider_float(DEFAULT_W, (text = "default", bounds = (0.0f, 1.0f)))
 
-        Separator()
-        Text("Absolute 120 px:")
+        separator()
+        text("Absolute 120 px:")
         with_item_width(120.0f) {
             slider_float(NARROW_W, (text = "120px", bounds = (0.0f, 1.0f)))
         }
 
-        Text("Absolute 320 px:")
+        text("Absolute 320 px:")
         with_item_width(320.0f) {
             slider_float(WIDE_W, (text = "320px", bounds = (0.0f, 1.0f)))
         }
 
-        Separator()
-        Text("Right-edge minus 60 px (negative):")
+        separator()
+        text("Right-edge minus 60 px (negative):")
         with_item_width(-60.0f) {
             slider_float(STRETCH_W, (text = "stretch", bounds = (0.0f, 1.0f)))
         }

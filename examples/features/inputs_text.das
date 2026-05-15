@@ -1,6 +1,8 @@
 options gen2
+options _no_imgui_legacy = true
 
 require imgui
+require imgui/imgui_lint
 require imgui_app
 require glfw/glfw_boost
 require opengl/opengl_boost
@@ -60,32 +62,32 @@ def update() {
     SetNextWindowSize(ImVec2(720.0, 580.0), ImGuiCond.Always)
     window(MAIN_WIN, (text = "Text inputs — phase 0b.4", closable = false,
                       flags = ImGuiWindowFlags.None)) {
-        Text("input_text — fixed 256-byte buffer")
-        Separator()
+        text("input_text — fixed 256-byte buffer")
+        separator()
         input_text(NAME, (text = "Name"))
-        Text("name = '{NAME.value}'")
+        text("name = '{NAME.value}'")
 
-        Spacing()
-        Text("input_text_with_hint — placeholder when empty")
-        Separator()
+        spacing()
+        text("input_text_with_hint — placeholder when empty")
+        separator()
         input_text_with_hint(EMAIL, (text = "Email", hint = "you@example.com"))
-        Text("email = '{EMAIL.value}'")
+        text("email = '{EMAIL.value}'")
 
-        Spacing()
-        Text("input_text_multiline — CR/LF tolerant")
-        Separator()
+        spacing()
+        text("input_text_multiline — CR/LF tolerant")
+        separator()
         input_text_multiline(BIO, (text = "Bio", size = float2(0.0f, 90.0f)))
-        Text("bio length = {length(BIO.value)} bytes")
+        text("bio length = {length(BIO.value)} bytes")
 
-        Spacing()
-        Text("input_text_growable — CallbackResize grows buffer past 256B")
-        Separator()
+        spacing()
+        text("input_text_growable — CallbackResize grows buffer past 256B")
+        separator()
         input_text_growable(GROW, (text = "Free-form"))
-        Text("capacity = {GROW.capacity}, length = {length(GROW.value)} bytes")
+        text("capacity = {GROW.capacity}, length = {length(GROW.value)} bytes")
 
-        Spacing()
-        Text("combo_getter — procedural list (no array<string>)")
-        Separator()
+        spacing()
+        text("combo_getter — procedural list (no array<string>)")
+        separator()
         combo_getter(FONT, (text = "Font", items_count = length(FONTS),
             getter = @(idx : int; var result : string&) : bool {
                 if (idx >= 0 && idx < length(FONTS)) {
@@ -94,11 +96,11 @@ def update() {
                 }
                 return false
             }))
-        Text("font index = {FONT.value} ('{FONTS[clamp(FONT.value, 0, length(FONTS) - 1)]}')")
+        text("font index = {FONT.value} ('{FONTS[clamp(FONT.value, 0, length(FONTS) - 1)]}')")
 
-        Spacing()
-        Text("imgui_set with target=MAIN_WIN/NAME (or EMAIL/BIO/GROW) + string value writes the buffer")
-        Text("imgui_set with target=MAIN_WIN/FONT + int value picks the dropdown row")
+        spacing()
+        text("imgui_set with target=MAIN_WIN/NAME (or EMAIL/BIO/GROW) + string value writes the buffer")
+        text("imgui_set with target=MAIN_WIN/FONT + int value picks the dropdown row")
     }
 
     end_of_frame()

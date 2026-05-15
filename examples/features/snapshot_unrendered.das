@@ -1,6 +1,8 @@
 options gen2
+options _no_imgui_legacy = true
 
 require imgui
+require imgui/imgui_lint
 require imgui_app
 require glfw/glfw_boost
 require opengl/opengl_boost
@@ -60,12 +62,12 @@ def update() {
     SetNextWindowSize(ImVec2(720.0, 240.0), ImGuiCond.Always)
     window(MAIN_WIN, (text = "Phase 1.1 — registry covers unrendered widgets",
                       closable = false, flags = ImGuiWindowFlags.None)) {
-        Text("VISIBLE_VAL renders every frame. NEVER_RENDERED never does.")
-        Text("imgui_snapshot must list both, with rendered:false on the second.")
+        text("VISIBLE_VAL renders every frame. NEVER_RENDERED never does.")
+        text("imgui_snapshot must list both, with rendered:false on the second.")
 
         slider_float(VISIBLE_VAL, (text = "Visible (rendered)"))
-        Text("VISIBLE_VAL.value = {VISIBLE_VAL.value}")
-        Text("NEVER_RENDERED.value = {NEVER_RENDERED.value}  (state readable; widget never painted)")
+        text("VISIBLE_VAL.value = {VISIBLE_VAL.value}")
+        text("NEVER_RENDERED.value = {NEVER_RENDERED.value}  (state readable; widget never painted)")
     }
 
     end_of_frame()

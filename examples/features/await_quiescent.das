@@ -1,6 +1,8 @@
 options gen2
+options _no_imgui_legacy = true
 
 require imgui
+require imgui/imgui_lint
 require imgui_app
 require glfw/glfw_boost
 require opengl/opengl_boost
@@ -52,7 +54,7 @@ def update() {
     SetNextWindowSize(ImVec2(720.0, 200.0), ImGuiCond.Always)
     window(MAIN_WIN, (text = "await_quiescent — phase 2.5", closable = false,
                       flags = ImGuiWindowFlags.None)) {
-        Text("imgui_await reports quiescent + frame + pending_coroutines + active_id.")
+        text("imgui_await reports quiescent + frame + pending_coroutines + active_id.")
         slider_float(DEMO_SLIDER, (text = "Optional: drag to spawn a coroutine"))
     }
 

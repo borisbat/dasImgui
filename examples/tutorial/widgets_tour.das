@@ -70,7 +70,7 @@ def update() {
         // Text input — buffer + string-mirror managed by the state struct.
         input_text(USER_NAME, (text = "Your name"))
 
-        Spacing()
+        spacing(WT_SP_1)
 
         // Slider — float state with [0, 1] bounds set per-frame.
         VOLUME.bounds = (0.0f, 1.0f)
@@ -79,28 +79,28 @@ def update() {
         // Checkbox — bool state, toggles on click.
         checkbox(MUTED, (text = "Mute"))
 
-        Spacing()
+        spacing(WT_SP_2)
 
         // Combo — int state indexing into the items array.
         combo(QUALITY, (text = "Quality",
                         items <- ["Low", "Medium", "High", "Ultra"]))
 
-        Spacing()
+        spacing(WT_SP_3)
 
         // Color editor — three-channel RGB, opens a picker on click.
         color_edit3(TINT, (text = "Accent color"))
 
-        Spacing()
-        Separator()
-        Spacing()
+        spacing(WT_SP_4)
+        separator(WT_SEP_1)
+        spacing(WT_SP_5)
 
         // Button — true on the frame the click registers; click_count accumulates.
         if (button(SAVE_BTN, (text = "Save settings"))) {
             print("save clicked: name={USER_NAME.value} vol={VOLUME.value} muted={MUTED.value} q={QUALITY.value}\n")
         }
 
-        Spacing()
-        Text("saves so far: {SAVE_BTN.click_count}")
+        spacing(WT_SP_6)
+        text((text = "saves so far: {SAVE_BTN.click_count}"))
     }
 
     end_of_frame()

@@ -1,6 +1,8 @@
 options gen2
+options _no_imgui_legacy = true
 
 require imgui
+require imgui/imgui_lint
 require imgui_app
 require glfw/glfw_boost
 require opengl/opengl_boost
@@ -56,7 +58,7 @@ def update() {
     SetNextWindowSize(ImVec2(720.0, 320.0), ImGuiCond.Always)
     window(MAIN_WIN, (text = "Foundation — phase 0b.0", closable = false,
                       flags = ImGuiWindowFlags.None)) {
-        Text("Three [widget] decls — every global below is auto-emitted.")
+        text("Three [widget] decls — every global below is auto-emitted.")
 
         // Button — return form. Identifier `SAVE_BTN` becomes the
         // module-scope `var SAVE_BTN : ClickState` global on first compile.
@@ -66,17 +68,17 @@ def update() {
         if (button(SAVE_BTN, (text = "Save"))) {
             print("save clicked, count={SAVE_BTN.click_count}\n")
         }
-        Text("save clicks: {SAVE_BTN.click_count}")
+        text("save clicks: {SAVE_BTN.click_count}")
 
         // Slider int — emits SliderStateInt SPEED, marked PUBLIC so a sibling
         // test module can read `SPEED.value` across the module boundary.
         slider_int(SPEED.PUBLIC, (text = "Speed (int)"))
-        Text("speed = {SPEED.value}")
+        text("speed = {SPEED.value}")
 
         // Slider float — emits SliderStateFloat VOLUME without @live; the
         // source-side initial value wins on reload (no preservation).
         slider_float(VOLUME.NOTLIVE, (text = "Volume (float)"))
-        Text("volume = {VOLUME.value}")
+        text("volume = {VOLUME.value}")
     }
 
     end_of_frame()

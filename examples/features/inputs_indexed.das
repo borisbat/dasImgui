@@ -1,6 +1,8 @@
 options gen2
+options _no_imgui_legacy = true
 
 require imgui
+require imgui/imgui_lint
 require imgui_app
 require glfw/glfw_boost
 require opengl/opengl_boost
@@ -72,17 +74,17 @@ def update() {
     // prefix MIX_WIN/CHANNEL_VOL[i] in g_widgets — proves container_path
     // composition works for indexed leaves.
     window(MIX_WIN, (text = "MIX_WIN", closable = false, flags = ImGuiWindowFlags.None)) {
-        Text("Int-keyed channels (CHANNEL_VOL[0..3]):")
-        Separator()
+        text("Int-keyed channels (CHANNEL_VOL[0..3]):")
+        separator()
         for (i in range(4)) {
             // Each [i] resolves to a distinct path component CHANNEL_VOL[<i>]
             // — separate g_widgets entry, separate dispatcher, etc.
             slider_float(CHANNEL_VOL[i], (text = "ch{i}"))
         }
 
-        Spacing()
-        Text("String-keyed tracks (TRACK_VOL[name]):")
-        Separator()
+        spacing()
+        text("String-keyed tracks (TRACK_VOL[name]):")
+        separator()
         for (name in TRACK_NAMES) {
             let _slid = slider_float(TRACK_VOL[name], (text = name))
         }

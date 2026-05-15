@@ -1,6 +1,8 @@
 options gen2
+options _no_imgui_legacy = true
 
 require imgui
+require imgui/imgui_lint
 require imgui_app
 require glfw/glfw_boost
 require opengl/opengl_boost
@@ -56,22 +58,22 @@ def update() {
     SetNextWindowSize(ImVec2(660.0, 460.0), ImGuiCond.Always)
     window(MAIN_WIN, (text = "Choice inputs — phase 0b.2", closable = false,
                       flags = ImGuiWindowFlags.None)) {
-        Text("Combo (dropdown selector)")
-        Separator()
+        text("Combo (dropdown selector)")
+        separator()
 
         combo(FRUIT, (text = "Fruit",
                       items <- ["Apple", "Banana", "Cherry", "Durian", "Elderberry"]))
-        Text("fruit index = {FRUIT.value}")
+        text("fruit index = {FRUIT.value}")
 
         // popup_max_height_in_items caps the dropdown height — useful for long lists.
         combo(WEEKDAY, (text = "Weekday",
                         items <- ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
                         popup_max_height_in_items = 4))
-        Text("weekday index = {WEEKDAY.value}")
+        text("weekday index = {WEEKDAY.value}")
 
-        Spacing()
-        Text("ListBox (always-open scrollable list)")
-        Separator()
+        spacing()
+        text("ListBox (always-open scrollable list)")
+        separator()
 
         list_box(SHIRT_SIZE, (text = "Shirt size",
                               size = float2(0.0f, 0.0f))) {
@@ -84,10 +86,10 @@ def update() {
                 }
             }
         }
-        Text("shirt size index = {SHIRT_SIZE.value}")
+        text("shirt size index = {SHIRT_SIZE.value}")
 
-        Spacing()
-        Text("imgui_set with target=MAIN_WIN/FRUIT, value=N jumps to N-th item next frame")
+        spacing()
+        text("imgui_set with target=MAIN_WIN/FRUIT, value=N jumps to N-th item next frame")
     }
 
     end_of_frame()

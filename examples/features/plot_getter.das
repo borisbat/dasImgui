@@ -1,6 +1,8 @@
 options gen2
+options _no_imgui_legacy = true
 
 require imgui
+require imgui/imgui_lint
 require imgui_app
 require glfw/glfw_boost
 require opengl/opengl_boost
@@ -52,7 +54,7 @@ def update() {
     SetNextWindowSize(ImVec2(720.0, 360.0), ImGuiCond.Always)
     window(MAIN_WIN, (text = "plot_getter — phase 2.7", closable = false,
                       flags = ImGuiWindowFlags.None)) {
-        Text("Sine wave generated per-sample by the getter lambda.")
+        text("Sine wave generated per-sample by the getter lambda.")
         plot_lines_getter(SINE_PLOT, "sin(i*0.1)", SAMPLES,
                           @(idx : int) : float => sin(float(idx) * 0.1f),
                           "", 3.40282347e38f, 3.40282347e38f,

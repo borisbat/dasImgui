@@ -1,6 +1,8 @@
 options gen2
+options _no_imgui_legacy = true
 
 require imgui
+require imgui/imgui_lint
 require imgui_app
 require glfw/glfw_boost
 require opengl/opengl_boost
@@ -55,63 +57,63 @@ def update() {
         // ----- Float scalars -----
         // Bounds set once-per-frame from source; assignment is idempotent.
         // `speed` / `format` / `flags` are per-call args (defaults 1.0f/"%.3f"/None).
-        Text("Float scalars")
-        Separator()
+        text("Float scalars")
+        separator()
         OPACITY.bounds = (0.0f, 1.0f)
         drag_float(OPACITY, (text = "Opacity", speed = 0.01f))
-        Text("opacity = {OPACITY.value}")
+        text("opacity = {OPACITY.value}")
 
         // ----- Float vectors -----
-        Text("Float vectors")
-        Separator()
+        text("Float vectors")
+        separator()
         SCALE_XY.bounds = (0.0f, 4.0f)
         drag_float2(SCALE_XY, (text = "Scale XY", speed = 0.05f))
-        Text("scale = ({SCALE_XY.value.x}, {SCALE_XY.value.y})")
+        text("scale = ({SCALE_XY.value.x}, {SCALE_XY.value.y})")
 
         TINT_RGB.bounds = (0.0f, 1.0f)
         drag_float3(TINT_RGB, (text = "Tint RGB", speed = 0.01f))
-        Text("tint = ({TINT_RGB.value.x}, {TINT_RGB.value.y}, {TINT_RGB.value.z})")
+        text("tint = ({TINT_RGB.value.x}, {TINT_RGB.value.y}, {TINT_RGB.value.z})")
 
         TINT_RGBA.bounds = (0.0f, 1.0f)
         drag_float4(TINT_RGBA, (text = "Tint RGBA", speed = 0.01f))
-        Text("tint_a = {TINT_RGBA.value.w}")
+        text("tint_a = {TINT_RGBA.value.w}")
 
-        Spacing()
+        spacing()
 
         // ----- Int scalars -----
-        Text("Int scalars")
-        Separator()
+        text("Int scalars")
+        separator()
         SCORE.bounds = (0, 100)
         drag_int(SCORE, (text = "Score"))
-        Text("score = {SCORE.value}")
+        text("score = {SCORE.value}")
 
         // ----- Int vectors -----
-        Text("Int vectors")
-        Separator()
+        text("Int vectors")
+        separator()
         TILE_XY.bounds = (-32, 32)
         drag_int2(TILE_XY, (text = "Tile XY"))
-        Text("tile = ({TILE_XY.value.x}, {TILE_XY.value.y})")
+        text("tile = ({TILE_XY.value.x}, {TILE_XY.value.y})")
 
         VOXEL_XYZ.bounds = (-16, 16)
         drag_int3(VOXEL_XYZ, (text = "Voxel XYZ"))
-        Text("voxel = ({VOXEL_XYZ.value.x}, {VOXEL_XYZ.value.y}, {VOXEL_XYZ.value.z})")
+        text("voxel = ({VOXEL_XYZ.value.x}, {VOXEL_XYZ.value.y}, {VOXEL_XYZ.value.z})")
 
         RECT_LTRB.bounds = (0, 256)
         drag_int4(RECT_LTRB, (text = "Rect LTRB"))
-        Text("rect_w = {RECT_LTRB.value.z - RECT_LTRB.value.x}")
+        text("rect_w = {RECT_LTRB.value.z - RECT_LTRB.value.x}")
 
-        Spacing()
+        spacing()
 
         // ----- Range pairs -----
-        Text("Range pairs")
-        Separator()
+        text("Range pairs")
+        separator()
         SPEED_BAND.bounds = (0.0f, 100.0f)
         drag_float_range2(SPEED_BAND, (text = "Speed band", speed = 0.5f))
-        Text("speed range = [{SPEED_BAND.value.x}, {SPEED_BAND.value.y}]")
+        text("speed range = [{SPEED_BAND.value.x}, {SPEED_BAND.value.y}]")
 
         PRICE.bounds = (0, 50)
         drag_int_range2(PRICE, (text = "Price"))
-        Text("price = [{PRICE.value.x}, {PRICE.value.y}]")
+        text("price = [{PRICE.value.x}, {PRICE.value.y}]")
     }
 
     end_of_frame()

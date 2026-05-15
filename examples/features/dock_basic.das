@@ -1,6 +1,8 @@
 options gen2
+options _no_imgui_legacy = true
 
 require imgui
+require imgui/imgui_lint
 require imgui_app
 require glfw/glfw_boost
 require opengl/opengl_boost
@@ -106,23 +108,23 @@ def update() {
         }
         dock_window(EXPLORER, (text = "Explorer", closable = false,
                                flags = ImGuiWindowFlags.None)) {
-            Text("Files")
+            text("Files")
             button(REFRESH_BTN, (text = "Refresh"))
             button(NEW_FILE_BTN, (text = "New file"))
         }
         dock_window(SOURCE, (text = "Source", closable = false,
                              flags = ImGuiWindowFlags.None)) {
-            Text("Editor area")
+            text("Editor area")
             button(SAVE_BTN, (text = "Save"))
         }
         dock_window(OUTPUT, (text = "Output", closable = true,
                              flags = ImGuiWindowFlags.None)) {
-            Text("> ready.")
+            text("> ready.")
             button(CLEAR_BTN, (text = "Clear"))
         }
         dock_window(PROPERTIES, (text = "Properties", closable = false,
                                  flags = ImGuiWindowFlags.None)) {
-            Text("Inspector")
+            text("Inspector")
             button(APPLY_BTN, (text = "Apply"))
         }
     }

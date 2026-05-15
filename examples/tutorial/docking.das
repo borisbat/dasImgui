@@ -111,18 +111,18 @@ def update() {
         }
         dock_window(EXPLORER, (text = "Explorer", closable = false,
                                flags = ImGuiWindowFlags.None)) {
-            Text("Files")
+            text("Files")
             button(REFRESH_BTN, (text = "Refresh"))
         }
         dock_window(SOURCE, (text = "Source", closable = false,
                              flags = ImGuiWindowFlags.None)) {
-            Text("// drag tabs to rearrange")
-            Text("// — layout sticks via imgui.ini")
+            text("// drag tabs to rearrange")
+            text("// — layout sticks via imgui.ini")
             button(SAVE_BTN, (text = "Save"))
         }
         dock_window(OUTPUT, (text = "Output", closable = true,
                              flags = ImGuiWindowFlags.None)) {
-            Text("> ready.")
+            text("> ready.")
             button(CLEAR_BTN, (text = "Clear"))
         }
     }

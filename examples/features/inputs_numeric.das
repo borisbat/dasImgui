@@ -1,6 +1,8 @@
 options gen2
+options _no_imgui_legacy = true
 
 require imgui
+require imgui/imgui_lint
 require imgui_app
 require glfw/glfw_boost
 require opengl/opengl_boost
@@ -50,46 +52,46 @@ def update() {
     window(MAIN_WIN, (text = "Numeric inputs — phase 0b.2", closable = false,
                       flags = ImGuiWindowFlags.None)) {
         // ----- Float scalars (with step buttons) -----
-        Text("Float scalars")
-        Separator()
+        text("Float scalars")
+        separator()
         // step / step_fast surface ImGui's +/- buttons. Zero defaults
         // hide them; explicit non-zero shows the buttons.
         input_float(MASS, (text = "Mass (kg)", step = 0.1f, step_fast = 1.0f))
-        Text("mass = {MASS.value} kg")
+        text("mass = {MASS.value} kg")
 
         input_double(EPOCH_SEC, (text = "Epoch (sec)", step = 1.0lf, step_fast = 60.0lf, format = "%.3f"))
-        Text("epoch = {EPOCH_SEC.value} s")
+        text("epoch = {EPOCH_SEC.value} s")
 
         // ----- Float vectors (no step buttons) -----
-        Text("Float vectors")
-        Separator()
+        text("Float vectors")
+        separator()
         input_float2(POS_XY, (text = "Pos XY"))
-        Text("pos = ({POS_XY.value.x}, {POS_XY.value.y})")
+        text("pos = ({POS_XY.value.x}, {POS_XY.value.y})")
 
         input_float3(VEL_XYZ, (text = "Vel XYZ"))
-        Text("vel = ({VEL_XYZ.value.x}, {VEL_XYZ.value.y}, {VEL_XYZ.value.z})")
+        text("vel = ({VEL_XYZ.value.x}, {VEL_XYZ.value.y}, {VEL_XYZ.value.z})")
 
         input_float4(QUAT_XYZW, (text = "Quat XYZW", format = "%.4f"))
-        Text("quat = ({QUAT_XYZW.value.x}, {QUAT_XYZW.value.y}, {QUAT_XYZW.value.z}, {QUAT_XYZW.value.w})")
+        text("quat = ({QUAT_XYZW.value.x}, {QUAT_XYZW.value.y}, {QUAT_XYZW.value.z}, {QUAT_XYZW.value.w})")
 
-        Spacing()
+        spacing()
 
         // ----- Int scalars + vectors -----
-        Text("Int scalars")
-        Separator()
+        text("Int scalars")
+        separator()
         input_int(LEVEL, (text = "Level"))
-        Text("level = {LEVEL.value}")
+        text("level = {LEVEL.value}")
 
-        Text("Int vectors")
-        Separator()
+        text("Int vectors")
+        separator()
         input_int2(GRID_XY, (text = "Grid XY"))
-        Text("grid = ({GRID_XY.value.x}, {GRID_XY.value.y})")
+        text("grid = ({GRID_XY.value.x}, {GRID_XY.value.y})")
 
         input_int3(BLOCK_XYZ, (text = "Block XYZ"))
-        Text("block = ({BLOCK_XYZ.value.x}, {BLOCK_XYZ.value.y}, {BLOCK_XYZ.value.z})")
+        text("block = ({BLOCK_XYZ.value.x}, {BLOCK_XYZ.value.y}, {BLOCK_XYZ.value.z})")
 
         input_int4(VIEWPORT_LTRB, (text = "Viewport LTRB"))
-        Text("viewport = [{VIEWPORT_LTRB.value.x}, {VIEWPORT_LTRB.value.y}, {VIEWPORT_LTRB.value.z}, {VIEWPORT_LTRB.value.w}]")
+        text("viewport = [{VIEWPORT_LTRB.value.x}, {VIEWPORT_LTRB.value.y}, {VIEWPORT_LTRB.value.z}, {VIEWPORT_LTRB.value.w}]")
     }
 
     end_of_frame()

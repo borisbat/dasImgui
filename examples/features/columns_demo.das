@@ -1,6 +1,8 @@
 options gen2
+options _no_imgui_legacy = true
 
 require imgui
+require imgui/imgui_lint
 require imgui_app
 require glfw/glfw_boost
 require opengl/opengl_boost
@@ -51,21 +53,21 @@ def update() {
     SetNextWindowSize(ImVec2(560.0f, 380.0f), ImGuiCond.FirstUseEver)
     window(COLS_WIN, (text = "Columns demo", closable = false,
                       flags = ImGuiWindowFlags.None)) {
-        Text("Three columns:")
+        text("Three columns:")
         columns(3,
                 ${
-                    Text("Col 0")
+                    text("Col 0")
                     button(C0_BTN, (text = "Col 0 btn"))
                 },
                 ${
-                    Text("Col 1")
+                    text("Col 1")
                     button(C1_BTN, (text = "Col 1 btn"))
                 },
                 ${
-                    Text("Col 2")
+                    text("Col 2")
                     button(C2_BTN, (text = "Col 2 btn"))
                 })
-        Text("After columns block")
+        text("After columns block")
         button(AFTER_BTN, (text = "After"))
     }
 
