@@ -516,6 +516,17 @@ struct PopupContextWindowState {
     @optional _placeholder : bool             //! unused; keeps the struct non-empty for [container] auto-emit
 }
 
+struct TextFilterState {
+    //! Backs `text_filter`. Holds the bound C++ `ImGuiTextFilter` value
+    //! inline — zero-init is safe (empty `InputBuf`, empty `Filters`
+    //! `ImVector`, `CountGrep = 0`), so no explicit ctor call is needed.
+    //! `text_filter` renders the inline InputText editor via the bound
+    //! `Draw()` method; `passes_filter(state, line)` delegates to the
+    //! hand-bound `PassFilter(filter, text)` standalone helper.
+    @safe_when_uninitialized @optional value : string  //! mirrored InputBuf text for snapshot/telemetry
+    @safe_when_uninitialized filter : ImGuiTextFilter
+}
+
 struct DragDropSourceState {
     //! Backs `drag_drop_source`. Drag activation lives entirely in ImGui's
     //! internal drag-drop state machine; body runs only on active drag.

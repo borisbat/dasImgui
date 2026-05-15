@@ -1177,6 +1177,54 @@ def input_text_callback(var state : InputTextState; text : string;
     return changed
 }
 
+// ===== Filter family =====
+
+def private text_filter_finalize(widget_ident : string; kind : string; var state : TextFilterState) {
+    var entry : WidgetEntry
+    unsafe {
+        let ser <- @ capture(& state) () : JsonValue ? {
+            return JV((value = state.value))
+        }
+        let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
+            // Read-only for now. A future "set" path would mirror the
+            // value back into filter.InputBuf and call filter.Build();
+            // playwright doesn't drive the filter editor yet.
+        }
+        widget_finalize(widget_ident, kind, entry, ser, disp)
+    }
+}
+
+[widget]
+def text_filter(var state : TextFilterState; text : string = "Filter (\"incl,-excl\") (\"error\")";
+                width : float = 0.0f) : bool {
+    //! Boost wrapper over `ImGuiTextFilter::Draw` — renders the inline
+    //! InputText editor and parses comma-separated include/exclude
+    //! tokens (`-prefix` excludes). Returns `true` on the frame the
+    //! filter expression changed. Pair with `passes_filter(state, line)`
+    //! in a loop to gate visible items. Empty filter = match-all.
+    //! The C++ `ImGuiTextFilter` value lives inline in the state — no
+    //! daslang-side buffer needed (the editor's storage is `InputBuf[256]`
+    //! on the bound struct). `state.value` mirrors the editor text after
+    //! every change for snapshot fidelity.
+    let changed = state.filter |> Draw(text, width)
+    if (changed) {
+        unsafe {
+            state.value := clone_string(reinterpret<string>(addr(state.filter.InputBuf)))
+        }
+    }
+    text_filter_finalize(widget_ident, "text_filter", state)
+    return changed
+}
+
+def public passes_filter(var state : TextFilterState; line : string) : bool {
+    //! Predicate companion to `text_filter`. Delegates to the hand-bound
+    //! `PassFilter(filter, text)` standalone helper at
+    //! `src/dasIMGUI.main.cpp:305`. While the editor is empty the
+    //! underlying `Filters` `ImVector` is empty too and PassFilter returns
+    //! true for all lines.
+    return PassFilter(state.filter, line)
+}
+
 // ===== Combo (callback-getter) =====
 
 [widget]
