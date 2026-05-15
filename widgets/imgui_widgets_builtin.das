@@ -1150,6 +1150,33 @@ def input_text_growable(var state : InputTextState; text : string;
     return changed
 }
 
+[widget]
+def input_text_callback(var state : InputTextState; text : string;
+                        flags : ImGuiInputTextFlags;
+                        cb : lambda<(var data : ImGuiInputTextCallbackData) : int>) : bool {
+    //! Single-line input with a user-supplied event callback. Use this when
+    //! `CallbackCompletion` (TAB completion), `CallbackHistory` (Up/Down
+    //! arrow), `CallbackAlways`, or `CallbackCharFilter` is needed —
+    //! the REPL pattern in `examples/imgui_demo/app_console.das` is the
+    //! canonical consumer. ImGui invokes the callback synchronously inside
+    //! `InputText` on the same thread; the `data` pointer is valid only
+    //! for that one call. For grow-on-overflow buffer resize use
+    //! `input_text_growable` instead — it wires `CallbackResize` internally
+    //! and shouldn't be combined with this wrapper.
+    input_text_buffer_init(state)
+    apply_pending_text(state)
+    var changed : bool
+    unsafe {
+        changed = _builtin_InputText_cb(addr(state.buffer[0]), state.capacity, text, flags, cb)
+    }
+    state.changed = changed
+    if (changed) {
+        sync_value_from_buffer(state)
+    }
+    text_value_finalize(widget_ident, "input_text_callback", state)
+    return changed
+}
+
 // ===== Combo (callback-getter) =====
 
 [widget]
