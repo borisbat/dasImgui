@@ -1192,6 +1192,7 @@ def private text_filter_finalize(widget_ident : string; kind : string; var state
         }
         widget_finalize(widget_ident, kind, entry, ser, disp)
     }
+    register_focusable(widget_ident)
 }
 
 [widget]

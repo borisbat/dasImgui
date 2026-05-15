@@ -79,6 +79,10 @@ def private add_log(line : string) {
 
 def private clear_log() {
     CONSOLE_ITEMS |> clear()
+    // Release per-row text-widget state along with the lines themselves —
+    // otherwise the indexed table retains entries up to past high-water
+    // marks (bounded but visible in snapshots after a Clear).
+    CONSOLE_ITEM_TEXT |> clear()
 }
 
 def private exec_command(cmd : string) {
