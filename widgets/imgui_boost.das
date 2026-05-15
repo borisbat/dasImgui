@@ -68,14 +68,14 @@ def private apply_widget_or_container(var func : FunctionPtr; var errors : das_s
     }
     let stateTypeName = describe(stateArg._type)
     let stateStruct = stateArg._type.structType
-    func.flags |= FunctionFlags.generated
+    func.flags.generated = true
     // Inject widget_ident : string at index 1 (between state and rest).
     // The user's body code references `widget_ident` literally when
     // calling widget_finalize / container_finalize — this param makes it in scope.
     var widthIdentVar = new Variable(at = func.at,
         name := "widget_ident",
         _type <- new TypeDecl(baseType = Type.tString, at = func.at))
-    widthIdentVar.flags |= VariableFlags.generated
+    widthIdentVar.flags.generated = true
     func.arguments |> emplace(widthIdentVar, 1)
     // Wrap the body: prepend widget_prelude(widget_ident) and, for containers,
     // container_path_push(widget_ident). The container path push runs every
@@ -172,8 +172,7 @@ class WidgetCallMacro : AstCallMacro {
     // narrative-text family. Signature after widget_ident injection:
     // (state; widget_ident; text : string) — length 3, last arg is string.
     def private accepts_positional_string() : bool {
-        return false if (render_fn == null)
-        return false if (length(render_fn.arguments) != 3)
+        return false if (render_fn == null || length(render_fn.arguments) != 3)
         let argT = render_fn.arguments[2]._type
         return false if (argT == null)
         return argT.baseType == Type.tString
@@ -424,7 +423,7 @@ class WidgetCallMacro : AstCallMacro {
                                         structType = unsafe(reinterpret<Structure?>(state_struct)),
                                         at = expr.at)
             var initCall = new ExprMakeStruct(at = expr.at, makeType = clone_type(typeRef))
-            initCall.makeStructFlags |= ExprMakeStructFlags.useInitializer
+            initCall.makeStructFlags.useInitializer = true
             // Seed named-init fields (init=/range= sugar) into the initializer.
             // `useInitializer=true` keeps struct defaults firing for un-seeded
             // fields; field LineInfo points at the call site so a wrong field
@@ -443,9 +442,9 @@ class WidgetCallMacro : AstCallMacro {
                 name := bareName,
                 _type <- typeRef,
                 init = initCall)
-            v.flags |= VariableFlags.generated
+            v.flags.generated = true
             if (!flagPublic) {
-                v.flags |= VariableFlags.private_variable
+                v.flags.private_variable = true
             }
             if (!flagNotLive) {
                 v.annotation |> add_annotation_argument("live", true)
@@ -680,8 +679,8 @@ class WidgetCallMacro : AstCallMacro {
             var fn = qmacro_function(wrapperName) $(k : $t(keyType); $a(wrapperArgs)) : $t(retType) {
                 $b(bodyStmts)
             }
-            fn.flags |= FunctionFlags.generated
-            fn.flags |= FunctionFlags.privateFunction
+            fn.flags.generated = true
+            fn.flags.privateFunction = true
             fn.body |> force_at(expr.at)
             if (!(mod |> add_function(fn))) {
                 macro_error(prog, expr.at,
@@ -737,14 +736,14 @@ def private apply_edit_widget(var func : FunctionPtr; var errors : das_string) :
         return false
     }
     let kind = string(func.name)
-    func.flags |= FunctionFlags.generated
+    func.flags.generated = true
     // Inject widget_ident : string at index 1 (between ptr and the rest).
     // Mirrors the [widget] macro injection so the user body can reference
     // `widget_ident` literally when calling widget_finalize / edit_finalize.
     var widthIdentVar = new Variable(at = func.at,
         name := "widget_ident",
         _type <- new TypeDecl(baseType = Type.tString, at = func.at))
-    widthIdentVar.flags |= VariableFlags.generated
+    widthIdentVar.flags.generated = true
     func.arguments |> emplace(widthIdentVar, 1)
     // Wrap the body: prepend widget_prelude(widget_ident) so PushID +
     // pending-focus apply uniformly. PopID is emitted by widget_finalize

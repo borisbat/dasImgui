@@ -284,9 +284,7 @@ def private overlaps_any(c : float2; box_size : float2; bboxes : array<float4>) 
     let bx1 = c.x + box_size.x
     let by1 = c.y + box_size.y
     for (b in bboxes) {
-        if (!(bx1 <= b.x || c.x >= b.z || by1 <= b.y || c.y >= b.w)) {
-            return true
-        }
+        return true if (!(bx1 <= b.x || c.x >= b.z || by1 <= b.y || c.y >= b.w))
     }
     return false
 }
@@ -307,36 +305,26 @@ def public compute_narrate_anchor(
     //! right → left → below → above of the target; falls back to a
     //! viewport-clamped right placement if nothing fits cleanly (e.g. text
     //! wider than the viewport, or every neighbor blocks).
-    if (!has_target) {
-        return float2(edge_margin, edge_margin)
-    }
+    return float2(edge_margin, edge_margin) if (!has_target)
     let bb = widget_bbox
     let cx = (bb.x + bb.z) * 0.5f
 
     // 1. Right of widget
     var c = float2(bb.z + gap, bb.y)
     if (fits_viewport(c, box_size, viewport, edge_margin, shadow, hud_zone_h)
-        && !overlaps_any(c, box_size, other_bboxes)) {
-        return c
-    }
+        && !overlaps_any(c, box_size, other_bboxes)) return c
     // 2. Left of widget
     c = float2(bb.x - gap - box_size.x, bb.y)
     if (fits_viewport(c, box_size, viewport, edge_margin, shadow, hud_zone_h)
-        && !overlaps_any(c, box_size, other_bboxes)) {
-        return c
-    }
+        && !overlaps_any(c, box_size, other_bboxes)) return c
     // 3. Below widget (horizontally centered)
     c = float2(cx - box_size.x * 0.5f, bb.w + gap)
     if (fits_viewport(c, box_size, viewport, edge_margin, shadow, hud_zone_h)
-        && !overlaps_any(c, box_size, other_bboxes)) {
-        return c
-    }
+        && !overlaps_any(c, box_size, other_bboxes)) return c
     // 4. Above widget (horizontally centered)
     c = float2(cx - box_size.x * 0.5f, bb.y - gap - box_size.y)
     if (fits_viewport(c, box_size, viewport, edge_margin, shadow, hud_zone_h)
-        && !overlaps_any(c, box_size, other_bboxes)) {
-        return c
-    }
+        && !overlaps_any(c, box_size, other_bboxes)) return c
     // Fallback: keep right placement and clamp into viewport. Only fires when
     // no candidate fits — typically text wider than viewport, or a widget
     // that covers most of the screen.
@@ -370,25 +358,21 @@ def public compute_connector_start(
     let cy = anchor.y + box_size.y * 0.5f
     let dx = widget_center.x - cx
     let dy = widget_center.y - cy
-    if (abs(dx) > abs(dy)) {
-        return dx > 0.0f ? float2(anchor.x + box_size.x, cy) : float2(anchor.x, cy)
-    }
+    if (abs(dx) > abs(dy)) return dx > 0.0f ? float2(anchor.x + box_size.x, cy) : float2(anchor.x, cy)
     return dy > 0.0f ? float2(cx, anchor.y + box_size.y) : float2(cx, anchor.y)
 }
 
 def private narrate_hud_zone_h : float {
     //! Bottom screen reserve so narrates don't collide with the key_hud
     //! keycap row + modifier strip when the HUD is enabled.
-    if (!key_hud_enabled) {
-        return 0.0f
-    }
+    return 0.0f if (!key_hud_enabled)
     return key_hud_offset_y_from_bottom + key_hud_mod_pill_h + key_hud_mod_strip_y_gap
 }
 
 def private paint_narrates {
     if (empty(g_narrates)) return
     var dl = GetForegroundDrawList()
-    var io & = unsafe(GetIO())
+    let io & = unsafe(GetIO())
     let viewport = io.DisplaySize
     let edge_margin = 8.0f
     let gap = 16.0f
@@ -419,9 +403,7 @@ def private paint_narrates {
         // per-frame registry, typically ≤ 30 entries.
         var other_bboxes : array<float4>
         for (k, w in keys(imgui_boost_runtime::g_registry), values(imgui_boost_runtime::g_registry)) {
-            if (have_target && k == g_narrates[i].target) {
-                continue
-            }
+            continue if (have_target && k == g_narrates[i].target)
             other_bboxes |> push(w.bbox)
         }
         let anchor = compute_narrate_anchor(have_target, widget_bbox, box_size,

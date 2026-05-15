@@ -59,9 +59,7 @@ def find_max_key(t : table<int; SliderStateFloat>) : int {
 
 [export]
 def update() {
-    if (!live_begin_frame()) {
-        return
-    }
+    return if (!live_begin_frame())
     begin_frame()
 
     ImGui_ImplOpenGL3_NewFrame()
