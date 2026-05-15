@@ -51,3 +51,15 @@ through the live-reload host's window lifecycle (creation, swap, event drain)
 and forwarded into ImGui's GLFW backend. See the
 `GLFW documentation <https://www.glfw.org/docs/latest/group__window.html>`_
 for the handle's C-side semantics.
+
+.. _handle-imgui-imguitextfilter:
+
+``imgui::ImGuiTextFilter``
+==========================
+
+C++ helper for parsed comma-separated include/exclude filter expressions
+(``-prefix`` excludes), with an inline editor renderable via ``Draw(label,
+width)`` and a ``PassFilter(text)`` predicate. Held inline as a value field
+of ``TextFilterState`` backing the ``text_filter`` boost widget. See
+`ImGuiTextFilter in imgui.h <https://github.com/ocornut/imgui/blob/master/imgui.h>`_
+for the upstream definition.
