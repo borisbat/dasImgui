@@ -13,6 +13,7 @@ require daslib/json public
 require daslib/json_boost public
 require daslib/coroutines public
 require daslib/async_boost
+require daslib/archive
 require daslib/result public
 require math
 require strings
@@ -525,6 +526,20 @@ struct TextFilterState {
     //! hand-bound `PassFilter(filter, text)` standalone helper.
     @safe_when_uninitialized @optional value : string  //! mirrored InputBuf text for snapshot/telemetry
     @safe_when_uninitialized filter : ImGuiTextFilter
+}
+
+// JV + archive::serialize overrides for TextFilterState. The bound
+// `ImGuiTextFilter` has no daslang-side JV or serialize binding (and no safe
+// `delete`), so the generic field-walking JV / archive::serialize generics
+// would fail to instantiate. The user-visible state is just the editor text
+// mirror; the bound filter regenerates from `value` on first frame after
+// reload via the widget body.
+def public JV(value : TextFilterState) : JsonValue? {
+    return JV((value = value.value))
+}
+
+def public serialize(var arch : Archive; var value : TextFilterState) {
+    arch |> _::serialize(value.value)
 }
 
 struct DragDropSourceState {

@@ -308,6 +308,17 @@ struct ImGuiTextFilter_ImGuiTextRange_GeneratedAnnotation : ManagedStructureAnno
 
 // from imgui.h:2482:8
 struct ImGuiTextFilter_GeneratedAnnotation : ManagedStructureAnnotation<ImGuiTextFilter> {
+	// MANUAL PATCH: marks ImGuiTextFilter as locally-allocatable + globally-
+	// initializable so daslang state structs can hold one inline. cbind_boost
+	// only emits isLocal + canBePlacedInContainer for `local_type_names`
+	// entries (see bind_imgui.das); the trivial-ctor + copy overrides below
+	// have to be re-applied after every regen. ImGuiTextFilter is bitwise
+	// zero-init-safe (empty InputBuf, empty Filters ImVector, CountGrep=0)
+	// and its copy ctor is well-defined.
+	virtual bool isLocal() const override { return true; }
+	virtual bool canBePlacedInContainer() const override { return true; }
+	virtual bool hasNonTrivialCtor() const override { return false; }
+	virtual bool canCopy() const override { return true; }
 	ImGuiTextFilter_GeneratedAnnotation(ModuleLibrary & ml) : ManagedStructureAnnotation ("ImGuiTextFilter", ml, "ImGuiTextFilter") {
 	}
 	void init () {

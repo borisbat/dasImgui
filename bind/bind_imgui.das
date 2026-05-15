@@ -96,6 +96,7 @@ class ImguiGen : CppGenBind {
         }
         local_type_names <- {
             "ImGuiTableColumnSortSpecs" => true,
+            "ImGuiTextFilter" => true,
             "Config" => true}
         imgui_skip_func <- {
             "ImGui::TextUnformatted" => true,
