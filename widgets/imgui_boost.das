@@ -742,6 +742,9 @@ def private apply_edit_widget(var func : FunctionPtr; var errors : das_string) :
 
 class EditExternalCallMacro : AstCallMacro {
     //! Call macro installed by ``[edit_widget]``. Recognizes ``edit_kind(ptr, (id="...", ...))``, requires an explicit ``id=`` string literal, destructures the rest of the named-tuple to positional args (source order — match parameter order, like ``WidgetCallMacro``), and rewrites to a direct call into the renderer.
+    //! Name of the ``[edit_widget]``-decorated function — used as the rewritten call's target and in macro_error messages.
+    //! Underlying ``[edit_widget]`` function pointer; lives in the user module and is read at visit time.
+    //! User-facing args (positions 2..N after ``ptr`` + injected ``widget_ident``); cloned from ``render_fn`` so the wrapper preserves names/defaults.
     kind_name : string
     render_fn : FunctionPtr
     render_fn_args : array<VariablePtr>
