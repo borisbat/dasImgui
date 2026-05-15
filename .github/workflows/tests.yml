@@ -1,0 +1,95 @@
+name: Integration tests
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'daslib/**'
+      - 'examples/**'
+      - 'tests/integration/**'
+      - 'utils/**'
+      - 'widgets/**'
+      - '.das_module'
+      - '.das_package'
+      - '.github/workflows/tests.yml'
+  pull_request:
+    paths:
+      - 'daslib/**'
+      - 'examples/**'
+      - 'tests/integration/**'
+      - 'utils/**'
+      - 'widgets/**'
+      - '.das_module'
+      - '.das_package'
+      - '.github/workflows/tests.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+# dasImgui is daspkg-installed into daslang-src/modules/dasImgui/ (mirrors the
+# docs workflow). Tests are driven by dastest at daslang-src/dastest/dastest.das.
+# Each test in tests/integration/ spawns daslang-live as a subprocess via
+# imgui_playwright; daslang-live opens a GLFW/OpenGL window so we wrap the
+# dastest invocation in `xvfb-run -a` to give it a virtual display. The
+# subprocess inherits DISPLAY=:99 from the xvfb-run environment.
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout daslang"
+        uses: actions/checkout@v4
+        with:
+          repository: GaijinEntertainment/daScript
+          path: daslang-src
+          ref: master
+
+      - name: "Checkout dasImgui"
+        uses: actions/checkout@v4
+        with:
+          path: dasImgui
+
+      - name: "Install system dependencies"
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libglfw3-dev \
+            libfreetype6-dev \
+            mesa-common-dev \
+            xorg-dev \
+            xvfb
+
+      - name: "Install CMake and Ninja"
+        uses: lukka/get-cmake@latest
+
+      - name: "Build daslang + daslang-live"
+        working-directory: daslang-src
+        run: |
+          set -eux
+          cmake --no-warn-unused-cli -B./build \
+            -DCMAKE_BUILD_TYPE:STRING=Release \
+            -DDAS_HV_DISABLED=OFF \
+            -DDAS_PUGIXML_DISABLED=OFF \
+            -DDAS_LLVM_DISABLED=ON \
+            -DDAS_GLFW_DISABLED=OFF \
+            -G Ninja
+          cmake --build ./build --target daslang
+          cmake --build ./build --target daslang-live
+
+      - name: "daspkg install dasImgui (global)"
+        run: |
+          set -eux
+          ${{ github.workspace }}/daslang-src/bin/daslang \
+            ${{ github.workspace }}/daslang-src/utils/daspkg/main.das -- \
+            install ${{ github.workspace }}/dasImgui --global
+
+      - name: "Run integration tests (xvfb-run)"
+        working-directory: ${{ github.workspace }}/daslang-src
+        run: |
+          set -eux
+          xvfb-run -a bin/daslang dastest/dastest.das -- \
+            --test modules/dasImgui/tests/integration
