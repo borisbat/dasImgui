@@ -1,6 +1,8 @@
 options gen2
+options _no_imgui_legacy = true
 
 require imgui
+require imgui/imgui_lint
 require imgui_app
 require glfw/glfw_boost
 require opengl/opengl_boost
@@ -52,55 +54,55 @@ def update() {
     window(MAIN_WIN, (text = "Triggers — phase 0b.1", closable = false,
                       flags = ImGuiWindowFlags.None)) {
         // ----- Click family -----
-        Text("Click family")
-        Separator()
+        text("Click family")
+        separator()
         if (button(SAVE_BTN, (text = "Save"))) {
             print("save clicked, count={SAVE_BTN.click_count}\n")
         }
-        Text("save clicks: {SAVE_BTN.click_count}")
+        text("save clicks: {SAVE_BTN.click_count}")
         small_button(QUIT_BTN, (text = "Quit"))
-        Text("quit clicks: {QUIT_BTN.click_count}")
-        SameLine(0.0f, -1.0f)
+        text("quit clicks: {QUIT_BTN.click_count}")
+        same_line()
         arrow_button(BACK_BTN, (text = "back", dir = ImGuiDir.Left))
-        SameLine(0.0f, -1.0f)
+        same_line()
         arrow_button(FWD_BTN, (text = "fwd", dir = ImGuiDir.Right))
-        Text("nav clicks: back={BACK_BTN.click_count}, fwd={FWD_BTN.click_count}")
+        text("nav clicks: back={BACK_BTN.click_count}, fwd={FWD_BTN.click_count}")
         invisible_button(HOTSPOT, (text = "hotspot", size = float2(120.0f, 24.0f)))
-        Text("invisible-hotspot clicks: {HOTSPOT.click_count}")
+        text("invisible-hotspot clicks: {HOTSPOT.click_count}")
 
         let io & = unsafe(GetIO())
         let font_tex = io.Fonts.TexID
         if (font_tex != null) {
             image_button(FONT_BTN, (text = "font_atlas", user_texture_id = font_tex,
                                     size = float2(48.0f, 48.0f)))
-            Text("image-button clicks: {FONT_BTN.click_count}")
+            text("image-button clicks: {FONT_BTN.click_count}")
         }
 
-        Spacing()
+        spacing()
 
         // ----- Toggle family -----
-        Text("Toggle family")
-        Separator()
+        text("Toggle family")
+        separator()
         checkbox(WIREFRAME, (text = "Wireframe"))
-        Text("wireframe = {WIREFRAME.value}")
+        text("wireframe = {WIREFRAME.value}")
         radio_button(MUTE, (text = "Mute"))
-        Text("mute = {MUTE.value}")
+        text("mute = {MUTE.value}")
         selectable(SEL_ITEM, (text = "Selectable item"))
-        Text("selectable = {SEL_ITEM.value}")
+        text("selectable = {SEL_ITEM.value}")
         menu_item(QUICK_SAVE, (text = "Quick save", shortcut = "Ctrl+S"))
-        Text("quick-save = {QUICK_SAVE.value}")
+        text("quick-save = {QUICK_SAVE.value}")
 
-        Spacing()
+        spacing()
 
         // ----- Grouped radios (shared state) -----
-        Text("Difficulty (radio_button_int — three calls share DIFFICULTY)")
-        Separator()
+        text("Difficulty (radio_button_int — three calls share DIFFICULTY)")
+        separator()
         radio_button_int(DIFFICULTY, (text = "Easy", v_button = 0))
-        SameLine(0.0f, -1.0f)
+        same_line()
         radio_button_int(DIFFICULTY, (text = "Normal", v_button = 1))
-        SameLine(0.0f, -1.0f)
+        same_line()
         radio_button_int(DIFFICULTY, (text = "Hard", v_button = 2))
-        Text("difficulty = {DIFFICULTY.value}")
+        text("difficulty = {DIFFICULTY.value}")
     }
 
     end_of_frame()

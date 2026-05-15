@@ -1,6 +1,8 @@
 options gen2
+options _no_imgui_legacy = true
 
 require imgui
+require imgui/imgui_lint
 require imgui_app
 require glfw/glfw_boost
 require opengl/opengl_boost
@@ -56,23 +58,23 @@ def update() {
     SetNextWindowSize(ImVec2(720.0f, 580.0f), ImGuiCond.FirstUseEver)
     window(OVERLAY_WIN, (text = "Overlay demo", closable = false,
                          flags = ImGuiWindowFlags.None)) {
-        Text("popups, tooltips, and block-arg combos")
-        Separator()
+        text("popups, tooltips, and block-arg combos")
+        separator()
 
         // ----- Popup driven by a button -----
-        Text("popup family")
+        text("popup family")
         if (button(OPEN_POPUP_BTN, (text = "Open options popup"))) {
             OPTIONS_POPUP.pending_open = true
         }
-        SameLine(0.0f, 8.0f)
+        same_line((spacing = 8.0f))
         if (button(OPEN_MODAL_BTN, (text = "Open modal"))) {
             CONFIRM_MODAL.pending_open = true
         }
 
         popup(OPTIONS_POPUP, (text = "options_popup",
                               flags = ImGuiWindowFlags.None)) {
-            Text("Options")
-            Separator()
+            text("Options")
+            separator()
             checkbox(OPT_VSYNC, (text = "VSync"))
             checkbox(OPT_FULLSCREEN, (text = "Fullscreen"))
             if (button(POPUP_CLOSE_BTN, (text = "Close"))) {
@@ -82,40 +84,40 @@ def update() {
 
         popup_modal(CONFIRM_MODAL, (text = "Confirm", closable = false,
                                     flags = ImGuiWindowFlags.AlwaysAutoResize)) {
-            Text("Are you sure?")
-            Separator()
+            text("Are you sure?")
+            separator()
             if (button(CONFIRM_YES, (text = "Yes"))) {
                 CONFIRM_MODAL.pending_close = true
             }
-            SameLine(0.0f, 8.0f)
+            same_line((spacing = 8.0f))
             if (button(CONFIRM_NO, (text = "No"))) {
                 CONFIRM_MODAL.pending_close = true
             }
         }
 
-        Spacing()
+        spacing()
 
         // ----- Tooltips -----
-        Text("tooltip family")
-        Separator()
+        text("tooltip family")
+        separator()
         button(HOVER_BTN, (text = "Hover me"))
         item_tooltip(HOVER_TIP) {
-            Text("ImGui's BeginItemTooltip auto-gates on IsItemHovered()")
-            Text("(no manual hover check needed)")
+            text("ImGui's BeginItemTooltip auto-gates on IsItemHovered()")
+            text("(no manual hover check needed)")
         }
-        SameLine(0.0f, 8.0f)
+        same_line((spacing = 8.0f))
         button(MANUAL_TIP_BTN, (text = "Hover for manual tooltip"))
         if (IsItemHovered(ImGuiHoveredFlags.None)) {
             tooltip(MANUAL_TIP) {
-                Text("BeginTooltip — caller-gated")
+                text("BeginTooltip — caller-gated")
             }
         }
 
-        Spacing()
+        spacing()
 
         // ----- Block-arg combo + list_box -----
-        Text("combo_select / list_box — body emits Selectables")
-        Separator()
+        text("combo_select / list_box — body emits Selectables")
+        separator()
         var palette_label = "(none)"
         if (PALETTE_COMBO.value >= 0 && PALETTE_COMBO.value < length(PALETTE_NAMES)) {
             palette_label = PALETTE_NAMES[PALETTE_COMBO.value]
@@ -132,7 +134,7 @@ def update() {
                 }
             }
         }
-        Text("palette = {palette_label} (idx {PALETTE_COMBO.value})")
+        text("palette = {palette_label} (idx {PALETTE_COMBO.value})")
 
         list_box(TASK_LIST, (text = "tasks",
                              size = float2(220.0f, 110.0f))) {
@@ -149,7 +151,7 @@ def update() {
         if (TASK_LIST.value >= 0 && TASK_LIST.value < length(TASK_NAMES)) {
             task_label = TASK_NAMES[TASK_LIST.value]
         }
-        Text("task = {task_label} (idx {TASK_LIST.value})")
+        text("task = {task_label} (idx {TASK_LIST.value})")
     }
 
     end_of_frame()

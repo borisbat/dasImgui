@@ -2,8 +2,10 @@ options gen2
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
+options _no_imgui_legacy = true
 
 require dastest/testing_boost public
+require imgui/imgui_lint
 require imgui public
 require imgui/imgui_playwright public
 require daslib/json public

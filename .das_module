@@ -36,6 +36,10 @@ def initialize(project_path : string) {
     register_native_path("imgui", "imgui_scope_builtin", "{project_path}/widgets/imgui_scope_builtin.das")
     // §4.6 — layout helpers (split_h, split_v, dock_left).
     register_native_path("imgui", "imgui_layout_builtin", "{project_path}/widgets/imgui_layout_builtin.das")
+    // Opt-in lint pass (`options _no_imgui_legacy = true`) — forbids legacy
+    // imgui_boost::* and raw imgui::* (modulo curated allow-list) so consumer
+    // files don't bypass v2 wrappers. Off by default.
+    register_native_path("imgui", "imgui_lint", "{project_path}/widgets/imgui_lint.das")
     // Phase 7 — docking (dockspace, dock_window) + DockBuilder bindings cherry-picked from imgui_internal.h.
     register_native_path("imgui", "imgui_docking_builtin", "{project_path}/widgets/imgui_docking_builtin.das")
     // IM_COL32 packer split out from v1 imgui_boost (the legacy module is

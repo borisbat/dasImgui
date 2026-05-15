@@ -1,6 +1,8 @@
 options gen2
+options _no_imgui_legacy = true
 
 require imgui
+require imgui/imgui_lint
 require imgui_app
 require glfw/glfw_boost
 require opengl/opengl_boost
@@ -59,7 +61,7 @@ def update() {
     window(LAYOUT_WIN, (text = "Layout demo", closable = false,
                         flags = ImGuiWindowFlags.None)) {
         dock_left(SIDEBAR, (init = 180.0f, bounds = (80.0f, 320.0f))) {
-            Text("Sidebar")
+            text("Sidebar")
             button(SIDEBAR_BTN, (text = "Sidebar btn"))
         }
         // Main pane flows after dock_left's trailing SameLine. split_v stacks
@@ -68,16 +70,16 @@ def update() {
                 ${
                     split_h(SPLIT_MAIN, (init = 0.3f, bounds = (0.1f, 0.9f)),
                             ${
-                                Text("Left")
+                                text("Left")
                                 button(LEFT_BTN, (text = "Left"))
                             },
                             ${
-                                Text("Right")
+                                text("Right")
                                 button(RIGHT_BTN, (text = "Right"))
                             })
                 },
                 ${
-                    Text("Bottom pane")
+                    text("Bottom pane")
                     button(BOTTOM_BTN, (text = "Bottom"))
                 })
     }

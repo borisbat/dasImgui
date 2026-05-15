@@ -1,6 +1,8 @@
 options gen2
+options _no_imgui_legacy = true
 
 require imgui
+require imgui/imgui_lint
 require imgui_app
 require glfw/glfw_boost
 require opengl/opengl_boost
@@ -54,9 +56,9 @@ def update() {
         // the SAME line. State is empty; payload is `{}`. Use when you need
         // bullet-glyph-then-formatted-line (e.g. inline counters).
         bullet(MARKER_ONE)
-        Text("plain Text after bullet marker — no telemetry on this line")
+        text("plain text after bullet marker — telemetry attaches via auto-emit")
         bullet(MARKER_TWO)
-        Text("second marker, second tail")
+        text("second marker, second tail")
     }
 
     end_of_frame()

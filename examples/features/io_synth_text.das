@@ -1,6 +1,8 @@
 options gen2
+options _no_imgui_legacy = true
 
 require imgui
+require imgui/imgui_lint
 require imgui_app
 require glfw/glfw_boost
 require opengl/opengl_boost
@@ -55,14 +57,14 @@ def update() {
     SetNextWindowSize(ImVec2(720.0, 220.0), ImGuiCond.Always)
     window(MAIN_WIN, (text = "io_synth_text — phase 2.2", closable = false,
                       flags = ImGuiWindowFlags.None)) {
-        Text("L1 keyboard: imgui_type_text streams chars one frame each.")
-        Text("DEMO_INPUT auto-focused on first render via SetKeyboardFocusHere.")
+        text("L1 keyboard: imgui_type_text streams chars one frame each.")
+        text("DEMO_INPUT auto-focused on first render via SetKeyboardFocusHere.")
         if (!auto_focused) {
             SetKeyboardFocusHere(0)
             auto_focused = true
         }
         input_text(DEMO_INPUT, (text = "Type here"))
-        Text("buffer = {DEMO_INPUT.value}")
+        text("buffer = {DEMO_INPUT.value}")
     }
 
     end_of_frame()

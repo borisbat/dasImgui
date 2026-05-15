@@ -1,6 +1,8 @@
 options gen2
+options _no_imgui_legacy = true
 
 require imgui
+require imgui/imgui_lint
 require imgui_app
 require glfw/glfw_boost
 require opengl/opengl_boost
@@ -48,7 +50,7 @@ def update() {
     SetNextWindowSize(ImVec2(580.0, 420.0), ImGuiCond.Always)
     window(MAIN_WIN, (text = "popup_context_item", closable = false,
                       flags = ImGuiWindowFlags.None)) {
-        Text("Right-click the button below to open its context menu.")
+        text("Right-click the button below to open its context menu.")
 
         if (button(TARGET_BTN, (text = "Right-click me"))) {
             LAST_ACTION = "(left-click ignored)"
@@ -61,14 +63,14 @@ def update() {
             if (menu_item(ACTION_DELETE, (text = "Delete", shortcut = "Del"))) {
                 LAST_ACTION = "Delete"
             }
-            Separator()
+            separator()
             if (menu_item(ACTION_INFO, (text = "Info", shortcut = ""))) {
                 LAST_ACTION = "Info"
             }
         }
 
-        Separator()
-        Text("Last action: {LAST_ACTION}")
+        separator()
+        text("Last action: {LAST_ACTION}")
     }
 
     end_of_frame()

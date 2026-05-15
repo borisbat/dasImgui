@@ -1,6 +1,8 @@
 options gen2
+options _no_imgui_legacy = true
 
 require imgui
+require imgui/imgui_lint
 require imgui_app
 require glfw/glfw_boost
 require opengl/opengl_boost
@@ -53,8 +55,8 @@ def update() {
     SetNextWindowSize(ImVec2(720.0, 280.0), ImGuiCond.Always)
     window(MAIN_WIN, (text = "active_widget — phase 2.1", closable = false,
                       flags = ImGuiWindowFlags.None)) {
-        Text("Foundation gate: GetActiveID + reverse maps + Result wire.")
-        Text("Drag the slider to make snapshot.io.active_widget resolve.")
+        text("Foundation gate: GetActiveID + reverse maps + Result wire.")
+        text("Drag the slider to make snapshot.io.active_widget resolve.")
 
         // Single button + single slider — minimal surface; the test reads
         // snapshot.io.active_widget, snapshot.io.mouse_buttons, and the
@@ -62,10 +64,10 @@ def update() {
         if (button(DEMO_BTN, (text = "Click me"))) {
             print("DEMO_BTN clicked, count={DEMO_BTN.click_count}\n")
         }
-        Text("clicks: {DEMO_BTN.click_count}")
+        text("clicks: {DEMO_BTN.click_count}")
 
         slider_float(DEMO_SLIDER, (text = "Drag me"))
-        Text("slider value = {DEMO_SLIDER.value}")
+        text("slider value = {DEMO_SLIDER.value}")
     }
 
     end_of_frame()

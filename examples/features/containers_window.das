@@ -1,6 +1,8 @@
 options gen2
+options _no_imgui_legacy = true
 
 require imgui
+require imgui/imgui_lint
 require imgui_app
 require glfw/glfw_boost
 require opengl/opengl_boost
@@ -58,31 +60,31 @@ def update() {
     SetNextWindowSize(ImVec2(420.0f, 480.0f), ImGuiCond.FirstUseEver)
     window(MAIN_WIN, (text = "Main", closable = false,
                       flags = ImGuiWindowFlags.None)) {
-        Text("window/child/group composition")
-        Separator()
+        text("window/child/group composition")
+        separator()
 
         button(SAVE, (text = "Save"))
-        Text("save clicks: {SAVE.click_count}")
+        text("save clicks: {SAVE.click_count}")
         slider_float(SPEED, (text = "speed"))
-        Text("speed = {SPEED.value}")
+        text("speed = {SPEED.value}")
 
-        Spacing()
-        Text("layout: child + group")
-        Separator()
+        spacing()
+        text("layout: child + group")
+        separator()
 
         child(LEFT_PANEL, (text = "left", size = float2(180.0f, 120.0f),
                            child_flags = ImGuiChildFlags.Border,
                            window_flags = ImGuiWindowFlags.None)) {
-            Text("child window")
+            text("child window")
             checkbox(WIRE, (text = "Wireframe"))
-            Text("wireframe = {WIRE.value}")
+            text("wireframe = {WIRE.value}")
         }
-        SameLine(0.0f, 8.0f)
+        same_line((spacing = 8.0f))
         group(RIGHT_GROUP) {
-            Text("group (no chrome)")
+            text("group (no chrome)")
             slider_int(POWER, (text = "power"))
             small_button(RESET_BTN, (text = "Reset"))
-            Text("reset clicks: {RESET_BTN.click_count}")
+            text("reset clicks: {RESET_BTN.click_count}")
         }
     }
 
@@ -94,11 +96,11 @@ def update() {
     SetNextWindowSize(ImVec2(300.0f, 240.0f), ImGuiCond.FirstUseEver)
     window(DETAIL_WIN, (text = "Detail (closable)", closable = true,
                         flags = ImGuiWindowFlags.None)) {
-        Text("close me with the X, or via imgui_close")
-        Separator()
-        Text("size: {DETAIL_WIN.size.x}, {DETAIL_WIN.size.y}")
+        text("close me with the X, or via imgui_close")
+        separator()
+        text("size: {DETAIL_WIN.size.x}, {DETAIL_WIN.size.y}")
         button(PING, (text = "Ping"))
-        Text("ping clicks: {PING.click_count}")
+        text("ping clicks: {PING.click_count}")
     }
 
     end_of_frame()

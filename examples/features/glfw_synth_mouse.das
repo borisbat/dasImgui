@@ -1,6 +1,8 @@
 options gen2
+options _no_imgui_legacy = true
 
 require imgui
+require imgui/imgui_lint
 require imgui_app
 require glfw/glfw_boost
 require opengl/opengl_boost
@@ -55,10 +57,10 @@ def update() {
     window(SYNTH_WIN, (text = "synth mouse demo", closable = false,
                        flags = ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove)) {
         let pos = GetMousePos()
-        Text("mouse_pos = ({pos.x}, {pos.y})")
-        Text("left = {IsMouseDown(ImGuiMouseButton.Left)}")
+        text("mouse_pos = ({pos.x}, {pos.y})")
+        text("left = {IsMouseDown(ImGuiMouseButton.Left)}")
         button(SYNTH_BTN, (text = "      Click me      "))
-        Text("SYNTH_BTN clicks: {SYNTH_BTN.click_count}")
+        text("SYNTH_BTN clicks: {SYNTH_BTN.click_count}")
     }
 
     end_of_frame()

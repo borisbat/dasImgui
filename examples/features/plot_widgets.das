@@ -1,6 +1,8 @@
 options gen2
+options _no_imgui_legacy = true
 
 require imgui
+require imgui/imgui_lint
 require imgui_app
 require glfw/glfw_boost
 require opengl/opengl_boost
@@ -73,7 +75,7 @@ def update() {
     SetNextWindowSize(ImVec2(560.0, 360.0), ImGuiCond.Always)
     window(MAIN_WIN, (text = "plot widgets demo", closable = false,
                      flags = ImGuiWindowFlags.None)) {
-        Text("Two read-only plot widgets (telemetry-visible state):")
+        text("Two read-only plot widgets (telemetry-visible state):")
         plot_lines(SINE_WAVE, "Sine wave", sine_data, -1.2f, 1.2f, float2(0.0f, 80.0f))
         plot_histogram(HISTOGRAM, "Hist", hist_data, 0.0f, 1.5f, float2(0.0f, 80.0f))
     }

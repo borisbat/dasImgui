@@ -1,6 +1,8 @@
 options gen2
+options _no_imgui_legacy = true
 
 require imgui
+require imgui/imgui_lint
 require imgui_app
 require glfw/glfw_boost
 require opengl/opengl_boost
@@ -52,7 +54,7 @@ def update() {
     SetNextWindowSize(ImVec2(560.0, 220.0), ImGuiCond.Always)
     window(MAIN_WIN, (text = "text_show demo", closable = false,
                      flags = ImGuiWindowFlags.None)) {
-        Text("Two forms of text_show:")
+        text("Two forms of text_show:")
 
         // (1) source-init form — every frame state.value resets to the
         // literal "ready"; imgui_set still works between frames but the

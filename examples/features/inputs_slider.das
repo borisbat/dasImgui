@@ -1,6 +1,8 @@
 options gen2
+options _no_imgui_legacy = true
 
 require imgui
+require imgui/imgui_lint
 require imgui_app
 require glfw/glfw_boost
 require opengl/opengl_boost
@@ -50,65 +52,65 @@ def update() {
     window(MAIN_WIN, (text = "Slider inputs — phase 0b.2", closable = false,
                       flags = ImGuiWindowFlags.None)) {
         // ----- Float scalars -----
-        Text("Float scalars")
-        Separator()
+        text("Float scalars")
+        separator()
         GAIN.bounds = (0.0f, 1.0f)
         slider_float(GAIN, (text = "Gain"))
-        Text("gain = {GAIN.value}")
+        text("gain = {GAIN.value}")
 
         // ----- Float vectors -----
-        Text("Float vectors")
-        Separator()
+        text("Float vectors")
+        separator()
         UV_OFFSET.bounds = (-1.0f, 1.0f)
         slider_float2(UV_OFFSET, (text = "UV offset"))
-        Text("uv = ({UV_OFFSET.value.x}, {UV_OFFSET.value.y})")
+        text("uv = ({UV_OFFSET.value.x}, {UV_OFFSET.value.y})")
 
         WAVE_RGB.bounds = (0.0f, 1.0f)
         slider_float3(WAVE_RGB, (text = "Wave RGB"))
-        Text("rgb = ({WAVE_RGB.value.x}, {WAVE_RGB.value.y}, {WAVE_RGB.value.z})")
+        text("rgb = ({WAVE_RGB.value.x}, {WAVE_RGB.value.y}, {WAVE_RGB.value.z})")
 
         WAVE_RGBA.bounds = (0.0f, 1.0f)
         slider_float4(WAVE_RGBA, (text = "Wave RGBA"))
-        Text("a = {WAVE_RGBA.value.w}")
+        text("a = {WAVE_RGBA.value.w}")
 
-        Spacing()
+        spacing()
 
         // ----- Int scalars -----
-        Text("Int scalars")
-        Separator()
+        text("Int scalars")
+        separator()
         LIVES.bounds = (0, 9)
         slider_int(LIVES, (text = "Lives"))
-        Text("lives = {LIVES.value}")
+        text("lives = {LIVES.value}")
 
         // ----- Int vectors -----
-        Text("Int vectors")
-        Separator()
+        text("Int vectors")
+        separator()
         SHIFT_XY.bounds = (-8, 8)
         slider_int2(SHIFT_XY, (text = "Shift XY"))
-        Text("shift = ({SHIFT_XY.value.x}, {SHIFT_XY.value.y})")
+        text("shift = ({SHIFT_XY.value.x}, {SHIFT_XY.value.y})")
 
         TINT_BUDGET_RGB.bounds = (0, 255)
         slider_int3(TINT_BUDGET_RGB, (text = "Tint budget"))
-        Text("budget = ({TINT_BUDGET_RGB.value.x}, {TINT_BUDGET_RGB.value.y}, {TINT_BUDGET_RGB.value.z})")
+        text("budget = ({TINT_BUDGET_RGB.value.x}, {TINT_BUDGET_RGB.value.y}, {TINT_BUDGET_RGB.value.z})")
 
         FRAME_LTRB.bounds = (0, 512)
         slider_int4(FRAME_LTRB, (text = "Frame LTRB"))
-        Text("frame = [{FRAME_LTRB.value.x}, {FRAME_LTRB.value.y}, {FRAME_LTRB.value.z}, {FRAME_LTRB.value.w}]")
+        text("frame = [{FRAME_LTRB.value.x}, {FRAME_LTRB.value.y}, {FRAME_LTRB.value.z}, {FRAME_LTRB.value.w}]")
 
-        Spacing()
+        spacing()
 
         // ----- Vertical sliders (side by side) -----
-        Text("Vertical sliders")
-        Separator()
+        text("Vertical sliders")
+        separator()
         VOL_L.bounds = (0.0f, 1.0f)
         VOL_R.bounds = (0.0f, 1.0f)
         BUS_GAIN.bounds = (-12, 12)
         vslider_float(VOL_L, (text = "L"))
-        SameLine(0.0f, 12.0f)
+        same_line((spacing = 12.0f))
         vslider_float(VOL_R, (text = "R"))
-        SameLine(0.0f, 12.0f)
+        same_line((spacing = 12.0f))
         vslider_int(BUS_GAIN, (text = "Bus dB", size = float2(40.0f, 200.0f)))
-        Text("levels: L={VOL_L.value}, R={VOL_R.value}, bus={BUS_GAIN.value}dB")
+        text("levels: L={VOL_L.value}, R={VOL_R.value}, bus={BUS_GAIN.value}dB")
     }
 
     end_of_frame()

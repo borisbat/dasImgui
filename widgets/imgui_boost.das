@@ -177,17 +177,25 @@ class WidgetCallMacro : AstCallMacro {
         return argT.baseType == Type.tString
     }
 
-    def override visit(prog : ProgramPtr; mod : Module?; var expr : ExprCallMacro?) : ExpressionPtr {
-        if (empty(expr.arguments)) {
-            macro_error(prog, expr.at, "{kind_name}(...): missing widget body — pass `(named=arg, …)` or, for narrative widgets, a single string literal")
-            return <- default<ExpressionPtr>
+    // Bare no-arg form (`spacing()`, `same_line()`) is valid when every
+    // user-facing arg (positions 2..N after state + widget_ident) has a
+    // default initializer — `Variable.init != null`.
+    def private all_user_args_defaulted() : bool {
+        return false if (render_fn == null)
+        for (i in range(2, length(render_fn.arguments))) {
+            return false if (render_fn.arguments[i].init == null)
         }
-        // Three call forms:
+        return true
+    }
+
+    def override visit(prog : ProgramPtr; mod : Module?; var expr : ExprCallMacro?) : ExpressionPtr {
+        // Four call forms:
         //   1. EXPLICIT      kind(IDENT, (...))              — leading ident drives state global
         //   2. AUTO-GEN      kind((...))                     — first arg is a named-tuple; ident synthesized from source location
-        //   3. POSITIONAL    kind("string")                  — single-string sugar for narrative-text family; rewrites to AUTO-GEN
+        //   3. POSITIONAL    kind("string") / kind("{n}")    — single-string (or string_builder) sugar for narrative-text family; rewrites to AUTO-GEN
+        //   4. BARE          kind()                          — zero args; only valid when the widget signature has no user args (state + widget_ident only). Ident synthesized.
         // When the user wants to read state (`.value`/`.click_count`), they
-        // must use form 1; the synthesized name in forms 2/3 is internal and
+        // must use form 1; the synthesized name in forms 2/3/4 is internal and
         // shifts on edits. Documented as "want state, name state".
         var bareName : string
         var widgetIdentOverride : string
@@ -195,33 +203,50 @@ class WidgetCallMacro : AstCallMacro {
         var flagsReversed : array<string>
         var indexExpr : ExpressionPtr
         var firstUserArg = 1
-        let head = expr.arguments[0]
-        if (head is ExprConstString) {
-            // Form 3: positional-string sugar. Valid only when the widget
-            // signature is exactly (state; widget_ident; text : string).
-            if (!accepts_positional_string()) {
-                macro_error(prog, head.at, "{kind_name}: positional-string form `{kind_name}(\"…\")` is only valid for single-string narrative widgets (text/text_unformatted/text_wrapped/text_disabled/bullet_text/separator_text). Use the named-tuple form `{kind_name}((…))` instead.")
+        if (empty(expr.arguments)) {
+            // Form 4: bare no-arg. Valid when every user arg (positions 2..N)
+            // has a default initializer — stateless layout primitives
+            // (separator/spacing/new_line/align_text_to_frame_padding) have
+            // none; same_line / indent / unindent have all-defaulted args.
+            if (render_fn == null || !all_user_args_defaulted()) {
+                macro_error(prog, expr.at, "{kind_name}(...): missing widget body — pass `(named=arg, …)` or, for narrative widgets, a single string literal")
                 return <- default<ExpressionPtr>
             }
             bareName = synth_bare_name(expr.at)
             widgetIdentOverride = synth_path_key(mod, expr.at)
             firstUserArg = 0
-            // Rewrite expr.arguments[0] from the bare string to a synthesized
-            // named-tuple `(text = "literal")` so the destructure loop below
-            // emits a single positional `text` arg into the rewritten call.
-            var synth = new ExprMakeTuple(at = head.at)
-            synth.recordNames.resize(1)
-            synth.recordNames[0] := "text"
-            synth.values |> push(clone_expression(head))
-            expr.arguments[0] = synth
-        } elif (head is ExprMakeTuple && (head as ExprMakeTuple) != null
-                && length((head as ExprMakeTuple).recordNames) == length((head as ExprMakeTuple).values)
-                && !empty((head as ExprMakeTuple).recordNames)) {
-            // Form 2: auto-gen ident from source location. The first arg is a
-            // named-tuple — user did not supply an ident.
-            bareName = synth_bare_name(expr.at)
-            widgetIdentOverride = synth_path_key(mod, expr.at)
-            firstUserArg = 0
+        } else {
+            let head = expr.arguments[0]
+            if (head is ExprConstString || head is ExprStringBuilder) {
+                // Form 3: positional-string sugar. Accepts a string literal
+                // (`text("foo")`) or an interpolated string_builder
+                // (`text("count: {n}")`). Valid only when the widget signature
+                // is exactly (state; widget_ident; text : string).
+                if (!accepts_positional_string()) {
+                    macro_error(prog, head.at, "{kind_name}: positional-string form `{kind_name}(\"…\")` is only valid for single-string narrative widgets (text/text_unformatted/text_wrapped/text_disabled/bullet_text/separator_text). Use the named-tuple form `{kind_name}((…))` instead.")
+                    return <- default<ExpressionPtr>
+                }
+                bareName = synth_bare_name(expr.at)
+                widgetIdentOverride = synth_path_key(mod, expr.at)
+                firstUserArg = 0
+                // Rewrite expr.arguments[0] from the bare string/builder to a
+                // synthesized named-tuple `(text = <head>)` so the destructure
+                // loop below emits a single positional `text` arg into the
+                // rewritten call.
+                var synth = new ExprMakeTuple(at = head.at)
+                synth.recordNames.resize(1)
+                synth.recordNames[0] := "text"
+                synth.values |> push(clone_expression(head))
+                expr.arguments[0] = synth
+            } elif (head is ExprMakeTuple && (head as ExprMakeTuple) != null
+                    && length((head as ExprMakeTuple).recordNames) == length((head as ExprMakeTuple).values)
+                    && !empty((head as ExprMakeTuple).recordNames)) {
+                // Form 2: auto-gen ident from source location. The first arg is a
+                // named-tuple — user did not supply an ident.
+                bareName = synth_bare_name(expr.at)
+                widgetIdentOverride = synth_path_key(mod, expr.at)
+                firstUserArg = 0
+            }
         }
         // Form 1: explicit ident — leading-arg parser. Skipped when bareName
         // is already populated by the auto-gen / positional-string branches.

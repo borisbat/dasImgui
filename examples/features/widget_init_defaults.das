@@ -1,6 +1,8 @@
 options gen2
+options _no_imgui_legacy = true
 
 require imgui
+require imgui/imgui_lint
 require imgui_app
 require glfw/glfw_boost
 require opengl/opengl_boost
@@ -86,7 +88,7 @@ def update() {
     SetNextWindowSize(ImVec2(720.0, 320.0), ImGuiCond.Always)
     window(MAIN_WIN, (text = "widget_init_defaults", closable = false,
                       flags = ImGuiWindowFlags.None)) {
-        Text("Default-init smoke test. Snapshot to inspect DEFAULTS payload.")
+        text("Default-init smoke test. Snapshot to inspect DEFAULTS payload.")
         show_defaults(DEFAULTS, (text = "show_defaults"))
     }
 

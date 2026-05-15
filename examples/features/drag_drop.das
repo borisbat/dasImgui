@@ -1,6 +1,8 @@
 options gen2
+options _no_imgui_legacy = true
 
 require imgui
+require imgui/imgui_lint
 require imgui_app
 require glfw/glfw_boost
 require opengl/opengl_boost
@@ -52,8 +54,8 @@ def update() {
     SetNextWindowSize(ImVec2(660.0, 420.0), ImGuiCond.Always)
     window(MAIN_WIN, (text = "drag_drop", closable = false,
                       flags = ImGuiWindowFlags.None)) {
-        Text("Drag the SOURCE button onto the TARGET button.")
-        Separator()
+        text("Drag the SOURCE button onto the TARGET button.")
+        separator()
 
         // Source: a normal button. Body runs only on active drag.
         button(SOURCE_BTN, (text = "SOURCE"))
@@ -63,11 +65,11 @@ def update() {
                                    uint64(typeinfo sizeof(PAYLOAD_VALUE)),
                                    ImGuiCond.Once)
             }
-            Text("Dragging int: {PAYLOAD_VALUE}")
+            text("Dragging int: {PAYLOAD_VALUE}")
         }
 
-        // SameLine(offset_from_start_x = 0 → "next to previous", spacing = 40 px gap).
-        SameLine(0.0f, 40.0f)
+        // 40 px gap between the source and target buttons.
+        same_line((spacing = 40.0f))
 
         // Target: a normal button. Body runs only when payload-bearing drag hovers.
         button(TARGET_BTN, (text = "TARGET"))
@@ -81,10 +83,10 @@ def update() {
             }
         }
 
-        Separator()
-        Text("Source payload value: {PAYLOAD_VALUE}")
-        Text("Target received value: {RECEIVED}")
-        Text("Drops accepted: {DROP_COUNT}")
+        separator()
+        text("Source payload value: {PAYLOAD_VALUE}")
+        text("Target received value: {RECEIVED}")
+        text("Drops accepted: {DROP_COUNT}")
     }
 
     end_of_frame()

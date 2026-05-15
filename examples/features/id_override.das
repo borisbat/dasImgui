@@ -1,6 +1,8 @@
 options gen2
+options _no_imgui_legacy = true
 
 require imgui
+require imgui/imgui_lint
 require imgui_app
 require glfw/glfw_boost
 require opengl/opengl_boost
@@ -61,7 +63,7 @@ def update() {
     SetNextWindowSize(ImVec2(640.0f, 480.0f), ImGuiCond.FirstUseEver)
     window(MAIN_WIN, (text = "with_id demo", closable = false,
                       flags = ImGuiWindowFlags.None)) {
-        Text("Distinct widgets, distinct scopes:")
+        text("Distinct widgets, distinct scopes:")
         with_id("section_a") {
             button(SAVE_A_BTN, (text = "Save A"))
         }
@@ -69,8 +71,8 @@ def update() {
             button(SAVE_B_BTN, (text = "Save B"))
         }
 
-        Separator()
-        Text("Same single-global widget under two scopes:")
+        separator()
+        text("Same single-global widget under two scopes:")
         // SHARED_BTN's state global is shared; only the paths and ImGui
         // hashes differ. click_count aggregates across both render sites.
         with_id("xa") {
@@ -79,18 +81,18 @@ def update() {
         with_id("xb") {
             button(SHARED_BTN, (text = "Shared (B)"))
         }
-        Text("shared clicks (sum): {SHARED_BTN.click_count}")
+        text("shared clicks (sum): {SHARED_BTN.click_count}")
 
-        Separator()
-        Text("Nested with_id chains:")
+        separator()
+        text("Nested with_id chains:")
         with_id("outer") {
             with_id("inner") {
                 button(NESTED_BTN, (text = "Nested"))
             }
         }
 
-        Separator()
-        Text("Per-call id= and path= overrides:")
+        separator()
+        text("Per-call id= and path= overrides:")
         // id="hashed_v1" — telemetry path stays "MAIN_WIN/HASHED_BTN"; ImGui's
         // hash for the button is mangled with "hashed_v1" via PushID/PopID
         // wrapping. button is bool-returning, but id= wraps in a void block

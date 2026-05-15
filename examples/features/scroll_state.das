@@ -1,6 +1,8 @@
 options gen2
+options _no_imgui_legacy = true
 
 require imgui
+require imgui/imgui_lint
 require imgui_app
 require glfw/glfw_boost
 require opengl/opengl_boost
@@ -50,10 +52,10 @@ def update() {
     SetNextWindowSize(ImVec2(420.0, 240.0), ImGuiCond.Always)
     window(SCROLLY_WIN, (text = "Scrolly window", closable = false,
                         flags = ImGuiWindowFlags.None)) {
-        Text("Window scroll values appear in SCROLLY_WIN.payload.scroll")
-        Text("along with scroll_max. Forty rows below to make it scroll.")
+        text("Window scroll values appear in SCROLLY_WIN.payload.scroll")
+        text("along with scroll_max. Forty rows below to make it scroll.")
         for (i in range(0, 40)) {
-            Text("row {i}: lorem ipsum dolor sit amet consectetur adipiscing elit")
+            text("row {i}: lorem ipsum dolor sit amet consectetur adipiscing elit")
         }
     }
 
@@ -61,12 +63,12 @@ def update() {
     SetNextWindowSize(ImVec2(360.0, 240.0), ImGuiCond.Always)
     window(NESTED_WIN, (text = "Child host", closable = false,
                        flags = ImGuiWindowFlags.None)) {
-        Text("Below: a fixed-size child region with its own scroll state.")
+        text("Below: a fixed-size child region with its own scroll state.")
         child(LOG_REGION, (text = "##log", size = float2(320.0, 140.0),
                            child_flags = ImGuiChildFlags.Border,
                            window_flags = ImGuiWindowFlags.None)) {
             for (i in range(0, 25)) {
-                Text("log line {i}")
+                text("log line {i}")
             }
         }
     }

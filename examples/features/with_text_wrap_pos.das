@@ -1,6 +1,8 @@
 options gen2
+options _no_imgui_legacy = true
 
 require imgui
+require imgui/imgui_lint
 require imgui_app
 require glfw/glfw_boost
 require opengl/opengl_boost
@@ -50,21 +52,21 @@ def update() {
     SetNextWindowSize(ImVec2(660.0, 480.0), ImGuiCond.Always)
     window(MAIN_WIN, (text = "with_text_wrap_pos", closable = false,
                       flags = ImGuiWindowFlags.None)) {
-        Text("Default wrap (0.0f → window right edge):")
+        text("Default wrap (0.0f → window right edge):")
         with_text_wrap_pos(0.0f) {
-            TextUnformatted(LIPSUM)
+            text_unformatted((text = LIPSUM))
         }
 
-        Separator()
-        Text("Wrap at 200 px:")
+        separator()
+        text("Wrap at 200 px:")
         with_text_wrap_pos(200.0f) {
-            TextUnformatted(LIPSUM)
+            text_unformatted((text = LIPSUM))
         }
 
-        Separator()
-        Text("Wrap at 400 px:")
+        separator()
+        text("Wrap at 400 px:")
         with_text_wrap_pos(400.0f) {
-            TextUnformatted(LIPSUM)
+            text_unformatted((text = LIPSUM))
         }
     }
 

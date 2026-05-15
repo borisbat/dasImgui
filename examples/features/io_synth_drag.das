@@ -1,6 +1,8 @@
 options gen2
+options _no_imgui_legacy = true
 
 require imgui
+require imgui/imgui_lint
 require imgui_app
 require glfw/glfw_boost
 require opengl/opengl_boost
@@ -53,10 +55,10 @@ def update() {
     SetNextWindowSize(ImVec2(720.0, 220.0), ImGuiCond.Always)
     window(MAIN_WIN, (text = "io_synth_drag — phase 2.2", closable = false,
                       flags = ImGuiWindowFlags.None)) {
-        Text("L1 drag: imgui_drag synthesizes mouse press → moves → release.")
-        Text("During the drag, io.active_widget == 'MAIN_WIN/DEMO_SLIDER'.")
+        text("L1 drag: imgui_drag synthesizes mouse press → moves → release.")
+        text("During the drag, io.active_widget == 'MAIN_WIN/DEMO_SLIDER'.")
         slider_float(DEMO_SLIDER, (text = "Drag me"))
-        Text("slider value = {DEMO_SLIDER.value}")
+        text("slider value = {DEMO_SLIDER.value}")
     }
 
     end_of_frame()

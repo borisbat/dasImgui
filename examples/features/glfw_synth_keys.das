@@ -1,6 +1,8 @@
 options gen2
+options _no_imgui_legacy = true
 
 require imgui
+require imgui/imgui_lint
 require imgui_app
 require glfw/glfw_boost
 require opengl/opengl_boost
@@ -57,12 +59,12 @@ def update() {
     SetNextWindowSize(ImVec2(640.0, 240.0), ImGuiCond.Always)
     window(MAIN_WIN, (text = "synth keys demo", closable = false,
                       flags = ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove)) {
-        Text("Drive `key_type`, `key_chord`, `key_play` to feed the input below.")
-        Text("Use `imgui_focus` to put keyboard focus on NAME_INPUT first.")
+        text("Drive `key_type`, `key_chord`, `key_play` to feed the input below.")
+        text("Use `imgui_focus` to put keyboard focus on NAME_INPUT first.")
         input_text(NAME_INPUT, (text = "Name"))
-        Text("buffer = {NAME_INPUT.value}")
-        Text("Ctrl held: {IsKeyDown(ImGuiKey.LeftCtrl) || IsKeyDown(ImGuiKey.RightCtrl)}")
-        Text("Shift held: {IsKeyDown(ImGuiKey.LeftShift) || IsKeyDown(ImGuiKey.RightShift)}")
+        text("buffer = {NAME_INPUT.value}")
+        text("Ctrl held: {IsKeyDown(ImGuiKey.LeftCtrl) || IsKeyDown(ImGuiKey.RightCtrl)}")
+        text("Shift held: {IsKeyDown(ImGuiKey.LeftShift) || IsKeyDown(ImGuiKey.RightShift)}")
     }
 
     end_of_frame()

@@ -1,6 +1,8 @@
 options gen2
+options _no_imgui_legacy = true
 
 require imgui
+require imgui/imgui_lint
 require imgui_app
 require glfw/glfw_boost
 require opengl/opengl_boost
@@ -70,30 +72,30 @@ def update() {
             }
         }
 
-        Text("tab_bar with three tab_items")
-        Separator()
+        text("tab_bar with three tab_items")
+        separator()
 
         tab_bar(MAIN_TABS, (text = "MainTabs",
                             flags = ImGuiTabBarFlags.None)) {
             // ----- Settings tab -----
             tab_item(SETTINGS_TAB, (text = "Settings", closable = false,
                                     flags = ImGuiTabItemFlags.None)) {
-                Text("Use tree nodes to organise grouped settings")
-                Spacing()
+                text("Use tree nodes to organise grouped settings")
+                spacing()
 
                 tree_node(PHYSICS_TREE, (text = "Physics",
                                          flags = ImGuiTreeNodeFlags.DefaultOpen)) {
                     slider_float(GRAVITY, (text = "gravity"))
-                    Text("gravity = {GRAVITY.value}")
+                    text("gravity = {GRAVITY.value}")
                     slider_float(DENSITY, (text = "density"))
-                    Text("density = {DENSITY.value}")
+                    text("density = {DENSITY.value}")
                 }
                 tree_node(RENDER_TREE, (text = "Render",
                                         flags = ImGuiTreeNodeFlags.DefaultOpen)) {
                     checkbox(WIREFRAME, (text = "Wireframe"))
-                    Text("wireframe = {WIREFRAME.value}")
+                    text("wireframe = {WIREFRAME.value}")
                     slider_float(LIGHT, (text = "light"))
-                    Text("light = {LIGHT.value}")
+                    text("light = {LIGHT.value}")
                 }
             }
 
@@ -101,24 +103,24 @@ def update() {
             tab_item(AUDIO_TAB, (text = "Audio", closable = false,
                                  flags = ImGuiTabItemFlags.None)) {
                 checkbox(MUTE, (text = "Mute"))
-                Text("mute = {MUTE.value}")
+                text("mute = {MUTE.value}")
             }
 
             // ----- About tab -----
             tab_item(ABOUT_TAB, (text = "About", closable = false,
                                  flags = ImGuiTabItemFlags.None)) {
-                Text("Phase 0b.3 — containers")
-                Text("hierarchical registry path keys")
+                text("Phase 0b.3 — containers")
+                text("hierarchical registry path keys")
             }
         }
 
-        Spacing()
-        Text("collapsing_header — like tree_node but no End-pair")
-        Separator()
+        spacing()
+        text("collapsing_header — like tree_node but no End-pair")
+        separator()
         collapsing_header(LOG_HEADER, (text = "Log", closable = false,
                                        flags = ImGuiTreeNodeFlags.DefaultOpen)) {
-            Text("frame: {LAYOUT_WIN.size.x} x {LAYOUT_WIN.size.y}")
-            Text("settings tab is open: yes (tab_item.open = {SETTINGS_TAB.open})")
+            text("frame: {LAYOUT_WIN.size.x} x {LAYOUT_WIN.size.y}")
+            text("settings tab is open: yes (tab_item.open = {SETTINGS_TAB.open})")
         }
     }
 
