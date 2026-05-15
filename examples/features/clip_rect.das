@@ -1,4 +1,8 @@
 options gen2
+// Demos the low-level ImDrawList API (GetWindowDrawList + AddCircleFilled).
+// No v2 wrappers exist for direct drawlist primitives; opt out of the
+// default-on lint so the demo compiles cleanly.
+options _allow_imgui_legacy = true
 
 require imgui
 require imgui_app

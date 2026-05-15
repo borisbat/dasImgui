@@ -84,7 +84,7 @@ def update() {
             // `button(...)` returns bool — clicked-this-frame. Same info
             // as SAVE_BTN.clicked, just inline.
         }
-        text((text = "SAVE_BTN.click_count = {SAVE_BTN.click_count}"))
+        text("SAVE_BTN.click_count = {SAVE_BTN.click_count}")
 
         separator(ST_SEP_1)
 
@@ -100,7 +100,7 @@ def update() {
         text("Dotted flags tune visibility and live-reload behavior:")
         slider_int(SPEED.PUBLIC,   (text = "Speed (int, PUBLIC)"))
         slider_float(VOLUME.NOTLIVE, (text = "Volume (NOTLIVE)"))
-        text((text = "SPEED.value = {SPEED.value}   VOLUME.value = {VOLUME.value}"))
+        text("SPEED.value = {SPEED.value}   VOLUME.value = {VOLUME.value}")
 
         separator(ST_SEP_2)
 

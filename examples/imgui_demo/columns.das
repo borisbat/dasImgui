@@ -1,5 +1,6 @@
 options gen2
 options indenting = 4
+options _allow_imgui_legacy = true
 
 module columns
 
@@ -75,8 +76,7 @@ def ShowDemoWindowColumns() {
         text_disabled("(?)")
         item_tooltip(COLUMNS_OUTER_HELP) {
             with_text_wrap_pos(GetFontSize() * 35.0f) {
-                text_unformatted((text =
-                    "Columns() is an old API! Prefer using the more flexible " +
+                text_unformatted((text = "Columns() is an old API! Prefer using the more flexible " +
                     "and powerful BeginTable() API!"))
             }
         }
@@ -128,9 +128,9 @@ def private BasicSection() {
                  flags = ImGuiSelectableFlags.SpanAllColumns))
             let hovered = IsItemHovered()
             NextColumn()
-            text((text = "{names[i]}")); NextColumn()
-            text((text = "{paths[i]}")); NextColumn()
-            text((text = "{hovered ? 1 : 0}")); NextColumn()
+            text("{names[i]}"); NextColumn()
+            text("{paths[i]}"); NextColumn()
+            text("{hovered ? 1 : 0}"); NextColumn()
         }
         columns_close()
         Separator()
@@ -169,10 +169,10 @@ def private BordersSection() {
                 "k", "l", "m", "n", "o", "p", "q", "r", "s", "t",
                 "u", "v", "w", "x", "y", "z", "0", "1", "2", "3")
             let glyph = alphabet[i % length(alphabet)]
-            text((text = "{glyph}{glyph}{glyph}"))
-            text((text = "Width {GetColumnWidth(-1)}"))
-            text((text = "Avail {GetContentRegionAvail().x}"))
-            text((text = "Offset {GetColumnOffset(-1)}"))
+            text("{glyph}{glyph}{glyph}")
+            text("Width {GetColumnWidth(-1)}")
+            text("Avail {GetContentRegionAvail().x}")
+            text("Offset {GetColumnOffset(-1)}")
             text("Long text that is likely to clip")
             // Per-cell button — indexed; full-width via Button raw call so we
             // can pass ImVec2(-FLT_MIN, 0). The boost button widget defaults
@@ -281,7 +281,7 @@ def private HorizontalScrollingSection() {
                 while (clipper |> Step()) {
                     for (i in range(clipper.DisplayStart, clipper.DisplayEnd)) {
                         for (j in range(10)) {
-                            text((text = "Line {i} Column {j}..."))
+                            text("Line {i} Column {j}...")
                             NextColumn()
                         }
                     }

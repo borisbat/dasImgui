@@ -88,7 +88,7 @@ def update() {
             }
         }
 
-        text((text = "STEP_UP.click_count = {STEP_UP.click_count}"))
+        text("STEP_UP.click_count = {STEP_UP.click_count}")
 
         separator_text("with_font")
 

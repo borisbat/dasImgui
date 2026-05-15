@@ -61,14 +61,14 @@ def update() {
         if (button(SAVE_BTN, (text = "Save"))) {
             print("save\n")
         }
-        set_item_tooltip("Persists current state to disk.")
+        set_item_tooltip((text = "Persists current state to disk."))
 
         spacing(SP_BTNS)
 
         if (button(LOAD_BTN, (text = "Load"))) {
             print("load\n")
         }
-        set_item_tooltip("Restores the last saved state.")
+        set_item_tooltip((text = "Restores the last saved state."))
 
         spacing(SP_HELP)
 
@@ -77,7 +77,7 @@ def update() {
         text("Verbose option (with help marker):")
         same_line(SL_HINT)
         text_disabled("(?)")
-        set_item_tooltip("set_item_tooltip after a disabled '(?)' glyph is the dasImgui replacement for the imgui_demo HelpMarker helper.")
+        set_item_tooltip((text = "set_item_tooltip after a disabled '(?)' glyph is the dasImgui replacement for the imgui_demo HelpMarker helper."))
     }
 
     end_of_frame()

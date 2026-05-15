@@ -1,8 +1,6 @@
 options gen2
-options _no_imgui_legacy = true
 
 require imgui
-require imgui/imgui_lint
 require imgui_app
 require glfw/glfw_boost
 require opengl/opengl_boost
@@ -54,10 +52,10 @@ def show_defaults(var state : DefaultsState; text : string) : int {
     Text("count={state.count} ratio={state.ratio} caption={state.caption}")
     var entry : WidgetEntry
     unsafe {
-        let ser <- @ capture(& state) () : JsonValue? {
+        let ser <- @ capture(& state) () : JsonValue ? {
             return JV(state)
         }
-        let disp <- @ capture(& state) (action : string; payload : JsonValue?) {
+        let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
             if (action == "set") {
                 state.pending_bump = true
                 state.has_pending = true

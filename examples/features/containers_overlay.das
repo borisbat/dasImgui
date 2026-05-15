@@ -1,8 +1,6 @@
 options gen2
-options _no_imgui_legacy = true
 
 require imgui
-require imgui/imgui_lint
 require imgui_app
 require glfw/glfw_boost
 require opengl/opengl_boost

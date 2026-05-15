@@ -1,5 +1,6 @@
 options gen2
 options indenting = 4
+options _allow_imgui_legacy = true
 
 module about
 
@@ -20,7 +21,7 @@ var ABOUT_SHOW_CONFIG_INFO = false
 def ShowAboutWindow() {
     window(ABOUT_WINDOW, (text = "About Dear ImGui", closable = false,
                           flags = ImGuiWindowFlags.AlwaysAutoResize)) {
-        text((text = "Dear ImGui {IMGUI_VERSION} ({IMGUI_VERSION_NUM})"))
+        text("Dear ImGui {IMGUI_VERSION} ({IMGUI_VERSION_NUM})")
         separator(ABOUT_SEP_1)
         text("By Omar Cornut and all Dear ImGui contributors.")
         text((text = "Dear ImGui is licensed under the MIT License, " +
@@ -46,14 +47,14 @@ def ShowAboutWindow() {
                     LogText("```\n")
                 }
 
-                text((text = "Dear ImGui {IMGUI_VERSION} ({IMGUI_VERSION_NUM})"))
+                text("Dear ImGui {IMGUI_VERSION} ({IMGUI_VERSION_NUM})")
                 separator(ABOUT_SEP_2)
                 text("define: __cplusplus elided (daslang port)")
                 text("(C++ build-define block elided; see imgui_demo.cpp:6494-6565)")
                 separator(ABOUT_SEP_3)
-                text((text = "io.BackendPlatformName: {io.BackendPlatformName}"))
-                text((text = "io.BackendRendererName: {io.BackendRendererName}"))
-                text((text = "io.ConfigFlags: {fmt_hex(uint(io.ConfigFlags))}"))
+                text("io.BackendPlatformName: {io.BackendPlatformName}")
+                text("io.BackendRendererName: {io.BackendRendererName}")
+                text("io.ConfigFlags: {fmt_hex(uint(io.ConfigFlags))}")
                 if (uint(io.ConfigFlags & ImGuiConfigFlags.NavEnableKeyboard) != 0u) {
                     text(" NavEnableKeyboard")
                 }
@@ -102,7 +103,7 @@ def ShowAboutWindow() {
                 if (io.ConfigInputTextCursorBlink) {
                     text("io.ConfigInputTextCursorBlink")
                 }
-                text((text = "io.BackendFlags: {fmt_hex(uint(io.BackendFlags))}"))
+                text("io.BackendFlags: {fmt_hex(uint(io.BackendFlags))}")
                 if (uint(io.BackendFlags & ImGuiBackendFlags.HasGamepad) != 0u) {
                     text(" HasGamepad")
                 }
@@ -122,16 +123,16 @@ def ShowAboutWindow() {
                     text(" RendererHasViewports")
                 }
                 separator(ABOUT_SEP_4)
-                text((text = "io.DisplaySize: {io.DisplaySize.x},{io.DisplaySize.y}"))
-                text((text = "io.DisplayFramebufferScale: {io.DisplayFramebufferScale.x},{io.DisplayFramebufferScale.y}"))
+                text("io.DisplaySize: {io.DisplaySize.x},{io.DisplaySize.y}")
+                text("io.DisplayFramebufferScale: {io.DisplayFramebufferScale.x},{io.DisplayFramebufferScale.y}")
                 separator(ABOUT_SEP_5)
-                text((text = "style.WindowPadding: {style.WindowPadding.x},{style.WindowPadding.y}"))
-                text((text = "style.WindowBorderSize: {style.WindowBorderSize}"))
-                text((text = "style.FramePadding: {style.FramePadding.x},{style.FramePadding.y}"))
-                text((text = "style.FrameRounding: {style.FrameRounding}"))
-                text((text = "style.FrameBorderSize: {style.FrameBorderSize}"))
-                text((text = "style.ItemSpacing: {style.ItemSpacing.x},{style.ItemSpacing.y}"))
-                text((text = "style.ItemInnerSpacing: {style.ItemInnerSpacing.x},{style.ItemInnerSpacing.y}"))
+                text("style.WindowPadding: {style.WindowPadding.x},{style.WindowPadding.y}")
+                text("style.WindowBorderSize: {style.WindowBorderSize}")
+                text("style.FramePadding: {style.FramePadding.x},{style.FramePadding.y}")
+                text("style.FrameRounding: {style.FrameRounding}")
+                text("style.FrameBorderSize: {style.FrameBorderSize}")
+                text("style.ItemSpacing: {style.ItemSpacing.x},{style.ItemSpacing.y}")
+                text("style.ItemInnerSpacing: {style.ItemInnerSpacing.x},{style.ItemInnerSpacing.y}")
 
                 if (copy_to_clipboard) {
                     LogText("\n```\n")

@@ -72,7 +72,7 @@ def update() {
         text("Tiny subject — driver narrates what's happening.")
         slider_float(VOLUME, (text = "Volume"))
         if (button(SAVE_BTN, (text = "Save"))) {}
-        text((text = "SAVE_BTN.click_count = {SAVE_BTN.click_count}"))
+        text("SAVE_BTN.click_count = {SAVE_BTN.click_count}")
     }
 
     end_of_frame()

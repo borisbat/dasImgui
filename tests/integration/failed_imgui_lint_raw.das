@@ -1,11 +1,10 @@
 options gen2
-options _no_imgui_legacy = true
 
 require imgui
 require imgui/imgui_lint
 
-//! Negative test — `_no_imgui_legacy = true` + raw `imgui::Button` must
-//! trip IMGUI002 (runtime_macro error code 50503).
+//! Negative test — default-on lint + raw `imgui::Button` must trip
+//! IMGUI002 (macro_error code 50503). No opt-in line required.
 
 expect 50503
 

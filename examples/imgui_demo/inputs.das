@@ -1,5 +1,6 @@
 options gen2
 options indenting = 4
+options _allow_imgui_legacy = true
 
 module inputs
 
@@ -15,7 +16,7 @@ require daslib/enum_trait
 // Boost-surface notes for this port:
 //   - Almost all of this section is read-only state inspection of ImGuiIO
 //     (mouse pos / mouse delta / key-down flags / nav-active / etc.). Each
-//     readout becomes a single narrative `text((text = "..."))` line; the
+//     readout becomes a single narrative `text("...")` line; the
 //     C++ pattern of `Text() ... SameLine() Text()` inside a loop is
 //     collapsed into one concatenated string accumulated with `+=` so each
 //     per-frame line stays a single widget (no indexed-table boilerplate
@@ -88,19 +89,18 @@ def private InputsSubSection() {
         text_disabled("(?)")
         item_tooltip(INPUTS_HM_INPUTS) {
             with_text_wrap_pos(GetFontSize() * 35.0f) {
-                text_unformatted((text =
-                    "This is a simplified view. See more detailed input state:\n" +
+                text_unformatted((text = "This is a simplified view. See more detailed input state:\n" +
                     "- in 'Tools->Metrics/Debugger->Inputs'.\n" +
                     "- in 'Tools->Debug Log->IO'."))
             }
         }
 
         if (IsMousePosValid(null)) {
-            text((text = "Mouse pos: ({io.MousePos.x}, {io.MousePos.y})"))
+            text("Mouse pos: ({io.MousePos.x}, {io.MousePos.y})")
         } else {
             text("Mouse pos: <INVALID>")
         }
-        text((text = "Mouse delta: ({io.MouseDelta.x}, {io.MouseDelta.y})"))
+        text("Mouse delta: ({io.MouseDelta.x}, {io.MouseDelta.y})")
 
         // C++ does Text("Mouse down:") + per-button SameLine+Text loop.
         // We build the entire line in one string and render with one widget.
@@ -112,7 +112,7 @@ def private InputsSubSection() {
         }
         text((text = down_line))
 
-        text((text = "Mouse wheel: {io.MouseWheel}"))
+        text("Mouse wheel: {io.MouseWheel}")
 
         // Keys down: iterate every named ImGuiKey value, skip ones not pressed.
         var keys_line = "Keys down:"
@@ -164,8 +164,7 @@ def private OutputsSubSection() {
         text_disabled("(?)")
         item_tooltip(INPUTS_HM_OUTPUTS) {
             with_text_wrap_pos(GetFontSize() * 35.0f) {
-                text_unformatted((text =
-                    "The value of io.WantCaptureMouse and io.WantCaptureKeyboard " +
+                text_unformatted((text = "The value of io.WantCaptureMouse and io.WantCaptureKeyboard " +
                     "are normally set by Dear ImGui to instruct your application " +
                     "of how to route inputs. Typically, when a value is true, it " +
                     "means Dear ImGui wants the corresponding inputs and we " +
@@ -177,12 +176,12 @@ def private OutputsSubSection() {
             }
         }
 
-        text((text = "io.WantCaptureMouse: {io.WantCaptureMouse}"))
-        text((text = "io.WantCaptureMouseUnlessPopupClose: {io.WantCaptureMouseUnlessPopupClose}"))
-        text((text = "io.WantCaptureKeyboard: {io.WantCaptureKeyboard}"))
-        text((text = "io.WantTextInput: {io.WantTextInput}"))
-        text((text = "io.WantSetMousePos: {io.WantSetMousePos}"))
-        text((text = "io.NavActive: {io.NavActive}, io.NavVisible: {io.NavVisible}"))
+        text("io.WantCaptureMouse: {io.WantCaptureMouse}")
+        text("io.WantCaptureMouseUnlessPopupClose: {io.WantCaptureMouseUnlessPopupClose}")
+        text("io.WantCaptureKeyboard: {io.WantCaptureKeyboard}")
+        text("io.WantTextInput: {io.WantTextInput}")
+        text("io.WantSetMousePos: {io.WantSetMousePos}")
+        text("io.NavActive: {io.NavActive}, io.NavVisible: {io.NavVisible}")
 
         WantCaptureOverrideSubSection()
     }
@@ -195,8 +194,7 @@ def private WantCaptureOverrideSubSection() {
         text_disabled("(?)")
         item_tooltip(INPUTS_HM_CAPTURE) {
             with_text_wrap_pos(GetFontSize() * 35.0f) {
-                text_unformatted((text =
-                    "Hovering the colored canvas will override io.WantCaptureXXX " +
+                text_unformatted((text = "Hovering the colored canvas will override io.WantCaptureXXX " +
                     "fields.\nNotice how normally (when set to none), the value " +
                     "of io.WantCaptureKeyboard would be false when hovering and " +
                     "true when clicking."))
@@ -255,7 +253,7 @@ def private MouseCursorsSubSection() {
         let cur_idx = int(current)
         let cur_name = ((cur_idx >= 0 && cur_idx < length(cursors))
                         ? cursors[cur_idx] : "?")
-        text((text = "Current mouse cursor = {cur_idx}: {cur_name}"))
+        text("Current mouse cursor = {cur_idx}: {cur_name}")
 
         // The C++ wraps a CheckboxFlags (read-only display of the
         // HasMouseCursors backend bit) in BeginDisabled/EndDisabled. Since
@@ -263,15 +261,14 @@ def private MouseCursorsSubSection() {
         // a bounce-buffer (matches the style_editor.das gap), display the
         // bit state as plain text.
         let has_mouse_cursors = (uint(io.BackendFlags & ImGuiBackendFlags.HasMouseCursors) != 0u)
-        text((text = "io.BackendFlags: HasMouseCursors = {has_mouse_cursors}"))
+        text("io.BackendFlags: HasMouseCursors = {has_mouse_cursors}")
 
         text("Hover to see mouse cursors:")
         same_line(INPUTS_SL_HOVER)
         text_disabled("(?)")
         item_tooltip(INPUTS_HM_HOVER_CURSORS) {
             with_text_wrap_pos(GetFontSize() * 35.0f) {
-                text_unformatted((text =
-                    "Your application can render a different mouse cursor based " +
+                text_unformatted((text = "Your application can render a different mouse cursor based " +
                     "on what ImGui::GetMouseCursor() returns. If software cursor " +
                     "rendering (io.MouseDrawCursor) is set ImGui will draw the " +
                     "right cursor for you, otherwise your backend needs to " +
@@ -376,7 +373,7 @@ def private FocusFromCodeSubSection() {
         PopTabStop()
 
         if (has_focus != 0) {
-            text((text = "Item with focus: {has_focus}"))
+            text("Item with focus: {has_focus}")
         } else {
             text("Item with focus: <none>")
         }
@@ -426,10 +423,10 @@ def private DraggingSubSection() {
             let dr_def : bool = IsMouseDragging(btn, -1.0f)
             let dr_zero : bool = IsMouseDragging(btn, 0.0f)
             let dr_big : bool = IsMouseDragging(btn, 20.0f)
-            text((text = "IsMouseDragging({b}):"))
-            text((text = "  w/ default threshold: {dr_def},"))
-            text((text = "  w/ zero threshold: {dr_zero},"))
-            text((text = "  w/ large threshold: {dr_big},"))
+            text("IsMouseDragging({b}):")
+            text("  w/ default threshold: {dr_def},")
+            text("  w/ zero threshold: {dr_zero},")
+            text("  w/ large threshold: {dr_big},")
         }
 
         button(INPUTS_DRAG_ME, (text = "Drag Me"))
@@ -446,8 +443,8 @@ def private DraggingSubSection() {
         let value_with_lock = GetMouseDragDelta(ImGuiMouseButton.Left, -1.0f)
         let mouse_delta = io.MouseDelta
         text("GetMouseDragDelta(0):")
-        text((text = "  w/ default threshold: ({value_with_lock.x}, {value_with_lock.y})"))
-        text((text = "  w/ zero threshold: ({value_raw.x}, {value_raw.y})"))
-        text((text = "io.MouseDelta: ({mouse_delta.x}, {mouse_delta.y})"))
+        text("  w/ default threshold: ({value_with_lock.x}, {value_with_lock.y})")
+        text("  w/ zero threshold: ({value_raw.x}, {value_raw.y})")
+        text("io.MouseDelta: ({mouse_delta.x}, {mouse_delta.y})")
     }
 }

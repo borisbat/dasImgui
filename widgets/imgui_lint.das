@@ -4,14 +4,19 @@ options strict_smart_pointers = true
 
 module imgui_lint shared private
 
-//! dasImgui lint pass — `_no_imgui_legacy`.
+//! dasImgui lint pass — default-on rule catalog.
 //!
-//! Opt-in compile-time pass that forbids legacy ImGui access from consumer
-//! files. Enabled by ``options _no_imgui_legacy = true``; off otherwise.
+//! Bundled into ``imgui/imgui_boost_v2`` (and therefore everything that
+//! transitively requires it). Runs on every consumer compile by default;
+//! opt out per-file via ``options _allow_imgui_legacy = true``.
 //!
-//! Codes:
-//!   IMGUI001 — any call into the dead v1 `imgui_boost` module
-//!   IMGUI002 — any raw `imgui::*` call not on the allow-list
+//! Codes (all macro_error severity, error code 50503; all gated by the
+//! single ``_allow_imgui_legacy`` opt-out):
+//!   IMGUI001 — call into the dead v1 ``imgui_boost`` module (visitor, this file)
+//!   IMGUI002 — raw ``imgui::*`` call not on the allow-list (visitor, this file)
+//!   STYLE001 — verbose named-tuple call shape ``widget((field=x))`` where the
+//!              single-arg positional form ``widget(x)`` works (implemented in
+//!              ``WidgetCallMacro.visit()`` inside imgui_boost.das)
 //!
 //! The allow-list (``ALLOWED_IMGUI`` below) is the curated set of raw
 //! bindings that v2 deliberately doesn't wrap (frame lifecycle, IO/state
@@ -21,7 +26,9 @@ module imgui_lint shared private
 //! Scoping: walks ``prog.getThisModule`` only, so the lint runs on the
 //! consumer file and skips the transitively-required boost modules
 //! (which legitimately call raw ``imgui::*`` because that's the whole
-//! point of being the wrapper).
+//! point of being the wrapper). Wrapper modules under widgets/ also carry
+//! ``options _allow_imgui_legacy = true`` defensively so they compile
+//! cleanly when targeted directly (MCP compile_check, lint, format_file).
 
 require daslib/ast_boost
 require strings
@@ -51,7 +58,7 @@ let private ALLOWED_IMGUI : table<string> <- {
     "GetItemRectMin", "GetItemRectMax", "GetItemRectSize",
     "CalcTextSize", "CalcItemWidth",
     // Font / color helpers (read-only)
-    "GetFontSize",
+    "GetFont", "GetFontSize",
     "GetTextLineHeight", "GetTextLineHeightWithSpacing",
     "GetFrameHeight", "GetFrameHeightWithSpacing",
     "GetStyleColorVec4", "GetColorU32",
@@ -120,7 +127,7 @@ class ImguiLintVisitor : AstVisitor {
             let fname = string(expr.func.name)
             if (!key_exists(ALLOWED_IMGUI, fname)) {
                 compiling_program() |> macro_error(expr.at,
-                    "IMGUI002: raw imgui::{fname} is forbidden under _no_imgui_legacy — add a [widget]/[container]/with_* wrapper in modules/dasImgui/widgets/, or extend ALLOWED_IMGUI in imgui_lint.das if {fname} is genuinely host-agnostic")
+                    "IMGUI002: raw imgui::{fname} is forbidden — add a [widget]/[container]/with_* wrapper in modules/dasImgui/widgets/, or extend ALLOWED_IMGUI in imgui_lint.das if {fname} is genuinely host-agnostic. Per-file escape: `options _allow_imgui_legacy = true`")
             }
         }
     }
@@ -129,8 +136,8 @@ class ImguiLintVisitor : AstVisitor {
 [lint_macro]
 class ImguiLintMacro : AstPassMacro {
     def override apply(prog : ProgramPtr; mod : Module?) : bool {
-        let enabled = prog._options |> find_arg("_no_imgui_legacy") ?as tBool ?? false
-        if (!enabled) return true
+        let opted_out = prog._options |> find_arg("_allow_imgui_legacy") ?as tBool ?? false
+        if (opted_out) return true
         var v = new ImguiLintVisitor()
         make_visitor(*v) $(adapter) {
             visit_module(prog, adapter, prog.getThisModule)
