@@ -110,7 +110,7 @@ def private text_edit_callback(var data : ImGuiInputTextCallbackData) : int {
         // ----- TAB completion -----
         // Snapshot the buffer as a daslang string (Buf is char*, ImGui keeps
         // it valid for the callback's lifetime).
-        let buf_str = clone_string(unsafe(reinterpret<string>(data.Buf)))
+        let buf_str = clone_string(data.Buf)
         let word_end = data.CursorPos
         var word_start = word_end
         peek_data(buf_str) $(arr) {
@@ -129,7 +129,7 @@ def private text_edit_callback(var data : ImGuiInputTextCallbackData) : int {
             }
         }
 
-        if (length(candidates) == 0) {
+        if (empty(candidates)) {
             add_log("No match for \"{prefix}\"!")
         } elif (length(candidates) == 1) {
             // Single match — replace the partial word with the full command
@@ -325,7 +325,7 @@ def ShowExampleAppConsole() {
                 }
             }
             let cmd = slice(cmd_in, 0, end)
-            if (length(cmd) > 0) {
+            if (!empty(cmd)) {
                 exec_command(cmd)
             }
             // Clear the input buffer for the next entry.
