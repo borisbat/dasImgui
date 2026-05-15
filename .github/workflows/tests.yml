@@ -34,12 +34,13 @@ permissions:
 # dasImgui is daspkg-installed into daslang-src/modules/dasImgui/ (mirrors the
 # docs workflow). Tests are driven by dastest at daslang-src/dastest/dastest.das.
 # Each test in tests/integration/ spawns daslang-live as a subprocess via
-# imgui_playwright; daslang-live opens a GLFW/OpenGL window so we wrap the
-# dastest invocation in `xvfb-run -a` to give it a virtual display. The
-# subprocess inherits DISPLAY=:99 from the xvfb-run environment.
+# imgui_playwright; daslang-live opens a GLFW/OpenGL window. Runs on
+# windows-latest because the Linux GitHub-hosted runners require xvfb +
+# software-rendered Mesa and the dasImgui playwright readiness gate doesn't
+# survive that path. Windows runners ship a usable GL stack out of the box.
 jobs:
   integration:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     steps:
       - name: "Checkout daslang"
         uses: actions/checkout@v4
@@ -53,52 +54,42 @@ jobs:
         with:
           path: dasImgui
 
-      - name: "Install system dependencies"
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libglfw3-dev \
-            libfreetype6-dev \
-            mesa-common-dev \
-            xorg-dev \
-            xvfb
-
       - name: "Install CMake and Ninja"
         uses: lukka/get-cmake@latest
 
       - name: "Build daslang + daslang-live + shared modules"
         working-directory: daslang-src
+        shell: pwsh
         run: |
-          set -eux
-          cmake --no-warn-unused-cli -B./build \
-            -DCMAKE_BUILD_TYPE:STRING=Release \
-            -DDAS_HV_DISABLED=OFF \
-            -DDAS_PUGIXML_DISABLED=OFF \
-            -DDAS_LLVM_DISABLED=ON \
-            -DDAS_GLFW_DISABLED=OFF \
-            -G Ninja
+          cmake --no-warn-unused-cli -B./build `
+            -DCMAKE_BUILD_TYPE:STRING=Release `
+            -DDAS_HV_DISABLED=OFF `
+            -DDAS_PUGIXML_DISABLED=OFF `
+            -DDAS_LLVM_DISABLED=ON `
+            -DDAS_GLFW_DISABLED=OFF
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           # daslang + daslang-live binaries plus the shared-module artifacts
-          # daslang-live dlopens at runtime via `require <module>` lines in
-          # the test scripts: dasModuleLiveHost (lifecycle API exported via
-          # dlsym RTLD_DEFAULT), dasModuleGlfw (window/GL context), dasModuleHV
-          # (HTTP /status, /command, /shutdown endpoints used by playwright),
-          # dasModulePUGIXML + dasModuleStbImage (rendering deps). Matches the
-          # set daslang's extended_checks workflow builds for live tests.
-          cmake --build ./build --parallel --target \
-            daslang daslang-live \
-            dasModuleLiveHost dasModuleGlfw dasModuleHV \
+          # daslang-live LoadLibraryEx's at runtime via `require <module>` lines
+          # in the test scripts. Matches the set daslang's extended_checks
+          # workflow builds for live tests.
+          cmake --build ./build --config Release --parallel --target `
+            daslang daslang-live `
+            dasModuleLiveHost dasModuleGlfw dasModuleHV `
             dasModulePUGIXML dasModuleStbImage
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: "daspkg install dasImgui (global)"
+        shell: pwsh
         run: |
-          set -eux
-          ${{ github.workspace }}/daslang-src/bin/daslang \
-            ${{ github.workspace }}/daslang-src/utils/daspkg/main.das -- \
-            install ${{ github.workspace }}/dasImgui --global
+          & "${{ github.workspace }}/daslang-src/bin/Release/daslang.exe" `
+            "${{ github.workspace }}/daslang-src/utils/daspkg/main.das" -- `
+            install "${{ github.workspace }}/dasImgui" --global
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: "Run integration tests (xvfb-run)"
+      - name: "Run integration tests"
         working-directory: ${{ github.workspace }}/daslang-src
+        shell: pwsh
         run: |
-          set -eux
-          xvfb-run -a bin/daslang dastest/dastest.das -- \
+          & "./bin/Release/daslang.exe" dastest/dastest.das -- `
             --test modules/dasImgui/tests/integration
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
