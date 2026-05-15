@@ -27,15 +27,17 @@ for the full enumerator list.
 .. _enum-imgui-ImGuiTabBarFlags:
 .. _enum-imgui-ImGuiTabItemFlags:
 .. _enum-imgui-ImGuiTreeNodeFlags:
+.. _enum-imgui-ImGuiPopupFlags:
 
 ``imgui::ImGui*Flags``
 ======================
 
 Bitfield enums exposed by the ``imgui`` builtin module: ``ImGuiWindowFlags``,
 ``ImGuiChildFlags``, ``ImGuiTabBarFlags``, ``ImGuiTabItemFlags``,
-``ImGuiTreeNodeFlags``. Passed to the corresponding ``imgui::Begin*`` /
-``BeginTabBar`` / ``BeginTabItem`` / ``TreeNodeEx`` calls. Values map directly to
-upstream ``ImGui*Flags_*`` enumerants; see the
+``ImGuiTreeNodeFlags``, ``ImGuiPopupFlags``. Passed to the corresponding
+``imgui::Begin*`` / ``BeginTabBar`` / ``BeginTabItem`` / ``TreeNodeEx`` /
+``OpenPopup`` calls. Values map directly to upstream ``ImGui*Flags_*``
+enumerants; see the
 `Dear ImGui flag enums <https://github.com/ocornut/imgui/blob/master/imgui.h>`_
 for the full enumerator lists.
 

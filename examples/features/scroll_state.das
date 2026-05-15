@@ -18,6 +18,9 @@ require imgui/imgui_boost_v2
 require imgui/imgui_widgets_builtin
 require imgui/imgui_containers_builtin
 
+var SCROLLY_ROW : table<int; NarrativeState>
+var LOG_ROW : table<int; NarrativeState>
+
 // =============================================================================
 // FEATURE: scroll_state — Phase 1.2 scroll capture for window + child.
 // SHOWS:   WindowState and ChildState now carry `scroll` and `scroll_max`
@@ -55,7 +58,8 @@ def update() {
         text("Window scroll values appear in SCROLLY_WIN.payload.scroll")
         text("along with scroll_max. Forty rows below to make it scroll.")
         for (i in range(0, 40)) {
-            text("row {i}: lorem ipsum dolor sit amet consectetur adipiscing elit")
+            text(SCROLLY_ROW[i],
+                (text = "row {i}: lorem ipsum dolor sit amet consectetur adipiscing elit"))
         }
     }
 
@@ -68,7 +72,7 @@ def update() {
                            child_flags = ImGuiChildFlags.Border,
                            window_flags = ImGuiWindowFlags.None)) {
             for (i in range(0, 25)) {
-                text("log line {i}")
+                text(LOG_ROW[i], (text = "log line {i}"))
             }
         }
     }

@@ -295,6 +295,49 @@ def popup_modal(var state : PopupState; text : string; closable : bool;
     open_close_finalize(widget_ident, "popup_modal", state)
 }
 
+// ===== Popup control (trigger paired with popup / popup_modal containers) =====
+
+def open_popup(var state : PopupState) : void {
+    //! Queue `OpenPopup(state.text)` for the next visit of the paired
+    //! `popup` / `popup_modal` container — the container reads
+    //! `pending_open` before `BeginPopup`, so the linkage button-click →
+    //! popup is observable as a state mutation (visible to live/mouse-cards).
+    state.pending_open = true
+}
+
+def open_popup(str_id : string;
+               flags : ImGuiPopupFlags = ImGuiPopupFlags.None) : void {
+    //! String-id form for stateless popups (paired with `popup_context_item`).
+    //! No telemetry — open-state lives in ImGui internals.
+    OpenPopup(str_id, flags)
+}
+
+def open_popup_on_item_click(str_id : string;
+                             flags : ImGuiPopupFlags = ImGuiPopupFlags.MouseButtonRight) : void {
+    //! Right-click on the previously-submitted item opens `str_id` popup.
+    //! Stateless trigger paired with `popup_context_item`.
+    OpenPopupOnItemClick(str_id, flags)
+}
+
+def close_current_popup(var state : PopupState) : void {
+    //! Close the active popup. Sets `pending_close` for state-transition
+    //! telemetry AND calls `CloseCurrentPopup()` directly so the close
+    //! takes effect on the current frame (matches raw-call semantics).
+    state.pending_close = true
+    CloseCurrentPopup()
+}
+
+def close_current_popup() : void {
+    //! No-state form for body-internal use where a `PopupState` ident isn't
+    //! in scope (e.g., inside `popup_context_item`, which is stateless).
+    CloseCurrentPopup()
+}
+
+def is_popup_open(state : PopupState) : bool {
+    //! True while the paired popup container is open this frame.
+    return state.open
+}
+
 // ===== Tab family =====
 
 [container]

@@ -72,11 +72,6 @@ let private ALLOWED_IMGUI : table<string> <- {
     // user-controlled. v2 drag_drop_source/_target containers gate the body;
     // these calls are the payload exchange inside.
     "SetDragDropPayload", "AcceptDragDropPayload", "GetDragDropPayload",
-    // Raw Selectable form (label, is_selected, flags, size) — used inside
-    // list_box bodies where the row-selection model is user-controlled.
-    // The v2 `selectable(STATE_IDENT, ...)` widget is for boolean-toggle
-    // selectables, not for radio-style index selection.
-    "Selectable",
     // Viewport queries.
     "GetMainViewport",
     // Docking internals — DockBuilder* is cherry-picked from imgui_internal.h

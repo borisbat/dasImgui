@@ -145,8 +145,9 @@ def private edit_finalize(widget_ident : string; kind : string; var ptr : auto(T
 // ===== Triggers (click family) =====
 
 [widget]
-def button(var state : ClickState; text : string) : bool {
-    let im_clicked = Button(text, ImVec2(0.0f, 0.0f))
+def button(var state : ClickState; text : string;
+           size : float2 = float2(0.0f, 0.0f)) : bool {
+    let im_clicked = Button(text, ImVec2(size.x, size.y))
     var clicked = im_clicked
     if (state.pending_click) {
         state.pending_click = false

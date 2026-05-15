@@ -34,6 +34,7 @@ require imgui/imgui_containers_builtin
 
 let LANG_NAMES : array<string> <- ["daslang", "C++", "Rust", "Go", "Python", "Lua"]
 let LANG_ICONS : array<string> <- ["[D]", "[C]", "[R]", "[G]", "[P]", "[L]"]
+var LANG_ROW : table<int; ClickState>
 
 [export]
 def init() {
@@ -62,9 +63,7 @@ def update() {
             for (i in range(length(LANG_NAMES))) {
                 let is_sel = (i == LANG.value)
                 let row_text = "{LANG_ICONS[i]} {LANG_NAMES[i]}"
-                if (Selectable(row_text, is_sel,
-                               ImGuiSelectableFlags.None,
-                               float2(0.0f, 0.0f))) {
+                if (selectable_label(LANG_ROW[i], row_text, is_sel)) {
                     LANG.value = i
                 }
             }

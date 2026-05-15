@@ -36,6 +36,8 @@ require imgui/imgui_containers_builtin
 
 let PALETTE_NAMES : array<string> <- ["Sunset", "Ocean", "Forest", "Mono"]
 let TASK_NAMES : array<string> <- ["Compile", "Lint", "Test", "Package", "Deploy"]
+var PALETTE_ROW : table<int; ClickState>
+var TASK_ROW : table<int; ClickState>
 
 [export]
 def init() {
@@ -127,9 +129,7 @@ def update() {
                                      flags = ImGuiComboFlags.None)) {
             for (i in range(length(PALETTE_NAMES))) {
                 let is_sel = (i == PALETTE_COMBO.value)
-                if (Selectable(PALETTE_NAMES[i], is_sel,
-                               ImGuiSelectableFlags.None,
-                               float2(0.0f, 0.0f))) {
+                if (selectable_label(PALETTE_ROW[i], PALETTE_NAMES[i], is_sel)) {
                     PALETTE_COMBO.value = i
                 }
             }
@@ -140,9 +140,7 @@ def update() {
                              size = float2(220.0f, 110.0f))) {
             for (i in range(length(TASK_NAMES))) {
                 let is_sel = (i == TASK_LIST.value)
-                if (Selectable(TASK_NAMES[i], is_sel,
-                               ImGuiSelectableFlags.None,
-                               float2(0.0f, 0.0f))) {
+                if (selectable_label(TASK_ROW[i], TASK_NAMES[i], is_sel)) {
                     TASK_LIST.value = i
                 }
             }
