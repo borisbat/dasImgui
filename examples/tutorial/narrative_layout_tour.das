@@ -55,7 +55,7 @@ def update() {
 
     g_progress += 0.005f
     if (g_progress > 1.0f) {
-        g_progress -= 1.0f
+        g_progress--
     }
 
     SetNextWindowPos(ImVec2(60.0, 60.0), ImGuiCond.Always)

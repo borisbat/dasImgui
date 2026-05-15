@@ -58,9 +58,7 @@ def init() {
 
 [export]
 def update() {
-    if (!live_begin_frame()) {
-        return
-    }
+    return if (!live_begin_frame())
     begin_frame()
 
     ImGui_ImplOpenGL3_NewFrame()
