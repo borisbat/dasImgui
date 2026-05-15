@@ -54,6 +54,6 @@ html_static_path = ['_static']
 # Forge dark retoken — matches daslang.io/doc/ visually. Vendored from
 # daslang's doc/source/_static/custom.css; reconcile against upstream when
 # the daslang docs theme evolves.
-html_css_files = ['custom.css']
+html_css_files = ['custom.css', 'custom-patch.css']
 
 htmlhelp_basename = 'dasimgui_doc'
