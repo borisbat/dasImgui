@@ -1,10 +1,11 @@
 options gen2
+options _allow_imgui_legacy = true
 
 require imgui
 require imgui/imgui_lint
 
-//! Smoke test — `imgui_lint` is loaded but `_no_imgui_legacy` is NOT set.
-//! The lint must stay dormant; a raw imgui::Button call compiles cleanly.
+//! Opt-out smoke — `imgui_lint` is loaded and default-on, but
+//! `_allow_imgui_legacy = true` disables it. Raw imgui::Button compiles cleanly.
 
 [export]
 def main() {

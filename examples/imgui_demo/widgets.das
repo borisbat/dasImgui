@@ -1,5 +1,6 @@
 options gen2
 options indenting = 4
+options _allow_imgui_legacy = true
 
 module widgets
 
@@ -177,7 +178,7 @@ def private BasicSection() {
             }
         }
         same_line(WIDGETS_SL_6)
-        text((text = "{WIDGETS_BASIC_ARROW_COUNTER}"))
+        text("{WIDGETS_BASIC_ARROW_COUNTER}")
 
         // SetItemTooltip → item_tooltip container (binding-gap shim).
         button(WIDGETS_BASIC_TOOLTIP_BTN, (text = "Tooltip"))
@@ -194,8 +195,7 @@ def private BasicSection() {
         text_disabled("(?)")
         item_tooltip(WIDGETS_BASIC_HM1_TIP) {
             with_text_wrap_pos(GetFontSize() * 35.0f) {
-                text_unformatted((text =
-                    "USER:\n" +
+                text_unformatted((text = "USER:\n" +
                     "Hold SHIFT or use mouse to select text.\n" +
                     "CTRL+Left/Right to word jump.\n" +
                     "CTRL+A or Double-Click to select all.\n" +
@@ -227,8 +227,7 @@ def private BasicSection() {
         text_disabled("(?)")
         item_tooltip(WIDGETS_BASIC_HM2_TIP) {
             with_text_wrap_pos(GetFontSize() * 35.0f) {
-                text_unformatted((text =
-                    "You can input value using the scientific notation,\n" +
+                text_unformatted((text = "You can input value using the scientific notation,\n" +
                     "  e.g. \"1e+8\" becomes \"100000000\"."))
             }
         }
@@ -242,8 +241,7 @@ def private BasicSection() {
         text_disabled("(?)")
         item_tooltip(WIDGETS_BASIC_HM3_TIP) {
             with_text_wrap_pos(GetFontSize() * 35.0f) {
-                text_unformatted((text =
-                    "Click and drag to edit value.\n" +
+                text_unformatted((text = "Click and drag to edit value.\n" +
                     "Hold SHIFT/ALT for faster/slower edit.\n" +
                     "Double-click or CTRL+click to input value."))
             }
@@ -291,8 +289,7 @@ def private BasicSection() {
         text_disabled("(?)")
         item_tooltip(WIDGETS_BASIC_HM5_TIP) {
             with_text_wrap_pos(GetFontSize() * 35.0f) {
-                text_unformatted((text =
-                    "Using the format string parameter to display a name instead of the " +
+                text_unformatted((text = "Using the format string parameter to display a name instead of the " +
                     "underlying integer."))
             }
         }
@@ -305,8 +302,7 @@ def private BasicSection() {
         text_disabled("(?)")
         item_tooltip(WIDGETS_BASIC_HM6_TIP) {
             with_text_wrap_pos(GetFontSize() * 35.0f) {
-                text_unformatted((text =
-                    "Click on the color square to open a color picker.\n" +
+                text_unformatted((text = "Click on the color square to open a color picker.\n" +
                     "Click and hold to use drag and drop.\n" +
                     "Right-click on the color square to show options.\n" +
                     "CTRL+click on individual component to input value.\n"))
@@ -324,8 +320,7 @@ def private BasicSection() {
         text_disabled("(?)")
         item_tooltip(WIDGETS_BASIC_HM7_TIP) {
             with_text_wrap_pos(GetFontSize() * 35.0f) {
-                text_unformatted((text =
-                    "Using the simplified one-liner Combo API here.\n" +
+                text_unformatted((text = "Using the simplified one-liner Combo API here.\n" +
                     "Refer to the \"Combo\" section below for an explanation of how to " +
                     "use the more flexible and general BeginCombo/EndCombo API."))
             }
@@ -351,8 +346,7 @@ def private BasicSection() {
         text_disabled("(?)")
         item_tooltip(WIDGETS_BASIC_HM8_TIP) {
             with_text_wrap_pos(GetFontSize() * 35.0f) {
-                text_unformatted((text =
-                    "Using the manual BeginListBox/EndListBox idiom here.\n" +
+                text_unformatted((text = "Using the manual BeginListBox/EndListBox idiom here.\n" +
                     "Refer to the \"List boxes\" section below for the full discussion."))
             }
         }
@@ -372,8 +366,7 @@ def private TooltipsSection() {
         text_disabled("(?)")
         item_tooltip(WIDGETS_TIPS_HM1_TIP) {
             with_text_wrap_pos(GetFontSize() * 35.0f) {
-                text_unformatted((text =
-                    "Tooltip are typically created by using a IsItemHovered() + " +
+                text_unformatted((text = "Tooltip are typically created by using a IsItemHovered() + " +
                     "SetTooltip() sequence.\n\nWe provide a helper SetItemTooltip() " +
                     "function to perform the two with standards flags."))
             }
@@ -396,7 +389,7 @@ def private TooltipsSection() {
             // 9 args are supplied. stride is sizeof(float) = 4.
             PlotLines("Curve", unsafe(addr(arr[0])), length(arr),
                       0, "", FLT_MAX, FLT_MAX, float2(0.0f, 0.0f), 4)
-            text((text = "Sin(time) = {sin(float(GetTime()))}"))
+            text("Sin(time) = {sin(float(GetTime()))}")
         }
 
         separator_text("Always On")
@@ -422,8 +415,7 @@ def private TooltipsSection() {
         text_disabled("(?)")
         item_tooltip(WIDGETS_TIPS_HM2_TIP) {
             with_text_wrap_pos(GetFontSize() * 35.0f) {
-                text_unformatted((text =
-                    "Passing ImGuiHoveredFlags_ForTooltip to IsItemHovered() is the " +
+                text_unformatted((text = "Passing ImGuiHoveredFlags_ForTooltip to IsItemHovered() is the " +
                     "preferred way to standardize tooltip activation details across " +
                     "your application. You may however decide to use custom flags for " +
                     "a specific tooltip instance."))
@@ -495,8 +487,7 @@ def private TreeNodesSection() {
             text_disabled("(?)")
             item_tooltip(WIDGETS_TREE_HM1_TIP) {
                 with_text_wrap_pos(GetFontSize() * 35.0f) {
-                    text_unformatted((text =
-                        "This is a more typical looking tree with selectable nodes.\n" +
+                    text_unformatted((text = "This is a more typical looking tree with selectable nodes.\n" +
                         "Click to select, CTRL+Click to toggle, click on arrows or " +
                         "double-click to open."))
                 }
@@ -522,8 +513,7 @@ def private TreeNodesSection() {
             text_disabled("(?)")
             item_tooltip(WIDGETS_TREE_HM2_TIP) {
                 with_text_wrap_pos(GetFontSize() * 35.0f) {
-                    text_unformatted((text =
-                        "Extend hit area to all available width instead of allowing " +
+                    text_unformatted((text = "Extend hit area to all available width instead of allowing " +
                         "more items to be laid out after the node."))
                 }
             }
@@ -665,7 +655,7 @@ def private CollapsingHeadersSection() {
                 (text = "Show 2nd header", init = true))
             collapsing_header(WIDGETS_CH_HEADER,
                 (text = "Header", closable = false, flags = ImGuiTreeNodeFlags.None)) {
-                text((text = "IsItemHovered: {IsItemHovered()}"))
+                text("IsItemHovered: {IsItemHovered()}")
                 for (i in range(5)) {
                     text(WIDGETS_LOOP_CH_TEXT_INNER[i], (text = "Some content {i}"))
                 }
@@ -677,7 +667,7 @@ def private CollapsingHeadersSection() {
             if (edit_collapsing_header(safe_addr(WIDGETS_CH_CLOSABLE_GROUP.value),
                                        (id = "WIDGETS_CH_HEADER2",
                                         text = "Header with a close button"))) {
-                text((text = "IsItemHovered: {IsItemHovered()}"))
+                text("IsItemHovered: {IsItemHovered()}")
                 for (i in range(5)) {
                     text(WIDGETS_LOOP_CH_TEXT_INNER2[i], (text = "More content {i}"))
                 }
@@ -730,8 +720,7 @@ def private TextSection() {
 
             tree_node(WIDGETS_TEXT_WORDWRAP,
                 (text = "Word Wrapping", flags = ImGuiTreeNodeFlags.None)) {
-                text_wrapped((text =
-                    "This text should automatically wrap on the edge of the " +
+                text_wrapped((text = "This text should automatically wrap on the edge of the " +
                     "window. The current implementation for text wrapping " +
                     "follows simple rules suitable for English and possibly " +
                     "other languages."))
@@ -771,8 +760,7 @@ def private TextSection() {
 
             tree_node(WIDGETS_TEXT_UTF8,
                 (text = "UTF-8 Text", flags = ImGuiTreeNodeFlags.None)) {
-                text_wrapped((text =
-                    "CJK text will only appear if the font was loaded with the " +
+                text_wrapped((text = "CJK text will only appear if the font was loaded with the " +
                     "appropriate CJK character ranges. Call io.Fonts->" +
                     "AddFontFromFileTTF() manually to load extra character ranges. " +
                     "Read docs/FONTS.md for details."))
@@ -795,8 +783,7 @@ def private ImagesSection() {
         (text = "Images", flags = ImGuiTreeNodeFlags.None)) {
 
         let io & = unsafe(GetIO())
-        text_wrapped((text =
-            "Below we are displaying the font texture (which is the only texture " +
+        text_wrapped((text = "Below we are displaying the font texture (which is the only texture " +
             "we have access to in this demo). Use the 'ImTextureID' type as " +
             "storage to pass pointers or identifier to your own texture data. " +
             "Hover the texture for a zoomed view!"))
@@ -806,7 +793,7 @@ def private ImagesSection() {
         let my_tex_h = float(unsafe(*io.Fonts).TexHeight)
 
         checkbox(WIDGETS_IMAGES_USE_TINT, (text = "Use Text Color for Tint"))
-        text((text = "{int(my_tex_w)}x{int(my_tex_h)}"))
+        text("{int(my_tex_w)}x{int(my_tex_h)}")
         let pos = GetCursorScreenPos()
         let uv_min = float2(0.0f, 0.0f)
         let uv_max = float2(1.0f, 1.0f)
@@ -833,8 +820,8 @@ def private ImagesSection() {
             } elif (region_y > my_tex_h - region_sz) {
                 region_y = my_tex_h - region_sz
             }
-            text((text = "Min: ({region_x}, {region_y})"))
-            text((text = "Max: ({region_x + region_sz}, {region_y + region_sz})"))
+            text("Min: ({region_x}, {region_y})")
+            text("Max: ({region_x + region_sz}, {region_y + region_sz})")
             let uv0 = float2(region_x / my_tex_w, region_y / my_tex_h)
             let uv1 = float2((region_x + region_sz) / my_tex_w,
                              (region_y + region_sz) / my_tex_h)
@@ -858,7 +845,7 @@ def private ImagesSection() {
             same_line(WIDGETS_LOOP_IMG_SL[i])
         }
         new_line(WIDGETS_NL_1)
-        text((text = "Pressed {WIDGETS_IMAGES_PRESSED_COUNT} times."))
+        text("Pressed {WIDGETS_IMAGES_PRESSED_COUNT} times.")
     }
 }
 

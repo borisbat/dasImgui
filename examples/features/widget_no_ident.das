@@ -1,4 +1,9 @@
 options gen2
+// This demo deliberately exercises the Form 2 named-tuple-without-ident shape
+// that STYLE001 forbids on single-arg narrative widgets like `text`. Opt out
+// per-file so the educational `text((text=...))` line below renders instead
+// of becoming a hard build error.
+options _allow_imgui_legacy = true
 
 require imgui
 require imgui_app

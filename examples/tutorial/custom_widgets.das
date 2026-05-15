@@ -1,4 +1,9 @@
 options gen2
+// TODO: this tutorial uses pre-v2 raw imgui calls (Text/Spacing/Separator/
+// SameLine etc.) and needs a follow-up rewrite to use the v2 wrappers
+// (text/spacing/separator/same_line). Opt out of the default-on lint until
+// that pass lands so the file stays compileable.
+options _allow_imgui_legacy = true
 
 require imgui
 require imgui_app
@@ -16,7 +21,7 @@ require imgui/imgui_boost_v2
 require imgui/imgui_widgets_builtin
 require imgui/imgui_containers_builtin
 require imgui/imgui_visual_aids
-require imgui/imgui_boost
+require imgui/imgui_colors
 
 require math
 require strings
@@ -112,21 +117,21 @@ def knob(var state : VolumeKnobState; text : string) : bool {
         center.y + sin(theta) * radius * 0.82f
     )
     let hovered = IsItemHovered()
-    let rim_col = hovered ? IM_COL32(190u, 200u, 220u, 255u) : IM_COL32(120u, 130u, 150u, 255u)
-    *GetWindowDrawList() |> AddCircleFilled(center, radius, IM_COL32(40u, 42u, 48u, 255u), 32)
+    let rim_col = hovered ? rgba(190u, 200u, 220u, 255u) : rgba(120u, 130u, 150u, 255u)
+    *GetWindowDrawList() |> AddCircleFilled(center, radius, rgba(40u, 42u, 48u, 255u), 32)
     *GetWindowDrawList() |> AddCircle(center, radius, rim_col, 32, 2.0f)
-    *GetWindowDrawList() |> AddLine(center, tip, IM_COL32(220u, 200u, 60u, 255u), 3.0f)
+    *GetWindowDrawList() |> AddLine(center, tip, rgba(220u, 200u, 60u, 255u), 3.0f)
 
     // 5. Label + value readout, both drawlist (no ImGui layout impact).
     let label_size = CalcTextSize(text, false, -1.0f)
     let label_pos = ImVec2(center.x - label_size.x * 0.5f, p.y + 76.0f)
-    *GetWindowDrawList() |> AddText(label_pos, IM_COL32(220u, 220u, 220u, 255u), text)
+    *GetWindowDrawList() |> AddText(label_pos, rgba(220u, 220u, 220u, 255u), text)
     let val_str = build_string() <| $(var w) {
         fmt(w, ":.2f", state.value)
     }
     let val_size = CalcTextSize(val_str, false, -1.0f)
     let val_pos = ImVec2(center.x - val_size.x * 0.5f, p.y + 94.0f)
-    *GetWindowDrawList() |> AddText(val_pos, IM_COL32(170u, 170u, 180u, 255u), val_str)
+    *GetWindowDrawList() |> AddText(val_pos, rgba(170u, 170u, 180u, 255u), val_str)
 
     // 6. Wire up serializer + imgui_set dispatcher. Same call any slider makes.
     pending_value_finalize(widget_ident, "knob", state)

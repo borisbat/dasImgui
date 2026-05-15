@@ -94,7 +94,7 @@ def update() {
         if (button(HOVER_TIP, (text = "Hover me"))) {
             print("clicked\n")
         }
-        set_item_tooltip("set_item_tooltip — fires on previous-item hover.")
+        set_item_tooltip((text = "set_item_tooltip — fires on previous-item hover."))
     }
 
     end_of_frame()

@@ -149,21 +149,21 @@ def update() {
         separator(LR_SEP_1)
 
         // ---- The custom counter, driven from outside via [live_command] ----
-        text((text = "g_custom_counter = {g_custom_counter}"))
+        text("g_custom_counter = {g_custom_counter}")
         text("  - @live, preserved across reload")
         text("  - mutated externally by `bump_counter` / `reset_counter`")
 
         separator(LR_SEP_2)
 
         // ---- Contrast: session string resets each reload ----
-        text((text = "g_session_string = \"{g_session_string}\""))
+        text("g_session_string = \"{g_session_string}\"")
         text("  - NOT @live; init() rewrites it each reload")
 
         separator(LR_SEP_3)
 
         // ---- A button whose click count is preserved (ClickState is @live) ----
         if (button(PING_BTN, (text = "Ping (click_count survives reload)"))) {}
-        text((text = "PING_BTN.click_count = {PING_BTN.click_count}"))
+        text("PING_BTN.click_count = {PING_BTN.click_count}")
     }
 
     end_of_frame()

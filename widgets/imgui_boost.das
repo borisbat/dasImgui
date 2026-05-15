@@ -2,10 +2,12 @@ options gen2
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
+options _allow_imgui_legacy = true
 
 module imgui_boost_v2 shared
 
 require imgui public
+require imgui/imgui_lint public
 require imgui/imgui_boost_runtime public
 require daslib/ast
 require daslib/ast_boost
@@ -241,6 +243,29 @@ class WidgetCallMacro : AstCallMacro {
             } elif (head is ExprMakeTuple && (head as ExprMakeTuple) != null
                     && length((head as ExprMakeTuple).recordNames) == length((head as ExprMakeTuple).values)
                     && !empty((head as ExprMakeTuple).recordNames)) {
+                // STYLE001 — verbose `kind((field="literal"))` where positional `kind("literal")` works.
+                // Three gates, ALL must match:
+                //   1. Single arg, single named-tuple field (no other call args).
+                //   2. The lone field's value is a string literal or string-builder
+                //      — positional sugar at line 222 only accepts those, so an ExprVar
+                //      arg has NO positional alternative (would silently become Form 1
+                //      and treat the var as the widget IDENT).
+                //   3. Wrapper accepts positional-string form AND the field name matches
+                //      the wrapper's first user param.
+                //   4. `_allow_imgui_legacy = true` is NOT set on the consumer file.
+                let mtCheck = head as ExprMakeTuple
+                if (length(expr.arguments) == 1 && length(mtCheck.recordNames) == 1
+                        && (mtCheck.values[0] is ExprConstString || mtCheck.values[0] is ExprStringBuilder)
+                        && accepts_positional_string()) {
+                    let firstParamName = string(render_fn.arguments[2].name)
+                    let tupleFieldName = string(mtCheck.recordNames[0])
+                    let opted_out = prog._options |> find_arg("_allow_imgui_legacy") ?as tBool ?? false
+                    if (firstParamName == tupleFieldName && !opted_out) {
+                        macro_error(prog, expr.at,
+                            "STYLE001: prefer positional form `{kind_name}(\"...\")` over verbose named-tuple `{kind_name}(({tupleFieldName}=...))`. Per-file opt-out: `options _allow_imgui_legacy = true`")
+                        return <- default<ExpressionPtr>
+                    }
+                }
                 // Form 2: auto-gen ident from source location. The first arg is a
                 // named-tuple — user did not supply an ident.
                 bareName = synth_bare_name(expr.at)

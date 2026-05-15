@@ -1,11 +1,10 @@
 options gen2
 options indenting = 4
-options _no_imgui_legacy = true
+options _allow_imgui_legacy = true
 
 module app_console
 
 require imgui
-require imgui/imgui_lint
 require imgui/imgui_widgets_builtin
 require imgui/imgui_containers_builtin
 require imgui/imgui_scope_builtin
@@ -249,7 +248,7 @@ def ShowExampleAppConsole() {
                               "(Up/Down keys). A more elaborate implementation " +
                               "may want to store entries along with extra data " +
                               "such as timestamp, emitter, etc."))
-        text_wrapped((text = "Enter 'HELP' for help."))
+        text_wrapped("Enter 'HELP' for help.")
 
         if (small_button(CONSOLE_BTN_DBG, (text = "Add Debug Text"))) {
             add_log("{length(CONSOLE_ITEMS)} some text")

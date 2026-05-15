@@ -90,13 +90,13 @@ def update() {
 
         // ---- A text input — driven by `imgui_set` with a string value ----
         input_text(USER, (text = "User"))
-        text((text = "USER.value = \"{USER.value}\""))
+        text("USER.value = \"{USER.value}\"")
 
         separator(DR_SEP_1)
 
         // ---- A slider — driven by `imgui_set` with a number value ----
         slider_int(SPEED, (text = "Speed"))
-        text((text = "SPEED.value = {SPEED.value}"))
+        text("SPEED.value = {SPEED.value}")
 
         separator(DR_SEP_2)
 
@@ -115,13 +115,13 @@ def update() {
                 }
             }
         }
-        text((text = "PRESET = {preset_label} (idx {PRESET.value})"))
+        text("PRESET = {preset_label} (idx {PRESET.value})")
 
         separator(DR_SEP_3)
 
         // ---- A button — fired by `imgui_click` ----
         if (button(RUN_BTN, (text = "Run"))) {}
-        text((text = "RUN_BTN.click_count = {RUN_BTN.click_count}"))
+        text("RUN_BTN.click_count = {RUN_BTN.click_count}")
 
         separator(DR_SEP_4)
 
@@ -131,7 +131,7 @@ def update() {
                              flags = ImGuiWindowFlags.None)) {
             text("Driven from outside via imgui_open.")
             separator(DR_SEP_5)
-            text((text = "RUN_BTN.click_count = {RUN_BTN.click_count}"))
+            text("RUN_BTN.click_count = {RUN_BTN.click_count}")
         }
     }
 

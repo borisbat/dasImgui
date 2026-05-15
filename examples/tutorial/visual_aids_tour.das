@@ -75,7 +75,7 @@ def update() {
         }
         separator(VA_SEP_2)
         input_text(NAME_INPUT, (text = "Name"))
-        text((text = "buffer = {NAME_INPUT.value}"))
+        text("buffer = {NAME_INPUT.value}")
     }
 
     // ===== Controls window — driver buttons for the aids =====
@@ -124,7 +124,7 @@ def update() {
         }
 
         spacing(VA_SP_3)
-        text((text = "Auto-highlight on command (flag, currently {imgui_auto_highlight_on_command}):"))
+        text("Auto-highlight on command (flag, currently {imgui_auto_highlight_on_command}):")
         separator(VA_SEP_6)
         if (button(BTN_AUTO_ON, (text = "auto-highlight ON"))) {
             imgui_auto_highlight_on_command = true

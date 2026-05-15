@@ -1,11 +1,10 @@
 options gen2
 options indenting = 4
-options _no_imgui_legacy = true
+options _allow_imgui_legacy = true
 
 module popups
 
 require imgui
-require imgui/imgui_lint
 require imgui/imgui_widgets_builtin
 require imgui/imgui_containers_builtin
 require imgui/imgui_scope_builtin
@@ -82,8 +81,7 @@ def private PopupsSection() {
     tree_node(POPUPS_POPUPS_SUB,
         (text = "Popups", flags = ImGuiTreeNodeFlags.None)) {
 
-        text_wrapped((text =
-            "When a popup is active, it inhibits interacting with windows " +
+        text_wrapped((text = "When a popup is active, it inhibits interacting with windows " +
             "that are behind the popup. Clicking outside the popup closes it."))
 
         // ----- "Select.." popup -----
@@ -181,8 +179,7 @@ def private ContextMenusSection() {
         text_disabled("(?)")
         item_tooltip(POPUPS_CTX_HM_INTRO_TIP) {
             with_text_wrap_pos(GetFontSize() * 35.0f) {
-                text_unformatted((text =
-                    "\"Context\" functions are simple helpers to associate a Popup to " +
+                text_unformatted((text = "\"Context\" functions are simple helpers to associate a Popup to " +
                     "a given Item or Window identifier."))
             }
         }
@@ -200,7 +197,7 @@ def private ContextMenusSection() {
             popup_context_item(POPUPS_CTX1_POPUP[n],
                                (str_id = "", flags = ImGuiPopupFlags.MouseButtonRight)) {
                 POPUPS_CTX1_SELECTED = n
-                text((text = "This a popup for \"{ex1_names[n]}\"!"))
+                text("This a popup for \"{ex1_names[n]}\"!")
                 if (button((text = "Close"))) {
                     close_current_popup()
                 }
@@ -212,11 +209,10 @@ def private ContextMenusSection() {
         text_disabled("(?)")
         item_tooltip(POPUPS_CTX2_HM_TIP) {
             with_text_wrap_pos(GetFontSize() * 35.0f) {
-                text_unformatted((text =
-                    "Text() elements don't have stable identifiers so we need to provide one."))
+                text_unformatted("Text() elements don't have stable identifiers so we need to provide one.")
             }
         }
-        text((text = "Value = {POPUPS_CTX2_VALUE} <-- (1) right-click this text"))
+        text("Value = {POPUPS_CTX2_VALUE} <-- (1) right-click this text")
         popup_context_item(POPUPS_CTX2_POPUP,
                            (str_id = "my popup",
                             flags = ImGuiPopupFlags.MouseButtonRight)) {
@@ -233,7 +229,7 @@ def private ContextMenusSection() {
 
         // Second text triggers the same popup via OpenPopupOnItemClick —
         // string-id form since popup_context_item is stateless.
-        text((text = "(2) Or right-click this text"))
+        text("(2) Or right-click this text")
         open_popup_on_item_click("my popup")
 
         // Third trigger: a plain Button that manually opens the same popup
@@ -246,8 +242,7 @@ def private ContextMenusSection() {
         text_disabled("(?)")
         item_tooltip(POPUPS_CTX3_HM_TIP) {
             with_text_wrap_pos(GetFontSize() * 35.0f) {
-                text_unformatted((text =
-                    "Showcase using a popup ID linked to item ID, with the item having " +
+                text_unformatted((text = "Showcase using a popup ID linked to item ID, with the item having " +
                     "a changing label + stable ID using the ### operator."))
             }
         }

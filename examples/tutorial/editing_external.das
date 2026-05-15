@@ -114,13 +114,13 @@ def update() {
                                                v_degrees_max = 180.0f))
 
         separator(SEP_READOUT)
-        text((text = "g_volume = {g_volume}"))
-        text((text = "g_count = {g_count}"))
-        text((text = "g_enabled = {g_enabled}"))
-        text((text = "g_pos = ({g_pos.x}, {g_pos.y}, {g_pos.z})"))
-        text((text = "g_accent = ({g_accent.x}, {g_accent.y}, {g_accent.z})"))
-        text((text = "g_quality_idx = {g_quality_idx} ({g_qualities[g_quality_idx]})"))
-        text((text = "g_angle = {g_angle} rad"))
+        text("g_volume = {g_volume}")
+        text("g_count = {g_count}")
+        text("g_enabled = {g_enabled}")
+        text("g_pos = ({g_pos.x}, {g_pos.y}, {g_pos.z})")
+        text("g_accent = ({g_accent.x}, {g_accent.y}, {g_accent.z})")
+        text("g_quality_idx = {g_quality_idx} ({g_qualities[g_quality_idx]})")
+        text("g_angle = {g_angle} rad")
     }
 
     end_of_frame()

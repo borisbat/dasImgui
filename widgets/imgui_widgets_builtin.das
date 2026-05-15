@@ -2,6 +2,7 @@ options gen2
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
+options _allow_imgui_legacy = true
 
 module imgui_widgets_builtin shared
 
@@ -1357,13 +1358,14 @@ def text(var state : NarrativeState; text : string) {
     //! Plain text display. `state.value` echoes the call-site string for
     //! `expect_value(IDENT, "literal")` assertions.
     state.value := text
-    Text(text)
+    TextUnformatted(text)
     narrative_finalize(widget_ident, "text", state)
 }
 
 [widget]
 def text_unformatted(var state : NarrativeState; text : string) {
-    //! Like `text` but bypasses ImGui's printf-style format parsing — no `%` escaping needed.
+    //! Alias for `text` — kept for explicit clarity at call sites where the
+    //! "no printf" intent matters. Identical behavior to `text`.
     state.value := text
     TextUnformatted(text)
     narrative_finalize(widget_ident, "text_unformatted", state)
@@ -1373,7 +1375,9 @@ def text_unformatted(var state : NarrativeState; text : string) {
 def text_wrapped(var state : NarrativeState; text : string) {
     //! Text wrapped to the current window or content-region width.
     state.value := text
-    TextWrapped(text)
+    PushTextWrapPos(0.0f)
+    TextUnformatted(text)
+    PopTextWrapPos()
     narrative_finalize(widget_ident, "text_wrapped", state)
 }
 
@@ -1381,7 +1385,9 @@ def text_wrapped(var state : NarrativeState; text : string) {
 def text_colored(var state : NarrativeState; color : float4; text : string) {
     //! Tinted text — `color` overrides ``ImGuiCol_Text`` for this draw.
     state.value := text
-    TextColored(color, text)
+    PushStyleColor(ImGuiCol.Text, color)
+    TextUnformatted(text)
+    PopStyleColor(1)
     narrative_finalize(widget_ident, "text_colored", state)
 }
 
@@ -1389,7 +1395,9 @@ def text_colored(var state : NarrativeState; color : float4; text : string) {
 def text_disabled(var state : NarrativeState; text : string) {
     //! Text rendered in the disabled style (``ImGuiCol_TextDisabled``).
     state.value := text
-    TextDisabled(text)
+    PushStyleColor(ImGuiCol.Text, GetStyleColorVec4(ImGuiCol.TextDisabled))
+    TextUnformatted(text)
+    PopStyleColor(1)
     narrative_finalize(widget_ident, "text_disabled", state)
 }
 
@@ -1397,7 +1405,8 @@ def text_disabled(var state : NarrativeState; text : string) {
 def bullet_text(var state : NarrativeState; text : string) {
     //! Bullet point followed by text — like `bullet` + `text` in one call.
     state.value := text
-    BulletText(text)
+    Bullet()
+    TextUnformatted(text)
     narrative_finalize(widget_ident, "bullet_text", state)
 }
 
@@ -2183,9 +2192,9 @@ def edit_collapsing_header(var ptr : bool? implicit; text : string = "";
 // ===== Imperative commands (scroll / focus / clipboard) =====
 //
 // These are non-`[widget]` helpers — plain `def public` aliases over raw
-// ImGui calls that user code shouldn't reach for directly while
-// `options _no_imgui_legacy = true` is in effect. They take no block and
-// produce no state, so they don't fit the [widget] / [container] mold.
+// ImGui calls that user code shouldn't reach for directly under the
+// default-on lint. They take no block and produce no state, so they
+// don't fit the [widget] / [container] mold.
 
 def public set_scroll_here_y(center_y_ratio : float = 1.0f) {
     //! `SetScrollHereY(center_y_ratio)` — scrolls the current window so the

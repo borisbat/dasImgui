@@ -1,5 +1,6 @@
 options gen2
 options indenting = 4
+options _allow_imgui_legacy = true
 
 module layout
 
@@ -145,8 +146,7 @@ def private ChildWindowsSection() {
         text("(?)")
         item_tooltip(LAYOUT_CHILD_HM1) {
             with_text_wrap_pos(GetFontSize() * 35.0f) {
-                text_unformatted((text =
-                    "Use child windows to begin into a self-contained " +
+                text_unformatted((text = "Use child windows to begin into a self-contained " +
                     "independent scrolling/clipping regions within a host window."))
             }
         }
@@ -166,7 +166,7 @@ def private ChildWindowsSection() {
                child_flags = ImGuiChildFlags.None,
                window_flags = unsafe(reinterpret<ImGuiWindowFlags>(win_flags_1)))) {
             for (i in range(100)) {
-                text((text = "{i}: scrollable region"))
+                text("{i}: scrollable region")
             }
         }
 
@@ -210,8 +210,7 @@ def private ChildWindowsSection() {
         separator_text("Manual-resize")
         text("(?)")
         item_tooltip(LAYOUT_CHILD_HM2) {
-            text_unformatted((text =
-                "Drag bottom border to resize. Double-click bottom border " +
+            text_unformatted((text = "Drag bottom border to resize. Double-click bottom border " +
                 "to auto-fit to vertical contents."))
         }
         with_style((ImGuiCol.ChildBg, GetStyleColorVec4(ImGuiCol.FrameBg))) {
@@ -222,7 +221,7 @@ def private ChildWindowsSection() {
                    child_flags = unsafe(reinterpret<ImGuiChildFlags>(flags3)),
                    window_flags = ImGuiWindowFlags.None)) {
                 for (n in range(10)) {
-                    text((text = "Line {fmt_4d(n)}"))
+                    text("Line {fmt_4d(n)}")
                 }
             }
         }
@@ -248,7 +247,7 @@ def private ChildWindowsSection() {
                child_flags = unsafe(reinterpret<ImGuiChildFlags>(flags4)),
                window_flags = ImGuiWindowFlags.None)) {
             for (n in range(LAYOUT_CHILD_DRAW_LINES)) {
-                text((text = "Line {fmt_4d(n)}"))
+                text("Line {fmt_4d(n)}")
             }
         }
 
@@ -279,8 +278,7 @@ def private ChildWindowsSection() {
         text("(?)")
         item_tooltip(LAYOUT_CHILD_HM3) {
             with_text_wrap_pos(GetFontSize() * 35.0f) {
-                text_unformatted((text =
-                    "Style the child window like a framed item: use FrameBg, " +
+                text_unformatted((text = "Style the child window like a framed item: use FrameBg, " +
                     "FrameRounding, FrameBorderSize, FramePadding instead of " +
                     "ChildBg, ChildRounding, ChildBorderSize, WindowPadding."))
             }
@@ -297,7 +295,7 @@ def private ChildWindowsSection() {
                child_flags = unsafe(reinterpret<ImGuiChildFlags>(LAYOUT_CHILD_FLAGS)),
                window_flags = ImGuiWindowFlags.None)) {
             for (n in range(50)) {
-                text((text = "Some test {n}"))
+                text("Some test {n}")
             }
         }
         if (LAYOUT_CHILD_OVERRIDE_BG) {
@@ -306,7 +304,7 @@ def private ChildWindowsSection() {
         let child_is_hovered = IsItemHovered(ImGuiHoveredFlags.None)
         let r_min = GetItemRectMin()
         let r_max = GetItemRectMax()
-        text((text = "Hovered: {child_is_hovered}"))
+        text("Hovered: {child_is_hovered}")
         text((text = "Rect of child window is: ({r_min.x},{r_min.y}) " +
                      "({r_max.x},{r_max.y})"))
     }
@@ -370,8 +368,7 @@ def private WidgetsWidthSection() {
         SameLine()
         text_disabled("(?)")
         item_tooltip(LAYOUT_WW_HM3) {
-            text_unformatted((text =
-                "Half of available width.\n(~ right-cursor_pos)\n" +
+            text_unformatted((text = "Half of available width.\n(~ right-cursor_pos)\n" +
                 "(works within a column set)"))
         }
         with_item_width(GetContentRegionAvail().x * 0.5f) {
@@ -434,8 +431,7 @@ def private WidgetsWidthSection() {
 def private BasicHorizontalLayoutSection() {
     tree_node(LAYOUT_BHL_TN, (text = "Basic Horizontal Layout",
                                flags = ImGuiTreeNodeFlags.None)) {
-        text_wrapped((text =
-            "(Use ImGui::SameLine() to keep adding items to the right of the " +
+        text_wrapped((text = "(Use ImGui::SameLine() to keep adding items to the right of the " +
             "preceding item)"))
 
         // Two-item lines via SameLine.
@@ -549,8 +545,7 @@ def private GroupsSection() {
         text("(?)")
         item_tooltip(LAYOUT_GROUPS_HM) {
             with_text_wrap_pos(GetFontSize() * 35.0f) {
-                text_unformatted((text =
-                    "BeginGroup() basically locks the horizontal position for " +
+                text_unformatted((text = "BeginGroup() basically locks the horizontal position for " +
                     "new line. EndGroup() bundles the whole group so that you " +
                     "can use \"item\" functions such as IsItemHovered()/" +
                     "IsItemActive() or SameLine() etc. on the whole group."))
@@ -616,8 +611,7 @@ def private TextBaselineAlignmentSection() {
         text("(?)")
         item_tooltip(LAYOUT_TBA_HM1) {
             with_text_wrap_pos(GetFontSize() * 35.0f) {
-                text_unformatted((text =
-                    "This is testing the vertical alignment that gets applied " +
+                text_unformatted((text = "This is testing the vertical alignment that gets applied " +
                     "on text to keep it aligned with widgets. Lines only " +
                     "composed of text or \"small\" widgets use less vertical " +
                     "space than lines with framed widgets."))
@@ -636,8 +630,7 @@ def private TextBaselineAlignmentSection() {
             button(LAYOUT_TBA_BTN2, (text = "Some framed item")); SameLine()
             text("(?)")
             item_tooltip(LAYOUT_TBA_HM3) {
-                text_unformatted((text =
-                    "We call AlignTextToFramePadding() to vertically align " +
+                text_unformatted((text = "We call AlignTextToFramePadding() to vertically align " +
                     "the text baseline by +FramePadding.y"))
             }
 
@@ -732,8 +725,7 @@ def private ScrollingSection() {
         // ----- Vertical scrolling -----
         text("(?)")
         item_tooltip(LAYOUT_SCROLL_HM_V) {
-            text_unformatted((text =
-                "Use SetScrollHereY() or SetScrollFromPosY() to scroll to a " +
+            text_unformatted((text = "Use SetScrollHereY() or SetScrollFromPosY() to scroll to a " +
                 "given vertical position."))
         }
 
@@ -811,13 +803,13 @@ def private ScrollingSection() {
                                                 "Item {item}")
                                     SetScrollHereY(float(i) * 0.25f)
                                 } else {
-                                    text((text = "Item {item}"))
+                                    text("Item {item}")
                                 }
                             }
                         }
                         let sy = GetScrollY()
                         let smy = GetScrollMaxY()
-                        text((text = "{fmt_0f(sy)}/{fmt_0f(smy)}"))
+                        text("{fmt_0f(sy)}/{fmt_0f(smy)}")
                     }
                 }
             }
@@ -828,8 +820,7 @@ def private ScrollingSection() {
         text("(?)")
         item_tooltip(LAYOUT_SCROLL_HM_H) {
             with_text_wrap_pos(GetFontSize() * 35.0f) {
-                text_unformatted((text =
-                    "Use SetScrollHereX() or SetScrollFromPosX() to scroll " +
+                text_unformatted((text = "Use SetScrollHereX() or SetScrollFromPosX() to scroll " +
                     "to a given horizontal position.\n\nBecause the clipping " +
                     "rectangle of most window hides half worth of " +
                     "WindowPadding on the left/right, using " +
@@ -861,7 +852,7 @@ def private ScrollingSection() {
                             SetScrollHereX(float(i) * 0.25f)
                             hit_track = true
                         } else {
-                            text((text = "Item {item}"))
+                            text("Item {item}")
                         }
                     }
                     // scroll_to_off/scroll_to_pos for horizontal omitted to
@@ -873,7 +864,7 @@ def private ScrollingSection() {
                 let names <- ["Left", "25%", "Center", "75%", "Right"]
                 let sx = GetScrollX()
                 let smx = GetScrollMaxX()
-                text((text = "{names[i]}\n{fmt_0f(sx)}/{fmt_0f(smx)}"))
+                text("{names[i]}\n{fmt_0f(sx)}/{fmt_0f(smx)}")
                 Spacing()
             }
         }
@@ -882,8 +873,7 @@ def private ScrollingSection() {
         text("(?)")
         item_tooltip(LAYOUT_SCROLL_HM_FB) {
             with_text_wrap_pos(GetFontSize() * 35.0f) {
-                text_unformatted((text =
-                    "Horizontal scrolling for a window is enabled via the " +
+                text_unformatted((text = "Horizontal scrolling for a window is enabled via the " +
                     "ImGuiWindowFlags_HorizontalScrollbar flag.\n\nYou may " +
                     "want to also explicitly specify content width by using " +
                     "SetNextWindowContentWidth() before Begin()."))
@@ -938,7 +928,7 @@ def private ScrollingSection() {
         SameLine()
         // Compute and display scroll_x/scroll_max_x via the child's State.
         let fb_state & = LAYOUT_SCROLL_FB_CHILD
-        text((text = "{fmt_0f(fb_state.scroll.x)}/{fmt_0f(fb_state.scroll_max.x)}"))
+        text("{fmt_0f(fb_state.scroll.x)}/{fmt_0f(fb_state.scroll_max.x)}")
         if (scroll_x_delta != 0.0f) {
             // Re-enter the child by name to nudge its scroll position. This
             // is the standard ImGui trick — BeginChild outside the child body
@@ -975,8 +965,7 @@ def private HorizontalContentsSizeDemo() {
             text("(?)")
             item_tooltip(LAYOUT_HSZ_HM) {
                 with_text_wrap_pos(GetFontSize() * 35.0f) {
-                    text_unformatted((text =
-                        "Test how different widgets react and impact the work " +
+                    text_unformatted((text = "Test how different widgets react and impact the work " +
                         "rectangle growing when horizontal scrolling is " +
                         "enabled.\n\nUse 'Metrics->Tools->Show windows " +
                         "rectangles' to visualize rectangles."))
@@ -1029,8 +1018,7 @@ def private HorizontalContentsSizeDemo() {
                                flags = ImGuiTreeNodeFlags.None)) {}
         }
         if (LAYOUT_HSZ_SHOW_TEXT_WRAPPED) {
-            text_wrapped((text =
-                "This text should automatically wrap on the edge of the work " +
+            text_wrapped((text = "This text should automatically wrap on the edge of the work " +
                 "rectangle."))
         }
         if (LAYOUT_HSZ_SHOW_COLUMNS) {
@@ -1039,14 +1027,14 @@ def private HorizontalContentsSizeDemo() {
                            float2(0.0f, 0.0f), 0.0f)) {
                 for (_n in range(4)) {
                     TableNextColumn()
-                    text((text = "Width {fmt_2f(GetContentRegionAvail().x)}"))
+                    text("Width {fmt_2f(GetContentRegionAvail().x)}")
                 }
                 EndTable()
             }
             text("Columns:")
             Columns(4, "", true)
             for (_n in range(4)) {
-                text((text = "Width {fmt_2f(GetColumnWidth(-1))}"))
+                text("Width {fmt_2f(GetColumnWidth(-1))}")
                 NextColumn()
             }
             Columns(1, "", true)
@@ -1099,8 +1087,7 @@ def private TextClippingSection() {
         text("(?)")
         item_tooltip(LAYOUT_CLIP_HM) {
             with_text_wrap_pos(GetFontSize() * 35.0f) {
-                text_unformatted((text =
-                    "(Left) Using ImGui::PushClipRect():\nWill alter ImGui " +
+                text_unformatted((text = "(Left) Using ImGui::PushClipRect():\nWill alter ImGui " +
                     "hit-testing logic + ImDrawList rendering.\n(use this if " +
                     "you want your clipping rectangle to affect interactions)" +
                     "\n\n(Center) Using ImDrawList::PushClipRect():\nWill " +
@@ -1147,8 +1134,7 @@ def private OverlapModeSection() {
         text("(?)")
         item_tooltip(LAYOUT_OVERLAP_HM) {
             with_text_wrap_pos(GetFontSize() * 35.0f) {
-                text_unformatted((text =
-                    "Hit-testing is by default performed in item submission " +
+                text_unformatted((text = "Hit-testing is by default performed in item submission " +
                     "order, which generally is perceived as 'back-to-front'." +
                     "\n\nBy using SetNextItemAllowOverlap() you can notify " +
                     "that an item may be overlapped by another. Doing so " +

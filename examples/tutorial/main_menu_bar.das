@@ -95,10 +95,10 @@ def update() {
                   flags = ImGuiWindowFlags.None)) {
         text("Click items in the bar above; the snapshot updates below.")
         separator(BODY_SEP)
-        text((text = "MI_DARKMODE.value = {MI_DARKMODE.value}"))
-        text((text = "MI_AUTOSAVE.value = {MI_AUTOSAVE.value}"))
-        text((text = "EDIT_UNDO.click_count = {EDIT_UNDO.click_count}"))
-        text((text = "MI_QUIT.value = {MI_QUIT.value}"))
+        text("MI_DARKMODE.value = {MI_DARKMODE.value}")
+        text("MI_AUTOSAVE.value = {MI_AUTOSAVE.value}")
+        text("EDIT_UNDO.click_count = {EDIT_UNDO.click_count}")
+        text("MI_QUIT.value = {MI_QUIT.value}")
     }
 
     end_of_frame()

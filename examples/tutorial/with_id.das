@@ -87,7 +87,7 @@ def update() {
         with_id("section_b") {
             button(SAVE_BTN, (text = "Save in B"))
         }
-        text((text = "SAVE_BTN.click_count aggregates: {SAVE_BTN.click_count}"))
+        text("SAVE_BTN.click_count aggregates: {SAVE_BTN.click_count}")
 
         separator(WI_SEP_1)
 
