@@ -1150,6 +1150,93 @@ def input_text_growable(var state : InputTextState; text : string;
     return changed
 }
 
+[widget]
+def input_text_callback(var state : InputTextState; text : string;
+                        flags : ImGuiInputTextFlags;
+                        cb : lambda<(var data : ImGuiInputTextCallbackData) : int>) : bool {
+    //! Single-line input with a user-supplied event callback. Use this when
+    //! `CallbackCompletion` (TAB completion), `CallbackHistory` (Up/Down
+    //! arrow), `CallbackAlways`, or `CallbackCharFilter` is needed —
+    //! the REPL pattern in `examples/imgui_demo/app_console.das` is the
+    //! canonical consumer. ImGui invokes the callback synchronously inside
+    //! `InputText` on the same thread; the `data` pointer is valid only
+    //! for that one call. For grow-on-overflow buffer resize use
+    //! `input_text_growable` instead — it wires `CallbackResize` internally
+    //! and shouldn't be combined with this wrapper.
+    input_text_buffer_init(state)
+    apply_pending_text(state)
+    var changed : bool
+    unsafe {
+        changed = _builtin_InputText_cb(addr(state.buffer[0]), state.capacity, text, flags, cb)
+    }
+    state.changed = changed
+    if (changed) {
+        sync_value_from_buffer(state)
+    }
+    text_value_finalize(widget_ident, "input_text_callback", state)
+    return changed
+}
+
+// ===== Filter family =====
+
+def private text_filter_finalize(widget_ident : string; kind : string; var state : TextFilterState) {
+    var entry : WidgetEntry
+    unsafe {
+        let ser <- @ capture(& state) () : JsonValue ? {
+            return JV((value = state.value))
+        }
+        let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
+            // Read-only for now. A future "set" path would mirror the
+            // value back into filter.InputBuf and call filter.Build();
+            // playwright doesn't drive the filter editor yet.
+        }
+        widget_finalize(widget_ident, kind, entry, ser, disp)
+    }
+    register_focusable(widget_ident)
+}
+
+[widget]
+def text_filter(var state : TextFilterState; text : string = "Filter (\"incl,-excl\") (\"error\")";
+                width : float = 0.0f) : bool {
+    //! Boost wrapper over `ImGuiTextFilter::Draw` — renders the inline
+    //! InputText editor and parses comma-separated include/exclude
+    //! tokens (`-prefix` excludes). Returns `true` on the frame the
+    //! filter expression changed. Pair with `passes_filter(state, line)`
+    //! in a loop to gate visible items. Empty filter = match-all.
+    //! The C++ `ImGuiTextFilter` value lives inline in the state — no
+    //! daslang-side buffer needed (the editor's storage is `InputBuf[256]`
+    //! on the bound struct). `state.value` mirrors the editor text after
+    //! every edit; on the first frame after a live-reload (when
+    //! `archive::serialize` restored `state.value` but the C++ filter is
+    //! zero-init), the widget body re-applies `state.value` via a fresh
+    //! `ImGuiTextFilter(default_filter)` so `Draw()` and `passes_filter()`
+    //! see the restored expression without forcing the user to retype.
+    var buf_view : string
+    unsafe {
+        buf_view = reinterpret<string>(addr(state.filter.InputBuf))
+    }
+    if (state.value != buf_view) {
+        state.filter = ImGuiTextFilter(state.value)
+    }
+    let changed = state.filter |> Draw(text, width)
+    if (changed) {
+        unsafe {
+            state.value := clone_string(reinterpret<string>(addr(state.filter.InputBuf)))
+        }
+    }
+    text_filter_finalize(widget_ident, "text_filter", state)
+    return changed
+}
+
+def public passes_filter(var state : TextFilterState; line : string) : bool {
+    //! Predicate companion to `text_filter`. Delegates to the hand-bound
+    //! `PassFilter(filter, text)` standalone helper at
+    //! `src/dasIMGUI.main.cpp:305`. While the editor is empty the
+    //! underlying `Filters` `ImVector` is empty too and PassFilter returns
+    //! true for all lines.
+    return PassFilter(state.filter, line)
+}
+
 // ===== Combo (callback-getter) =====
 
 [widget]
@@ -2091,4 +2178,48 @@ def edit_collapsing_header(var ptr : bool? implicit; text : string = "";
     }
     edit_finalize(widget_ident, "edit_collapsing_header", ptr)
     return im_open
+}
+
+// ===== Imperative commands (scroll / focus / clipboard) =====
+//
+// These are non-`[widget]` helpers — plain `def public` aliases over raw
+// ImGui calls that user code shouldn't reach for directly while
+// `options _no_imgui_legacy = true` is in effect. They take no block and
+// produce no state, so they don't fit the [widget] / [container] mold.
+
+def public set_scroll_here_y(center_y_ratio : float = 1.0f) {
+    //! `SetScrollHereY(center_y_ratio)` — scrolls the current window so the
+    //! recently-submitted item is anchored at the given vertical ratio
+    //! (0=top, 0.5=middle, 1=bottom). Common pattern: tail-follow scrolling
+    //! regions call `set_scroll_here_y(1.0f)` after the last entry.
+    SetScrollHereY(center_y_ratio)
+}
+
+def public set_keyboard_focus_here(offset : int = 0) {
+    //! `SetKeyboardFocusHere(offset)` — moves keyboard focus to the
+    //! item N items ahead (`offset = 0`) or behind (`offset = -1`, the
+    //! item that was just submitted). REPL-style inputs use `-1` after
+    //! Enter to refocus the editbox for the next command.
+    SetKeyboardFocusHere(offset)
+}
+
+def public set_item_default_focus() {
+    //! `SetItemDefaultFocus()` — marks the previous item as the default
+    //! focus target on first frame of a window. Used on the primary input
+    //! widget so the user can start typing immediately.
+    SetItemDefaultFocus()
+}
+
+def public log_to_clipboard(auto_open_depth : int = -1) {
+    //! `LogToClipboard(auto_open_depth)` — starts capturing subsequent
+    //! text-emitting widgets to the OS clipboard until `log_finish()` is
+    //! called. `auto_open_depth = -1` means capture all depths.
+    LogToClipboard(auto_open_depth)
+}
+
+def public log_finish() {
+    //! `LogFinish()` — stops the active log capture started by
+    //! `log_to_clipboard` (or any other `LogTo*` call) and finalizes the
+    //! clipboard contents.
+    LogFinish()
 }

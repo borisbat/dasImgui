@@ -72,6 +72,10 @@ let private ALLOWED_IMGUI : table<string> <- {
     // user-controlled. v2 drag_drop_source/_target containers gate the body;
     // these calls are the payload exchange inside.
     "SetDragDropPayload", "AcceptDragDropPayload", "GetDragDropPayload",
+    // Input-text callback primitives — only callable inside an
+    // ImGuiInputTextCallbackData callback (which fires synchronously from
+    // ImGui::InputText). No widget host needed; caller owns the data pointer.
+    "DeleteChars", "InsertChars",
     // Viewport queries.
     "GetMainViewport",
     // Docking internals — DockBuilder* is cherry-picked from imgui_internal.h

@@ -13,6 +13,7 @@ require daslib/json public
 require daslib/json_boost public
 require daslib/coroutines public
 require daslib/async_boost
+require daslib/archive
 require daslib/result public
 require math
 require strings
@@ -508,6 +509,37 @@ struct PopupContextItemState {
     //! Backs `popup_context_item`. Right-click attaches to the previous item
     //! and ImGui drives open/close internally; no pending flags needed.
     @optional _placeholder : bool             //! unused; keeps the struct non-empty for [container] auto-emit
+}
+
+struct PopupContextWindowState {
+    //! Backs `popup_context_window`. Right-click anywhere in the enclosing
+    //! window opens the popup; ImGui drives open/close internally.
+    @optional _placeholder : bool             //! unused; keeps the struct non-empty for [container] auto-emit
+}
+
+struct TextFilterState {
+    //! Backs `text_filter`. Holds the bound C++ `ImGuiTextFilter` value
+    //! inline — zero-init is safe (empty `InputBuf`, empty `Filters`
+    //! `ImVector`, `CountGrep = 0`), so no explicit ctor call is needed.
+    //! `text_filter` renders the inline InputText editor via the bound
+    //! `Draw()` method; `passes_filter(state, line)` delegates to the
+    //! hand-bound `PassFilter(filter, text)` standalone helper.
+    @safe_when_uninitialized @optional value : string  //! mirrored InputBuf text for snapshot/telemetry
+    @safe_when_uninitialized filter : ImGuiTextFilter
+}
+
+// JV + archive::serialize overrides for TextFilterState. The bound
+// `ImGuiTextFilter` has no daslang-side JV or serialize binding (and no safe
+// `delete`), so the generic field-walking JV / archive::serialize generics
+// would fail to instantiate. The user-visible state is just the editor text
+// mirror; the bound filter regenerates from `value` on first frame after
+// reload via the widget body.
+def public JV(value : TextFilterState) : JsonValue? {
+    return JV((value = value.value))
+}
+
+def public serialize(var arch : Archive; var value : TextFilterState) {
+    arch |> _::serialize(value.value)
 }
 
 struct DragDropSourceState {
