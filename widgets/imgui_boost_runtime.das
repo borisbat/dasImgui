@@ -510,6 +510,12 @@ struct PopupContextItemState {
     @optional _placeholder : bool             //! unused; keeps the struct non-empty for [container] auto-emit
 }
 
+struct PopupContextWindowState {
+    //! Backs `popup_context_window`. Right-click anywhere in the enclosing
+    //! window opens the popup; ImGui drives open/close internally.
+    @optional _placeholder : bool             //! unused; keeps the struct non-empty for [container] auto-emit
+}
+
 struct DragDropSourceState {
     //! Backs `drag_drop_source`. Drag activation lives entirely in ImGui's
     //! internal drag-drop state machine; body runs only on active drag.

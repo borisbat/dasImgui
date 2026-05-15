@@ -2092,3 +2092,47 @@ def edit_collapsing_header(var ptr : bool? implicit; text : string = "";
     edit_finalize(widget_ident, "edit_collapsing_header", ptr)
     return im_open
 }
+
+// ===== Imperative commands (scroll / focus / clipboard) =====
+//
+// These are non-`[widget]` helpers — plain `def public` aliases over raw
+// ImGui calls that user code shouldn't reach for directly while
+// `options _no_imgui_legacy = true` is in effect. They take no block and
+// produce no state, so they don't fit the [widget] / [container] mold.
+
+def public set_scroll_here_y(center_y_ratio : float = 1.0f) {
+    //! `SetScrollHereY(center_y_ratio)` — scrolls the current window so the
+    //! recently-submitted item is anchored at the given vertical ratio
+    //! (0=top, 0.5=middle, 1=bottom). Common pattern: tail-follow scrolling
+    //! regions call `set_scroll_here_y(1.0f)` after the last entry.
+    SetScrollHereY(center_y_ratio)
+}
+
+def public set_keyboard_focus_here(offset : int = 0) {
+    //! `SetKeyboardFocusHere(offset)` — moves keyboard focus to the
+    //! item N items ahead (`offset = 0`) or behind (`offset = -1`, the
+    //! item that was just submitted). REPL-style inputs use `-1` after
+    //! Enter to refocus the editbox for the next command.
+    SetKeyboardFocusHere(offset)
+}
+
+def public set_item_default_focus() {
+    //! `SetItemDefaultFocus()` — marks the previous item as the default
+    //! focus target on first frame of a window. Used on the primary input
+    //! widget so the user can start typing immediately.
+    SetItemDefaultFocus()
+}
+
+def public log_to_clipboard(auto_open_depth : int = -1) {
+    //! `LogToClipboard(auto_open_depth)` — starts capturing subsequent
+    //! text-emitting widgets to the OS clipboard until `log_finish()` is
+    //! called. `auto_open_depth = -1` means capture all depths.
+    LogToClipboard(auto_open_depth)
+}
+
+def public log_finish() {
+    //! `LogFinish()` — stops the active log capture started by
+    //! `log_to_clipboard` (or any other `LogTo*` call) and finalizes the
+    //! clipboard contents.
+    LogFinish()
+}
