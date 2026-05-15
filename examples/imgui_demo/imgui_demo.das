@@ -61,5 +61,11 @@ def RunImGuiDemo() {
     // Example-app windows live OUTSIDE the demo window — each opens its own.
     if (SHOW_APP_CONSOLE) {
         ShowExampleAppConsole()
+        // Console's "Close Console" title-bar context menu sets an internal
+        // flag; consume it here to flip our visibility toggle off so the
+        // window goes away on the next frame.
+        if (take_close_request()) {
+            SHOW_APP_CONSOLE = false
+        }
     }
 }

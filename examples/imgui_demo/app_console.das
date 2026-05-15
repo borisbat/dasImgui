@@ -52,6 +52,23 @@ var private CONSOLE_ITEM_TEXT : table<int; NarrativeState>
 // One-shot init: seeds the welcome line on first frame after module load.
 var private CONSOLE_SEEDED = false
 
+// Set by the "Close Console" context-menu entry (right-click title bar);
+// the caller polls via `take_close_request()` after each frame and flips
+// its own visibility toggle. Kept private so the consume-and-clear API is
+// the only access path — direct reads from outside would race with the
+// reset on the next call.
+var private CONSOLE_REQUEST_CLOSE = false
+
+def public take_close_request() : bool {
+    //! Consume-and-clear: returns `true` once after the user picks
+    //! "Close Console" from the title-bar context menu, then resets.
+    //! Caller (`imgui_demo.das` dispatcher) gates `SHOW_APP_CONSOLE`
+    //! off the return value.
+    let r = CONSOLE_REQUEST_CLOSE
+    CONSOLE_REQUEST_CLOSE = false
+    return r
+}
+
 // =============================================================================
 // Log / command helpers
 // =============================================================================
@@ -213,10 +230,14 @@ def ShowExampleAppConsole() {
     window(CONSOLE_WIN, (text = "Example: Console", closable = false,
                           flags = ImGuiWindowFlags.None)) {
 
-        // Right-click on the title bar opens a "Close Console" menu.
-        // (No-op for now — gating window visibility is the caller's job.)
+        // Right-click on the title bar opens a "Close Console" menu. The
+        // selection sets CONSOLE_REQUEST_CLOSE; the caller polls via
+        // `take_close_request()` after this function returns and clears
+        // its own visibility toggle.
         popup_context_item(CONSOLE_TITLE_POPUP, (str_id = "", flags = ImGuiPopupFlags.None)) {
-            menu_item(CONSOLE_CLOSE_MENU, (text = "Close Console"))
+            if (menu_item(CONSOLE_CLOSE_MENU, (text = "Close Console"))) {
+                CONSOLE_REQUEST_CLOSE = true
+            }
         }
 
         text_wrapped((text = "This example implements a console with basic " +
