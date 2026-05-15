@@ -42,6 +42,10 @@ def initialize(project_path : string) {
     // every dasImgui consumer gets it transitively. Per-file opt-out:
     // `options _allow_imgui_legacy = true`.
     register_native_path("imgui", "imgui_lint", "{project_path}/widgets/imgui_lint.das")
+    // Canonical wrapper for examples/tests — hides GLFW/GL boilerplate behind
+    // 5 helpers and re-exports the backend-agnostic stack. PR 2 wires the
+    // --headless dispatch; PR 3 ships the lint default-on.
+    register_native_path("imgui", "imgui_harness", "{project_path}/widgets/imgui_harness.das")
     // Phase 7 — docking (dockspace, dock_window) + DockBuilder bindings cherry-picked from imgui_internal.h.
     register_native_path("imgui", "imgui_docking_builtin", "{project_path}/widgets/imgui_docking_builtin.das")
     // IM_COL32 packer split out from v1 imgui_boost (the legacy module is
