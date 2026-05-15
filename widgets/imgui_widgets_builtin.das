@@ -1205,7 +1205,18 @@ def text_filter(var state : TextFilterState; text : string = "Filter (\"incl,-ex
     //! The C++ `ImGuiTextFilter` value lives inline in the state — no
     //! daslang-side buffer needed (the editor's storage is `InputBuf[256]`
     //! on the bound struct). `state.value` mirrors the editor text after
-    //! every change for snapshot fidelity.
+    //! every edit; on the first frame after a live-reload (when
+    //! `archive::serialize` restored `state.value` but the C++ filter is
+    //! zero-init), the widget body re-applies `state.value` via a fresh
+    //! `ImGuiTextFilter(default_filter)` so `Draw()` and `passes_filter()`
+    //! see the restored expression without forcing the user to retype.
+    var buf_view : string
+    unsafe {
+        buf_view = reinterpret<string>(addr(state.filter.InputBuf))
+    }
+    if (state.value != buf_view) {
+        state.filter = ImGuiTextFilter(state.value)
+    }
     let changed = state.filter |> Draw(text, width)
     if (changed) {
         unsafe {
