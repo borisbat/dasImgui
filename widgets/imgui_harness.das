@@ -86,10 +86,20 @@ def private ensure_parsed() {
     return if (g_parsed)
     g_parsed = true
     let args <- get_user_args()
+    print("[harness] ensure_parsed: get_user_args() length={length(args)}\n")
+    for (a in args) {
+        print("[harness] ensure_parsed:   arg: {a}\n")
+    }
     let raw_headless = find_bool_flag_raw_value(args, "--headless")
     g_headless = (raw_headless |> unwrap_or("false")) == "true"
     let raw_frames = find_flag_raw_value(args, "--headless-frames")
     g_headless_max_frames = to_int(raw_frames |> unwrap_or("0"))
+    print("[harness] ensure_parsed: g_headless={g_headless}\n")
+}
+
+def private log_arm(name : string) {
+    let arm = g_headless ? "headless" : "windowed"
+    print("[harness] {name}: arm={arm}\n")
 }
 
 def public harness_is_headless() : bool {
@@ -102,15 +112,24 @@ def public harness_init(title : string; width : int = 800; height : int = 600) {
     //! Windowed: ``live_create_window`` + ``live_imgui_init``. Headless:
     //! ``CreateContext`` + ``StyleColorsDark`` + font atlas build +
     //! ``DisplaySize`` — no window, no GL context.
+    log_arm("harness_init")
     if (harness_is_headless()) {
+        print("[harness] harness_init headless: CreateContext\n")
         g_headless_ctx = CreateContext(null)
+        print("[harness] harness_init headless: StyleColorsDark\n")
         StyleColorsDark(null)
+        print("[harness] harness_init headless: imgui_headless_init_fonts\n")
         imgui_headless_init_fonts()
+        print("[harness] harness_init headless: imgui_headless_set_display_size\n")
         imgui_headless_set_display_size(float(width), float(height))
+        print("[harness] harness_init headless: DONE\n")
         return
     }
+    print("[harness] harness_init windowed: live_create_window\n")
     live_create_window(title, width, height)
+    print("[harness] harness_init windowed: live_imgui_init\n")
     live_imgui_init(live_window)
+    print("[harness] harness_init windowed: DONE\n")
 }
 
 def public harness_begin_frame() : bool {
