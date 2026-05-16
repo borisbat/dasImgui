@@ -1,7 +1,7 @@
 name: Integration tests
 
 # Resurrected after harness `--headless` mode landed (PRs #35-#37 + daslang
-# PR #2681). The integration suite now runs without a display server:
+# PR #2681). The integration suite runs without a display server:
 #   - The harness's headless arm creates an ImGui context with a CPU font
 #     atlas and discards Render() output. No GLFW window, no GL context.
 #   - daslang-live forwards post-`--` argv to scripts (daslang PR #2681), so
@@ -12,6 +12,11 @@ name: Integration tests
 # libglfw3-dev still has to be installed because `imguiApp.shared_module`
 # is dlopened (DLL loader resolves GLFW imports); no glfw function is ever
 # called at runtime under --headless.
+#
+# Step-0 diagnostic matrix: ubuntu-latest hangs in dasHV's HTTP serving under
+# headless on Linux (update() iterates, but /status never responds). Adding
+# macos-latest + windows-latest to test whether the hang is Linux-specific.
+# fail-fast: false so all three OSes report regardless of which passes.
 on:
   push:
     branches: [master]
@@ -25,15 +30,16 @@ concurrency:
 permissions:
   contents: read
 
-# dasImgui is daspkg-installed into daslang-src/modules/dasImgui/ (mirrors the
-# docs workflow). Tests are driven by dastest at daslang-src/dastest/dastest.das.
-# Each test in tests/integration/ spawns daslang-live as a subprocess via
-# imgui_playwright. With `--headless` forwarded on the dastest command line,
-# imgui_playwright appends `-- --headless` to the spawn argv so the subprocess
-# runs without opening a window.
 jobs:
   integration:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    defaults:
+      run:
+        shell: bash
     steps:
       - name: "Checkout daslang"
         uses: actions/checkout@v4
@@ -47,11 +53,12 @@ jobs:
         with:
           path: dasImgui
 
-      - name: "Install system dependencies"
-        # libglfw3-dev: needed by the DLL loader for imguiApp.shared_module,
-        # even though --headless never calls a glfw function. freetype/mesa/
-        # xorg: ImGui font atlas + GL headers consumed at module compile time.
-        # No xvfb — headless does not need a virtual display.
+      - name: "Install system dependencies (Linux)"
+        if: matrix.os == 'ubuntu-latest'
+        # libglfw3-dev needed by the DLL loader for imguiApp.shared_module
+        # (no glfw function is called under --headless, but dlopen resolves
+        # the import). freetype/mesa/xorg: ImGui font atlas + GL headers at
+        # module compile time. No xvfb — headless does not need a display.
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -59,6 +66,15 @@ jobs:
             libfreetype6-dev \
             mesa-common-dev \
             xorg-dev
+
+      - name: "Install system dependencies (macOS)"
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew install glfw freetype
+
+      - name: "MSVC dev environment (Windows)"
+        if: matrix.os == 'windows-latest'
+        uses: ilammy/msvc-dev-cmd@v1
 
       - name: "Install CMake and Ninja"
         uses: lukka/get-cmake@latest
