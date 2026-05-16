@@ -16,6 +16,7 @@ require imgui/imgui_boost_runtime
 require imgui/imgui_boost_v2
 require imgui/imgui_widgets_builtin
 require imgui/imgui_containers_builtin
+require imgui/imgui_theme_daslang
 
 require imgui_demo
 
@@ -31,6 +32,8 @@ require imgui_demo
 def init() {
     live_create_window("Dear ImGui Demo (daslang port)", 1280, 720)
     live_imgui_init(live_window)
+    load_daslang_font()
+    apply_daslang_theme()
 }
 
 [export]
