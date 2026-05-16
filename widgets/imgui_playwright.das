@@ -202,29 +202,37 @@ def public widget_rendered(var snap : JsonValue?; ident : string) : bool {
 
 // ===== Poll-until family =====
 
-def public wait_until(app : ImguiApp;
-                      max_frames : int;
-                      pred : block<(var snap : JsonValue?) : bool>) : JsonValue? {
-    //! Poll ``pred(snap)`` with a frame budget instead of wall-clock seconds; returns the matching snapshot or null after ``max_frames`` advance.
-    //! ``DEFAULT_DEADLOCK_SANITY_SEC`` is a backstop for crashed/hung subprocesses — should never trip on slow-but-progressing runs.
-    var start_frame   = -1
-    // See wait_until_ready: ref_time_ticks() units differ per platform; use
-    // get_time_usec(start) for portable elapsed-microseconds comparison.
-    let sanity_start = ref_time_ticks()
-    let sanity_timeout_usec = int(DEFAULT_DEADLOCK_SANITY_SEC * 1000000.0f)
-    while (true) {
+def public wait_until_sec(app : ImguiApp;
+                          timeout_sec : float;
+                          pred : block<(var snap : JsonValue?) : bool>) : JsonValue? {
+    //! Wall-clock variant of ``wait_until``: poll ``pred(snap)`` until it returns true,
+    //! up to ``timeout_sec`` real seconds. Returns the matching snapshot or null on timeout.
+    //! Prefer this over ``wait_until`` for tests gated on time-driven server work
+    //! (timeline completion, fixed-duration animations) — the frame-budget form fires
+    //! prematurely in headless mode where server frames run at multi-kHz with no vsync.
+    let start = ref_time_ticks()
+    let timeout_usec = int(timeout_sec * 1000000.0f)
+    while (get_time_usec(start) < timeout_usec) {
         var snap = snapshot(app)
-        if (snap != null) {
-            if (invoke(pred, snap)) return snap
-            let f = snap?["frame"] ?? 0
-            if (start_frame < 0) {
-                start_frame = f
-            } elif (f - start_frame >= max_frames) return null
-        }
-        return null if (get_time_usec(sanity_start) >= sanity_timeout_usec)
+        if (snap != null && invoke(pred, snap)) return snap
         sleep(FRAME_POLL_INTERVAL_MS)
     }
     return null
+}
+
+def public wait_until(app : ImguiApp;
+                      max_frames : int;
+                      pred : block<(var snap : JsonValue?) : bool>) : JsonValue? {
+    //! Poll ``pred(snap)`` up to ``max_frames`` 60 fps-equivalent server frames (``max_frames/60`` seconds).
+    //! Returns the matching snapshot or null on timeout.
+    //!
+    //! The legacy semantics treated ``max_frames`` as "server frame counter delta", which fired
+    //! prematurely under headless: the server advances ``g_frame`` at multi-kHz, so ``max_frames=240``
+    //! could expire in ~24 ms — far short of any time-driven server work (timeline completion,
+    //! fixed-duration animations, ImGui state convergence). The translation to wall-clock at the
+    //! conventional 60 fps preserves the headed-mode budget every test was tuned against, without
+    //! the per-mode skew. For new code that's natively expressed in seconds, prefer ``wait_until_sec``.
+    return wait_until_sec(app, float(max_frames) / 60.0f, pred)
 }
 
 def public wait_for_widget(app : ImguiApp; widget_ident : string;
@@ -416,6 +424,30 @@ def public type_text(app : ImguiApp; target : string; text : string;
     let total_frames = duration_s > 0.0f ? int(duration_s * 60.0f) : 0
     return send_imgui_command(app.transport, "imgui_type_text",
         JV((target = target, text = text, total_frames = total_frames)))
+}
+
+def public pause(app : ImguiApp) : void {
+    //! POST ``/pause`` to halt the host's update() (skips advance_coroutines + render).
+    //! POST /command continues to dispatch and POSTs still get drained by ``server.tick()``
+    //! (which runs from the debug agent's onTick, gated by auto_tick_agents — not by paused).
+    //! Useful for deterministic observation: spawn an L1 coroutine, probe ``imgui_await``
+    //! while the world is frozen, then ``unpause`` to let it run.
+    post_signal(app, "/pause")
+}
+
+def public unpause(app : ImguiApp) : void {
+    //! POST ``/unpause`` to resume the host's update().
+    post_signal(app, "/unpause")
+}
+
+def public with_paused(app : ImguiApp; body : block<() : void>) {
+    //! Scope: ``pause`` the host, invoke ``body``, ``unpause``. Body observes a frozen
+    //! world — coroutines spawned by ``imgui_drag`` / ``imgui_type_text`` sit unadvanced
+    //! until unpause, so ``imgui_await`` reports ``pending_coroutines >= 1`` deterministically
+    //! even in headless mode where the per-frame advance otherwise races the next HTTP POST.
+    pause(app)
+    body |> invoke()
+    unpause(app)
 }
 
 def public reload(app : ImguiApp; timeout_sec : float = DEFAULT_RELOAD_TIMEOUT_SEC) : void {

@@ -46,14 +46,18 @@ def test_imgui_await(t : T?) {
                    "idle: pending_coroutines = 0")
 
         // Gate 2: long drag → coroutine in flight; await says not quiescent.
-        // 30 steps × 1 frame each = ~30 frames in-flight at 60fps. At 700fps
-        // headed mode the drag is ~40ms. Probe immediately after dispatch.
-        let dr = drag(d, "MAIN_WIN/DEMO_SLIDER", 100.0f, 0.0f, 30)
-        t |> equal(dr?["ok"] ?? false, true, "drag dispatched")
-        let busy = await_probe(d)
-        t |> success((busy?["value"]?["pending_coroutines"] ?? 0) >= 1 ||
-                     !(busy?["value"]?["quiescent"] ?? true),
-                     "during drag: not quiescent OR pending_coroutines>=1")
+        // In headless mode the loop runs at multi-kHz (no vsync), so a 30-step
+        // drag finishes in microseconds — faster than the next HTTP round-trip.
+        // with_paused freezes update() (and thus advance_coroutines) so the
+        // spawned coroutine sits in g_coroutines until we observe it.
+        with_paused(d) {
+            let dr = drag(d, "MAIN_WIN/DEMO_SLIDER", 100.0f, 0.0f, 30)
+            t |> equal(dr?["ok"] ?? false, true, "drag dispatched")
+            let busy = await_probe(d)
+            t |> success((busy?["value"]?["pending_coroutines"] ?? 0) >= 1 ||
+                         !(busy?["value"]?["quiescent"] ?? true),
+                         "during drag: not quiescent OR pending_coroutines>=1")
+        }
 
         // Gate 3: poll until quiescent.
         let settled = wait_until(d, 300) $(snap) {
