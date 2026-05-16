@@ -138,8 +138,11 @@ def test_click_then_ctrl_a_clears_input(t : T?) {
         t |> success(typed != null, "NAME_INPUT.value == \"abc\" before chord")
 
         // Select-all chord: Cmd+A on macOS, Ctrl+A everywhere else.
-        var sa_mods <- [{string select_all_mod}]
-        post_command(d, "imgui_key_chord", JV((mods = sa_mods, key = "A")))
+        if macos {
+            post_command(d, "imgui_key_chord", JV((mods = ["Super"], key = "A")))
+        } else {
+            post_command(d, "imgui_key_chord", JV((mods = ["Ctrl"], key = "A")))
+        }
         let chord_done = wait_until(d, 240) $(var snap) {
             let s = post_command(d, "imgui_key_status", null)
             return !(s?["playing"] ?? true)
