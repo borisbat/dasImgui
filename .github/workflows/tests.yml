@@ -52,10 +52,11 @@ jobs:
         with:
           repository: GaijinEntertainment/daScript
           path: daslang-src
-          # TEMP: pinned to bbatkin/dashv-log-route-env (PR #2684) for the
-          # `DASLIVE_HV_LOG=stderr` env-gated libhv stderr redirection.
-          # Revert to `master` once that PR merges.
-          ref: bbatkin/dashv-log-route-env
+          # master now carries PR #2684 (DASLIVE_HV_LOG=stderr env-gated libhv
+          # log routing) and PR #2685 (ref_time_ticks normalized to nanoseconds
+          # on every platform) — both required for this workflow to mean
+          # anything on POSIX runners. Keep on master going forward.
+          ref: master
 
       - name: "Checkout dasImgui"
         uses: actions/checkout@v4
