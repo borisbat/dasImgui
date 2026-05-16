@@ -1,21 +1,13 @@
 name: Build documentation
 
 on:
+  # No `paths:` filter — every push/PR rebuilds. Path filtering meant changes
+  # under `examples/**` or `CHANGELOG.md` silently skipped the build, leaving
+  # the published site stale relative to master. ~10 min Sphinx build is cheap
+  # enough that always-rebuild is the safer default.
   push:
     branches: [master]
-    paths:
-      - 'doc/**'
-      - 'widgets/**'
-      - 'src/**'
-      - 'utils/imgui2rst.das'
-      - '.github/workflows/docs.yml'
   pull_request:
-    paths:
-      - 'doc/**'
-      - 'widgets/**'
-      - 'src/**'
-      - 'utils/imgui2rst.das'
-      - '.github/workflows/docs.yml'
   workflow_dispatch:
 
 # One Pages deployment at a time

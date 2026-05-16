@@ -54,9 +54,12 @@ def public await_imgui(transport : Transport;
                        until : string = "quiescent";
                        timeout_sec : float = DEFAULT_AWAIT_TIMEOUT_SEC) : bool {
     //! Poll ``imgui_await`` until ``value.quiescent`` flips true; returns true on quiescence, false on timeout.
-    let deadline = ref_time_ticks() + int64(double(timeout_sec) * 1000000.0lf)
+    // ref_time_ticks() is platform-specific (QPC on Windows, nanoseconds on
+    // Linux/macOS) — use get_time_usec(start) for portable elapsed comparison.
+    let start = ref_time_ticks()
+    let timeout_usec = int(double(timeout_sec) * 1000000.0lf)
     var args_jv = JV((until = until))
-    while (ref_time_ticks() < deadline) {
+    while (get_time_usec(start) < timeout_usec) {
         let r = invoke(transport, "imgui_await", args_jv)
         if (r?["value"]?["quiescent"] ?? false) return true
         sleep(DEFAULT_AWAIT_POLL_MS)
@@ -68,9 +71,10 @@ def public await_imgui_frame(transport : Transport;
                              target_frame : int;
                              timeout_sec : float = DEFAULT_AWAIT_TIMEOUT_SEC) : bool {
     //! Poll ``imgui_await`` until server-side ``value.frame >= target_frame``; reuses the ``frame:`` arg so server flips ``quiescent`` at the right tick.
-    let deadline = ref_time_ticks() + int64(double(timeout_sec) * 1000000.0lf)
+    let start = ref_time_ticks()
+    let timeout_usec = int(double(timeout_sec) * 1000000.0lf)
     var args_jv = JV((frame = target_frame))
-    while (ref_time_ticks() < deadline) {
+    while (get_time_usec(start) < timeout_usec) {
         let r = invoke(transport, "imgui_await", args_jv)
         if (r?["value"]?["quiescent"] ?? false) return true
         sleep(DEFAULT_AWAIT_POLL_MS)

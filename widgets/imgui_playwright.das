@@ -11,6 +11,7 @@ require daslib/json public
 require daslib/json_boost public
 require daslib/fio public
 require daslib/command_line
+require daslib/clargs
 require daslib/strings_boost
 require strings
 
@@ -125,8 +126,13 @@ def private resolve_feature_path(path : string) : string {
 
 def public wait_until_ready(app : ImguiApp; timeout_sec : float) : bool {
     //! Poll GET /status until 200 OK or timeout. Returns true on ready.
-    let deadline = ref_time_ticks() + int64(timeout_sec * 1000000.0f)
-    while (ref_time_ticks() < deadline) {
+    // `ref_time_ticks()` is platform-specific (QPC on Windows, nanoseconds on
+    // Linux/macOS), so absolute-deadline arithmetic with `* 1_000_000` is wrong
+    // on POSIX (gives 30 ms instead of 30 s). `get_time_usec(start)` is the
+    // portable elapsed-microseconds helper.
+    let start = ref_time_ticks()
+    let timeout_usec = int(timeout_sec * 1000000.0f)
+    while (get_time_usec(start) < timeout_usec) {
         var ok = false
         GET("{app.base_url}/status") $(resp) {
             if (resp != null && resp.status_code == http_status.OK) {
@@ -196,34 +202,46 @@ def public widget_rendered(var snap : JsonValue?; ident : string) : bool {
 
 // ===== Poll-until family =====
 
-def public wait_until(app : ImguiApp;
-                      max_frames : int;
-                      pred : block<(var snap : JsonValue?) : bool>) : JsonValue? {
-    //! Poll ``pred(snap)`` with a frame budget instead of wall-clock seconds; returns the matching snapshot or null after ``max_frames`` advance.
-    //! ``DEFAULT_DEADLOCK_SANITY_SEC`` is a backstop for crashed/hung subprocesses — should never trip on slow-but-progressing runs.
-    var start_frame   = -1
-    let sanity_deadline = ref_time_ticks() + int64(DEFAULT_DEADLOCK_SANITY_SEC * 1000000.0f)
-    while (true) {
+def public wait_until_sec(app : ImguiApp;
+                          timeout_sec : float;
+                          pred : block<(var snap : JsonValue?) : bool>) : JsonValue? {
+    //! Wall-clock variant of ``wait_until``: poll ``pred(snap)`` until it returns true,
+    //! up to ``timeout_sec`` real seconds. Returns the matching snapshot or null on timeout.
+    //! Prefer this over ``wait_until`` for tests gated on time-driven server work
+    //! (timeline completion, fixed-duration animations) — the frame-budget form fires
+    //! prematurely in headless mode where server frames run at multi-kHz with no vsync.
+    let start = ref_time_ticks()
+    let timeout_usec = int(timeout_sec * 1000000.0f)
+    while (get_time_usec(start) < timeout_usec) {
         var snap = snapshot(app)
-        if (snap != null) {
-            if (invoke(pred, snap)) return snap
-            let f = snap?["frame"] ?? 0
-            if (start_frame < 0) {
-                start_frame = f
-            } elif (f - start_frame >= max_frames) return null
-        }
-        return null if (ref_time_ticks() >= sanity_deadline)
+        if (snap != null && invoke(pred, snap)) return snap
         sleep(FRAME_POLL_INTERVAL_MS)
     }
     return null
+}
+
+def public wait_until(app : ImguiApp;
+                      max_frames : int;
+                      pred : block<(var snap : JsonValue?) : bool>) : JsonValue? {
+    //! Poll ``pred(snap)`` up to ``max_frames`` 60 fps-equivalent server frames (``max_frames/60`` seconds).
+    //! Returns the matching snapshot or null on timeout.
+    //!
+    //! The legacy semantics treated ``max_frames`` as "server frame counter delta", which fired
+    //! prematurely under headless: the server advances ``g_frame`` at multi-kHz, so ``max_frames=240``
+    //! could expire in ~24 ms — far short of any time-driven server work (timeline completion,
+    //! fixed-duration animations, ImGui state convergence). The translation to wall-clock at the
+    //! conventional 60 fps preserves the headed-mode budget every test was tuned against, without
+    //! the per-mode skew. For new code that's natively expressed in seconds, prefer ``wait_until_sec``.
+    return wait_until_sec(app, float(max_frames) / 60.0f, pred)
 }
 
 def public wait_for_widget(app : ImguiApp; widget_ident : string;
                            timeout_sec : float = DEFAULT_FRAME_WAIT_SEC) : JsonValue? {
     //! Poll snapshot until ``globals[widget_ident]`` is present (registered at module init OR rendered at least once).
     //! Use for subprocess-startup gating; for first-paint semantics use ``wait_for_render``.
-    let deadline = ref_time_ticks() + int64(timeout_sec * 1000000.0f)
-    while (ref_time_ticks() < deadline) {
+    let start = ref_time_ticks()
+    let timeout_usec = int(timeout_sec * 1000000.0f)
+    while (get_time_usec(start) < timeout_usec) {
         var snap = snapshot(app)
         if (snap != null && widget_exists(snap, widget_ident)) return snap
         sleep(FRAME_POLL_INTERVAL_MS)
@@ -235,8 +253,9 @@ def public wait_for_render(app : ImguiApp; widget_ident : string;
                            timeout_sec : float = DEFAULT_FRAME_WAIT_SEC) : JsonValue? {
     //! Poll snapshot until ``globals[widget_ident]`` reports ``rendered:true`` (the widget painted this frame).
     //! Use when you specifically need first-paint semantics — registered-but-not-rendered widgets pass ``wait_for_widget`` immediately.
-    let deadline = ref_time_ticks() + int64(timeout_sec * 1000000.0f)
-    while (ref_time_ticks() < deadline) {
+    let start = ref_time_ticks()
+    let timeout_usec = int(timeout_sec * 1000000.0f)
+    while (get_time_usec(start) < timeout_usec) {
         var snap = snapshot(app)
         if (snap != null && widget_rendered(snap, widget_ident)) return snap
         sleep(FRAME_POLL_INTERVAL_MS)
@@ -387,6 +406,34 @@ def public focus(app : ImguiApp; target : string) : JsonValue? {
     return send_imgui_command(app.transport, "imgui_focus", JV((target = target)))
 }
 
+def public wait_for_key_idle(app : ImguiApp; timeout_sec : float = DEFAULT_FRAME_WAIT_SEC) : bool {
+    //! Poll ``imgui_key_status`` until ``playing == false`` or timeout; returns true on idle.
+    //! Uses one HTTP request per poll (unlike a ``wait_until`` body that pairs a snapshot
+    //! with a status call), keeping the per-subprocess connection count low on Windows.
+    let start = ref_time_ticks()
+    let timeout_usec = int(timeout_sec * 1000000.0f)
+    while (get_time_usec(start) < timeout_usec) {
+        let r = post_command(app, "imgui_key_status", null)
+        if (!(r?["playing"] ?? true)) return true
+        sleep(FRAME_POLL_INTERVAL_MS)
+    }
+    return false
+}
+
+def public wait_for_mouse_idle(app : ImguiApp; timeout_sec : float = DEFAULT_FRAME_WAIT_SEC) : bool {
+    //! Poll ``imgui_mouse_status`` until ``playing == false`` or timeout; returns true on idle.
+    //! Uses one HTTP request per poll (unlike a ``wait_until`` body that pairs a snapshot
+    //! with a status call), keeping the per-subprocess connection count low on Windows.
+    let start = ref_time_ticks()
+    let timeout_usec = int(timeout_sec * 1000000.0f)
+    while (get_time_usec(start) < timeout_usec) {
+        let r = post_command(app, "imgui_mouse_status", null)
+        if (!(r?["playing"] ?? true)) return true
+        sleep(FRAME_POLL_INTERVAL_MS)
+    }
+    return false
+}
+
 def public await_probe(app : ImguiApp; until : string = "quiescent") : JsonValue? {
     //! Single ``imgui_await`` POST; the ``AwaitResult`` lives under ``response.value``.
     //! For poll-until-quiescent use ``await_quiescent``.
@@ -407,12 +454,37 @@ def public type_text(app : ImguiApp; target : string; text : string;
         JV((target = target, text = text, total_frames = total_frames)))
 }
 
+def public pause(app : ImguiApp) : void {
+    //! POST ``/pause`` to halt the host's update() (skips advance_coroutines + render).
+    //! POST /command continues to dispatch and POSTs still get drained by ``server.tick()``
+    //! (which runs from the debug agent's onTick, gated by auto_tick_agents — not by paused).
+    //! Useful for deterministic observation: spawn an L1 coroutine, probe ``imgui_await``
+    //! while the world is frozen, then ``unpause`` to let it run.
+    post_signal(app, "/pause")
+}
+
+def public unpause(app : ImguiApp) : void {
+    //! POST ``/unpause`` to resume the host's update().
+    post_signal(app, "/unpause")
+}
+
+def public with_paused(app : ImguiApp; body : block<() : void>) {
+    //! Scope: ``pause`` the host, invoke ``body``, ``unpause``. Body observes a frozen
+    //! world — coroutines spawned by ``imgui_drag`` / ``imgui_type_text`` sit unadvanced
+    //! until unpause, so ``imgui_await`` reports ``pending_coroutines >= 1`` deterministically
+    //! even in headless mode where the per-frame advance otherwise races the next HTTP POST.
+    pause(app)
+    body |> invoke()
+    unpause(app)
+}
+
 def public reload(app : ImguiApp; timeout_sec : float = DEFAULT_RELOAD_TIMEOUT_SEC) : void {
     //! POST ``/reload`` then poll ``/status`` until ``has_error == false``; panics on timeout.
     //! Stays on raw HTTP — reload is daslang-live process control, not a dasImgui command verb.
     post_signal(app, "/reload")
-    let deadline = ref_time_ticks() + int64(timeout_sec * 1000000.0f)
-    while (ref_time_ticks() < deadline) {
+    let start = ref_time_ticks()
+    let timeout_usec = int(timeout_sec * 1000000.0f)
+    while (get_time_usec(start) < timeout_usec) {
         let raw = get_text(app, "/status")
         if (!empty(raw)) {
             var err : string
@@ -437,6 +509,23 @@ def public with_imgui_app(feature_path : string; body : block<(app : ImguiApp) :
                        body)
 }
 
+var private g_headless_parsed : bool = false
+var private g_headless_cached : bool = false
+
+def private playwright_wants_headless() : bool {
+    //! ``--headless`` forwarded from the dastest (or daslang.exe) invocation.
+    //! Lazily parsed once; subsequent calls hit the cache. CI passes
+    //! ``--headless`` on the dastest command line, every spawned daslang-live
+    //! inherits it via ``-- --headless`` in argv. Local interactive runs
+    //! omit the flag and stay windowed.
+    if (g_headless_parsed) return g_headless_cached
+    g_headless_parsed = true
+    let args <- get_user_args()
+    let raw = find_bool_flag_raw_value(args, "--headless")
+    g_headless_cached = (raw |> unwrap_or("false")) == "true"
+    return g_headless_cached
+}
+
 def public with_imgui_app_opt(feature_path : string;
                               port : int;
                               ready_timeout_sec : float;
@@ -444,37 +533,41 @@ def public with_imgui_app_opt(feature_path : string;
                               body : block<(app : ImguiApp) : void>) {
     //! Spawn ``daslang-live <feature_path>``; runs ``body`` while alive, then POSTs ``/shutdown`` and drains stdout.
     //! Panics on non-zero exit code, ready-timeout, or test-timeout so the surrounding ``[test]`` fails.
+    //! Forwards ``--headless`` (read from this process's ``get_user_args()``)
+    //! into the spawn so the harness's headless arm fires inside the subprocess.
     let exe = daslang_live_exe()
     let app_path = resolve_feature_path(feature_path)
-    let argv <- [exe, app_path]
+    var argv <- [exe, app_path]
+    if (playwright_wants_headless()) {
+        argv |> push("--")
+        argv |> push("--headless")
+        // Cascade guard: harness self-exits a few seconds before the popen
+        // watchdog gives up. If body panics and /shutdown is never sent
+        // (e.g. expect_value timeout — daslang's `finally` is skipped on
+        // panic), the subprocess still releases port 9090 before the next
+        // test spawns, instead of zombifying.
+        let harness_budget = test_timeout_sec - 5.0f
+        if (harness_budget > 5.0f) {
+            argv |> push("--headless-timeout-sec={harness_budget}")
+        }
+    }
     let base_url = "http://127.0.0.1:{port}"
     var app = ImguiApp(base_url = base_url,
                        feature_path = app_path,
                        transport <- live_api_transport(base_url))
     var captured : string
     var unready = false
-    print("[imgui_playwright] spawn: {exe} {app_path}\n")
     let exit_code = unsafe(popen_argv(argv, test_timeout_sec, $(f) {
-        if (f == null) {
-            print("[imgui_playwright] popen returned null FILE\n")
-            return
-        }
-        print("[imgui_playwright] subprocess up, polling /status...\n")
+        return if (f == null)
         if (!wait_until_ready(app, ready_timeout_sec)) {
-            print("[imgui_playwright] readiness gate FAILED\n")
             unready = true
             captured = unsafe(fread_to_eof(f))
             return
         }
-        print("[imgui_playwright] ready, invoking body\n")
         invoke(body, app)
-        print("[imgui_playwright] body done, sending /shutdown\n")
         post_signal(app, "/shutdown")
-        print("[imgui_playwright] /shutdown posted, draining pipe...\n")
         captured = unsafe(fread_to_eof(f))
-        print("[imgui_playwright] drain done\n")
     }))
-    print("[imgui_playwright] popen exit_code={exit_code}\n")
     if (unready) {
         panic("daslang-live not ready after {ready_timeout_sec}s.\nstdout/stderr:\n{captured}")
     }

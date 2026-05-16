@@ -1134,6 +1134,7 @@ def private io_jv() : JsonValue? {
     tab |> insert("key_shift", JV(IsKeyDown(ImGuiKey.ImGuiMod_Shift)))
     tab |> insert("key_alt",   JV(IsKeyDown(ImGuiKey.ImGuiMod_Alt)))
     tab |> insert("key_super", JV(IsKeyDown(ImGuiKey.ImGuiMod_Super)))
+    tab |> insert("config_macos_behaviors", JV(unsafe(GetIO()).ConfigMacOSXBehaviors))
     let active_id = GetActiveID()
     if (active_id != 0u) {
         tab |> insert("active_id", JV(active_id))

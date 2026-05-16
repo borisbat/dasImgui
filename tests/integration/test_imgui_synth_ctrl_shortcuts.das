@@ -44,11 +44,7 @@ def test_imgui_key_type_lands_in_input(t : T?) {
 
         post_command(d, "imgui_key_type", JV((text = "Hi", per_char_ms = 30)))
 
-        let done = wait_until(d, 240) $(var snap) {
-            let s = post_command(d, "imgui_key_status", null)
-            return !(s?["playing"] ?? true)
-        }
-        t |> success(done != null, "imgui_key_type timeline completes")
+        t |> success(wait_for_key_idle(d, 4.0f), "imgui_key_type timeline completes")
 
         let landed = wait_until(d, 180) $(var snap) {
             let v = snap?["globals"]?["MAIN_WIN/NAME_INPUT"]?["payload"]?["value"] ?? ""
@@ -85,7 +81,7 @@ def test_imgui_key_chord_ctrl_visible(t : T?) {
 [test]
 def test_click_then_ctrl_a_clears_input(t : T?) {
     //! The canary for the click-then-Ctrl+A bug. Synth-clicks NAME_INPUT
-    //! to activate it, types text, then Ctrl+A → Backspace expects the
+    //! to activate it, types text, then select-all → Backspace expects the
     //! buffer to be empty.
     //!
     //! Under the legacy glfw_live driver, the synth click left Shortcut()
@@ -93,10 +89,20 @@ def test_click_then_ctrl_a_clears_input(t : T?) {
     //! char, and the buffer ended up "ab" instead of "". imgui_live's
     //! bypass purges the backend's queue contribution so NavId is
     //! established correctly at activation.
+    //!
+    //! Platform note: ImGui sets io.ConfigMacOSXBehaviors=true on macOS
+    //! (via #ifdef __APPLE__ in ImGuiIO ctor). When set, the "shortcut key"
+    //! is Super (Cmd), not Ctrl — so "select all" is Cmd+A, not Ctrl+A.
+    //! We read config_macos_behaviors from the io snapshot and pick the
+    //! right modifier accordingly.
     with_imgui_app(FEATURE) $(d) {
         var snap0 = wait_for_render(d, "MAIN_WIN/NAME_INPUT", 15.0f)
         t |> success(snap0 != null, "NAME_INPUT renders")
         if (snap0 == null) return
+
+        // Determine platform shortcut modifier from the io snapshot.
+        let macos = snap0?["io"]?["config_macos_behaviors"] ?? false
+        let select_all_mod = macos ? "Super" : "Ctrl"
 
         // Locate NAME_INPUT center for the synth click.
         let b = snap0?["globals"]?["MAIN_WIN/NAME_INPUT"]?["bbox"]
@@ -108,11 +114,7 @@ def test_click_then_ctrl_a_clears_input(t : T?) {
             JV((t_ms = 100, kind = "button", button = 0, action = "release"))
         ]
         post_command(d, "imgui_mouse_play", JV((events = click_events)))
-        let clicked = wait_until(d, 240) $(var snap) {
-            let s = post_command(d, "imgui_mouse_status", null)
-            return !(s?["playing"] ?? true)
-        }
-        t |> success(clicked != null, "imgui_mouse_play synth click completes")
+        t |> success(wait_for_mouse_idle(d, 4.0f), "imgui_mouse_play synth click completes")
 
         let activated = wait_until(d, 240) $(var snap) {
             return snap?["globals"]?["MAIN_WIN/NAME_INPUT"]?["focus"] ?? false
@@ -127,13 +129,13 @@ def test_click_then_ctrl_a_clears_input(t : T?) {
         }
         t |> success(typed != null, "NAME_INPUT.value == \"abc\" before chord")
 
-        // Ctrl+A to select-all (the formerly-broken shortcut).
-        post_command(d, "imgui_key_chord", JV((mods = ["Ctrl"], key = "A")))
-        let chord_done = wait_until(d, 240) $(var snap) {
-            let s = post_command(d, "imgui_key_status", null)
-            return !(s?["playing"] ?? true)
+        // Select-all chord: Cmd+A on macOS, Ctrl+A everywhere else.
+        if (macos) {
+            post_command(d, "imgui_key_chord", JV((mods = ["Super"], key = "A")))
+        } else {
+            post_command(d, "imgui_key_chord", JV((mods = ["Ctrl"], key = "A")))
         }
-        t |> success(chord_done != null, "Ctrl+A chord completes")
+        t |> success(wait_for_key_idle(d, 4.0f), "{select_all_mod}+A chord completes")
 
         // Backspace once → if selection is active, buffer empties.
         let bksp = int(ImGuiKey.Backspace)
@@ -144,6 +146,6 @@ def test_click_then_ctrl_a_clears_input(t : T?) {
             let v = snap?["globals"]?["MAIN_WIN/NAME_INPUT"]?["payload"]?["value"] ?? "still-has-content"
             return v == ""
         }
-        t |> success(emptied != null, "NAME_INPUT.value == \"\" after Ctrl+A then Backspace")
+        t |> success(emptied != null, "NAME_INPUT.value == \"\" after {select_all_mod}+A then Backspace")
     }
 }

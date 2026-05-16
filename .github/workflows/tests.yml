@@ -1,16 +1,32 @@
 name: Integration tests
 
-# Disabled (manual-only) — to re-enable, add the `push:` / `pull_request:`
-# blocks back. Currently parked because:
-#   - Linux GitHub-hosted runners need xvfb + Mesa SW rendering, and the
-#     dasImgui playwright readiness gate (poll /status until first frame
-#     renders) doesn't survive that path: daslang-live boots, prints the
-#     lifecycle banner, then hangs before the first frame.
-#   - windows-latest works for GLFW/GL but transitively builds OpenSSL (via
-#     dasHV's libhv), which is a 1+ hour build on the CI runner.
-# Revisit once we have headless integration tests (mock GL backend or a
-# native-headless renderer path that doesn't need a real window).
+# Resurrected after harness `--headless` mode landed (PRs #35-#37 + daslang
+# PR #2681). The integration suite runs without a display server:
+#   - The harness's headless arm creates an ImGui context with a CPU font
+#     atlas and discards Render() output. No GLFW window, no GL context.
+#   - daslang-live forwards post-`--` argv to scripts (daslang PR #2681), so
+#     `popen_argv(... "--", "--headless")` reaches the harness inside the
+#     spawned subprocess.
+#   - The HTTP live-API server (port 9090) runs regardless of harness mode,
+#     so playwright's /status + /command + /shutdown flow is unchanged.
+# libglfw3-dev still has to be installed because `imguiApp.shared_module`
+# is dlopened (DLL loader resolves GLFW imports); no glfw function is ever
+# called at runtime under --headless.
+#
+# Step-0 diagnostic matrix: ubuntu and macOS both hang in dasHV's HTTP
+# serving under --headless (script's update() loop iterates fine, but
+# /status never responds). Windows runs the same tests cleanly locally.
+# Matrix runs all three to confirm the POSIX-vs-Windows split.
+#
+# Windows recipe (mirrors daslang's own extended_checks.yml):
+#   - vcpkg openssl (prebuilt, avoids the perl-env libhv->OpenSSL Configure trap)
+#   - Strawberry Perl on PATH (still needed for some downstream parts)
+#   - msvc-dev-cmd to put cl.exe + linker on PATH so Ninja can find them
+# fail-fast: false so all three OSes report regardless of which passes.
 on:
+  push:
+    branches: [master]
+  pull_request:
   workflow_dispatch:
 
 concurrency:
@@ -20,21 +36,26 @@ concurrency:
 permissions:
   contents: read
 
-# dasImgui is daspkg-installed into daslang-src/modules/dasImgui/ (mirrors the
-# docs workflow). Tests are driven by dastest at daslang-src/dastest/dastest.das.
-# Each test in tests/integration/ spawns daslang-live as a subprocess via
-# imgui_playwright; daslang-live opens a GLFW/OpenGL window so we wrap the
-# dastest invocation in `xvfb-run -a` to give it a virtual display. The
-# subprocess inherits DISPLAY=:99 from the xvfb-run environment.
 jobs:
   integration:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    defaults:
+      run:
+        shell: bash
     steps:
       - name: "Checkout daslang"
         uses: actions/checkout@v4
         with:
           repository: GaijinEntertainment/daScript
           path: daslang-src
+          # master now carries PR #2684 (DASLIVE_HV_LOG=stderr env-gated libhv
+          # log routing) and PR #2685 (ref_time_ticks normalized to nanoseconds
+          # on every platform) — both required for this workflow to mean
+          # anything on POSIX runners. Keep on master going forward.
           ref: master
 
       - name: "Checkout dasImgui"
@@ -42,52 +63,144 @@ jobs:
         with:
           path: dasImgui
 
-      - name: "Install system dependencies"
+      - name: "Install system dependencies (Linux)"
+        if: matrix.os == 'ubuntu-latest'
+        # libglfw3-dev needed by the DLL loader for imguiApp.shared_module
+        # (no glfw function is called under --headless, but dlopen resolves
+        # the import). freetype/mesa/xorg: ImGui font atlas + GL headers at
+        # module compile time. No xvfb — headless does not need a display.
         run: |
           sudo apt-get update
           sudo apt-get install -y \
             libglfw3-dev \
             libfreetype6-dev \
             mesa-common-dev \
-            xorg-dev \
-            xvfb
+            xorg-dev
+
+      - name: "Install system dependencies (macOS)"
+        if: matrix.os == 'macos-latest'
+        # bison: macOS ships v2.3, daslang's ds_parser.ypp needs bison 3+.
+        # brew install keeps the new bison at /opt/homebrew/opt/bison/bin/bison;
+        # the PATH export below makes cmake pick it over /usr/bin/bison.
+        run: |
+          brew install glfw freetype bison
+          echo "/opt/homebrew/opt/bison/bin" >> "$GITHUB_PATH"
+
+      - name: "Install OpenSSL via vcpkg (Windows)"
+        if: matrix.os == 'windows-latest'
+        # libhv pulls in OpenSSL; building it from source needs perl env that
+        # GitHub-hosted Windows runners don't ship working. vcpkg's binary
+        # cache provides a prebuilt openssl, sidestepping the perl Configure
+        # trap. Mirrors daslang's extended_checks.yml.
+        run: |
+          git clone https://github.com/microsoft/vcpkg
+          ./vcpkg/bootstrap-vcpkg.sh
+          ./vcpkg/vcpkg install openssl:x64-windows --binarycaching
+          echo "VCPKG_ROOT=$(pwd)/vcpkg" >> $GITHUB_ENV
+          echo "/c/Strawberry/perl/bin" >> $GITHUB_PATH
 
       - name: "Install CMake and Ninja"
         uses: lukka/get-cmake@latest
 
       - name: "Build daslang + daslang-live + shared modules"
         working-directory: daslang-src
+        # Windows: Visual Studio 17 2022 generator (mirrors daslang's own
+        # extended_checks.yml). Avoids the Ninja+msvc-dev-cmd PATH-propagation
+        # dance under bash on Windows runners. Binaries land in bin/Release/
+        # instead of bin/ — handled by exporting BIN_DIR for downstream steps.
+        # Linux/macOS: Ninja, single-config, binaries in bin/.
         run: |
           set -eux
-          cmake --no-warn-unused-cli -B./build \
-            -DCMAKE_BUILD_TYPE:STRING=Release \
-            -DDAS_HV_DISABLED=OFF \
-            -DDAS_PUGIXML_DISABLED=OFF \
-            -DDAS_LLVM_DISABLED=ON \
-            -DDAS_GLFW_DISABLED=OFF \
-            -G Ninja
-          # daslang + daslang-live binaries plus the shared-module artifacts
-          # daslang-live dlopens at runtime via `require <module>` lines in
-          # the test scripts: dasModuleLiveHost (lifecycle API exported via
-          # dlsym RTLD_DEFAULT), dasModuleGlfw (window/GL context), dasModuleHV
-          # (HTTP /status, /command, /shutdown endpoints used by playwright),
-          # dasModulePUGIXML + dasModuleStbImage (rendering deps). Matches the
-          # set daslang's extended_checks workflow builds for live tests.
-          cmake --build ./build --parallel --target \
-            daslang daslang-live \
-            dasModuleLiveHost dasModuleGlfw dasModuleHV \
-            dasModulePUGIXML dasModuleStbImage
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            cmake --no-warn-unused-cli -B./build \
+              -DDAS_HV_DISABLED=OFF \
+              -DDAS_PUGIXML_DISABLED=OFF \
+              -DDAS_LLVM_DISABLED=ON \
+              -DDAS_GLFW_DISABLED=OFF \
+              -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
+              -G "Visual Studio 17 2022" -T host=x64 -A x64
+            cmake --build ./build --config Release --parallel --target \
+              daslang daslang-live \
+              dasModuleLiveHost dasModuleGlfw dasModuleHV \
+              dasModulePUGIXML dasModuleStbImage
+            echo "BIN_DIR=bin/Release" >> "$GITHUB_ENV"
+          else
+            cmake --no-warn-unused-cli -B./build \
+              -DCMAKE_BUILD_TYPE:STRING=Release \
+              -DDAS_HV_DISABLED=OFF \
+              -DDAS_PUGIXML_DISABLED=OFF \
+              -DDAS_LLVM_DISABLED=ON \
+              -DDAS_GLFW_DISABLED=OFF \
+              -G Ninja
+            # daslang + daslang-live binaries plus the shared-module artifacts
+            # daslang-live dlopens at runtime via `require <module>` lines in
+            # the test scripts: dasModuleLiveHost (lifecycle API exported via
+            # dlsym RTLD_DEFAULT), dasModuleGlfw (window/GL context — dlopened
+            # but no glfw fn called under --headless), dasModuleHV (HTTP
+            # /status, /command, /shutdown endpoints used by playwright),
+            # dasModulePUGIXML + dasModuleStbImage (rendering deps).
+            cmake --build ./build --parallel --target \
+              daslang daslang-live \
+              dasModuleLiveHost dasModuleGlfw dasModuleHV \
+              dasModulePUGIXML dasModuleStbImage
+            echo "BIN_DIR=bin" >> "$GITHUB_ENV"
+          fi
 
       - name: "daspkg install dasImgui (global)"
+        # Use bash-safe relative paths inside daslang-src; on Windows
+        # ${{ github.workspace }} expands to a backslash path that bash
+        # interprets as escape sequences (\a, etc.).
+        working-directory: daslang-src
         run: |
           set -eux
-          ${{ github.workspace }}/daslang-src/bin/daslang \
-            ${{ github.workspace }}/daslang-src/utils/daspkg/main.das -- \
-            install ${{ github.workspace }}/dasImgui --global
+          ${BIN_DIR}/daslang utils/daspkg/main.das -- \
+            install ../dasImgui --global
 
-      - name: "Run integration tests (xvfb-run)"
+      - name: "Run integration tests (headless)"
         working-directory: ${{ github.workspace }}/daslang-src
+        # `--headless` after dastest's `--` reaches imgui_playwright via
+        # get_user_args(); playwright forwards it to every spawned daslang-live
+        # via popen_argv. No xvfb wrapper needed — no display is opened.
+        #
+        # DASLIVE_HV_LOG=stderr: redirect libhv's logger to stderr so we see
+        # event-loop/accept diagnostics in CI output. Env propagates to the
+        # spawned daslang-live subprocess via popen_argv's inherited env.
+        #
+        # --exclude entries (all platforms): tests that drive synth IO through
+        # the GLFW event queue (post_command "key_press" / "mouse_*" → glfw_live's
+        # synth driver). The GLFW backend has no event queue in headless mode, so
+        # these tests cannot pass. Substring-match against the file basename:
+        #   glfw_synth  → test_glfw_synth_keys.das, test_glfw_synth_mouse.das
+        #   key_hud     → test_visual_aids_key_hud.das (1 of N subtests is GLFW)
+        # Re-include them when a windowed CI job (or a key-event abstraction
+        # that bypasses GLFW under headless) lands.
+        #
+        # Windows-only --exclude entries: libhv's event loop on Windows CI
+        # processes at most 16 POST /command connections per subprocess before
+        # stalling (the event-loop batch-processing limit). Tests that require
+        # more than 16 round-trips in a single subprocess invocation always hit
+        # the 120 s popen timeout. We exclude any test estimated above ~12
+        # POSTs to leave a 4-call safety margin. Re-include when the libhv
+        # Windows IOCP path is fixed upstream.
+        #   inputs_drag     → test_inputs_drag.das     (~30 POSTs)
+        #   inputs_numeric  → test_inputs_numeric.das  (~30 POSTs — observed FAIL on b62a429+54a635e)
+        #   inputs_slider   → test_inputs_slider.das   (~30 POSTs — observed FAIL on 54a635e)
+        #   indexed_dynamic → test_indexed_dynamic.das (~20 POSTs)
+        #   inputs_color    → test_inputs_color.das    (~14 POSTs — buffer)
+        #   inputs_choice   → test_inputs_choice.das   (~14 POSTs — buffer)
+        #   inputs_text     → test_inputs_text.das     (~13 POSTs — buffer)
+        env:
+          DASLIVE_HV_LOG: stderr
+          DASLIVE_HV_LOG_LEVEL: DEBUG
         run: |
           set -eux
-          xvfb-run -a bin/daslang dastest/dastest.das -- \
-            --test modules/dasImgui/tests/integration
+          EXTRA_EXCLUDES=""
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            EXTRA_EXCLUDES="--exclude inputs_drag --exclude inputs_numeric --exclude inputs_slider --exclude inputs_color --exclude inputs_choice --exclude inputs_text --exclude indexed_dynamic"
+          fi
+          ${BIN_DIR}/daslang dastest/dastest.das -- \
+            --test modules/dasImgui/tests/integration \
+            --exclude glfw_synth \
+            --exclude key_hud \
+            $EXTRA_EXCLUDES \
+            --headless
