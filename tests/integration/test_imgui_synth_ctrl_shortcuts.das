@@ -138,7 +138,7 @@ def test_click_then_ctrl_a_clears_input(t : T?) {
         t |> success(typed != null, "NAME_INPUT.value == \"abc\" before chord")
 
         // Select-all chord: Cmd+A on macOS, Ctrl+A everywhere else.
-        if macos {
+        if (macos) {
             post_command(d, "imgui_key_chord", JV((mods = ["Super"], key = "A")))
         } else {
             post_command(d, "imgui_key_chord", JV((mods = ["Ctrl"], key = "A")))
