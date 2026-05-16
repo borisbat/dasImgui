@@ -155,17 +155,22 @@ Limits under --headless
   analogue and either no-op or panic depending on the path. Tests that
   capture screenshots or APNGs stay windowed.
 * The live-API HTTP endpoint at ``localhost:9090/command`` is installed
-  by the ``daslang-live`` host only. ``daslang.exe`` (the interpreter)
-  runs the script without the HTTP server, so Playwright drivers that
-  send JSON commands over HTTP need a windowed ``daslang-live`` host. A
-  headless live-driver host is a separate future change.
-* ``daslang-live`` itself is always windowed — it doesn't pass argv to
-  scripts, so the harness's ``--headless`` flag is unreachable from a
-  live-reload session. ``harness_is_headless()`` returns ``false`` under
-  ``daslang-live`` regardless.
+  by the ``daslang-live`` host. ``daslang.exe`` (the interpreter) runs
+  the script without the HTTP server, so Playwright drivers that send
+  JSON commands over HTTP need ``daslang-live`` — but the host runs the
+  HTTP stack in either mode (windowed or headless), so the playwright
+  flow (``/status`` + ``/command`` + ``/shutdown``) works under
+  ``--headless`` too.
 
-These limits are by design for the first headless landing — the bulk of
-existing tests don't touch screenshots or HTTP, so a single ``--headless``
-toggle covers them. Tests that need the windowed-only surfaces opt out of
-the harness lint per-file (``options _allow_glfw_calls = true``) and run
-windowed indefinitely.
+``daslang-live`` forwards everything after its own ``--`` separator to
+the script's ``get_user_args()`` (daslang PR #2681), so
+``daslang-live FILE.das -- --headless`` reaches
+``harness_is_headless()`` inside the live-reload session. ``imgui_playwright``
+forwards the flag from its own user-args to every spawned subprocess, so a
+single ``--headless`` on the dastest command line propagates through:
+``daslang dastest.das -- --test integration --headless``.
+
+Tests that need the windowed-only surfaces (screenshot / record_*) opt out
+of the harness lint per-file (``options _allow_glfw_calls = true``) and
+run windowed regardless of the ``--headless`` flag — ``harness_is_headless()``
+is a hint, not a hard switch.

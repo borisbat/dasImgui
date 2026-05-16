@@ -1,16 +1,21 @@
 name: Integration tests
 
-# Disabled (manual-only) — to re-enable, add the `push:` / `pull_request:`
-# blocks back. Currently parked because:
-#   - Linux GitHub-hosted runners need xvfb + Mesa SW rendering, and the
-#     dasImgui playwright readiness gate (poll /status until first frame
-#     renders) doesn't survive that path: daslang-live boots, prints the
-#     lifecycle banner, then hangs before the first frame.
-#   - windows-latest works for GLFW/GL but transitively builds OpenSSL (via
-#     dasHV's libhv), which is a 1+ hour build on the CI runner.
-# Revisit once we have headless integration tests (mock GL backend or a
-# native-headless renderer path that doesn't need a real window).
+# Resurrected after harness `--headless` mode landed (PRs #35-#37 + daslang
+# PR #2681). The integration suite now runs without a display server:
+#   - The harness's headless arm creates an ImGui context with a CPU font
+#     atlas and discards Render() output. No GLFW window, no GL context.
+#   - daslang-live forwards post-`--` argv to scripts (daslang PR #2681), so
+#     `popen_argv(... "--", "--headless")` reaches the harness inside the
+#     spawned subprocess.
+#   - The HTTP live-API server (port 9090) runs regardless of harness mode,
+#     so playwright's /status + /command + /shutdown flow is unchanged.
+# libglfw3-dev still has to be installed because `imguiApp.shared_module`
+# is dlopened (DLL loader resolves GLFW imports); no glfw function is ever
+# called at runtime under --headless.
 on:
+  push:
+    branches: [master]
+  pull_request:
   workflow_dispatch:
 
 concurrency:
@@ -23,9 +28,9 @@ permissions:
 # dasImgui is daspkg-installed into daslang-src/modules/dasImgui/ (mirrors the
 # docs workflow). Tests are driven by dastest at daslang-src/dastest/dastest.das.
 # Each test in tests/integration/ spawns daslang-live as a subprocess via
-# imgui_playwright; daslang-live opens a GLFW/OpenGL window so we wrap the
-# dastest invocation in `xvfb-run -a` to give it a virtual display. The
-# subprocess inherits DISPLAY=:99 from the xvfb-run environment.
+# imgui_playwright. With `--headless` forwarded on the dastest command line,
+# imgui_playwright appends `-- --headless` to the spawn argv so the subprocess
+# runs without opening a window.
 jobs:
   integration:
     runs-on: ubuntu-latest
@@ -43,14 +48,17 @@ jobs:
           path: dasImgui
 
       - name: "Install system dependencies"
+        # libglfw3-dev: needed by the DLL loader for imguiApp.shared_module,
+        # even though --headless never calls a glfw function. freetype/mesa/
+        # xorg: ImGui font atlas + GL headers consumed at module compile time.
+        # No xvfb — headless does not need a virtual display.
         run: |
           sudo apt-get update
           sudo apt-get install -y \
             libglfw3-dev \
             libfreetype6-dev \
             mesa-common-dev \
-            xorg-dev \
-            xvfb
+            xorg-dev
 
       - name: "Install CMake and Ninja"
         uses: lukka/get-cmake@latest
@@ -69,10 +77,10 @@ jobs:
           # daslang + daslang-live binaries plus the shared-module artifacts
           # daslang-live dlopens at runtime via `require <module>` lines in
           # the test scripts: dasModuleLiveHost (lifecycle API exported via
-          # dlsym RTLD_DEFAULT), dasModuleGlfw (window/GL context), dasModuleHV
-          # (HTTP /status, /command, /shutdown endpoints used by playwright),
-          # dasModulePUGIXML + dasModuleStbImage (rendering deps). Matches the
-          # set daslang's extended_checks workflow builds for live tests.
+          # dlsym RTLD_DEFAULT), dasModuleGlfw (window/GL context — dlopened
+          # but no glfw fn called under --headless), dasModuleHV (HTTP
+          # /status, /command, /shutdown endpoints used by playwright),
+          # dasModulePUGIXML + dasModuleStbImage (rendering deps).
           cmake --build ./build --parallel --target \
             daslang daslang-live \
             dasModuleLiveHost dasModuleGlfw dasModuleHV \
@@ -85,9 +93,24 @@ jobs:
             ${{ github.workspace }}/daslang-src/utils/daspkg/main.das -- \
             install ${{ github.workspace }}/dasImgui --global
 
-      - name: "Run integration tests (xvfb-run)"
+      - name: "Run integration tests (headless)"
         working-directory: ${{ github.workspace }}/daslang-src
+        # `--headless` after dastest's `--` reaches imgui_playwright via
+        # get_user_args(); playwright forwards it to every spawned daslang-live
+        # via popen_argv. No xvfb wrapper needed — no display is opened.
+        #
+        # --exclude entries: tests that drive synth IO through the GLFW event
+        # queue (post_command "key_press" / "mouse_*" → glfw_live's synth
+        # driver). The GLFW backend has no event queue in headless mode, so
+        # these tests cannot pass. Substring-match against the file basename:
+        #   glfw_synth  → test_glfw_synth_keys.das, test_glfw_synth_mouse.das
+        #   key_hud     → test_visual_aids_key_hud.das (1 of N subtests is GLFW)
+        # Re-include them when a windowed CI job (or a key-event abstraction
+        # that bypasses GLFW under headless) lands.
         run: |
           set -eux
-          xvfb-run -a bin/daslang dastest/dastest.das -- \
-            --test modules/dasImgui/tests/integration
+          bin/daslang dastest/dastest.das -- \
+            --test modules/dasImgui/tests/integration \
+            --exclude glfw_synth \
+            --exclude key_hud \
+            --headless

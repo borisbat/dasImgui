@@ -11,6 +11,7 @@ require daslib/json public
 require daslib/json_boost public
 require daslib/fio public
 require daslib/command_line
+require daslib/clargs
 require daslib/strings_boost
 require strings
 
@@ -437,6 +438,23 @@ def public with_imgui_app(feature_path : string; body : block<(app : ImguiApp) :
                        body)
 }
 
+var private g_headless_parsed : bool = false
+var private g_headless_cached : bool = false
+
+def private playwright_wants_headless() : bool {
+    //! ``--headless`` forwarded from the dastest (or daslang.exe) invocation.
+    //! Lazily parsed once; subsequent calls hit the cache. CI passes
+    //! ``--headless`` on the dastest command line, every spawned daslang-live
+    //! inherits it via ``-- --headless`` in argv. Local interactive runs
+    //! omit the flag and stay windowed.
+    if (g_headless_parsed) return g_headless_cached
+    g_headless_parsed = true
+    let args <- get_user_args()
+    let raw = find_bool_flag_raw_value(args, "--headless")
+    g_headless_cached = (raw |> unwrap_or("false")) == "true"
+    return g_headless_cached
+}
+
 def public with_imgui_app_opt(feature_path : string;
                               port : int;
                               ready_timeout_sec : float;
@@ -444,16 +462,22 @@ def public with_imgui_app_opt(feature_path : string;
                               body : block<(app : ImguiApp) : void>) {
     //! Spawn ``daslang-live <feature_path>``; runs ``body`` while alive, then POSTs ``/shutdown`` and drains stdout.
     //! Panics on non-zero exit code, ready-timeout, or test-timeout so the surrounding ``[test]`` fails.
+    //! Forwards ``--headless`` (read from this process's ``get_user_args()``)
+    //! into the spawn so the harness's headless arm fires inside the subprocess.
     let exe = daslang_live_exe()
     let app_path = resolve_feature_path(feature_path)
-    let argv <- [exe, app_path]
+    var argv <- [exe, app_path]
+    if (playwright_wants_headless()) {
+        argv |> push("--")
+        argv |> push("--headless")
+    }
     let base_url = "http://127.0.0.1:{port}"
     var app = ImguiApp(base_url = base_url,
                        feature_path = app_path,
                        transport <- live_api_transport(base_url))
     var captured : string
     var unready = false
-    print("[imgui_playwright] spawn: {exe} {app_path}\n")
+    print("[imgui_playwright] spawn argv: {argv}\n")
     let exit_code = unsafe(popen_argv(argv, test_timeout_sec, $(f) {
         if (f == null) {
             print("[imgui_playwright] popen returned null FILE\n")

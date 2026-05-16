@@ -38,6 +38,23 @@
 - `tests/integration/failed_imgui_harness_lint_raw.das` — negative fixture
   proving the default-on lint fires. Uses `expect 50503` so dastest treats
   the compile failure as a PASS.
+- CI: `tests.yml` resurrected. Now runs on every push/PR (was parked
+  `workflow_dispatch:` since the xvfb/Mesa hang). The integration suite
+  drives daslang-live in headless mode — `imgui_playwright` reads
+  `--headless` from its own `get_user_args()` and appends `-- --headless`
+  to every spawned subprocess. No `xvfb-run`, no virtual display.
+  Depends on daslang PR #2681 (daslang-live forwards post-`--` argv to
+  scripts via `setCommandLineArguments`). Local smoke: 98/111 PASS
+  headless; the 13 failures (and CI excludes) are
+  `test_glfw_synth_keys`, `test_glfw_synth_mouse`,
+  `test_visual_aids_key_hud` — all post `key_press` / `mouse_*` HTTP
+  commands targeting `glfw_live`'s synth driver, which has no event
+  queue without a GLFW context. Inherently windowed-only; revisit
+  alongside a windowed CI job or a backend-neutral key-event API.
+- CI: `docs.yml` no longer filters by `paths:` — any change to
+  `master` rebuilds and republishes. The narrow `doc/**` + `widgets/**`
+  filter silently skipped PRs that only touched `examples/**` or
+  `CHANGELOG.md`, leaving the site stale vs master.
 
 ### Changed
 
