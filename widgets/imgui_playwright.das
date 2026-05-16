@@ -557,28 +557,17 @@ def public with_imgui_app_opt(feature_path : string;
                        transport <- live_api_transport(base_url))
     var captured : string
     var unready = false
-    print("[imgui_playwright] spawn argv: {argv}\n")
     let exit_code = unsafe(popen_argv(argv, test_timeout_sec, $(f) {
-        if (f == null) {
-            print("[imgui_playwright] popen returned null FILE\n")
-            return
-        }
-        print("[imgui_playwright] subprocess up, polling /status...\n")
+        return if (f == null)
         if (!wait_until_ready(app, ready_timeout_sec)) {
-            print("[imgui_playwright] readiness gate FAILED\n")
             unready = true
             captured = unsafe(fread_to_eof(f))
             return
         }
-        print("[imgui_playwright] ready, invoking body\n")
         invoke(body, app)
-        print("[imgui_playwright] body done, sending /shutdown\n")
         post_signal(app, "/shutdown")
-        print("[imgui_playwright] /shutdown posted, draining pipe...\n")
         captured = unsafe(fread_to_eof(f))
-        print("[imgui_playwright] drain done\n")
     }))
-    print("[imgui_playwright] popen exit_code={exit_code}\n")
     if (unready) {
         panic("daslang-live not ready after {ready_timeout_sec}s.\nstdout/stderr:\n{captured}")
     }

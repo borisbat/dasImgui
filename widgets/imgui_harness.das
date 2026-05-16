@@ -88,10 +88,6 @@ def private ensure_parsed() {
     return if (g_parsed)
     g_parsed = true
     let args <- get_user_args()
-    print("[harness] ensure_parsed: get_user_args() length={length(args)}\n")
-    for (a in args) {
-        print("[harness] ensure_parsed:   arg: {a}\n")
-    }
     let raw_headless = find_bool_flag_raw_value(args, "--headless")
     g_headless = (raw_headless |> unwrap_or("false")) == "true"
     let raw_frames = find_flag_raw_value(args, "--headless-frames")
@@ -101,12 +97,6 @@ def private ensure_parsed() {
     // releases the live-API port before the parent gives up (cascade guard).
     let raw_timeout = find_flag_raw_value(args, "--headless-timeout-sec")
     g_headless_max_uptime_sec = to_float(raw_timeout |> unwrap_or("0"))
-    print("[harness] ensure_parsed: g_headless={g_headless} max_frames={g_headless_max_frames} max_uptime_sec={g_headless_max_uptime_sec}\n")
-}
-
-def private log_arm(name : string) {
-    let arm = g_headless ? "headless" : "windowed"
-    print("[harness] {name}: arm={arm}\n")
 }
 
 def public harness_is_headless() : bool {
@@ -119,24 +109,15 @@ def public harness_init(title : string; width : int = 800; height : int = 600) {
     //! Windowed: ``live_create_window`` + ``live_imgui_init``. Headless:
     //! ``CreateContext`` + ``StyleColorsDark`` + font atlas build +
     //! ``DisplaySize`` — no window, no GL context.
-    log_arm("harness_init")
     if (harness_is_headless()) {
-        print("[harness] harness_init headless: CreateContext\n")
         g_headless_ctx = CreateContext(null)
-        print("[harness] harness_init headless: StyleColorsDark\n")
         StyleColorsDark(null)
-        print("[harness] harness_init headless: imgui_headless_init_fonts\n")
         imgui_headless_init_fonts()
-        print("[harness] harness_init headless: imgui_headless_set_display_size\n")
         imgui_headless_set_display_size(float(width), float(height))
-        print("[harness] harness_init headless: DONE\n")
         return
     }
-    print("[harness] harness_init windowed: live_create_window\n")
     live_create_window(title, width, height)
-    print("[harness] harness_init windowed: live_imgui_init\n")
     live_imgui_init(live_window)
-    print("[harness] harness_init windowed: DONE\n")
 }
 
 def public harness_begin_frame() : bool {
@@ -144,9 +125,6 @@ def public harness_begin_frame() : bool {
     //! cap reached in headless). Windowed: ``live_begin_frame`` + ``begin_frame``
     //! + ``Impl_OpenGL3_NewFrame`` + ``Impl_Glfw_NewFrame``. Headless:
     //! ``begin_frame`` + ``imgui_headless_advance_dt`` (real wall-clock dt).
-    if (g_headless_frame < 3) {
-        print("[harness] harness_begin_frame: entry frame={g_headless_frame}\n")
-    }
     if (harness_is_headless()) {
         if (g_headless_max_frames > 0 && g_headless_frame >= g_headless_max_frames) {
             request_exit()
@@ -157,6 +135,8 @@ def public harness_begin_frame() : bool {
             g_headless_first_uptime = now
         }
         if (g_headless_max_uptime_sec > 0.0f && (now - g_headless_first_uptime) >= g_headless_max_uptime_sec) {
+            // Cascade-guard fire — kept on stdout because it's diagnostic
+            // (only emitted when the safety net actually trips, never in healthy runs).
             print("[harness] headless timeout {g_headless_max_uptime_sec}s reached at uptime {now - g_headless_first_uptime}s — request_exit()\n")
             request_exit()
             return false
@@ -166,18 +146,9 @@ def public harness_begin_frame() : bool {
             g_headless_dt = dt > 0.0f ? dt : (1.0f / 60.0f)
         }
         g_headless_last_uptime = now
-        if (g_headless_frame < 3) {
-            print("[harness] harness_begin_frame headless: imgui_headless_advance_dt dt={g_headless_dt}\n")
-        }
         imgui_headless_advance_dt(g_headless_dt)
-        if (g_headless_frame < 3) {
-            print("[harness] harness_begin_frame headless: begin_frame()\n")
-        }
         begin_frame()
         g_headless_frame++
-        if (g_headless_frame <= 3) {
-            print("[harness] harness_begin_frame headless: returning true, frame now {g_headless_frame}\n")
-        }
         return true
     }
     return false if (!live_begin_frame())

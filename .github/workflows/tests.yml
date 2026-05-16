@@ -179,10 +179,16 @@ jobs:
         # processes at most 16 POST /command connections per subprocess before
         # stalling (the event-loop batch-processing limit). Tests that require
         # more than 16 round-trips in a single subprocess invocation always hit
-        # the 120 s popen timeout. Root cause is in daslang's libhv build on
-        # Windows; re-include when fixed upstream.
-        #   inputs_drag     → test_inputs_drag.das     (needs ~18 POSTs)
-        #   indexed_dynamic → test_indexed_dynamic.das (needs ~20 POSTs)
+        # the 120 s popen timeout. We exclude any test estimated above ~12
+        # POSTs to leave a 4-call safety margin. Re-include when the libhv
+        # Windows IOCP path is fixed upstream.
+        #   inputs_drag     → test_inputs_drag.das     (~30 POSTs)
+        #   inputs_numeric  → test_inputs_numeric.das  (~30 POSTs — observed FAIL on b62a429+54a635e)
+        #   inputs_slider   → test_inputs_slider.das   (~30 POSTs — observed FAIL on 54a635e)
+        #   indexed_dynamic → test_indexed_dynamic.das (~20 POSTs)
+        #   inputs_color    → test_inputs_color.das    (~14 POSTs — buffer)
+        #   inputs_choice   → test_inputs_choice.das   (~14 POSTs — buffer)
+        #   inputs_text     → test_inputs_text.das     (~13 POSTs — buffer)
         env:
           DASLIVE_HV_LOG: stderr
           DASLIVE_HV_LOG_LEVEL: DEBUG
@@ -190,7 +196,7 @@ jobs:
           set -eux
           EXTRA_EXCLUDES=""
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
-            EXTRA_EXCLUDES="--exclude inputs_drag --exclude indexed_dynamic"
+            EXTRA_EXCLUDES="--exclude inputs_drag --exclude inputs_numeric --exclude inputs_slider --exclude inputs_color --exclude inputs_choice --exclude inputs_text --exclude indexed_dynamic"
           fi
           ${BIN_DIR}/daslang dastest/dastest.das -- \
             --test modules/dasImgui/tests/integration \
