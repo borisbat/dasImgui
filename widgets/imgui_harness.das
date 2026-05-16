@@ -23,24 +23,31 @@ module imgui_harness shared public
 //! Re-exports the backend-agnostic dasImgui stack so consumers need only a
 //! single ``require imgui_harness`` line.
 
-// Backend-agnostic stack — re-exported public.
-require imgui public
-require imgui/imgui_boost_v2 public
-require imgui/imgui_boost_runtime public
-require imgui/imgui_widgets_builtin public
-require imgui/imgui_containers_builtin public
-require live/live_api public
-require live/live_commands public
-require live/live_vars public
-require live_host public
+// NOTE on require ordering: the windowed backend (imgui_app + glfw/opengl)
+// must be required BEFORE the live_api / live_commands family. Reordering
+// these tickles a daslang-live readiness regression where /status never
+// returns 200 to a popen parent — likely a [_macro]-driven debug-agent
+// install racing with GLFW backend init. The harness mirrors the canonical
+// order used by every pre-harness example/test verbatim.
 
-// Windowed backend — private. Lint (PR 3) forbids user-scope leakage.
+// Windowed backend (must come first; see ordering note above).
+require imgui public
 require imgui_app
 require glfw/glfw_boost
 require opengl/opengl_boost
 require live/glfw_live
 require live/opengl_live
+
+// Live-host + boost-runtime stack — re-exported public.
+require live/live_api public
+require live/live_commands public
+require live/live_vars public
+require live_host public
 require imgui/imgui_live
+require imgui/imgui_boost_runtime public
+require imgui/imgui_boost_v2 public
+require imgui/imgui_widgets_builtin public
+require imgui/imgui_containers_builtin public
 require imgui/imgui_visual_aids
 
 // Headless backend — private. 3-fn surface (no GLFW/GL names).
