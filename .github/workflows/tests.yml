@@ -13,14 +13,16 @@ name: Integration tests
 # is dlopened (DLL loader resolves GLFW imports); no glfw function is ever
 # called at runtime under --headless.
 #
-# Step-0 diagnostic matrix: ubuntu-latest hangs in dasHV's HTTP serving under
-# headless on Linux (update() iterates, but /status never responds). Adding
-# macos-latest to test whether the hang is Linux-specific.
-# windows-latest dropped for now — libhv pulls in OpenSSL which needs a perl
-# env GitHub-hosted Windows runners don't ship working (Params/Check.pm,
-# IPC/Cmd.pm load errors). Re-add once we either install Strawberry Perl
-# with the right modules or disable SSL in libhv via CMake.
-# fail-fast: false so both OSes report regardless of which passes.
+# Step-0 diagnostic matrix: ubuntu and macOS both hang in dasHV's HTTP
+# serving under --headless (script's update() loop iterates fine, but
+# /status never responds). Windows runs the same tests cleanly locally.
+# Matrix runs all three to confirm the POSIX-vs-Windows split.
+#
+# Windows recipe (mirrors daslang's own extended_checks.yml):
+#   - vcpkg openssl (prebuilt, avoids the perl-env libhv->OpenSSL Configure trap)
+#   - Strawberry Perl on PATH (still needed for some downstream parts)
+#   - msvc-dev-cmd to put cl.exe + linker on PATH so Ninja can find them
+# fail-fast: false so all three OSes report regardless of which passes.
 on:
   push:
     branches: [master]
@@ -40,7 +42,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
     defaults:
       run:
         shell: bash
@@ -50,7 +52,10 @@ jobs:
         with:
           repository: GaijinEntertainment/daScript
           path: daslang-src
-          ref: master
+          # TEMP: pinned to bbatkin/dashv-log-route-env (PR #2684) for the
+          # `DASLIVE_HV_LOG=stderr` env-gated libhv stderr redirection.
+          # Revert to `master` once that PR merges.
+          ref: bbatkin/dashv-log-route-env
 
       - name: "Checkout dasImgui"
         uses: actions/checkout@v4
@@ -80,6 +85,24 @@ jobs:
           brew install glfw freetype bison
           echo "/opt/homebrew/opt/bison/bin" >> "$GITHUB_PATH"
 
+      - name: "Install OpenSSL via vcpkg (Windows)"
+        if: matrix.os == 'windows-latest'
+        # libhv pulls in OpenSSL; building it from source needs perl env that
+        # GitHub-hosted Windows runners don't ship working. vcpkg's binary
+        # cache provides a prebuilt openssl, sidestepping the perl Configure
+        # trap. Mirrors daslang's extended_checks.yml.
+        run: |
+          git clone https://github.com/microsoft/vcpkg
+          ./vcpkg/bootstrap-vcpkg.sh
+          ./vcpkg/vcpkg install openssl:x64-windows --binarycaching
+          echo "VCPKG_ROOT=$(pwd)/vcpkg" >> $GITHUB_ENV
+          echo "/c/Strawberry/perl/bin" >> $GITHUB_PATH
+
+      - name: "MSVC dev environment (Windows)"
+        if: matrix.os == 'windows-latest'
+        # Puts cl.exe + linker + ml64.exe on PATH so Ninja can find them.
+        uses: ilammy/msvc-dev-cmd@v1
+
       - name: "Install CMake and Ninja"
         uses: lukka/get-cmake@latest
 
@@ -87,12 +110,17 @@ jobs:
         working-directory: daslang-src
         run: |
           set -eux
+          EXTRA_CMAKE_ARGS=""
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            EXTRA_CMAKE_ARGS="-DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
+          fi
           cmake --no-warn-unused-cli -B./build \
             -DCMAKE_BUILD_TYPE:STRING=Release \
             -DDAS_HV_DISABLED=OFF \
             -DDAS_PUGIXML_DISABLED=OFF \
             -DDAS_LLVM_DISABLED=ON \
             -DDAS_GLFW_DISABLED=OFF \
+            $EXTRA_CMAKE_ARGS \
             -G Ninja
           # daslang + daslang-live binaries plus the shared-module artifacts
           # daslang-live dlopens at runtime via `require <module>` lines in
@@ -119,6 +147,10 @@ jobs:
         # get_user_args(); playwright forwards it to every spawned daslang-live
         # via popen_argv. No xvfb wrapper needed — no display is opened.
         #
+        # DASLIVE_HV_LOG=stderr: redirect libhv's logger to stderr so we see
+        # event-loop/accept diagnostics in CI output. Env propagates to the
+        # spawned daslang-live subprocess via popen_argv's inherited env.
+        #
         # --exclude entries: tests that drive synth IO through the GLFW event
         # queue (post_command "key_press" / "mouse_*" → glfw_live's synth
         # driver). The GLFW backend has no event queue in headless mode, so
@@ -127,6 +159,9 @@ jobs:
         #   key_hud     → test_visual_aids_key_hud.das (1 of N subtests is GLFW)
         # Re-include them when a windowed CI job (or a key-event abstraction
         # that bypasses GLFW under headless) lands.
+        env:
+          DASLIVE_HV_LOG: stderr
+          DASLIVE_HV_LOG_LEVEL: DEBUG
         run: |
           set -eux
           bin/daslang dastest/dastest.das -- \
