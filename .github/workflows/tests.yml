@@ -98,46 +98,57 @@ jobs:
           echo "VCPKG_ROOT=$(pwd)/vcpkg" >> $GITHUB_ENV
           echo "/c/Strawberry/perl/bin" >> $GITHUB_PATH
 
-      - name: "MSVC dev environment (Windows)"
-        if: matrix.os == 'windows-latest'
-        # Puts cl.exe + linker + ml64.exe on PATH so Ninja can find them.
-        uses: ilammy/msvc-dev-cmd@v1
-
       - name: "Install CMake and Ninja"
         uses: lukka/get-cmake@latest
 
       - name: "Build daslang + daslang-live + shared modules"
         working-directory: daslang-src
+        # Windows: Visual Studio 17 2022 generator (mirrors daslang's own
+        # extended_checks.yml). Avoids the Ninja+msvc-dev-cmd PATH-propagation
+        # dance under bash on Windows runners. Binaries land in bin/Release/
+        # instead of bin/ — handled by exporting BIN_DIR for downstream steps.
+        # Linux/macOS: Ninja, single-config, binaries in bin/.
         run: |
           set -eux
-          EXTRA_CMAKE_ARGS=""
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
-            EXTRA_CMAKE_ARGS="-DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
+            cmake --no-warn-unused-cli -B./build \
+              -DDAS_HV_DISABLED=OFF \
+              -DDAS_PUGIXML_DISABLED=OFF \
+              -DDAS_LLVM_DISABLED=ON \
+              -DDAS_GLFW_DISABLED=OFF \
+              -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
+              -G "Visual Studio 17 2022" -T host=x64 -A x64
+            cmake --build ./build --config Release --parallel --target \
+              daslang daslang-live \
+              dasModuleLiveHost dasModuleGlfw dasModuleHV \
+              dasModulePUGIXML dasModuleStbImage
+            echo "BIN_DIR=bin/Release" >> "$GITHUB_ENV"
+          else
+            cmake --no-warn-unused-cli -B./build \
+              -DCMAKE_BUILD_TYPE:STRING=Release \
+              -DDAS_HV_DISABLED=OFF \
+              -DDAS_PUGIXML_DISABLED=OFF \
+              -DDAS_LLVM_DISABLED=ON \
+              -DDAS_GLFW_DISABLED=OFF \
+              -G Ninja
+            # daslang + daslang-live binaries plus the shared-module artifacts
+            # daslang-live dlopens at runtime via `require <module>` lines in
+            # the test scripts: dasModuleLiveHost (lifecycle API exported via
+            # dlsym RTLD_DEFAULT), dasModuleGlfw (window/GL context — dlopened
+            # but no glfw fn called under --headless), dasModuleHV (HTTP
+            # /status, /command, /shutdown endpoints used by playwright),
+            # dasModulePUGIXML + dasModuleStbImage (rendering deps).
+            cmake --build ./build --parallel --target \
+              daslang daslang-live \
+              dasModuleLiveHost dasModuleGlfw dasModuleHV \
+              dasModulePUGIXML dasModuleStbImage
+            echo "BIN_DIR=bin" >> "$GITHUB_ENV"
           fi
-          cmake --no-warn-unused-cli -B./build \
-            -DCMAKE_BUILD_TYPE:STRING=Release \
-            -DDAS_HV_DISABLED=OFF \
-            -DDAS_PUGIXML_DISABLED=OFF \
-            -DDAS_LLVM_DISABLED=ON \
-            -DDAS_GLFW_DISABLED=OFF \
-            $EXTRA_CMAKE_ARGS \
-            -G Ninja
-          # daslang + daslang-live binaries plus the shared-module artifacts
-          # daslang-live dlopens at runtime via `require <module>` lines in
-          # the test scripts: dasModuleLiveHost (lifecycle API exported via
-          # dlsym RTLD_DEFAULT), dasModuleGlfw (window/GL context — dlopened
-          # but no glfw fn called under --headless), dasModuleHV (HTTP
-          # /status, /command, /shutdown endpoints used by playwright),
-          # dasModulePUGIXML + dasModuleStbImage (rendering deps).
-          cmake --build ./build --parallel --target \
-            daslang daslang-live \
-            dasModuleLiveHost dasModuleGlfw dasModuleHV \
-            dasModulePUGIXML dasModuleStbImage
 
       - name: "daspkg install dasImgui (global)"
         run: |
           set -eux
-          ${{ github.workspace }}/daslang-src/bin/daslang \
+          ${{ github.workspace }}/daslang-src/${BIN_DIR}/daslang \
             ${{ github.workspace }}/daslang-src/utils/daspkg/main.das -- \
             install ${{ github.workspace }}/dasImgui --global
 
@@ -164,7 +175,7 @@ jobs:
           DASLIVE_HV_LOG_LEVEL: DEBUG
         run: |
           set -eux
-          bin/daslang dastest/dastest.das -- \
+          ${BIN_DIR}/daslang dastest/dastest.das -- \
             --test modules/dasImgui/tests/integration \
             --exclude glfw_synth \
             --exclude key_hud \
