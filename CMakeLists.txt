@@ -233,3 +233,53 @@ IF(OPENGL_FOUND)
 ELSE()
     MESSAGE(STATUS "OpenGL not found — skipping imguiApp module")
 ENDIF()
+
+# imguiAppHeadless.shared_module — display-less backend for CI / Playwright
+# runs. Companion to imguiApp; no GLFW, no OpenGL, no gl3w. Used by
+# imgui/imgui_harness when its --headless arm is active.
+add_library(imguiAppHeadless SHARED ${DAS_IMGUI_DIR}/src/module_imgui_app_headless.cpp)
+target_compile_features(imguiAppHeadless PRIVATE cxx_std_17)
+target_compile_definitions(imguiAppHeadless PRIVATE
+    DAS_MOD_EXPORTS DAS_ENABLE_DLL=1
+    IMGUI_DISABLE_OBSOLETE_FUNCTIONS=1
+    IMGUI_API=${IMGUI_PUBLIC_ATTR}
+    $<$<CONFIG:Release>:DAS_NO_ASSERTIONS>
+    $<$<CONFIG:MinSizeRel>:DAS_NO_ASSERTIONS>
+    $<$<CONFIG:RelWithDebInfo>:DAS_NO_ASSERTIONS>
+)
+target_include_directories(imguiAppHeadless PRIVATE
+    ${DASLANG_DIR}/include
+    ${imgui_INCLUDE_DIR}
+    ${DAS_IMGUI_DIR}/src
+)
+if(WIN32)
+    if(EXISTS "${DASLANG_DIR}/lib/Release/libDaScriptDyn.lib")
+        target_link_libraries(imguiAppHeadless PRIVATE
+            ${DASLANG_DIR}/lib/$<CONFIG>/libDaScriptDyn.lib
+            ${DASLANG_DIR}/lib/$<CONFIG>/libDaScriptDyn_runtime.lib
+        )
+    else()
+        target_link_libraries(imguiAppHeadless PRIVATE
+            ${DASLANG_DIR}/lib/libDaScriptDyn.lib
+            ${DASLANG_DIR}/lib/libDaScriptDyn_runtime.lib
+        )
+    endif()
+elseif(APPLE)
+    target_link_libraries(imguiAppHeadless PRIVATE
+        ${DASLANG_DIR}/lib/liblibDaScriptDyn.dylib
+        ${DASLANG_DIR}/lib/liblibDaScriptDyn_runtime.dylib
+    )
+else()
+    target_link_libraries(imguiAppHeadless PRIVATE
+        ${DASLANG_DIR}/lib/liblibDaScriptDyn.so
+        ${DASLANG_DIR}/lib/liblibDaScriptDyn_runtime.so
+    )
+endif()
+SETUP_OPTIONS(imguiAppHeadless)
+set_target_properties(imguiAppHeadless PROPERTIES
+    SUFFIX ".shared_module"
+    PREFIX ""
+    RUNTIME_OUTPUT_DIRECTORY_RELEASE "${DAS_IMGUI_DIR}"
+    LIBRARY_OUTPUT_DIRECTORY "${DAS_IMGUI_DIR}"
+)
+target_link_libraries(imguiAppHeadless PRIVATE dasModuleImgui)

@@ -16,9 +16,9 @@ module imgui_harness shared public
 //!
 //! Mode dispatch (windowed vs headless) is internal. Pass ``--headless`` after
 //! the daslang ``--`` separator to run without a window:
-//! ``daslang FILE.das -- --headless``. Headless mode is wired in PR 2 — until
-//! then, ``--headless`` triggers a panic with a clear "land PR 2 first"
-//! message; windowed mode is fully functional.
+//! ``daslang FILE.das -- --headless``. Add ``--headless-frames=N`` to auto-exit
+//! after ``N`` frames (default 0 = run until ``request_exit()``); useful for
+//! CI smoke runs that have no out-of-band exit signal.
 //!
 //! Re-exports the backend-agnostic dasImgui stack so consumers need only a
 //! single ``require imgui_harness`` line.
@@ -43,23 +43,31 @@ require live/opengl_live
 require imgui/imgui_live
 require imgui/imgui_visual_aids
 
-require daslib/clargs
+// Headless backend — private. 3-fn surface (no GLFW/GL names).
+require imgui_app_headless
 
-var private g_headless : bool = false
-var private g_parsed : bool = false
+require daslib/clargs
+require strings
+
+var private g_headless          : bool = false
+var private g_headless_max_frames : int = 0
+var private g_parsed            : bool = false
+
+var private g_headless_ctx      : ImGuiContext? = null
+var private g_headless_frame    : int = 0
+var private g_headless_dt       : float = 1.0f / 60.0f
+var private g_headless_last_uptime : float = -1.0f
 
 def private ensure_parsed() {
-    // Lazy CLI parse on first harness_* call. clargs `find_bool_flag_raw_value`
-    // doesn't error on unknown args, so future test-side clargs structs coexist.
-    if (g_parsed) return
+    // Lazy CLI parse on first harness_* call. clargs `find_*` helpers don't
+    // error on unknown args, so future test-side clargs structs coexist.
+    return if (g_parsed)
     g_parsed = true
     let args <- get_user_args()
-    let raw = find_bool_flag_raw_value(args, "--headless")
-    g_headless = (raw |> unwrap_or("false")) == "true"
-}
-
-def private panic_pr1_headless() {
-    panic("imgui_harness: --headless is not yet implemented (land PR 2 first)")
+    let raw_headless = find_bool_flag_raw_value(args, "--headless")
+    g_headless = (raw_headless |> unwrap_or("false")) == "true"
+    let raw_frames = find_flag_raw_value(args, "--headless-frames")
+    g_headless_max_frames = to_int(raw_frames |> unwrap_or("0"))
 }
 
 def public harness_is_headless() : bool {
@@ -69,10 +77,14 @@ def public harness_is_headless() : bool {
 }
 
 def public harness_init(title : string; width : int = 800; height : int = 600) {
-    //! Windowed: ``live_create_window`` + ``live_imgui_init``. Headless (PR 2+):
-    //! ``CreateContext`` + ``Fonts->Build`` + ``DisplaySize``, no window.
+    //! Windowed: ``live_create_window`` + ``live_imgui_init``. Headless:
+    //! ``CreateContext`` + ``StyleColorsDark`` + font atlas build +
+    //! ``DisplaySize`` — no window, no GL context.
     if (harness_is_headless()) {
-        panic_pr1_headless()
+        g_headless_ctx = CreateContext(null)
+        StyleColorsDark(null)
+        imgui_headless_init_fonts()
+        imgui_headless_set_display_size(float(width), float(height))
         return
     }
     live_create_window(title, width, height)
@@ -80,14 +92,27 @@ def public harness_init(title : string; width : int = 800; height : int = 600) {
 }
 
 def public harness_begin_frame() : bool {
-    //! Returns false to skip update (window closed). Windowed: ``live_begin_frame``
-    //! + ``begin_frame`` + ``Impl_OpenGL3_NewFrame`` + ``Impl_Glfw_NewFrame``.
-    //! Headless (PR 2+): ``begin_frame`` + ``io.DeltaTime`` advance.
+    //! Returns false to skip update (window closed in windowed mode; auto-exit
+    //! cap reached in headless). Windowed: ``live_begin_frame`` + ``begin_frame``
+    //! + ``Impl_OpenGL3_NewFrame`` + ``Impl_Glfw_NewFrame``. Headless:
+    //! ``begin_frame`` + ``imgui_headless_advance_dt`` (real wall-clock dt).
     if (harness_is_headless()) {
-        panic_pr1_headless()
-        return false
+        if (g_headless_max_frames > 0 && g_headless_frame >= g_headless_max_frames) {
+            request_exit()
+            return false
+        }
+        let now = get_uptime()
+        if (g_headless_last_uptime >= 0.0f) {
+            let dt = now - g_headless_last_uptime
+            g_headless_dt = dt > 0.0f ? dt : (1.0f / 60.0f)
+        }
+        g_headless_last_uptime = now
+        imgui_headless_advance_dt(g_headless_dt)
+        begin_frame()
+        g_headless_frame++
+        return true
     }
-    if (!live_begin_frame()) return false
+    return false if (!live_begin_frame())
     begin_frame()
     ImGui_ImplOpenGL3_NewFrame()
     ImGui_ImplGlfw_NewFrame()
@@ -96,9 +121,11 @@ def public harness_begin_frame() : bool {
 
 def public harness_apply_synth_io() {
     //! Optional — call between ``harness_begin_frame`` and ``harness_new_frame``
-    //! when the test drives synthetic IO. Windowed: ``apply_synth_io_override``
-    //! (wins the GLFW backend race). Headless (PR 2+): no-op.
-    return if (harness_is_headless())
+    //! when the test drives synthetic IO via the ``imgui_*`` ``[live_command]``
+    //! family (``imgui_mouse_play``, ``imgui_key_chord``, …). Windowed:
+    //! re-asserts synth pos so it wins the GLFW backend's per-frame poll race.
+    //! Headless: drains the same synth timeline (no backend to race with, but
+    //! held state still needs the per-frame tick).
     apply_synth_io_override()
 }
 
@@ -109,10 +136,11 @@ def public harness_new_frame() {
 
 def public harness_end_frame() {
     //! Windowed: ``end_of_frame`` + ``Render`` + viewport/clear +
-    //! ``Impl_OpenGL3_RenderDrawData`` + ``live_end_frame``. Headless (PR 2+):
-    //! ``end_of_frame`` + ``Render`` (DrawData discarded).
+    //! ``Impl_OpenGL3_RenderDrawData`` + ``live_end_frame``. Headless:
+    //! ``end_of_frame`` + ``Render`` (DrawData discarded; no GL output).
     if (harness_is_headless()) {
-        panic_pr1_headless()
+        end_of_frame()
+        Render()
         return
     }
     end_of_frame()
@@ -128,11 +156,21 @@ def public harness_end_frame() {
 
 def public harness_shutdown() {
     //! Windowed: ``live_imgui_shutdown`` + ``live_destroy_window``.
-    //! Headless (PR 2+): ``DestroyContext``.
+    //! Headless: ``DestroyContext`` (the harness owns the ctx in headless mode).
     if (harness_is_headless()) {
-        panic_pr1_headless()
+        if (g_headless_ctx != null) {
+            DestroyContext(g_headless_ctx)
+            g_headless_ctx = null
+        }
         return
     }
     live_imgui_shutdown()
     live_destroy_window()
+}
+
+def public harness_frame_count() : int {
+    //! Headless-mode frame counter (incremented inside ``harness_begin_frame``).
+    //! Returns 0 in windowed mode — windowed frame count is the ImGui core
+    //! ``GetFrameCount()``.
+    return g_headless_frame
 }

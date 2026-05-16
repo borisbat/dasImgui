@@ -25,3 +25,4 @@ construction.
    driving_outside.rst
    visual_aids_tour.rst
    recording.rst
+   harness_headless_mode.rst
