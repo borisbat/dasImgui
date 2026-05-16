@@ -44,11 +44,7 @@ def test_imgui_key_type_lands_in_input(t : T?) {
 
         post_command(d, "imgui_key_type", JV((text = "Hi", per_char_ms = 30)))
 
-        let done = wait_until(d, 240) $(var snap) {
-            let s = post_command(d, "imgui_key_status", null)
-            return !(s?["playing"] ?? true)
-        }
-        t |> success(done != null, "imgui_key_type timeline completes")
+        t |> success(wait_for_key_idle(d, 4.0f), "imgui_key_type timeline completes")
 
         let landed = wait_until(d, 180) $(var snap) {
             let v = snap?["globals"]?["MAIN_WIN/NAME_INPUT"]?["payload"]?["value"] ?? ""
@@ -118,11 +114,7 @@ def test_click_then_ctrl_a_clears_input(t : T?) {
             JV((t_ms = 100, kind = "button", button = 0, action = "release"))
         ]
         post_command(d, "imgui_mouse_play", JV((events = click_events)))
-        let clicked = wait_until(d, 240) $(var snap) {
-            let s = post_command(d, "imgui_mouse_status", null)
-            return !(s?["playing"] ?? true)
-        }
-        t |> success(clicked != null, "imgui_mouse_play synth click completes")
+        t |> success(wait_for_mouse_idle(d, 4.0f), "imgui_mouse_play synth click completes")
 
         let activated = wait_until(d, 240) $(var snap) {
             return snap?["globals"]?["MAIN_WIN/NAME_INPUT"]?["focus"] ?? false
@@ -143,11 +135,7 @@ def test_click_then_ctrl_a_clears_input(t : T?) {
         } else {
             post_command(d, "imgui_key_chord", JV((mods = ["Ctrl"], key = "A")))
         }
-        let chord_done = wait_until(d, 240) $(var snap) {
-            let s = post_command(d, "imgui_key_status", null)
-            return !(s?["playing"] ?? true)
-        }
-        t |> success(chord_done != null, "{select_all_mod}+A chord completes")
+        t |> success(wait_for_key_idle(d, 4.0f), "{select_all_mod}+A chord completes")
 
         // Backspace once → if selection is active, buffer empties.
         let bksp = int(ImGuiKey.Backspace)

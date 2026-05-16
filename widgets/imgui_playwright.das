@@ -406,6 +406,34 @@ def public focus(app : ImguiApp; target : string) : JsonValue? {
     return send_imgui_command(app.transport, "imgui_focus", JV((target = target)))
 }
 
+def public wait_for_key_idle(app : ImguiApp; timeout_sec : float = DEFAULT_FRAME_WAIT_SEC) : bool {
+    //! Poll ``imgui_key_status`` until ``playing == false`` or timeout; returns true on idle.
+    //! Uses one HTTP request per poll (unlike a ``wait_until`` body that pairs a snapshot
+    //! with a status call), keeping the per-subprocess connection count low on Windows.
+    let start = ref_time_ticks()
+    let timeout_usec = int(timeout_sec * 1000000.0f)
+    while (get_time_usec(start) < timeout_usec) {
+        let r = post_command(app, "imgui_key_status", null)
+        if (!(r?["playing"] ?? true)) return true
+        sleep(FRAME_POLL_INTERVAL_MS)
+    }
+    return false
+}
+
+def public wait_for_mouse_idle(app : ImguiApp; timeout_sec : float = DEFAULT_FRAME_WAIT_SEC) : bool {
+    //! Poll ``imgui_mouse_status`` until ``playing == false`` or timeout; returns true on idle.
+    //! Uses one HTTP request per poll (unlike a ``wait_until`` body that pairs a snapshot
+    //! with a status call), keeping the per-subprocess connection count low on Windows.
+    let start = ref_time_ticks()
+    let timeout_usec = int(timeout_sec * 1000000.0f)
+    while (get_time_usec(start) < timeout_usec) {
+        let r = post_command(app, "imgui_mouse_status", null)
+        if (!(r?["playing"] ?? true)) return true
+        sleep(FRAME_POLL_INTERVAL_MS)
+    }
+    return false
+}
+
 def public await_probe(app : ImguiApp; until : string = "quiescent") : JsonValue? {
     //! Single ``imgui_await`` POST; the ``AwaitResult`` lives under ``response.value``.
     //! For poll-until-quiescent use ``await_quiescent``.
