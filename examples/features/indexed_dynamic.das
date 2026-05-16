@@ -1,20 +1,6 @@
 options gen2
 
-require imgui
-require imgui_app
-require glfw/glfw_boost
-require opengl/opengl_boost
-require live/glfw_live
-require live/live_api
-require live/live_commands
-require live/live_vars
-require live/opengl_live
-require live_host
-require imgui/imgui_live
-require imgui/imgui_boost_runtime
-require imgui/imgui_boost_v2
-require imgui/imgui_containers_builtin
-require imgui/imgui_widgets_builtin
+require imgui/imgui_harness
 require math
 
 // =============================================================================
@@ -31,6 +17,7 @@ require math
 //                "target":"DYN_WIN/BUMP_LAST"}}' localhost:9090/command
 //          # -> last channel's .value increments by 0.1
 // STANDALONE: daslang.exe modules/dasImgui/examples/features/indexed_dynamic.das
+// HEADLESS:   daslang.exe modules/dasImgui/examples/features/indexed_dynamic.das -- --headless --headless-frames=60
 // LIVE:       daslang-live modules/dasImgui/examples/features/indexed_dynamic.das
 // =============================================================================
 
@@ -41,8 +28,7 @@ var private CHANNEL_VOL : table<int; SliderStateFloat>
 
 [export]
 def init() {
-    live_create_window("indexed_dynamic", 600, 500)
-    live_imgui_init(live_window)
+    harness_init("indexed_dynamic", 600, 500)
     var io & = unsafe(GetIO())
     io.FontGlobalScale = 1.5
 }
@@ -59,12 +45,8 @@ def find_max_key(t : table<int; SliderStateFloat>) : int {
 
 [export]
 def update() {
-    return if (!live_begin_frame())
-    begin_frame()
-
-    ImGui_ImplOpenGL3_NewFrame()
-    ImGui_ImplGlfw_NewFrame()
-    NewFrame()
+    return if (!harness_begin_frame())
+    harness_new_frame()
 
     SetNextWindowSize(ImVec2(520.0, 440.0), ImGuiCond.Always)
     window(DYN_WIN, (text = "indexed_dynamic", closable = false, flags = ImGuiWindowFlags.None)) {
@@ -109,22 +91,12 @@ def update() {
         }
     }
 
-    end_of_frame()
-    Render()
-    var w, h : int
-    live_get_framebuffer_size(w, h)
-    glViewport(0, 0, w, h)
-    glClearColor(0.10f, 0.10f, 0.12f, 1.0f)
-    glClear(GL_COLOR_BUFFER_BIT)
-    ImGui_ImplOpenGL3_RenderDrawData(GetDrawData())
-
-    live_end_frame()
+    harness_end_frame()
 }
 
 [export]
 def shutdown() {
-    live_imgui_shutdown()
-    live_destroy_window()
+    harness_shutdown()
 }
 
 [export]

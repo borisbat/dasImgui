@@ -5,42 +5,27 @@ options gen2
 // of becoming a hard build error.
 options _allow_imgui_legacy = true
 
-require imgui
-require imgui_app
-require glfw/glfw_boost
-require opengl/opengl_boost
-require live/glfw_live
-require live/live_api
-require live/live_commands
-require live/live_vars
-require live/opengl_live
-require live_host
-require imgui/imgui_live
-require imgui/imgui_boost_runtime
-require imgui/imgui_boost_v2
-require imgui/imgui_widgets_builtin
-require imgui/imgui_containers_builtin
+require imgui/imgui_harness
 
 // =============================================================================
 // FEATURE: widget_no_ident — smoke of the three [widget] call forms.
 // SHOWS:   1. EXPLICIT  text(IDENT, (text=...))     — leading ident
 //          2. AUTO-GEN  text((text=...))            — first arg is named-tuple
 //          3. POSITIONAL text("string")             — single-string sugar
+// STANDALONE: daslang.exe modules/dasImgui/examples/features/widget_no_ident.das
+// HEADLESS:   daslang.exe modules/dasImgui/examples/features/widget_no_ident.das -- --headless --headless-frames=60
+// LIVE:       daslang-live modules/dasImgui/examples/features/widget_no_ident.das
 // =============================================================================
 
 [export]
 def init() {
-    live_create_window("widget_no_ident smoke", 720, 360)
-    live_imgui_init(live_window)
+    harness_init("widget_no_ident smoke", 720, 360)
 }
 
 [export]
 def update() {
-    if (!live_begin_frame()) return
-    begin_frame()
-    ImGui_ImplOpenGL3_NewFrame()
-    ImGui_ImplGlfw_NewFrame()
-    NewFrame()
+    if (!harness_begin_frame()) return
+    harness_new_frame()
 
     SetNextWindowSize(ImVec2(640.0, 300.0), ImGuiCond.Always)
     window(MAIN_WIN, (text = "no-ident forms",
@@ -61,21 +46,12 @@ def update() {
         separator_text("separator_text positional form")
     }
 
-    end_of_frame()
-    Render()
-    var w, h : int
-    live_get_framebuffer_size(w, h)
-    glViewport(0, 0, w, h)
-    glClearColor(0.10f, 0.10f, 0.12f, 1.0f)
-    glClear(GL_COLOR_BUFFER_BIT)
-    ImGui_ImplOpenGL3_RenderDrawData(GetDrawData())
-    live_end_frame()
+    harness_end_frame()
 }
 
 [export]
 def shutdown() {
-    live_imgui_shutdown()
-    live_destroy_window()
+    harness_shutdown()
 }
 
 [export]

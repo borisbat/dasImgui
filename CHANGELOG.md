@@ -63,3 +63,30 @@
   the full backend-agnostic dasImgui v2 surface into scope. Migration
   batch surfaced the gap (5 of 13 files needed a second require for
   `scope_builtin` before the harness was extended).
+- **Second migration batch (this PR) — all 48 remaining `examples/features/`
+  files ported to the harness API.** With the 15 already-migrated files
+  (foundation, active_widget, and the 13 from PR 3), every file under
+  `examples/features/` now uses `require imgui/imgui_harness`. Net
+  diff: +345 / -1680 across 48 files (mechanical 14-require chain →
+  single require, 25-line update/shutdown boilerplate → 5 helper calls).
+  Three sub-patterns covered:
+    - **Canonical (35 files)** — `await_quiescent`, `clip_rect`,
+      `containers_layout/_overlay/_window`, `display_image/_progress`,
+      `drag_drop`, `focus_widget`, `font_stack`, `hex_id_click`,
+      `id_override`, `indexed_dynamic`, `inputs_choice/_color/_drag/`
+      `_indexed/_numeric/_slider/_text`, `io_mirror`, `io_synth_drag/_text`,
+      `layout_primitives`, `list_box`, `plot_getter/_widgets`,
+      `popup_context_item`, `scroll_state`, `snapshot_unrendered`,
+      `style_override`, `transport_demo`, `triggers`, `widget_init_defaults`,
+      `widget_no_ident`.
+    - **Synth-IO (7 files)** — `columns_demo`, `dock_basic`, `layout_helpers`,
+      `glfw_synth_keys/_mouse`, `imgui_synth_keys/_mouse`. These call
+      `harness_apply_synth_io()` between `harness_begin_frame()` and
+      `harness_new_frame()` (the slot where `apply_synth_io_override()`
+      used to live).
+    - **edit_external (6 files)** — `edit_external_color/_combo/_scalars/`
+      `_special/_toggles/_vectors`. Preserve the `require daslib/safe_addr`
+      that the family uses for caller-owned pointer args.
+  Verified per-file: `compile_check` + `lint` + `format_file` clean,
+  headless smoke (60 frames) exit 0, windowed smoke (5 s timeout-killed)
+  ran. Full dastest integration: 111/111 PASS (unchanged).

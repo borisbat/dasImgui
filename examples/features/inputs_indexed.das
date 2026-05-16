@@ -1,20 +1,6 @@
 options gen2
 
-require imgui
-require imgui_app
-require glfw/glfw_boost
-require opengl/opengl_boost
-require live/glfw_live
-require live/live_api
-require live/live_commands
-require live/live_vars
-require live/opengl_live
-require live_host
-require imgui/imgui_live
-require imgui/imgui_boost_runtime
-require imgui/imgui_boost_v2
-require imgui/imgui_widgets_builtin
-require imgui/imgui_containers_builtin
+require imgui/imgui_harness
 
 // =============================================================================
 // FEATURE: inputs_indexed — table-keyed slider widgets per API_REWORK §4.4.
@@ -26,6 +12,7 @@ require imgui/imgui_containers_builtin
 //               "target":"MIX_WIN/CHANNEL_VOL[3]","value":0.7}}' \
 //               localhost:9090/command
 // STANDALONE: daslang.exe modules/dasImgui/examples/features/inputs_indexed.das
+// HEADLESS:   daslang.exe modules/dasImgui/examples/features/inputs_indexed.das -- --headless --headless-frames=60
 // LIVE:       daslang-live modules/dasImgui/examples/features/inputs_indexed.das
 // =============================================================================
 
@@ -41,8 +28,7 @@ let TRACK_NAMES : array<string> <- ["bass", "lead", "drum", "vocals"]
 
 [export]
 def init() {
-    live_create_window("inputs_indexed", 800, 600)
-    live_imgui_init(live_window)
+    harness_init("inputs_indexed", 800, 600)
     var io & = unsafe(GetIO())
     io.FontGlobalScale = 1.5
     // Pre-populate so first-frame snapshot already has the right bounds + value.
@@ -58,12 +44,8 @@ def init() {
 
 [export]
 def update() {
-    return if (!live_begin_frame())
-    begin_frame()
-
-    ImGui_ImplOpenGL3_NewFrame()
-    ImGui_ImplGlfw_NewFrame()
-    NewFrame()
+    return if (!harness_begin_frame())
+    harness_new_frame()
 
     SetNextWindowSize(ImVec2(720.0, 520.0), ImGuiCond.Always)
     // Use the boost `window` container so indexed leaves get the path
@@ -86,22 +68,12 @@ def update() {
         }
     }
 
-    end_of_frame()
-    Render()
-    var w, h : int
-    live_get_framebuffer_size(w, h)
-    glViewport(0, 0, w, h)
-    glClearColor(0.10f, 0.10f, 0.12f, 1.0f)
-    glClear(GL_COLOR_BUFFER_BIT)
-    ImGui_ImplOpenGL3_RenderDrawData(GetDrawData())
-
-    live_end_frame()
+    harness_end_frame()
 }
 
 [export]
 def shutdown() {
-    live_imgui_shutdown()
-    live_destroy_window()
+    harness_shutdown()
 }
 
 [export]

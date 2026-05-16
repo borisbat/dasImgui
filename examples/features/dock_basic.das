@@ -1,21 +1,6 @@
 options gen2
 
-require imgui
-require imgui_app
-require glfw/glfw_boost
-require opengl/opengl_boost
-require live/glfw_live
-require live/live_api
-require live/live_commands
-require live/live_vars
-require live/opengl_live
-require live_host
-require imgui/imgui_live
-require imgui/imgui_boost_runtime
-require imgui/imgui_boost_v2
-require imgui/imgui_widgets_builtin
-require imgui/imgui_docking_builtin
-require imgui/imgui_visual_aids
+require imgui/imgui_harness
 
 // =============================================================================
 // FEATURE: dock_basic — Phase 7 dockspace + dock_window with a DockBuilder-
@@ -44,6 +29,7 @@ require imgui/imgui_visual_aids
 // path, so child dock_windows live under ``DOCK_ROOT/<name>`` — mirrors how
 // ``window(MAIN_WIN, ...)`` prefixes its children in containers_builtin.
 // STANDALONE: daslang.exe modules/dasImgui/examples/features/dock_basic.das
+// HEADLESS:   daslang.exe modules/dasImgui/examples/features/dock_basic.das -- --headless --headless-frames=60
 // LIVE:       daslang-live modules/dasImgui/examples/features/dock_basic.das
 // =============================================================================
 
@@ -78,8 +64,7 @@ def setup_default_layout(dock_id : uint) {
 
 [export]
 def init() {
-    live_create_window("Phase 7 — docking", 1024, 720)
-    live_imgui_init(live_window)
+    harness_init("Phase 7 — docking", 1024, 720)
     var io & = unsafe(GetIO())
     io.FontGlobalScale = 1.5
     io.ConfigFlags |= ImGuiConfigFlags.DockingEnable
@@ -87,13 +72,9 @@ def init() {
 
 [export]
 def update() {
-    if (!live_begin_frame()) return
-    begin_frame()
-
-    ImGui_ImplOpenGL3_NewFrame()
-    ImGui_ImplGlfw_NewFrame()
-    apply_synth_io_override()
-    NewFrame()
+    if (!harness_begin_frame()) return
+    harness_apply_synth_io()
+    harness_new_frame()
 
     dockspace(DOCK_ROOT, (flags = ImGuiDockNodeFlags.PassthruCentralNode)) {
         //! Seed the layout once per session (or after imgui_dock_reset flips
@@ -127,22 +108,12 @@ def update() {
         }
     }
 
-    end_of_frame()
-    Render()
-    var w, h : int
-    live_get_framebuffer_size(w, h)
-    glViewport(0, 0, w, h)
-    glClearColor(0.10f, 0.10f, 0.12f, 1.0f)
-    glClear(GL_COLOR_BUFFER_BIT)
-    ImGui_ImplOpenGL3_RenderDrawData(GetDrawData())
-
-    live_end_frame()
+    harness_end_frame()
 }
 
 [export]
 def shutdown() {
-    live_imgui_shutdown()
-    live_destroy_window()
+    harness_shutdown()
 }
 
 [export]
