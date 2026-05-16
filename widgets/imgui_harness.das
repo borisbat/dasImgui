@@ -73,12 +73,14 @@ require strings
 
 var private g_headless          : bool = false
 var private g_headless_max_frames : int = 0
+var private g_headless_max_uptime_sec : float = 0.0f
 var private g_parsed            : bool = false
 
 var private g_headless_ctx      : ImGuiContext? = null
 var private g_headless_frame    : int = 0
 var private g_headless_dt       : float = 1.0f / 60.0f
 var private g_headless_last_uptime : float = -1.0f
+var private g_headless_first_uptime : float = -1.0f
 
 def private ensure_parsed() {
     // Lazy CLI parse on first harness_* call. clargs `find_*` helpers don't
@@ -94,7 +96,12 @@ def private ensure_parsed() {
     g_headless = (raw_headless |> unwrap_or("false")) == "true"
     let raw_frames = find_flag_raw_value(args, "--headless-frames")
     g_headless_max_frames = to_int(raw_frames |> unwrap_or("0"))
-    print("[harness] ensure_parsed: g_headless={g_headless}\n")
+    // Wall-clock self-exit timer. 0 = disabled (preserves standalone usage).
+    // Playwright passes a value < its popen watchdog so a panicked test still
+    // releases the live-API port before the parent gives up (cascade guard).
+    let raw_timeout = find_flag_raw_value(args, "--headless-timeout-sec")
+    g_headless_max_uptime_sec = to_float(raw_timeout |> unwrap_or("0"))
+    print("[harness] ensure_parsed: g_headless={g_headless} max_frames={g_headless_max_frames} max_uptime_sec={g_headless_max_uptime_sec}\n")
 }
 
 def private log_arm(name : string) {
@@ -146,6 +153,14 @@ def public harness_begin_frame() : bool {
             return false
         }
         let now = get_uptime()
+        if (g_headless_first_uptime < 0.0f) {
+            g_headless_first_uptime = now
+        }
+        if (g_headless_max_uptime_sec > 0.0f && (now - g_headless_first_uptime) >= g_headless_max_uptime_sec) {
+            print("[harness] headless timeout {g_headless_max_uptime_sec}s reached at uptime {now - g_headless_first_uptime}s — request_exit()\n")
+            request_exit()
+            return false
+        }
         if (g_headless_last_uptime >= 0.0f) {
             let dt = now - g_headless_last_uptime
             g_headless_dt = dt > 0.0f ? dt : (1.0f / 60.0f)

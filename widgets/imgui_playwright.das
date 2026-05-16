@@ -513,6 +513,15 @@ def public with_imgui_app_opt(feature_path : string;
     if (playwright_wants_headless()) {
         argv |> push("--")
         argv |> push("--headless")
+        // Cascade guard: harness self-exits a few seconds before the popen
+        // watchdog gives up. If body panics and /shutdown is never sent
+        // (e.g. expect_value timeout — daslang's `finally` is skipped on
+        // panic), the subprocess still releases port 9090 before the next
+        // test spawns, instead of zombifying.
+        let harness_budget = test_timeout_sec - 5.0f
+        if (harness_budget > 5.0f) {
+            argv |> push("--headless-timeout-sec={harness_budget}")
+        }
     }
     let base_url = "http://127.0.0.1:{port}"
     var app = ImguiApp(base_url = base_url,
