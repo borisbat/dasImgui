@@ -15,8 +15,12 @@ name: Integration tests
 #
 # Step-0 diagnostic matrix: ubuntu-latest hangs in dasHV's HTTP serving under
 # headless on Linux (update() iterates, but /status never responds). Adding
-# macos-latest + windows-latest to test whether the hang is Linux-specific.
-# fail-fast: false so all three OSes report regardless of which passes.
+# macos-latest to test whether the hang is Linux-specific.
+# windows-latest dropped for now — libhv pulls in OpenSSL which needs a perl
+# env GitHub-hosted Windows runners don't ship working (Params/Check.pm,
+# IPC/Cmd.pm load errors). Re-add once we either install Strawberry Perl
+# with the right modules or disable SSL in libhv via CMake.
+# fail-fast: false so both OSes report regardless of which passes.
 on:
   push:
     branches: [master]
@@ -36,7 +40,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, macos-latest]
     defaults:
       run:
         shell: bash
@@ -69,12 +73,12 @@ jobs:
 
       - name: "Install system dependencies (macOS)"
         if: matrix.os == 'macos-latest'
+        # bison: macOS ships v2.3, daslang's ds_parser.ypp needs bison 3+.
+        # brew install keeps the new bison at /opt/homebrew/opt/bison/bin/bison;
+        # the PATH export below makes cmake pick it over /usr/bin/bison.
         run: |
-          brew install glfw freetype
-
-      - name: "MSVC dev environment (Windows)"
-        if: matrix.os == 'windows-latest'
-        uses: ilammy/msvc-dev-cmd@v1
+          brew install glfw freetype bison
+          echo "/opt/homebrew/opt/bison/bin" >> "$GITHUB_PATH"
 
       - name: "Install CMake and Ninja"
         uses: lukka/get-cmake@latest
