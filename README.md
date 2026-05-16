@@ -72,6 +72,54 @@ containers, auto-emitted state structs, live-reload, and a JSON-driven
 command surface. See the [dasImgui tutorials](doc/source/tutorials/index.rst)
 starting at `boost_basics` for a complete walkthrough.
 
+For examples and tests, use `imgui/imgui_harness` — it hides the GLFW/GL
+backend boilerplate behind five helpers and re-exports the backend-agnostic
+v2 stack, so the test file is purely widget logic:
+
+```das
+options gen2
+
+require imgui/imgui_harness
+
+[export] def init() {
+    harness_init("My Example", 800, 600)
+    var io & = unsafe(GetIO())
+    io.FontGlobalScale = 1.5
+}
+
+[export] def update() {
+    if (!harness_begin_frame()) return
+    harness_new_frame()
+    window(MAIN_WIN, (text = "Hello")) {
+        text("Hello from daslang!")
+    }
+    harness_end_frame()
+}
+
+[export] def shutdown() { harness_shutdown() }
+
+[export] def main() {
+    init()
+    while (!exit_requested()) { update() }
+    shutdown()
+}
+```
+
+Same script runs headless (no window, no GL context) by passing
+`--headless` after the daslang `--` separator:
+
+```bash
+daslang.exe my_example.das -- --headless --headless-frames=600
+```
+
+Headless mode skips the GLFW + OpenGL chain entirely (the harness uses a
+parallel `imguiAppHeadless.shared_module` C++ backend with a CPU-only
+font atlas). `--headless-frames=N` auto-exits after `N` frames; omit it
+when the script's own logic calls `request_exit()`. See
+[doc/source/tutorials/harness_headless_mode.rst](doc/source/tutorials/harness_headless_mode.rst)
+for what gets dispatched in either mode and the limits (`screenshot` /
+`record_*` and the live-API HTTP endpoint stay windowed-only).
+
 Run with `-project_root` pointing to the directory containing `modules/`:
 
 ```bash
@@ -84,6 +132,8 @@ daslang.exe -project_root . my_app.das
 |--------|---------|-------------|
 | `imgui` | `require imgui/imgui_boost` | Core Dear ImGui bindings |
 | `imgui_app` | `require imgui_app` | GLFW + OpenGL3 application runtime |
+| `imgui_app_headless` | (private, used by harness) | Display-less ImGui backend (CPU font atlas, no GLFW, no GL) for `--headless` runs |
+| `imgui_harness` | `require imgui/imgui_harness` | Canonical wrapper for examples/tests — hides GLFW/GL boilerplate, re-exports the backend-agnostic v2 stack, dispatches windowed vs `--headless` at runtime |
 
 ## Examples
 
