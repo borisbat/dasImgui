@@ -126,8 +126,13 @@ def private resolve_feature_path(path : string) : string {
 
 def public wait_until_ready(app : ImguiApp; timeout_sec : float) : bool {
     //! Poll GET /status until 200 OK or timeout. Returns true on ready.
-    let deadline = ref_time_ticks() + int64(timeout_sec * 1000000.0f)
-    while (ref_time_ticks() < deadline) {
+    // `ref_time_ticks()` is platform-specific (QPC on Windows, nanoseconds on
+    // Linux/macOS), so absolute-deadline arithmetic with `* 1_000_000` is wrong
+    // on POSIX (gives 30 ms instead of 30 s). `get_time_usec(start)` is the
+    // portable elapsed-microseconds helper.
+    let start = ref_time_ticks()
+    let timeout_usec = int(timeout_sec * 1000000.0f)
+    while (get_time_usec(start) < timeout_usec) {
         var ok = false
         GET("{app.base_url}/status") $(resp) {
             if (resp != null && resp.status_code == http_status.OK) {
@@ -203,7 +208,10 @@ def public wait_until(app : ImguiApp;
     //! Poll ``pred(snap)`` with a frame budget instead of wall-clock seconds; returns the matching snapshot or null after ``max_frames`` advance.
     //! ``DEFAULT_DEADLOCK_SANITY_SEC`` is a backstop for crashed/hung subprocesses — should never trip on slow-but-progressing runs.
     var start_frame   = -1
-    let sanity_deadline = ref_time_ticks() + int64(DEFAULT_DEADLOCK_SANITY_SEC * 1000000.0f)
+    // See wait_until_ready: ref_time_ticks() units differ per platform; use
+    // get_time_usec(start) for portable elapsed-microseconds comparison.
+    let sanity_start = ref_time_ticks()
+    let sanity_timeout_usec = int(DEFAULT_DEADLOCK_SANITY_SEC * 1000000.0f)
     while (true) {
         var snap = snapshot(app)
         if (snap != null) {
@@ -213,7 +221,7 @@ def public wait_until(app : ImguiApp;
                 start_frame = f
             } elif (f - start_frame >= max_frames) return null
         }
-        return null if (ref_time_ticks() >= sanity_deadline)
+        return null if (get_time_usec(sanity_start) >= sanity_timeout_usec)
         sleep(FRAME_POLL_INTERVAL_MS)
     }
     return null
@@ -223,8 +231,9 @@ def public wait_for_widget(app : ImguiApp; widget_ident : string;
                            timeout_sec : float = DEFAULT_FRAME_WAIT_SEC) : JsonValue? {
     //! Poll snapshot until ``globals[widget_ident]`` is present (registered at module init OR rendered at least once).
     //! Use for subprocess-startup gating; for first-paint semantics use ``wait_for_render``.
-    let deadline = ref_time_ticks() + int64(timeout_sec * 1000000.0f)
-    while (ref_time_ticks() < deadline) {
+    let start = ref_time_ticks()
+    let timeout_usec = int(timeout_sec * 1000000.0f)
+    while (get_time_usec(start) < timeout_usec) {
         var snap = snapshot(app)
         if (snap != null && widget_exists(snap, widget_ident)) return snap
         sleep(FRAME_POLL_INTERVAL_MS)
@@ -236,8 +245,9 @@ def public wait_for_render(app : ImguiApp; widget_ident : string;
                            timeout_sec : float = DEFAULT_FRAME_WAIT_SEC) : JsonValue? {
     //! Poll snapshot until ``globals[widget_ident]`` reports ``rendered:true`` (the widget painted this frame).
     //! Use when you specifically need first-paint semantics — registered-but-not-rendered widgets pass ``wait_for_widget`` immediately.
-    let deadline = ref_time_ticks() + int64(timeout_sec * 1000000.0f)
-    while (ref_time_ticks() < deadline) {
+    let start = ref_time_ticks()
+    let timeout_usec = int(timeout_sec * 1000000.0f)
+    while (get_time_usec(start) < timeout_usec) {
         var snap = snapshot(app)
         if (snap != null && widget_rendered(snap, widget_ident)) return snap
         sleep(FRAME_POLL_INTERVAL_MS)
@@ -412,8 +422,9 @@ def public reload(app : ImguiApp; timeout_sec : float = DEFAULT_RELOAD_TIMEOUT_S
     //! POST ``/reload`` then poll ``/status`` until ``has_error == false``; panics on timeout.
     //! Stays on raw HTTP — reload is daslang-live process control, not a dasImgui command verb.
     post_signal(app, "/reload")
-    let deadline = ref_time_ticks() + int64(timeout_sec * 1000000.0f)
-    while (ref_time_ticks() < deadline) {
+    let start = ref_time_ticks()
+    let timeout_usec = int(timeout_sec * 1000000.0f)
+    while (get_time_usec(start) < timeout_usec) {
         let raw = get_text(app, "/status")
         if (!empty(raw)) {
             var err : string

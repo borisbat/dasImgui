@@ -146,11 +146,14 @@ jobs:
           fi
 
       - name: "daspkg install dasImgui (global)"
+        # Use bash-safe relative paths inside daslang-src; on Windows
+        # ${{ github.workspace }} expands to a backslash path that bash
+        # interprets as escape sequences (\a, etc.).
+        working-directory: daslang-src
         run: |
           set -eux
-          ${{ github.workspace }}/daslang-src/${BIN_DIR}/daslang \
-            ${{ github.workspace }}/daslang-src/utils/daspkg/main.das -- \
-            install ${{ github.workspace }}/dasImgui --global
+          ${BIN_DIR}/daslang utils/daspkg/main.das -- \
+            install ../dasImgui --global
 
       - name: "Run integration tests (headless)"
         working-directory: ${{ github.workspace }}/daslang-src
