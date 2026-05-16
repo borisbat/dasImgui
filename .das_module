@@ -44,9 +44,15 @@ def initialize(project_path : string) {
     // `options _allow_imgui_legacy = true`.
     register_native_path("imgui", "imgui_lint", "{project_path}/widgets/imgui_lint.das")
     // Canonical wrapper for examples/tests — hides GLFW/GL boilerplate behind
-    // 5 helpers and re-exports the backend-agnostic stack. PR 2 wires the
-    // --headless dispatch; PR 3 ships the lint default-on.
+    // 5 helpers and re-exports the backend-agnostic stack. Bundles
+    // imgui_harness_lint via `require imgui/imgui_harness_lint public` so every
+    // harness-using file gets the windowed-backend ban transitively.
     register_native_path("imgui", "imgui_harness", "{project_path}/widgets/imgui_harness.das")
+    // Default-on lint for files requiring imgui_harness — forbids direct calls
+    // into glfw_boost / opengl_boost / glfw_live / opengl_live / imgui_live so
+    // harness consumers stay backend-agnostic. Per-file opt-out:
+    // `options _allow_glfw_calls = true` (scaffolding only).
+    register_native_path("imgui", "imgui_harness_lint", "{project_path}/widgets/imgui_harness_lint.das")
     // Phase 7 — docking (dockspace, dock_window) + DockBuilder bindings cherry-picked from imgui_internal.h.
     register_native_path("imgui", "imgui_docking_builtin", "{project_path}/widgets/imgui_docking_builtin.das")
     // IM_COL32 packer split out from v1 imgui_boost (the legacy module is

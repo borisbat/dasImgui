@@ -115,6 +115,37 @@ GLFW libs to be findable on the host (the OS DLL loader resolves
 active). Truly minimal-deploy headless (no GLFW libs at all) is a future
 build-flag concern.
 
+**********************************
+Default-on lint: HARNESS001
+**********************************
+
+Bundled with the harness (``require imgui/imgui_harness_lint public`` from
+``imgui_harness.das``) is a default-on ``[lint_macro]`` that fires whenever a
+file requiring ``imgui/imgui_harness`` reaches into the windowed-backend
+modules directly. Forbidden modules:
+
+* ``glfw_boost`` / ``opengl_boost``
+* ``glfw_live`` / ``opengl_live``
+* ``imgui_live``
+
+The structural private-require gate in ``imgui_harness.das`` already hides
+those modules from harness consumers, so a clean file never trips the lint.
+The lint is the second line of defense — it catches files that explicitly
+re-add a backend ``require`` to bypass the gate. Diagnostic code is
+``HARNESS001`` (macro_error 50503).
+
+Per-file escape, for the rare windowed-only test that needs a backend
+symbol directly (screenshot pipelines, custom GL clears, etc.):
+
+.. code-block:: das
+
+   options _allow_glfw_calls = true
+
+This is scaffolding only. The target end-state for the migration is
+**no opt-outs anywhere in** ``examples/``; the option will be removed from
+the registry once every harness-using file is clean. Same pattern as the
+``_allow_imgui_legacy`` opt-out for ``imgui_lint``.
+
 ***********************
 Limits under --headless
 ***********************

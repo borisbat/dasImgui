@@ -3,6 +3,10 @@ options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
 options _allow_imgui_legacy = true
+// Defensive opt-out: the harness is the legitimate caller into glfw/opengl/
+// imgui_live backends — its own compile passes need to skip its own lint.
+// Same pattern as `_allow_imgui_legacy = true` on widgets/imgui_lint.das.
+options _allow_glfw_calls = true
 
 module imgui_harness shared public
 
@@ -48,10 +52,21 @@ require imgui/imgui_boost_runtime public
 require imgui/imgui_boost_v2 public
 require imgui/imgui_widgets_builtin public
 require imgui/imgui_containers_builtin public
+require imgui/imgui_scope_builtin public
+require imgui/imgui_id_builtin public
+require imgui/imgui_style_builtin public
+require imgui/imgui_layout_builtin public
+require imgui/imgui_docking_builtin public
+require imgui/imgui_colors public
 require imgui/imgui_visual_aids
 
 // Headless backend — private. 3-fn surface (no GLFW/GL names).
 require imgui_app_headless
+
+// Default-on lint — public re-export so every consumer file picks it up.
+// Forbids direct windowed-backend calls in harness-using files. Opt-out:
+// `options _allow_glfw_calls = true` (scaffolding only).
+require imgui/imgui_harness_lint public
 
 require daslib/clargs
 require strings

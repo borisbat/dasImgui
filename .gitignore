@@ -33,3 +33,4 @@ src/imgui_vulkan_headers.h.json.log
 # + external_types.rst + tutorials/ and IS tracked.
 doc/source/stdlib/generated/
 doc/source/__pycache__/
+doc/build_html/

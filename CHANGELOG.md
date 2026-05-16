@@ -26,12 +26,40 @@
   through what `--headless` dispatches to, how to launch in either mode,
   and the limits (`screenshot` / `record_*` and live-API HTTP stay
   windowed-only).
+- `imgui/imgui_harness_lint` — default-on `[lint_macro]` that fires on any
+  file requiring `imgui/imgui_harness` and forbids direct calls into the
+  windowed-backend modules (`glfw_boost`, `opengl_boost`, `glfw_live`,
+  `opengl_live`, `imgui_live`). Diagnostic code `HARNESS001`
+  (macro_error 50503). Bundled transitively via
+  `require imgui/imgui_harness_lint public` from `imgui_harness.das`.
+  Per-file opt-out: `options _allow_glfw_calls = true` (scaffolding only,
+  target end-state = no opt-out — same shape as PR #33's
+  `_allow_imgui_legacy`).
+- `tests/integration/failed_imgui_harness_lint_raw.das` — negative fixture
+  proving the default-on lint fires. Uses `expect 50503` so dastest treats
+  the compile failure as a PASS.
 
 ### Changed
 
-- `examples/features/foundation.das` ported to `imgui/imgui_harness` as the
-  first canary adopter. 15 requires collapse to one; the GLFW/GL update
-  boilerplate collapses to two helper calls bracketing the user widget block.
-- `examples/features/active_widget.das` ported to `imgui/imgui_harness` as
-  the second canary — exercises the boost runtime + Playwright-style
-  command surface (`imgui_click`, `imgui_snapshot`) under both modes.
+- `examples/features/foundation.das` and `active_widget.das` ported to
+  `imgui/imgui_harness` (PR 1+2; restated here for completeness).
+- First migration batch (this PR) — 12 additional `examples/features/`
+  files ported to the harness API. Each file dropped 14 requires + ~25
+  lines of GLFW/GL boilerplate down to a single
+  `require imgui/imgui_harness` + 5 helper calls. All verified working in
+  both windowed (live mode) and headless (`--headless --headless-frames=60`)
+  modes; integration suite: 111/111 PASS (was 110/110 before lint canary):
+    - `narrative_text.das`, `narrative_bullet.das`, `narrative_separator.das`
+    - `output_text.das`
+    - `with_indent.das`, `with_item_width.das`, `with_text_wrap_pos.das`
+    - `menu_main.das`, `menu_label_static.das`
+    - `tooltip_flat.das`
+    - `button_repeat.das`, `collapsing_header_closable.das`
+    - `disabled_block.das`
+- `imgui_harness.das` re-exports broadened to include all sibling
+  `imgui_*_builtin` modules (`imgui_scope_builtin`, `imgui_id_builtin`,
+  `imgui_style_builtin`, `imgui_layout_builtin`, `imgui_docking_builtin`,
+  `imgui_colors`). Matches the design intent — one require should bring
+  the full backend-agnostic dasImgui v2 surface into scope. Migration
+  batch surfaced the gap (5 of 13 files needed a second require for
+  `scope_builtin` before the harness was extended).

@@ -1,20 +1,6 @@
 options gen2
 
-require imgui
-require imgui_app
-require glfw/glfw_boost
-require opengl/opengl_boost
-require live/glfw_live
-require live/live_api
-require live/live_commands
-require live/live_vars
-require live/opengl_live
-require live_host
-require imgui/imgui_live
-require imgui/imgui_boost_runtime
-require imgui/imgui_boost_v2
-require imgui/imgui_widgets_builtin
-require imgui/imgui_containers_builtin
+require imgui/imgui_harness
 
 // =============================================================================
 // FEATURE: main_menu_bar — top-level menu container (boost v2 §3.3).
@@ -28,22 +14,19 @@ require imgui/imgui_containers_builtin
 //          curl -X POST -d '{"name":"imgui_click","args":{"target":"MAIN_MENU_BAR/FILE_MENU/MI_SAVE"}}' \
 //              localhost:9090/command
 // STANDALONE: daslang.exe modules/dasImgui/examples/features/menu_main.das
+// HEADLESS:   daslang.exe modules/dasImgui/examples/features/menu_main.das -- --headless --headless-frames=60
 // LIVE:       daslang-live modules/dasImgui/examples/features/menu_main.das
 // =============================================================================
 
 [export]
 def init() {
-    live_create_window("main_menu_bar — boost v2 §3.3", 720, 360)
-    live_imgui_init(live_window)
+    harness_init("main_menu_bar — boost v2 §3.3", 720, 360)
 }
 
 [export]
 def update() {
-    if (!live_begin_frame()) return
-    begin_frame()
-    ImGui_ImplOpenGL3_NewFrame()
-    ImGui_ImplGlfw_NewFrame()
-    NewFrame()
+    if (!harness_begin_frame()) return
+    harness_new_frame()
 
     main_menu_bar(MAIN_MENU_BAR) {
         menu(FILE_MENU, (text = "File", enabled = true)) {
@@ -67,21 +50,12 @@ def update() {
         text(BODY_RELOAD, (text = "Reload toggled: {MI_RELOAD.value}"))
     }
 
-    end_of_frame()
-    Render()
-    var w, h : int
-    live_get_framebuffer_size(w, h)
-    glViewport(0, 0, w, h)
-    glClearColor(0.10f, 0.10f, 0.12f, 1.0f)
-    glClear(GL_COLOR_BUFFER_BIT)
-    ImGui_ImplOpenGL3_RenderDrawData(GetDrawData())
-    live_end_frame()
+    harness_end_frame()
 }
 
 [export]
 def shutdown() {
-    live_imgui_shutdown()
-    live_destroy_window()
+    harness_shutdown()
 }
 
 [export]
