@@ -137,6 +137,9 @@ def public harness_begin_frame() : bool {
     //! cap reached in headless). Windowed: ``live_begin_frame`` + ``begin_frame``
     //! + ``Impl_OpenGL3_NewFrame`` + ``Impl_Glfw_NewFrame``. Headless:
     //! ``begin_frame`` + ``imgui_headless_advance_dt`` (real wall-clock dt).
+    if (g_headless_frame < 3) {
+        print("[harness] harness_begin_frame: entry frame={g_headless_frame}\n")
+    }
     if (harness_is_headless()) {
         if (g_headless_max_frames > 0 && g_headless_frame >= g_headless_max_frames) {
             request_exit()
@@ -148,9 +151,18 @@ def public harness_begin_frame() : bool {
             g_headless_dt = dt > 0.0f ? dt : (1.0f / 60.0f)
         }
         g_headless_last_uptime = now
+        if (g_headless_frame < 3) {
+            print("[harness] harness_begin_frame headless: imgui_headless_advance_dt dt={g_headless_dt}\n")
+        }
         imgui_headless_advance_dt(g_headless_dt)
+        if (g_headless_frame < 3) {
+            print("[harness] harness_begin_frame headless: begin_frame()\n")
+        }
         begin_frame()
         g_headless_frame++
+        if (g_headless_frame <= 3) {
+            print("[harness] harness_begin_frame headless: returning true, frame now {g_headless_frame}\n")
+        }
         return true
     }
     return false if (!live_begin_frame())
