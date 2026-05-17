@@ -148,33 +148,23 @@ Each `imgui_mouse_play` call **resets the timeline** (`mouse_play_idx = 0`, `mou
 
 ## Resolving widget coords
 
-Most widgets work with `widget_center(snap, "PATH/TO/WIDGET")`. But for `main_menu_bar` and its `menu()` children, the registered bbox is **`(0, 0, 0, 0)`**:
+Most widgets — including `menu()` children and `tab_item()` tab headers — work with `widget_center(snap, "PATH/TO/WIDGET")`. `widgets/imgui_containers_builtin.das` snapshots `GetItemRectMin/Max` immediately after `BeginMenu`/`BeginTabItem` returns, while the parent-strip header is still the "last item"; the registered bbox is the clickable header rect.
 
-```json
-"MAIN_BAR_DEMO/APP_MENU_FILE" : {
-    "kind": "menu", "hex_id": 3151082496,
-    "bbox": { "x": 0, "y": 0, "z": 0, "w": 0 }
-}
-```
+Two containers remain bbox-degenerate:
 
-Cause: `stateless_finalize` reads `GetItemRectMin/Max` which is degenerate for menu-bar chrome at finalize time. `widget_center` therefore returns `(0, 0)` and clicks miss the top-left corner.
+- **`main_menu_bar()`** itself — the viewport-attached bar chrome has no meaningful "header." `MAIN_BAR_DEMO` still reports `bbox = (0,0,0,0)`. The children (`menu()` paths under it) DO register correctly.
+- **`window()` / `tab_bar()` containers** — these have a body, not a header. Their bbox is `(0,0,0,0)` and that's expected. Click targets are the contents, not the container shell.
 
-**Workaround**: hardcode the pixel coords. Find them empirically:
+If you need a `main_menu_bar` screen position (e.g. clicking outside any child menu to dismiss), hardcode pixel coords:
 
 1. Launch the host normally, see the menu in the window.
 2. Use `mcp__daslang__live_command name="screenshot" args='{"file":"/tmp/probe.png"}'` to capture the framebuffer.
-3. Read the PNG; measure menu-header pixel positions visually.
-4. Bake them as constants in the driver:
+3. Read the PNG; measure pixel positions visually.
+4. Bake them as constants in the driver.
 
-```daslang
-let P_FILE_HEADER = (24.0f,  10.0f)   //! "File" label
-let P_EDIT_HEADER = (56.0f,  10.0f)   //! "Edit" after "File "
-let P_FILE_COLORS = (50.0f, 173.0f)   //! Colors row inside File menu
-```
+Submenu items DO register bboxes **once the parent is open** — click parent first via the parent's registered header bbox, then `wait_for_render` + `widget_center` for the child item.
 
-Submenu items DO register bboxes correctly **once the parent is open**. If you need them dynamically, click parent first, then `wait_for_render` + `widget_center` for the child.
-
-(Followup: fix `widgets/imgui_containers_builtin.das`'s menu containers to capture bbox at `BeginMenu` return time, before `EndMenu`. Then `widget_center` works uniformly. Not in scope for any current PR.)
+`record_imgui_demo_app_main_menu.das` predates the bbox fix and uses hardcoded pixel coords throughout (committed APNG already produced). New drivers should prefer `widget_center` against `MENU_PATH/CHILD_NAME` snapshot entries.
 
 ## Verifying a recording without playing it
 

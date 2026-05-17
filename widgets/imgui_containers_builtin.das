@@ -40,9 +40,11 @@ require math
 // `pending_value : int` shape) and inline their own dispatcher because the
 // shared `pending_value_finalize` helper is private to imgui_widgets_builtin.
 
-def private open_close_finalize(widget_ident : string; kind : string; var state : auto) {
+def private open_close_finalize(widget_ident : string; kind : string; var state : auto;
+                                bbox : float4 = float4(0.0f, 0.0f, 0.0f, 0.0f)) {
     let path = container_path_key()
     var entry : WidgetEntry
+    entry.bbox = bbox
     unsafe {
         let ser <- @ capture(= path) () : JsonValue ? {
             return state_jv(path, type<typedecl(state)>)
@@ -60,9 +62,11 @@ def private open_close_finalize(widget_ident : string; kind : string; var state 
     }
 }
 
-def private stateless_finalize(widget_ident : string; kind : string; var state : auto) {
+def private stateless_finalize(widget_ident : string; kind : string; var state : auto;
+                               bbox : float4 = float4(0.0f, 0.0f, 0.0f, 0.0f)) {
     let path = container_path_key()
     var entry : WidgetEntry
+    entry.bbox = bbox
     unsafe {
         let ser <- @ capture(= path) () : JsonValue ? {
             return state_jv(path, type<typedecl(state)>)
@@ -72,6 +76,15 @@ def private stateless_finalize(widget_ident : string; kind : string; var state :
         }
         container_finalize(widget_ident, kind, entry, ser, disp)
     }
+}
+
+def private current_item_bbox() : float4 {
+    //! Snapshot ``GetItemRectMin/Max`` for the "last item" — meaningful for
+    //! containers whose Begin* call emits a clickable header into the parent
+    //! (``menu`` / ``tab_item``). Returns (0,0,0,0)-shaped float4 directly.
+    let rmin = GetItemRectMin()
+    let rmax = GetItemRectMax()
+    return float4(rmin.x, rmin.y, rmax.x, rmax.y)
 }
 
 // ===== Notes on ergonomics =====
@@ -209,11 +222,17 @@ def menu(var state : MenuState; text : string; enabled : bool; blk : block) {
     state.enabled = enabled
     let im_open = BeginMenu(text, enabled)
     state.opened = im_open
+    //! Capture the menu HEADER rect right after BeginMenu — the header is the
+    //! parent-strip clickable item that ``IsItem*`` resolves against. If we
+    //! defer to ``stateless_finalize`` after EndMenu, the "last item" is
+    //! something inside the cascade body (or popped state), which renders the
+    //! bbox useless for recording drivers / playwright clicks.
+    let header_bbox = current_item_bbox()
     if (im_open) {
         invoke(blk)
         EndMenu()
     }
-    stateless_finalize(widget_ident, "menu", state)
+    stateless_finalize(widget_ident, "menu", state, header_bbox)
 }
 
 // ===== Popup family =====
@@ -397,12 +416,18 @@ def tab_item(var state : TabItemState; text : string; closable : bool;
             }
         }
         let im_open = BeginTabItem(text, p_open, flags)
+        //! Same rationale as ``menu()``: the tab strip header is the
+        //! ``IsItem*`` target right after BeginTabItem. Inside the body
+        //! ``last item`` shifts to per-widget items and EndTabItem pops it.
+        let header_bbox = current_item_bbox()
         if (im_open) {
             invoke(blk)
             EndTabItem()
         }
+        open_close_finalize(widget_ident, "tab_item", state, header_bbox)
+    } else {
+        open_close_finalize(widget_ident, "tab_item", state)
     }
-    open_close_finalize(widget_ident, "tab_item", state)
 }
 
 // ===== Tooltip family =====

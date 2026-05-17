@@ -137,7 +137,7 @@ for (col in type<ImGuiCol>) {
 }
 ```
 
-**Menu-bar children have bbox = (0,0,0,0)** in the snapshot — `main_menu_bar()` and its `menu()` children's `stateless_finalize` reads `GetItemRectMin/Max` which is degenerate for menu chrome. Workaround for recording drivers: hardcode pixel coords. See `skills/recording.md`.
+**Header bbox capture for `menu` and `tab_item`.** `menu()` and `tab_item()` snapshot `GetItemRectMin/Max` right after `BeginMenu`/`BeginTabItem` returns — the parent-strip header is the "last item" at that point, so the registered bbox is the clickable header rect. `main_menu_bar()` itself still reports `bbox = (0,0,0,0)` (the bar chrome has no meaningful "header"); recording drivers that need to click the bar's screen position hardcode pixel coords. See `skills/recording.md`.
 
 ## Tests (`tests/integration/`)
 
