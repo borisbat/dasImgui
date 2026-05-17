@@ -583,22 +583,40 @@ def public with_imgui_app_opt(feature_path : string;
 // ===== Recording helper =====
 
 let private RECORD_ASSET_REL = "doc/source/_static/tutorials"
-let private RECORD_FPS = 30
+let private RECORD_FPS_DEFAULT = 30
 
 def public with_recording_app(feature_path : string;
                               output_apng_basename : string;
                               max_seconds : int;
                               body : block<(app : ImguiApp) : void>) {
+    //! 30 fps form (the common case). Delegates to the 4-arg overload —
+    //! daslang's gen2 trailing-block sugar can't see through a default
+    //! parameter sitting between the last positional and the block, so
+    //! the overload pair keeps the common call site clean.
+    with_recording_app(feature_path, output_apng_basename, max_seconds, RECORD_FPS_DEFAULT, body)
+}
+
+def public with_recording_app(feature_path : string;
+                              output_apng_basename : string;
+                              max_seconds : int;
+                              fps : int;
+                              body : block<(app : ImguiApp) : void>) {
     //! Spawn ``daslang-live <feature_path>`` at logical 1x (passes
-    //! ``--imgui-content-scale=1.0`` after ``--`` so APNGs stay
-    //! encoder-friendly even on retina), toggle visual aids, post
-    //! ``record_start``, run ``body`` for the narrate/click/drag timeline,
-    //! then ``record_stop`` / ``/shutdown`` / drain. APNG lands at
+    //! ``--imgui-content-scale=1.0`` + ``--no-hdpi-framebuffer`` after
+    //! ``--`` so the framebuffer + ImGui style both stay at logical
+    //! resolution, keeping APNGs encoder-friendly even on retina), toggle
+    //! visual aids, post ``record_start``, run ``body`` for the
+    //! narrate/click/drag timeline, then ``record_stop`` / ``/shutdown`` /
+    //! drain. APNG lands at
     //! ``<dasImgui>/doc/source/_static/tutorials/<output_apng_basename>``
     //! regardless of caller cwd. Forwards ``-project_root`` from the
     //! driver's own argv so the source-repo recording workflow survives
-    //! (``skills/recording.md``). Panics on non-zero exit / readiness or
-    //! test timeout so the recording driver fails loudly.
+    //! (``skills/recording.md``). ``fps`` defaults to 30; pass a smaller
+    //! value for long-running recordings where file size matters more
+    //! than smoothness (the narrative_layout / edit_external tours run
+    //! at 20 to stay under GitHub's 50 MB asset warning). Panics on
+    //! non-zero exit / readiness or test timeout so the recording
+    //! driver fails loudly.
     let exe = daslang_live_exe()
     // Resolve feature_path against dasImgui root (where examples/tutorial/
     // and examples/features/ actually live), NOT the daScript root that
@@ -650,7 +668,7 @@ def public with_recording_app(feature_path : string;
         post_command(app, "imgui_cursor_sprite", JV((enabled = true)))
         post_command(app, "record_start", JV((
             file = output_apng_path,
-            fps = RECORD_FPS,
+            fps = fps,
             max_seconds = max_seconds
         )))
         invoke(body, app)
