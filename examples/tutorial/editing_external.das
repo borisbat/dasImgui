@@ -62,10 +62,13 @@ let private g_qualities : array<string> <- ["Low", "Medium", "High", "Ultra"]
 
 [export]
 def init() {
-    live_create_window("dasImgui editing_external", 820, 600)
+    //! Window sized to keep the APNG recording inside the existing
+    //! 7.5-77 MB band -- the slider drags + color edits change pixels
+    //! every frame, so resolution dominates file size.
+    live_create_window("dasImgui editing_external", 720, 480)
     live_imgui_init(live_window)
     var io & = unsafe(GetIO())
-    io.FontGlobalScale = 1.4
+    io.FontGlobalScale = 1.15
 }
 
 [export]
@@ -78,8 +81,8 @@ def update() {
     apply_synth_io_override()
     NewFrame()
 
-    SetNextWindowPos(ImVec2(60.0, 60.0), ImGuiCond.Always)
-    SetNextWindowSize(ImVec2(700.0, 520.0), ImGuiCond.Always)
+    SetNextWindowPos(ImVec2(20.0, 20.0), ImGuiCond.Always)
+    SetNextWindowSize(ImVec2(680.0, 440.0), ImGuiCond.Always)
     window(EDITOR_WIN, (text = "External-data editor", closable = false,
                         flags = ImGuiWindowFlags.None)) {
         text("Every widget below edits a daslang `var private` directly via safe_addr.")

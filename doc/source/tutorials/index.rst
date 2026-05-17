@@ -25,5 +25,6 @@ construction.
    driving_outside.rst
    visual_aids_tour.rst
    narrative_layout_tour.rst
+   edit_external_tour.rst
    recording.rst
    harness_headless_mode.rst
