@@ -57,6 +57,9 @@ let private ALLOWED_IMGUI : table<string> <- {
     "GetWindowSize", "GetWindowPos", "GetWindowWidth", "GetWindowHeight",
     "GetItemRectMin", "GetItemRectMax", "GetItemRectSize",
     "CalcTextSize", "CalcItemWidth",
+    // Column position queries (read-only) — paired with the columns_open /
+    // next_col / columns_close primitives in imgui_layout_builtin.
+    "GetColumnIndex", "GetColumnWidth", "GetColumnOffset", "GetColumnsCount",
     // Font / color helpers (read-only)
     "GetFont", "GetFontSize",
     "GetTextLineHeight", "GetTextLineHeightWithSpacing",
