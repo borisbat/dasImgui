@@ -1,6 +1,5 @@
 options gen2
 options indenting = 4
-options _allow_imgui_legacy = true
 
 module about
 
@@ -11,6 +10,7 @@ require daslib/safe_addr
 
 // Module-scope state — replaces the C++ `static bool show_config_info`.
 var ABOUT_SHOW_CONFIG_INFO = false
+var private BUTTON_COPY : ClickState
 
 // Mirrors imgui_demo.cpp:6460-6622 — void ImGui::ShowAboutWindow(bool* p_open).
 // Notes on the daslang port:
@@ -34,17 +34,17 @@ def ShowAboutWindow() {
             let io & = unsafe(GetIO())
             let style & = unsafe(GetStyle())
 
-            let copy_to_clipboard = Button("Copy to clipboard")
+            let copy_to_clipboard = button(BUTTON_COPY, (text = "Copy to clipboard"))
             let child_size = float2(0.0f, GetTextLineHeightWithSpacing() * 18.0f)
             child(ABOUT_CFG_INFOS_CHILD,
                 (text = "cfg_infos", size = child_size,
                  child_flags = ImGuiChildFlags.FrameStyle,
                  window_flags = ImGuiWindowFlags.None)) {
                 if (copy_to_clipboard) {
-                    LogToClipboard()
+                    log_to_clipboard()
                     // Back-quotes wrap the dump so a GitHub-pasted version renders
                     // as a code block.
-                    LogText("```\n")
+                    log_text("```\n")
                 }
 
                 text("Dear ImGui {IMGUI_VERSION} ({IMGUI_VERSION_NUM})")
@@ -135,8 +135,8 @@ def ShowAboutWindow() {
                 text("style.ItemInnerSpacing: {style.ItemInnerSpacing.x},{style.ItemInnerSpacing.y}")
 
                 if (copy_to_clipboard) {
-                    LogText("\n```\n")
-                    LogFinish()
+                    log_text("\n```\n")
+                    log_finish()
                 }
             }
         }

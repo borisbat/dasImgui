@@ -2244,3 +2244,10 @@ def public log_finish() {
     //! clipboard contents.
     LogFinish()
 }
+
+def public log_text(s : string) {
+    //! `LogText(s)` — append literal text into the active log capture
+    //! without rendering. Only meaningful between `log_to_clipboard()`
+    //! and `log_finish()` (or other `LogTo*` brackets).
+    LogText(s)
+}

@@ -1,6 +1,5 @@
 options gen2
 options indenting = 4
-options _allow_imgui_legacy = true
 
 module style_editor
 
@@ -10,6 +9,12 @@ require imgui/imgui_containers_builtin
 require imgui/imgui_scope_builtin
 require imgui/imgui_id_builtin
 require daslib/enum_trait
+
+// Indexed widget tables for the per-ImGuiCol loop in the Colors tab.
+// `[widget]` macros don't auto-emit table globals — indexed forms require
+// the table declared at module scope.
+var private STYLE_COLOR_SAMELINE : table<int; EmptyMarkerState>
+var private STYLE_COLOR_NAME : table<int; NarrativeState>
 
 // Mirrors imgui_demo.cpp:6680-6962 — void ImGui::ShowStyleEditor(ImGuiStyle* ref).
 //
@@ -51,12 +56,12 @@ def ShowStyleEditor() {
             style.GrabRounding = style.FrameRounding
         }
 
-        Separator()
+        separator()
 
         tab_bar(STYLE_TABS, (text = "##tabs", flags = ImGuiTabBarFlags.None)) {
             tab_item(STYLE_TAB_SIZES, (text = "Sizes", closable = false,
                                        flags = ImGuiTabItemFlags.None)) {
-                SeparatorText("Main")
+                separator_text("Main")
                 // SliderFloat2 calls on WindowPadding/FramePadding/ItemSpacing/
                 // ItemInnerSpacing/TouchExtraPadding skipped pending Phase 3.
                 // See imgui_demo.cpp:6729-6733.
@@ -73,7 +78,7 @@ def ShowStyleEditor() {
                                    text = "GrabMinSize",
                                    v_min = 1.0f, v_max = 20.0f, format = "%.0f"))
 
-                SeparatorText("Borders")
+                separator_text("Borders")
                 edit_slider_float(unsafe(addr(style.WindowBorderSize)),
                                   (id = "STYLE_WINDOW_BORDER_SIZE",
                                    text = "WindowBorderSize",
@@ -99,7 +104,7 @@ def ShowStyleEditor() {
                                    text = "TabBarBorderSize",
                                    v_min = 0.0f, v_max = 2.0f, format = "%.0f"))
 
-                SeparatorText("Rounding")
+                separator_text("Rounding")
                 edit_slider_float(unsafe(addr(style.WindowRounding)),
                                   (id = "STYLE_WINDOW_ROUNDING",
                                    text = "WindowRounding",
@@ -125,7 +130,7 @@ def ShowStyleEditor() {
                                    text = "TabRounding",
                                    v_min = 0.0f, v_max = 12.0f, format = "%.0f"))
 
-                SeparatorText("Misc")
+                separator_text("Misc")
                 edit_slider_float(unsafe(addr(style.SeparatorTextBorderSize)),
                                   (id = "STYLE_SEPARATOR_TEXT_BORDER_SIZE",
                                    text = "SeparatorTextBorderSize",
@@ -135,7 +140,7 @@ def ShowStyleEditor() {
                                    text = "LogSliderDeadzone",
                                    v_min = 0.0f, v_max = 12.0f, format = "%.0f"))
 
-                SeparatorText("Docking")
+                separator_text("Docking")
                 edit_slider_float(unsafe(addr(style.DockingSeparatorSize)),
                                   (id = "STYLE_DOCKING_SPLITTER_SIZE",
                                    text = "DockingSplitterSize",
@@ -161,8 +166,9 @@ def ShowStyleEditor() {
                                     unsafe(addr(style.Colors[int(col)])),
                                     (id = "COLOR", text = "##color",
                                      flags = ImGuiColorEditFlags.AlphaBar))
-                                SameLine(0.0f, style.ItemInnerSpacing.x)
-                                TextUnformatted(name)
+                                same_line(STYLE_COLOR_SAMELINE[int(col)],
+                                          (spacing = style.ItemInnerSpacing.x))
+                                text(STYLE_COLOR_NAME[int(col)], (text = name))
                             }
                         }
                     }

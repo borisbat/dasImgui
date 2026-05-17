@@ -1,0 +1,202 @@
+# dasImgui project instructions
+
+dasImgui is the daslang binding + boost-v2 wrapper layer for [Dear ImGui](https://github.com/ocornut/imgui). It ships:
+
+- a **C++ native binding** (`bind/`, `src/`) compiled into `dasModuleImgui.shared_module` (the raw imgui surface);
+- a **boost-v2 wrapper layer** (`widgets/`) — `[widget]` / `[container]` / `with_*` macros, the imgui-side telemetry path, and a default-on lint that rejects unwrapped raw `imgui::` calls;
+- two **app harnesses** — `imguiApp` (windowed via GLFW+OpenGL) and `imguiAppHeadless` (no display, real ImGui ctx with CPU font atlas) — also shipped as shared modules;
+- **examples** organised by purpose (see below) and **integration tests** under `tests/integration/` driven by `dastest`;
+- a **sphinx tutorial site** under `doc/source/` with annotated walkthroughs + recorded APNGs.
+
+Throughout this doc:
+
+- `<daslang>` = path to a built daslang tree (e.g. the GaijinEntertainment/daScript checkout with a `Release` build).
+- `<dasimgui>` = path to this repo (your dasImgui checkout).
+
+Develop in **your local dasImgui checkout**, NOT inside `<daslang>/modules/dasImgui/`. The daslang-side install path (under daslang's tree) is a *separate clone* that daspkg manages; do not edit it.
+
+## Module resolution
+
+- `modules/dasImgui/` inside this repo is a **self-junction/symlink** back to `.`. It exists so paths like `modules/dasImgui/examples/imgui_demo/main.das` resolve when daslang-live or dastest run from this repo root. Recreate with `mklink /J modules\dasImgui .` on Windows or `ln -s .. modules/dasImgui` on Linux/macOS if missing.
+- **`require imgui/<name>`** resolves via `.das_module`'s `register_native_path` calls (e.g. `register_native_path("imgui", "imgui_harness", "{project_path}/widgets/imgui_harness.das")`). For daslang or daslang-live to load this, **pass `-project_root .`** when running from this repo root.
+- `require` only resolves **siblings** of the calling file's directory and the registered native-paths above. **No `..`/absolute-from-root forms.** Files that need to require both `imgui/*` and a sibling module like `about` must live in the sibling's directory.
+- If a sibling name collides with an `imgui::` builtin (`ShowAboutWindow`, `ShowStyleEditor`, …), **qualify with the module name** at the call site: `about::ShowAboutWindow()`, `style_editor::ShowStyleEditor()`.
+
+## Build
+
+CMake-based. Three shared-module targets (`dasModuleImgui`, `imguiApp`, `imguiAppHeadless`):
+
+```bash
+cd <dasimgui>
+cmake -B _build -S . -DDASLANG_DIR=<daslang>
+cmake --build _build --config Release
+```
+
+Artifacts land at the repo root (NOT in `_build/`): `dasModuleImgui.shared_module`, `imguiApp.shared_module`, `imguiAppHeadless.shared_module`. The `.das_module`'s `initialize()` registers them via `register_dynamic_module()` when daslang loads any `.das` file under this tree.
+
+Stop any running `daslang-live` / `imguiApp` consumers before rebuilding — on Windows in particular, the OS holds locks on loaded DLLs.
+
+## Running a .das file
+
+Single-shot windowed:
+
+```bash
+<daslang>/bin/Release/daslang -project_root . examples/features/with_indent.das
+```
+
+Single-shot headless (terminates after N frames):
+
+```bash
+<daslang>/bin/Release/daslang -project_root . examples/features/with_indent.das -- --headless --headless-frames=60
+```
+
+Compile-only (lint pass + type check, no simulate):
+
+```bash
+<daslang>/bin/Release/daslang -project_root . -compile-only examples/imgui_demo/main.das
+```
+
+Live-reload server (keeps running until killed; HTTP API on port 9090):
+
+```bash
+<daslang>/bin/Release/daslang-live -project_root . examples/imgui_demo/main.das
+```
+
+(Append `.exe` on Windows where appropriate. `Release/` is the MSVC multi-config layout — on single-config Ninja/Make `<daslang>/build/daslang` is the binary.)
+
+## Examples layout (`examples/`)
+
+| Dir | Purpose | Lifecycle |
+|---|---|---|
+| `features/` | Small focused demos of one wrapper at a time. Each file is `~20-80 LOC`, opens its own window via `imgui_harness`, drives `[test]` smokes in `tests/integration/test_<name>.das`. | `harness_*` |
+| `imgui_demo/` | Daslang port of `imgui_demo.cpp` — per-scene modules (`about.das`, `widgets.das`, etc.) consumed by `imgui_demo.das` (the dispatcher). `main.das` is the live-reload entry. Single-scene `harness_<scene>.das` files exist for headless smokes + recordings. | mixed: `imgui_demo.das` is library, `main.das` is `live_*`, `harness_*.das` are `harness_*` |
+| `tutorial/` | Annotated step-by-step tutorials matching `doc/source/tutorials/*.rst`. Use `live_*` lifecycle so the live-reload tutorial flow works. | `live_*` |
+| `save_demo/` | One-shot save/load demo. | self-contained |
+| `graphics/` | Custom-GL + ImGui interop demo (Fourier viz). | self-contained, mixes raw GL and harness/live. |
+
+## Lifecycle: `harness_*` vs `live_*`
+
+Two distinct frame-loop APIs:
+
+**`live_*` (in `live_host` + `imgui_live`):** lowest-level. Tutorial files use this:
+
+```daslang
+[export]
+def update() {
+    if (!live_begin_frame()) return
+    begin_frame()
+    ImGui_ImplOpenGL3_NewFrame()
+    ImGui_ImplGlfw_NewFrame()
+    apply_synth_io_override()         //! REQUIRED for synth IO to drain
+    NewFrame()
+    // ... widgets ...
+    end_of_frame()
+    Render()
+    // ... GL clear + ImGui_ImplOpenGL3_RenderDrawData ...
+    live_end_frame()
+}
+```
+
+**`harness_*` (in `imgui_harness`):** higher-level wrapper used by `examples/features/*.das` and `examples/imgui_demo/harness_*.das`. Same flow folded into 3 calls. The synth IO override is OPT-IN:
+
+```daslang
+[export]
+def update() {
+    if (!harness_begin_frame()) return
+    harness_apply_synth_io()          //! REQUIRED if recorder drives synth IO
+    harness_new_frame()
+    // ... widgets ...
+    harness_end_frame()
+}
+```
+
+**Always call `harness_apply_synth_io()` if the harness is the target of any `record_*.das` driver or any test that posts `imgui_mouse_play`/`imgui_key_play`.** Without it, GLFW's mouse poll overwrites the synth pos every frame — cursor sprite is invisible in recordings, synth clicks never reach widget hover/active state, menus stay closed.
+
+## Lint (`widgets/imgui_lint.das`)
+
+Default-on for every `.das` file under this tree. Forbids any raw `imgui::Fn` call where `Fn` isn't in `ALLOWED_IMGUI`. Two error codes:
+
+- **IMGUI001**: `imgui_boost::Fn` (legacy v1 surface) — dead, no per-file escape.
+- **IMGUI002**: `imgui::Fn` where `Fn` ∉ `ALLOWED_IMGUI`. Per-file escape: `options _allow_imgui_legacy = true`.
+
+`_allow_imgui_legacy = true` is **scaffolding-only** — target state is zero opt-outs. Track the remaining files via `git grep _allow_imgui_legacy` before final delivery.
+
+To add a new raw call to the carve-out, edit `ALLOWED_IMGUI` in `widgets/imgui_lint.das`. Categories already in place: io/state queries, mouse/keyboard state, cursor/layout queries, font/color helpers, draw-list primitives, demo/debug entry points, pre-window state, drag-drop payload primitives, input-text callback primitives.
+
+## Widget telemetry & path-prefix
+
+Every `[widget]` / `[container]` registers under a slash-joined path: `WINDOW_IDENT/CONTAINER_IDENT/WIDGET_IDENT`. `with_id("scope") { ... }` adds a literal scope segment.
+
+**Indexed widget tables** (e.g. one widget per loop iteration) must be declared at module scope explicitly — `[widget]` macros do NOT auto-emit table globals for indexed forms:
+
+```daslang
+var private STYLE_COLOR_NAME : table<int; NarrativeState>
+// ...
+for (col in type<ImGuiCol>) {
+    text(STYLE_COLOR_NAME[int(col)], (text = name))
+}
+```
+
+**Header bbox capture for `menu` and `tab_item`.** `menu()` and `tab_item()` snapshot `GetItemRectMin/Max` right after `BeginMenu`/`BeginTabItem` returns — the parent-strip header is the "last item" at that point, so the registered bbox is the clickable header rect. `main_menu_bar()` itself still reports `bbox = (0,0,0,0)` (the bar chrome has no meaningful "header"); recording drivers that need to click the bar's screen position hardcode pixel coords. See `skills/recording.md`.
+
+## Tests (`tests/integration/`)
+
+Tests run via `dastest`. From the daslang repo root with dasImgui installed `--global`:
+
+```bash
+<daslang>/bin/Release/daslang dastest/dastest.das -- \
+    --test modules/dasImgui/tests/integration \
+    --headless \
+    --exclude glfw_synth --exclude key_hud
+```
+
+The `--headless` flag propagates to spawned daslang-live subprocesses via `widgets/imgui_playwright.das:515` (`playwright_wants_headless`).
+
+**Three test families:**
+
+- `test_<feature>.das` — `[test]` functions calling `with_imgui_app(FEATURE) $(d) { ... }`. Boots a daslang-live subprocess running the feature, waits for widgets, asserts state. ~2 POSTs per test; well under the 16-POST Windows-CI threshold.
+- `test_imgui_lint_*.das` — lint allow/forbid smokes. `failed_imgui_lint_raw.das` uses `expect 50503` for negative test.
+- `record_<scene>.das` — recording drivers, two-shell against an already-running daslang-live. **NOT in CI** — manual artifact-producing scripts. See `skills/recording.md`.
+
+CI workflow: `.github/workflows/tests.yml`. Windows CI excludes 7 high-POST tests (libhv's IOCP path stalls at 16 POSTs/subprocess on `windows-latest`); Linux + macOS run the full suite.
+
+## Documentation (`doc/source/`)
+
+Sphinx-based tutorial site. CI gates `-W` (warnings-as-errors) BUT pre-runs `utils/imgui2rst.das --detail_output doc/source/stdlib/generated` to generate per-module stdlib refs. **Locally**, `sphinx-build -W` fails on `stdlib/sec_boost.rst:11: toctree contains reference to nonexisting document 'stdlib/generated/imgui_boost_v2'` unless you run imgui2rst first. Plain `sphinx-build --keep-going` (no `-W`) builds clean.
+
+Tutorial pages live in `doc/source/tutorials/*.rst` and reference APNGs from `doc/source/_static/tutorials/*.apng`. Each tutorial appears in `doc/source/tutorials/index.rst`'s toctree.
+
+## Recording
+
+See `skills/recording.md` for the full recipe — pacing constants, two-shell workflow, menu-header coord workaround, screenshot/ffmpeg verification methodology.
+
+## Workflow
+
+Per-PR: eyeball-review only, no Copilot, no required CI gate, branches as backup. After landing a change, push the branch and open a draft PR to trigger CI (workflows don't fire on bare branch push; they fire on `pull_request`).
+
+When debugging recordings or live-API behaviour:
+1. Stop stale `daslang-live` / `imguiApp` processes first.
+2. Launch fresh with `-project_root .`.
+3. Use `mcp__daslang__live_command` for ground-truth probes: `screenshot`, `imgui_snapshot`, `imgui_mouse_status`, `help`.
+4. **Always full-restart daslang-live between recording iterations** — any interactive probe (menu click, key press) leaves state that contaminates the next recording.
+
+## Asking the mouse
+
+For "how do I X?" / "why does Y behave this way?" questions about dasImgui patterns, use `mcp__mouse__mouse__ask` BEFORE grep/research. The blind-mouse cache (`mouse-data/docs/`) holds curated Q&A on dasImgui-specific recurring traps — synth IO setup, harness vs live lifecycle, lint carve-out additions, recording driver patterns, menu-bbox quirks, etc.
+
+## Followup-tracked gaps
+
+Files still under `_allow_imgui_legacy = true` (pre-final-delivery checklist):
+
+- `examples/imgui_demo/widgets.das` (~865 LOC)
+- `examples/imgui_demo/inputs.das` (~450 LOC)
+- `examples/imgui_demo/layout.das` (~1214 LOC)
+
+Placeholder app stubs in `examples/imgui_demo/` that were never ported from `imgui_demo.cpp`'s C++ originals:
+
+- `app_custom_rendering.das` (needs draw-list family extension)
+- `app_dockspace.das`
+- `app_documents.das`
+- `app_small.das`
+
+Final-delivery gate: `git grep _allow_imgui_legacy examples/imgui_demo/` returns nothing AND every `app_*.das` stub has a real port.

@@ -64,7 +64,11 @@ let private ALLOWED_IMGUI : table<string> <- {
     "GetFont", "GetFontSize",
     "GetTextLineHeight", "GetTextLineHeightWithSpacing",
     "GetFrameHeight", "GetFrameHeightWithSpacing",
-    "GetStyleColorVec4", "GetColorU32",
+    "GetStyleColorVec4", "GetColorU32", "GetStyleColorName",
+    // Draw-list primitives. Narrow carve-out for what `app_main_menu`'s
+    // Colors-submenu swatch paints today; extend the Add* set when a
+    // second caller surfaces.
+    "GetWindowDrawList", "AddRectFilled",
     // Demo / debug entry points (built-in windows we deliberately surface as-is)
     "ShowDemoWindow", "ShowMetricsWindow", "ShowDebugLogWindow",
     "ShowIDStackToolWindow", "ShowAboutWindow",

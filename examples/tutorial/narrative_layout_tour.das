@@ -37,10 +37,13 @@ var private g_progress : float = 0.0f
 
 [export]
 def init() {
-    live_create_window("dasImgui narrative+layout tour", 900, 640)
+    //! Window sized to keep the APNG recording under GitHub's 50 MB
+    //! warning band. Bumping past 720x480 doubles the file size for the
+    //! same story.
+    live_create_window("dasImgui narrative+layout tour", 720, 480)
     live_imgui_init(live_window)
     var io & = unsafe(GetIO())
-    io.FontGlobalScale = 1.4
+    io.FontGlobalScale = 1.15
 }
 
 [export]
@@ -58,35 +61,35 @@ def update() {
         g_progress--
     }
 
-    SetNextWindowPos(ImVec2(60.0, 60.0), ImGuiCond.Always)
-    SetNextWindowSize(ImVec2(780.0, 560.0), ImGuiCond.Always)
+    SetNextWindowPos(ImVec2(20.0, 20.0), ImGuiCond.Always)
+    SetNextWindowSize(ImVec2(680.0, 440.0), ImGuiCond.Always)
     window(TOUR_WIN, (text = "Narrative + layout tour",
                       closable = false, flags = ImGuiWindowFlags.None)) {
         // ---- Stage 1: plain text ----
-        text("Plain text() — one line, telemetry-visible.")
+        text(INTRO, (text = "Plain text() — one line, telemetry-visible."))
 
         // ---- Stage 2: wrapped text ----
-        text_wrapped("text_wrapped() reflows to the window's right edge. Long strings flow naturally; the snapshot carries the full source string regardless of how the renderer wraps it.")
+        text_wrapped(WRAP, (text = "text_wrapped() reflows to the window's right edge. Long strings flow naturally; the snapshot carries the full source string regardless of how the renderer wraps it."))
 
         // ---- Stage 3: colored / disabled ----
-        text_colored((color = float4(0.7f, 0.9f, 0.4f, 1.0f),
-                      text = "text_colored() with an inline float4."))
-        text_disabled("text_disabled() — greyed for hints.")
+        text_colored(COLORED, (color = float4(0.7f, 0.9f, 0.4f, 1.0f),
+                               text = "text_colored() with an inline float4."))
+        text_disabled(DISABLED, (text = "text_disabled() — greyed for hints."))
 
         // ---- Stage 4: bullet ----
-        bullet_text("bullet_text() — marker + text in one call.")
+        bullet_text(BULLET_LINE, (text = "bullet_text() — marker + text in one call."))
 
         // ---- Stage 5: label/value pair ----
-        label_text((key = "Version", value = "v2.0-detour"))
+        label_text(LABEL_VERSION, (key = "Version", value = "v2.0-detour"))
 
         // ---- Stage 6: separator_text + spacing + dummy ----
-        separator_text("Display + tooltips")
-        dummy((size = float2(0.0f, 8.0f)))
+        separator_text(SEP_TITLE, (text = "Display + tooltips"))
+        dummy(SEP_DUMMY, (size = float2(0.0f, 8.0f)))
 
         // ---- Stage 7: progress_bar ----
-        progress_bar((fraction = g_progress,
-                      size = float2(-1.0f, 0.0f),
-                      overlay = ""))
+        progress_bar(PROG_BAR, (fraction = g_progress,
+                                size = float2(-1.0f, 0.0f),
+                                overlay = ""))
 
         spacing(SP_BELOW)
 
@@ -94,7 +97,7 @@ def update() {
         if (button(HOVER_TIP, (text = "Hover me"))) {
             print("clicked\n")
         }
-        set_item_tooltip((text = "set_item_tooltip — fires on previous-item hover."))
+        set_item_tooltip(HOVER_TIP_TOOL, (text = "set_item_tooltip — fires on previous-item hover."))
     }
 
     end_of_frame()

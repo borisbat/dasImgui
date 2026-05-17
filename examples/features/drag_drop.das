@@ -29,6 +29,7 @@ def init() {
 [export]
 def update() {
     if (!harness_begin_frame()) return
+    harness_apply_synth_io()
     harness_new_frame()
 
     SetNextWindowSize(ImVec2(660.0, 420.0), ImGuiCond.Always)
@@ -49,7 +50,12 @@ def update() {
         }
 
         // 40 px gap between the source and target buttons.
-        same_line((spacing = 40.0f))
+        // Note: same_line's named-tuple destructure is POSITIONAL; the
+        // first field is offset_from_start_x, the second is spacing.
+        // `(spacing = 40.0f)` alone would bind 40 to offset_from_start_x
+        // and let TARGET overlap SOURCE -- the source/target hit-test
+        // tie breaks toward TARGET, so the drag fails to start.
+        same_line((offset_from_start_x = 0.0f, spacing = 40.0f))
 
         // Target: a normal button. Body runs only when payload-bearing drag hovers.
         button(TARGET_BTN, (text = "TARGET"))
