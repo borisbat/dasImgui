@@ -59,6 +59,7 @@ require imgui/imgui_layout_builtin public
 require imgui/imgui_docking_builtin public
 require imgui/imgui_colors public
 require imgui/imgui_visual_aids
+require imgui/imgui_theme_daslang
 
 // Headless backend — private. 3-fn surface (no GLFW/GL names).
 require imgui_app_headless
@@ -99,12 +100,13 @@ def public harness_is_headless() : bool {
 }
 
 def public harness_init(title : string; width : int = 800; height : int = 600) {
-    //! Windowed: ``live_create_window`` + ``live_imgui_init``. Headless:
-    //! ``CreateContext`` + ``StyleColorsDark`` + font atlas build +
-    //! ``DisplaySize`` — no window, no GL context.
+    //! Windowed: ``live_create_window`` + ``live_imgui_init`` (which also applies
+    //! the daslang theme + JetBrains Mono font). Headless: ``CreateContext`` +
+    //! ``apply_daslang_theme`` + font atlas build + ``DisplaySize`` — no window,
+    //! no GL context, no TTF (the headless atlas uses ProggyClean).
     if (harness_is_headless()) {
         g_headless_ctx = CreateContext(null)
-        StyleColorsDark(null)
+        apply_daslang_theme()
         imgui_headless_init_fonts()
         imgui_headless_set_display_size(float(width), float(height))
         return

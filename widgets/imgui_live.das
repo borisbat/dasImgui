@@ -16,6 +16,7 @@ require daslib/archive
 require live/live_commands
 require live_host
 require imgui/imgui_live_core public
+require imgui/imgui_theme_daslang
 
 let private STORE_KEY = "__imgui_ctx"
 
@@ -28,7 +29,8 @@ def public live_imgui_init(window : GLFWwindow?; glsl_version : string = "#versi
         return live_imgui_ctx
     }
     live_imgui_ctx = CreateContext(null)
-    StyleColorsDark(null)
+    load_daslang_font()
+    apply_daslang_theme()
     ImGui_ImplGlfw_InitForOpenGL(window, true)
     ImGui_ImplOpenGL3_Init(glsl_version)
     return live_imgui_ctx

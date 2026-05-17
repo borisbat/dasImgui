@@ -4,7 +4,7 @@ options indenting = 4
 module imgui_theme_daslang shared
 
 require imgui public
-require fio
+require daslib/fio
 require daslib/module_path
 
 //! Drop-in Dear ImGui theme matching daslang.io — warm-dark background,
