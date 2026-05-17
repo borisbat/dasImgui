@@ -118,6 +118,11 @@ def public harness_init(title : string; width : int = 800; height : int = 600) {
         imgui_headless_set_display_size(float(width), float(height))
         return
     }
+    // Opt into per-monitor DPI on Windows so glfwCreateWindow scales the
+    // requested size by the monitor scale (no-op on macOS/Linux, where
+    // the windowing system already handles it). live_imgui_init then
+    // reads glfwGetWindowContentScale and applies it to fonts + theme.
+    glfwWindowHint(int(GLFW_SCALE_TO_MONITOR), 1)
     live_create_window(title, width, height)
     live_imgui_init(live_window)
 }
