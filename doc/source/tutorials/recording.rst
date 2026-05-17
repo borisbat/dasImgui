@@ -4,12 +4,18 @@
 Recording APNGs
 #######################
 
-Every APNG in this tutorial set was produced the same way: a tiny
-**subject** app hosted under ``daslang-live``, then a **driver** script
-running in a second shell that toggled visual aids, called
-``record_start``, narrated each interaction, performed the action, and
-called ``record_stop``. This is the meta tutorial — the driver script
-is the artifact, and the embedded recording demonstrates itself.
+Every APNG in this tutorial set was produced the same way: a **driver**
+script that uses :code:`with_recording_app` to spawn a tiny **subject**
+app as :code:`daslang-live`, toggles visual aids, calls ``record_start``,
+narrates each interaction, performs the action, and lets the helper
+shut down. This is the meta tutorial — the driver script is the
+artifact, and the embedded recording demonstrates itself.
+
+The helper passes :code:`--imgui-content-scale=1.0` +
+:code:`--no-hdpi-framebuffer` to the spawned :code:`daslang-live` so
+APNGs stay at logical 1x — small files, fast encode, even on retina.
+Tutorials run by users directly (no driver) keep their native HDPI
+look.
 
 Source files:
 
@@ -45,44 +51,40 @@ The driver
 Anatomy of a driver
 ===================
 
-1. **Connect to the live host.** ``ImguiApp`` bundles the base URL +
-   transport into a value every playwright helper takes as its first
-   argument. ``wait_until_ready`` polls until the HTTP server answers,
-   so the driver can be launched concurrently with daslang-live and
-   recover from the cold-start gap.
+The driver's :code:`main` is a single :code:`with_recording_app(...)
+$(app) { ... }` call. The helper owns the boilerplate; the body owns
+the timeline.
 
-2. **Resolve widget centers.** ``wait_for_render`` polls
-   ``imgui_snapshot`` until the named widget shows up in the registry
-   (covers the first-frame gap where the subject's window exists but
-   hasn't rendered yet). The helper ``widget_bbox`` / ``widget_center``
-   extract the geometry from the snapshot JSON.
+1. **Helper-owned: spawn + ready-wait.** :code:`with_recording_app`
+   spawns :code:`daslang-live <feature_path>` with
+   :code:`--imgui-content-scale=1.0` + :code:`--no-hdpi-framebuffer`
+   (and forwards :code:`-project_root` from the driver's own argv),
+   waits for the HTTP server to answer :code:`/status` 200, and yields
+   an :code:`ImguiApp` to the body block.
 
-3. **Enable visual aids — BEFORE ``record_start``.**
+2. **Body-owned: resolve widget centers.** Inside the body,
+   :code:`wait_for_render` polls :code:`imgui_snapshot` until the named
+   widget shows up in the registry (covers the first-frame gap where
+   the subject's window exists but hasn't rendered yet). The helper
+   :code:`widget_bbox` / :code:`widget_center` extract the geometry
+   from the snapshot JSON.
 
-   .. code-block:: das
+3. **Helper-owned: enable visual aids + ``record_start``.** The
+   helper posts :code:`imgui_mouse_trail` + :code:`imgui_cursor_sprite`
+   :code:`(enabled=true)` and then :code:`record_start` with the
+   :code:`(file, fps, max_seconds)` you passed in. The writer pulls
+   from a PBO ring on the GL side (4 buffers by default) —
+   :code:`glReadPixels` returns immediately, the actual readback
+   happens 3 frames later, the encoder runs on a worker thread.
+   Frames drop only if the worker can't keep up with the GL output
+   rate, and even then dropping is graceful (the APNG just gets
+   slightly choppier — never breaks).
 
-      post_command(app, "imgui_mouse_trail",   JV((enabled = true)))
-      post_command(app, "imgui_cursor_sprite", JV((enabled = true)))
+   The absolute APNG path is :code:`<dasimgui>/doc/source/_static/tutorials/<basename>`,
+   resolved via :code:`get_this_module_dir()` so caller cwd is
+   irrelevant.
 
-   ``imgui_mouse_trail`` draws a fading line behind the synthetic
-   cursor. ``imgui_cursor_sprite`` draws a visible pointer at
-   ``io.MousePos``. Without these, the recording shows widget state
-   changing but no cursor — confusing for viewers.
-
-4. **``record_start``.** Opens an APNG writer at ``file`` (relative to
-   daslang-live's cwd, which is why every tutorial's shell-1 command
-   ``cd``\\s into the asset directory first). ``fps`` controls the time
-   stamps written into the APNG frame headers — not how often frames
-   are captured. ``max_seconds`` caps the recording length.
-
-   The writer pulls from a PBO ring on the GL side (4 buffers by
-   default) — ``glReadPixels`` returns immediately, the actual readback
-   happens 3 frames later, the encoder runs on a worker thread. Frames
-   drop only if the worker can't keep up with the GL output rate, and
-   even then dropping is graceful (the APNG just gets slightly choppier
-   — never breaks).
-
-5. **Narrate, then act — repeat.** The locked pacing rule:
+4. **Body-owned: narrate, then act — repeat.** The locked pacing rule:
 
    .. code-block:: text
 
@@ -90,18 +92,16 @@ Anatomy of a driver
       sleep  = 3500u →  narrate disappears with ~500 ms gap
       sleep  = 1500u →  result-dwell after the action
 
-   ``frames`` counts the APP's frame counter (60 fps under vsync), NOT
-   the recorder's fps. So ``frames = 180`` is 3 seconds of real time,
-   regardless of whether the recorder is at 30 fps or 60 fps.
+   :code:`frames` counts the APP's frame counter (60 fps under vsync),
+   NOT the recorder's fps. So :code:`frames = 180` is 3 seconds of
+   real time, regardless of whether the recorder is at 30 fps or
+   60 fps.
 
-6. **``record_stop``.** Flushes the APNG writer, joins the encoder
-   thread, returns ``(saved, frames, duration_s, dropped, ok)`` so the
-   driver can spot-check stats.
-
-7. **Disable visual aids.** The host stays alive after the driver
-   exits — clean up the cursor sprite + trail so the next driver (or
-   a developer poking at the live host manually) starts from a clean
-   slate.
+5. **Helper-owned: ``record_stop`` + shutdown.** When the body
+   returns, the helper posts :code:`record_stop` (flushes the writer,
+   joins the encoder thread, prints :code:`(saved, frames, duration_s,
+   dropped, ok)`), disables the visual aids, posts :code:`/shutdown`,
+   drains stdout. The driver process exits when daslang-live does.
 
 The visual-aids stack
 =====================
@@ -132,23 +132,21 @@ Two more for keyboard work:
 The driver workflow in shell
 ============================
 
-The two-shell pattern every tutorial uses:
+One shell, one command:
 
 .. code-block:: bash
 
-   # shell 1 — host with cwd = the asset dir so the APNG lands there
-   cd modules/dasImgui/doc/source/_static/tutorials
-   ../../../../../../bin/Release/daslang-live.exe \
-       ../../../../examples/tutorial/recording.das
+   bin/Release/daslang.exe -project_root <dasimgui> \
+       <dasimgui>/tests/integration/record_recording.das
 
-   # shell 2 — fire the driver, exits when done
-   bin/Release/daslang.exe modules/dasImgui/tests/integration/record_recording.das
+The helper spawns daslang-live, runs the body, posts :code:`/shutdown`,
+drains stdout. Wall time = :code:`max_seconds` + ~3s headroom. The APNG
+lands at :code:`<dasimgui>/doc/source/_static/tutorials/recording.apng`.
 
-The host stays alive after the driver exits; if the recording was bad,
-re-run shell 2 — no need to restart daslang-live. The driver script
-nukes the previous file (``rm -f <name>.apng``) at the top, or
-``record_start`` returns ``{"error":"already recording"}`` if a prior
-session leaked.
+If you want to iterate without re-recording the host's state, drive a
+manually-launched host via :code:`mcp__daslang__live_command` instead
+(see "Verifying a recording" in :code:`skills/recording.md`). The
+driver script is for the canonical artifact pass.
 
 Stop conditions
 ===============

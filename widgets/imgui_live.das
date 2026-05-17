@@ -13,10 +13,12 @@ require imgui public
 require imgui_app
 require glfw/glfw_boost
 require daslib/archive
+require daslib/clargs
 require daslib/safe_addr
 require live/live_commands
 require live_host
 require math
+require strings
 require imgui/imgui_live_core public
 require imgui/imgui_theme_daslang
 
@@ -29,19 +31,43 @@ var public live_imgui_ctx : ImGuiContext?
 //! Set once inside :ref:`live_imgui_init <function-imgui_live_live_imgui_init>`
 //! (windowed path); stays at 1.0 in headless mode. User code can read this
 //! to scale custom drawing — line widths, viewport math, etc.
+//!
+//! Override at init by passing ``--imgui-content-scale=<float>`` after the
+//! daslang ``--`` separator. Used by :ref:`with_recording_app
+//! <function-imgui_playwright_with_recording_app>` to force 1x so APNG
+//! captures stay small and encoder-friendly even on retina.
 var public live_imgui_content_scale : float = 1.0f
+
+// Lazy CLI-flag cache. `--imgui-content-scale=<float>` after `--` overrides
+// the GLFW content-scale query in live_imgui_init. Mirrors the pattern in
+// widgets/imgui_harness.das:86-101 (ensure_parsed for --headless family).
+var private g_scale_parsed   : bool  = false
+var private g_scale_override : float = 0.0f
+
+def private ensure_scale_parsed() {
+    return if (g_scale_parsed)
+    g_scale_parsed = true
+    let args <- get_user_args()
+    let raw = find_flag_raw_value(args, "--imgui-content-scale")
+    g_scale_override = to_float(raw |> unwrap_or("0"))
+}
 
 def public live_imgui_init(window : GLFWwindow?; glsl_version : string = "#version 330") : ImGuiContext? {
     //! Idempotent ImGui context create + backend init; safe across reload (reuses preserved ctx).
-    //! Reads the window's content scale, loads JetBrains Mono at ``14 * scale`` px,
-    //! applies the daslang theme, and calls ``ScaleAllSizes(scale)`` so paddings/
-    //! spacings/rounding match the display. Call from your script's ``init()``.
+    //! Picks content scale: ``--imgui-content-scale=<float>`` override wins;
+    //! otherwise queries ``glfwGetWindowContentScale``. Loads JetBrains Mono at
+    //! ``14 * scale`` px, applies the daslang theme, and calls
+    //! ``ScaleAllSizes(scale)`` so paddings/spacings/rounding match the display.
+    //! Call from your script's ``init()``.
     if (live_imgui_ctx != null) {
         SetCurrentContext(live_imgui_ctx)
         return live_imgui_ctx
     }
     live_imgui_ctx = CreateContext(null)
-    if (window != null) {
+    ensure_scale_parsed()
+    if (g_scale_override > 0.0f) {
+        live_imgui_content_scale = max(g_scale_override, 1.0f)
+    } elif (window != null) {
         var xs = 1.0f
         var ys = 1.0f
         glfwGetWindowContentScale(window, safe_addr(xs), safe_addr(ys))

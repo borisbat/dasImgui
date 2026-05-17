@@ -22,21 +22,24 @@ require imgui/imgui_visual_aids
 //
 // Every previous tutorial's APNG was produced by the same workflow:
 //
-//   shell 1: daslang-live  hosts a SUBJECT app          (this .das)
-//   shell 2: daslang       runs a DRIVER script that:
-//              - turns on imgui_mouse_trail + imgui_cursor_sprite
-//              - calls record_start
-//              - posts imgui_narrate before each interaction
-//              - moves the cursor / clicks / drags / sets values
-//              - calls record_stop
+//   daslang  runs a DRIVER script that:
+//     - uses with_recording_app to SPAWN this SUBJECT app as daslang-live
+//     - the helper auto-toggles imgui_mouse_trail + imgui_cursor_sprite
+//     - the helper auto-bracketts record_start / record_stop
+//     - the body posts imgui_narrate + cursor moves + clicks / drags
 //
 // The DRIVER is the artifact that teaches recording — the subject is
 // just whatever app you want to record. This file is intentionally tiny
 // (one slider, one button) so the recording recipe is obvious: every
-// frame of the APNG corresponds to one specific driver call.
+// frame of the APNG corresponds to one specific driver-body call.
 //
 // The driver script for this tutorial is:
 //   tests/integration/record_recording.das
+//
+// The helper passes --imgui-content-scale=1.0 + --no-hdpi-framebuffer
+// to the spawned daslang-live so APNG capture stays at logical 1x.
+// When you run this tutorial DIRECTLY (no driver), no flags are passed,
+// so retina users get native HDPI scaling.
 //
 // Read the driver alongside the walkthrough in the RST companion — the
 // .das + driver + APNG triple is the tutorial.
