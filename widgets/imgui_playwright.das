@@ -12,6 +12,7 @@ require daslib/json_boost public
 require daslib/fio public
 require daslib/command_line
 require daslib/clargs
+require daslib/module_path
 require daslib/strings_boost
 require strings
 
@@ -570,6 +571,100 @@ def public with_imgui_app_opt(feature_path : string;
     }))
     if (unready) {
         panic("daslang-live not ready after {ready_timeout_sec}s.\nstdout/stderr:\n{captured}")
+    }
+    if (exit_code == popen_timed_out) {
+        panic("daslang-live timed out (>{test_timeout_sec}s).\nstdout/stderr:\n{captured}")
+    }
+    if (exit_code != 0) {
+        panic("daslang-live exited non-zero ({exit_code}).\nstdout/stderr:\n{captured}")
+    }
+}
+
+// ===== Recording helper =====
+
+let private RECORD_ASSET_REL = "doc/source/_static/tutorials"
+let private RECORD_FPS = 30
+
+def public with_recording_app(feature_path : string;
+                              output_apng_basename : string;
+                              max_seconds : int;
+                              body : block<(app : ImguiApp) : void>) {
+    //! Spawn ``daslang-live <feature_path>`` at logical 1x (passes
+    //! ``--imgui-content-scale=1.0`` after ``--`` so APNGs stay
+    //! encoder-friendly even on retina), toggle visual aids, post
+    //! ``record_start``, run ``body`` for the narrate/click/drag timeline,
+    //! then ``record_stop`` / ``/shutdown`` / drain. APNG lands at
+    //! ``<dasImgui>/doc/source/_static/tutorials/<output_apng_basename>``
+    //! regardless of caller cwd. Forwards ``-project_root`` from the
+    //! driver's own argv so the source-repo recording workflow survives
+    //! (``skills/recording.md``). Panics on non-zero exit / readiness or
+    //! test timeout so the recording driver fails loudly.
+    let exe = daslang_live_exe()
+    // Resolve feature_path against dasImgui root (where examples/tutorial/
+    // and examples/features/ actually live), NOT the daScript root that
+    // resolve_feature_path uses. Same idiom as
+    // widgets/imgui_theme_daslang.das:155 (font path resolution).
+    let dasimgui_root = dir_name(get_this_module_dir())
+    var app_path = feature_path
+    if (!is_absolute(app_path)) {
+        app_path = path_join(dasimgui_root, app_path)
+    }
+    let asset_dir = path_join(dasimgui_root, RECORD_ASSET_REL)
+    let output_apng_path = path_join(asset_dir, output_apng_basename)
+
+    var argv <- [exe]
+    // Forward -project_root if the driver received it (source-repo
+    // workflow: APNGs land under the source repo's asset dir, not the
+    // daspkg-installed copy under daScript/modules/).
+    let user_args <- get_user_args()
+    let pr = find_flag_raw_value(user_args, "-project_root") |> unwrap_or("")
+    if (!empty(pr)) {
+        argv |> push("-project_root")
+        argv |> push(pr)
+    }
+    argv |> push(app_path)
+    argv |> push("--")
+    argv |> push("--imgui-content-scale=1.0")
+    // Ask glfw_live to skip the HDPI backing on retina / Windows DPI so the
+    // framebuffer (and the APNG capture that reads it via glReadPixels) match
+    // the requested logical size. Without this, captures stay at physical 2x
+    // even when the style is 1x — UI is small inside a big frame.
+    argv |> push("--no-hdpi-framebuffer")
+
+    let base_url = "http://127.0.0.1:{DEFAULT_LIVE_PORT}"
+    var app = ImguiApp(base_url = base_url,
+                       feature_path = app_path,
+                       transport <- live_api_transport(base_url))
+    var captured : string
+    var unready  = false
+    // Body must complete within max_seconds + ready/shutdown headroom.
+    let test_timeout_sec = float(max_seconds) + 30.0f
+    let exit_code = unsafe(popen_argv(argv, test_timeout_sec, $(f) {
+        return if (f == null)
+        if (!wait_until_ready(app, DEFAULT_READY_TIMEOUT_SEC)) {
+            unready = true
+            captured = unsafe(fread_to_eof(f))
+            return
+        }
+        post_command(app, "imgui_mouse_trail",   JV((enabled = true)))
+        post_command(app, "imgui_cursor_sprite", JV((enabled = true)))
+        post_command(app, "record_start", JV((
+            file = output_apng_path,
+            fps = RECORD_FPS,
+            max_seconds = max_seconds
+        )))
+        invoke(body, app)
+        let stopped = post_command(app, "record_stop", null)
+        let dump = stopped != null ? write_json(stopped) : "<null>"
+        print("[record] record_stop -> {dump}\n")
+        print("[record] APNG saved to {output_apng_path}\n")
+        post_command(app, "imgui_cursor_sprite", JV((enabled = false)))
+        post_command(app, "imgui_mouse_trail",   JV((enabled = false)))
+        post_signal(app, "/shutdown")
+        captured = unsafe(fread_to_eof(f))
+    }))
+    if (unready) {
+        panic("daslang-live not ready after {DEFAULT_READY_TIMEOUT_SEC}s.\nstdout/stderr:\n{captured}")
     }
     if (exit_code == popen_timed_out) {
         panic("daslang-live timed out (>{test_timeout_sec}s).\nstdout/stderr:\n{captured}")
