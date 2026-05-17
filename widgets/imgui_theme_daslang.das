@@ -14,6 +14,14 @@ require daslib/module_path
 //! <function-imgui_live_live_imgui_init>`) and every window, button, slider,
 //! tab and plot picks it up. Daslang port of the
 //! ``daslang_imgui_style.h`` reference header.
+//!
+//! HDPI: ``apply_daslang_theme`` stores logical (1x) constants — paddings,
+//! spacings, rounding. For high-DPI displays, follow up with
+//! ``GetStyle() |> ScaleAllSizes(scale)`` and load the font at
+//! ``14 * scale`` px. The :ref:`live_imgui_init
+//! <function-imgui_live_live_imgui_init>` path does both automatically from
+//! ``glfwGetWindowContentScale``; if you bring your own ImGui context, mirror
+//! that pattern.
 
 // ===== Palette =====
 // Site colors precomputed as float4 RGBA. Tweak here to shift the whole
@@ -157,8 +165,9 @@ def public daslang_font_ttf_path() : string {
 
 def public load_daslang_font(size_px : float = 14.0f) : ImFont? {
     //! Load JetBrains Mono into the current ImGui font atlas at
-    //! ``size_px`` (14 in dev, 16 on retina/hi-dpi). Call once from
-    //! ``init()`` *before* :ref:`apply_daslang_theme
+    //! ``size_px``. Pass ``14 * content_scale`` for HDPI to keep the font
+    //! crisp instead of bilinear-upscaled by ``ImGuiIO.FontGlobalScale``.
+    //! Call once from ``init()`` *before* :ref:`apply_daslang_theme
     //! <function-imgui_theme_daslang_apply_daslang_theme>`. Returns the
     //! loaded ``ImFont?`` — null when the TTF is missing, in which case
     //! ImGui silently falls back to ProggyClean.
