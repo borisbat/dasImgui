@@ -22,11 +22,8 @@ Source: ``examples/features/drag_drop.das``.
 Walkthrough
 ************
 
-.. note::
-
-   APNG recording forthcoming — run
-   ``tests/integration/record_drag_drop.das`` against a live
-   ``daslang-live`` instance to regenerate it.
+.. image:: ../_static/tutorials/drag_drop.apng
+   :alt: drag_drop recording
 
 .. literalinclude:: ../../../examples/features/drag_drop.das
    :language: das
