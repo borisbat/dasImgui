@@ -127,8 +127,13 @@ def ShowExampleAppLog() {
             }
 
             with_style((ImGuiStyleVar.ItemSpacing, float2(0.0f, 0.0f))) {
-                if (passes_filter(LOG_FILTER, "")) {
+                if (!is_active(LOG_FILTER)) {
                     // Filter inactive — clipper-cull the line range.
+                    // (Don't use `passes_filter("")` as the gate: an
+                    // exclude-only filter like `-error` has no include
+                    // terms, so `PassFilter("")` returns true even though
+                    // the filter is active — clipper path would then
+                    // render lines the user explicitly excluded.)
                     list_clipper(length(LOG_ITEMS)) <| $(start, end_) {
                         for (i in range(start, end_)) {
                             text(LOG_ITEM_TEXT[i], (text = LOG_ITEMS[i]))
