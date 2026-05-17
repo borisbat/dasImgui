@@ -32,6 +32,14 @@ require app_small public
 // now each gets its own checkbox at the bottom of the demo window.
 var private SHOW_APP_CONSOLE = false
 var private SHOW_APP_LOG = false
+var private SHOW_APP_LAYOUT = false
+var private SHOW_APP_PROPERTY_EDITOR = false
+var private SHOW_APP_LONG_TEXT = false
+var private SHOW_APP_AUTO_RESIZE = false
+var private SHOW_APP_CONSTRAINED_RESIZE = false
+var private SHOW_APP_SIMPLE_OVERLAY = false
+var private SHOW_APP_FULLSCREEN = false
+var private SHOW_APP_WINDOW_TITLES = false
 
 // Mirrors imgui_demo.cpp:275-6455 — void ImGui::ShowDemoWindow(bool* p_open).
 // Renamed to avoid collision with ImGui's built-in ShowDemoWindow binding.
@@ -59,6 +67,22 @@ def RunImGuiDemo() {
                       (id = "EXAMPLES_SHOW_CONSOLE", text = "Show Example: Console"))
         edit_checkbox(safe_addr(SHOW_APP_LOG),
                       (id = "EXAMPLES_SHOW_LOG", text = "Show Example: Log"))
+        edit_checkbox(safe_addr(SHOW_APP_LAYOUT),
+                      (id = "EXAMPLES_SHOW_LAYOUT", text = "Show Example: Simple Layout"))
+        edit_checkbox(safe_addr(SHOW_APP_PROPERTY_EDITOR),
+                      (id = "EXAMPLES_SHOW_PROPED", text = "Show Example: Property Editor"))
+        edit_checkbox(safe_addr(SHOW_APP_LONG_TEXT),
+                      (id = "EXAMPLES_SHOW_LONG_TEXT", text = "Show Example: Long Text"))
+        edit_checkbox(safe_addr(SHOW_APP_AUTO_RESIZE),
+                      (id = "EXAMPLES_SHOW_AUTO_RESIZE", text = "Show Example: Auto-resizing Window"))
+        edit_checkbox(safe_addr(SHOW_APP_CONSTRAINED_RESIZE),
+                      (id = "EXAMPLES_SHOW_CONSTR_RESIZE", text = "Show Example: Constrained Resize"))
+        edit_checkbox(safe_addr(SHOW_APP_SIMPLE_OVERLAY),
+                      (id = "EXAMPLES_SHOW_OVERLAY", text = "Show Example: Simple Overlay"))
+        edit_checkbox(safe_addr(SHOW_APP_FULLSCREEN),
+                      (id = "EXAMPLES_SHOW_FULLSCREEN", text = "Show Example: Fullscreen Window"))
+        edit_checkbox(safe_addr(SHOW_APP_WINDOW_TITLES),
+                      (id = "EXAMPLES_SHOW_TITLES", text = "Show Example: Manipulating Window Titles"))
     }
 
     // Example-app windows live OUTSIDE the demo window — each opens its own.
@@ -73,5 +97,33 @@ def RunImGuiDemo() {
     }
     if (SHOW_APP_LOG) {
         ShowExampleAppLog()
+    }
+    // app_small entries — each ShowExampleApp* returns true while open and
+    // false when the user clicked X. Mirror the return value back to the
+    // toggle so the checkbox stays in sync.
+    if (SHOW_APP_LAYOUT && !ShowExampleAppLayout()) {
+        SHOW_APP_LAYOUT = false
+    }
+    if (SHOW_APP_PROPERTY_EDITOR && !ShowExampleAppPropertyEditor()) {
+        SHOW_APP_PROPERTY_EDITOR = false
+    }
+    if (SHOW_APP_LONG_TEXT && !ShowExampleAppLongText()) {
+        SHOW_APP_LONG_TEXT = false
+    }
+    if (SHOW_APP_AUTO_RESIZE && !ShowExampleAppAutoResize()) {
+        SHOW_APP_AUTO_RESIZE = false
+    }
+    if (SHOW_APP_CONSTRAINED_RESIZE && !ShowExampleAppConstrainedResize()) {
+        SHOW_APP_CONSTRAINED_RESIZE = false
+    }
+    if (SHOW_APP_SIMPLE_OVERLAY && !ShowExampleAppSimpleOverlay()) {
+        SHOW_APP_SIMPLE_OVERLAY = false
+    }
+    if (SHOW_APP_FULLSCREEN && !ShowExampleAppFullscreen()) {
+        SHOW_APP_FULLSCREEN = false
+    }
+    // WindowTitles is closable=false in cpp (all 3 windows have nullptr p_open).
+    if (SHOW_APP_WINDOW_TITLES) {
+        ShowExampleAppWindowTitles()
     }
 }

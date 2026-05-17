@@ -57,6 +57,10 @@ def initialize(project_path : string) {
     register_native_path("imgui", "imgui_harness_lint", "{project_path}/widgets/imgui_harness_lint.das")
     // Phase 7 — docking (dockspace, dock_window) + DockBuilder bindings cherry-picked from imgui_internal.h.
     register_native_path("imgui", "imgui_docking_builtin", "{project_path}/widgets/imgui_docking_builtin.das")
+    // Tables — data_table container + table_setup_*/table_next_*/table_set_column_index pass-throughs.
+    register_native_path("imgui", "imgui_table_builtin", "{project_path}/widgets/imgui_table_builtin.das")
+    // Window-size constraints — lambda-bearing overload (3-arg SetNextWindowSizeConstraints).
+    register_native_path("imgui", "imgui_window_constraints_builtin", "{project_path}/widgets/imgui_window_constraints_builtin.das")
     // IM_COL32 packer split out from v1 imgui_boost (the legacy module is
     // non-compileable during the v2 refactor; rgba+constants live here).
     register_native_path("imgui", "imgui_colors", "{project_path}/widgets/imgui_colors.das")
