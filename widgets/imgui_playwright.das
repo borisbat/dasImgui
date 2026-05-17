@@ -23,6 +23,7 @@ require strings
 let DEFAULT_LIVE_PORT : int = 9090                   // daslang-live's live_api default port
 let DEFAULT_DEADLOCK_SANITY_SEC : float = 120.0f     // backstop for the frame-counter-never-advances case (crash / true deadlock); never trips on slow-but-progressing
 let DEFAULT_READY_TIMEOUT_SEC : float = 30.0f        // /status must turn 200 OK within this — covers daslang-live boot + GLFW + ImGui ctx
+let ATTACH_PROBE_SEC : float = 0.3f                  // with_recording_app's attach-vs-spawn detection — short enough to feel instant when nothing's listening
 let DEFAULT_TEST_TIMEOUT_SEC : float = 120.0f        // upper bound on the entire popen lifetime, including body + drain
 let DEFAULT_RELOAD_TIMEOUT_SEC : float = 30.0f       // POST /reload to /status.has_error == false convergence
 let DEFAULT_FRAME_WAIT_SEC : float = 10.0f           // upper bound on "first frame to render the named widget"
@@ -601,23 +602,34 @@ def public with_recording_app(feature_path : string;
                               max_seconds : int;
                               fps : int;
                               body : block<(app : ImguiApp) : void>) {
-    //! Spawn ``daslang-live <feature_path>`` at logical 1x (passes
-    //! ``--imgui-content-scale=1.0`` + ``--no-hdpi-framebuffer`` after
-    //! ``--`` so the framebuffer + ImGui style both stay at logical
-    //! resolution, keeping APNGs encoder-friendly even on retina), toggle
-    //! visual aids, post ``record_start``, run ``body`` for the
-    //! narrate/click/drag timeline, then ``record_stop`` / ``/shutdown`` /
-    //! drain. APNG lands at
+    //! Run a recording session against ``feature_path``. If a daslang-live
+    //! host is already serving at the live-API port, **attach** to it (the
+    //! running host's current HDPI/style — dev workflow: iterate live, then
+    //! flip the recorder on without restarting). Otherwise **spawn** a new
+    //! host at logical 1x (passes ``--imgui-content-scale=1.0`` +
+    //! ``--no-hdpi-framebuffer`` after ``--`` so framebuffer + ImGui style
+    //! both stay at logical resolution; APNGs stay encoder-friendly even on
+    //! retina — canonical-recording workflow). Toggles visual aids, posts
+    //! ``record_start``, runs ``body`` for the narrate/click/drag timeline,
+    //! then ``record_stop``. Spawned host gets ``/shutdown`` + drain;
+    //! attached host is left running.
+    //!
+    //! In attach mode the caller owns whatever feature is loaded — the
+    //! helper does NOT post a switch-feature command. If the running host
+    //! has a different feature loaded, the driver body's
+    //! ``wait_for_render`` call will time out and the driver panics with
+    //! the standard "{ident} never rendered — wrong app running?" message.
+    //!
+    //! APNG lands at
     //! ``<dasImgui>/doc/source/_static/tutorials/<output_apng_basename>``
     //! regardless of caller cwd. Forwards ``-project_root`` from the
-    //! driver's own argv so the source-repo recording workflow survives
-    //! (``skills/recording.md``). ``fps`` defaults to 30; pass a smaller
-    //! value for long-running recordings where file size matters more
-    //! than smoothness (the narrative_layout / edit_external tours run
-    //! at 20 to stay under GitHub's 50 MB asset warning). Panics on
-    //! non-zero exit / readiness or test timeout so the recording
-    //! driver fails loudly.
-    let exe = daslang_live_exe()
+    //! driver's own argv (spawn mode only) so the source-repo recording
+    //! workflow survives (``skills/recording.md``). ``fps`` defaults to
+    //! 30; pass a smaller value for long-running recordings where file
+    //! size matters more than smoothness (the narrative_layout /
+    //! edit_external tours run at 20 to stay under GitHub's 50 MB asset
+    //! warning). Panics on non-zero exit / readiness or test timeout so
+    //! the recording driver fails loudly.
     // Resolve feature_path against dasImgui root (where examples/tutorial/
     // and examples/features/ actually live), NOT the daScript root that
     // resolve_feature_path uses. Same idiom as
@@ -630,12 +642,42 @@ def public with_recording_app(feature_path : string;
     let asset_dir = path_join(dasimgui_root, RECORD_ASSET_REL)
     let output_apng_path = path_join(asset_dir, output_apng_basename)
 
+    let base_url = "http://127.0.0.1:{DEFAULT_LIVE_PORT}"
+    var app = ImguiApp(base_url = base_url,
+                       feature_path = app_path,
+                       transport <- live_api_transport(base_url))
+
+    // Attach-mode probe: 0.3 s is enough for three /status polls (instant
+    // on a healthy listener, fast TCP-refused if no one's there).
+    if (wait_until_ready(app, ATTACH_PROBE_SEC)) {
+        print("[record] attaching to existing daslang-live at {base_url}\n")
+        post_command(app, "imgui_mouse_trail",   JV((enabled = true)))
+        post_command(app, "imgui_cursor_sprite", JV((enabled = true)))
+        post_command(app, "record_start", JV((
+            file = output_apng_path,
+            fps = fps,
+            max_seconds = max_seconds
+        )))
+        invoke(body, app)
+        let stopped = post_command(app, "record_stop", null)
+        let dump = stopped != null ? write_json(stopped) : "<null>"
+        print("[record] record_stop -> {dump}\n")
+        print("[record] APNG saved to {output_apng_path}\n")
+        post_command(app, "imgui_cursor_sprite", JV((enabled = false)))
+        post_command(app, "imgui_mouse_trail",   JV((enabled = false)))
+        return
+    }
+
+    let exe = daslang_live_exe()
     var argv <- [exe]
     // Forward -project_root if the driver received it (source-repo
     // workflow: APNGs land under the source repo's asset dir, not the
-    // daspkg-installed copy under daScript/modules/).
-    let user_args <- get_user_args()
-    let pr = find_flag_raw_value(user_args, "-project_root") |> unwrap_or("")
+    // daspkg-installed copy under daScript/modules/).  -project_root
+    // is a daslang.exe flag (pre-`--`), so scan the full argv via
+    // get_command_line_arguments() — get_user_args() only sees the
+    // post-`--` slice in interpreted mode.
+    let argv_all <- get_command_line_arguments()
+    let pr = find_flag_raw_value(argv_all, "-project_root") |> unwrap_or("")
     if (!empty(pr)) {
         argv |> push("-project_root")
         argv |> push(pr)
@@ -649,10 +691,6 @@ def public with_recording_app(feature_path : string;
     // even when the style is 1x — UI is small inside a big frame.
     argv |> push("--no-hdpi-framebuffer")
 
-    let base_url = "http://127.0.0.1:{DEFAULT_LIVE_PORT}"
-    var app = ImguiApp(base_url = base_url,
-                       feature_path = app_path,
-                       transport <- live_api_transport(base_url))
     var captured : string
     var unready  = false
     // Body must complete within max_seconds + ready/shutdown headroom.
