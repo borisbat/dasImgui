@@ -8,25 +8,16 @@ require imgui/imgui_playwright public
 require daslib/json public
 require daslib/json_boost public
 
-//! Driver script: record ``visual_aids_tour.apng`` against an
-//! **already-running** daslang-live.
+//! Driver script: record ``visual_aids_tour.apng``. One shell:
 //!
-//! Workflow (two shells):
+//!     bin/Release/daslang.exe -project_root <dasimgui> \
+//!         <dasimgui>/tests/integration/record_visual_aids.das
 //!
-//!     # window 1 — host with cwd = the asset dir so the APNG lands there:
-//!     cd modules/dasImgui/doc/source/_static/tutorials
-//!     ../../../../../../bin/Release/daslang-live.exe \
-//!         ../../../../examples/tutorial/visual_aids_tour.das
-//!
-//!     # window 2 — fire the driver, exits when done:
-//!     bin/Release/daslang.exe modules/dasImgui/tests/integration/record_visual_aids.das
-//!
-//! The driver enables mouse trail + cursor sprite, sweeps through every
-//! widget's snapshot bbox with a synth click at each, then calls record_stop
-//! to flush the writer cleanly.
-
-let BASE_URL = "http://127.0.0.1:9090"
-let OUTPUT   = "visual_aids_tour.apng"
+//! Sweeps through every widget's snapshot bbox with a synth click at each,
+//! then runs the keyboard half (key_hud + focus_rect overlays). Body
+//! manages key_hud + focus_rect inline — :ref:`with_recording_app
+//! <function-imgui_playwright_with_recording_app>` only toggles the
+//! mouse_trail + cursor_sprite pair that every driver shares.
 
 def widget_bbox(var snap : JsonValue?; ident : string) : float4 {
     //! Read globals[ident].bbox (float4 serialized as {x,y,z,w}). float4 below
@@ -77,126 +68,107 @@ def drag_along_local(var events : array<JsonValue?>;
 
 [export]
 def main {
-    let app = ImguiApp(
-        base_url = BASE_URL,
-        feature_path = "",
-        transport <- live_api_transport(BASE_URL)
-    )
-    print("[record] connecting to {BASE_URL}\n")
-    if (!wait_until_ready(app, 5.0f)) {
-        panic("daslang-live not responding on {BASE_URL} — is it running with visual_aids_tour.das?")
+    with_recording_app("examples/tutorial/visual_aids_tour.das",
+                       "visual_aids_tour.apng", 60) $(app) {
+        // Resolve widget centers from the running app's snapshot — tolerant to
+        // layout drift. SAVE_BTN is the gate: if we can see it we're on the tour.
+        var snap = wait_for_render(app, "SUBJECT_WIN/SAVE_BTN", 10.0f)
+        if (snap == null) {
+            panic("SAVE_BTN never rendered — wrong app running?")
+        }
+        let p_hi_status   = widget_center(snap, "CONTROLS_WIN/BTN_HIGHLIGHT_STATUS")
+        let p_hi_volume   = widget_center(snap, "CONTROLS_WIN/BTN_HIGHLIGHT_VOLUME")
+        let p_hi_save     = widget_center(snap, "CONTROLS_WIN/BTN_HIGHLIGHT_SAVE")
+        let p_narrate_vol  = widget_center(snap, "CONTROLS_WIN/BTN_NARRATE_VOLUME")
+        let p_narrate_save = widget_center(snap, "CONTROLS_WIN/BTN_NARRATE_SAVE")
+        let p_name_input   = widget_center(snap, "SUBJECT_WIN/NAME_INPUT")
+        // Slider drag: from ~20% along VOLUME's bbox to ~85%, vertically centered.
+        let vol_bb = widget_bbox(snap, "SUBJECT_WIN/VOLUME")
+        let vol_y   = (vol_bb.y + vol_bb.w) * 0.5f
+        let vol_x0  = vol_bb.x + (vol_bb.z - vol_bb.x) * 0.20f
+        let vol_x1  = vol_bb.x + (vol_bb.z - vol_bb.x) * 0.85f
+
+        // key_hud + focus_rect are tour-specific overlays for the keyboard half.
+        // The helper already enabled mouse_trail + cursor_sprite for us.
+        post_command(app, "imgui_key_hud",       JV((enabled = true, show_modifiers = true)))
+        post_command(app, "imgui_focus_rect",    JV((enabled = true)))
+
+        // --- Mouse tour ---
+        //   - Click each highlight button (yellow rect appears around target).
+        //   - Drag the VOLUME slider (press → move-while-pressed → release).
+        //   - Click each narrate button (callout box + connector line appears).
+        // Highlights last ~2s by default so a prior highlight is still visible
+        // while we tour the next widget.
+        var events : array<JsonValue?>
+        events |> push(JV((t_ms = 0, kind = "move", x = 40.0f, y = 380.0f)))
+        events |> stop_at(700,  p_hi_status)
+        events |> stop_at(1500, p_hi_volume)
+        events |> stop_at(2300, p_hi_save)
+        events |> drag_along_local(3100, (vol_x0, vol_y), (vol_x1, vol_y), 1000)
+        events |> stop_at(5500, p_narrate_vol)
+        events |> stop_at(6400, p_narrate_save)
+        events |> push(JV((t_ms = 7400, kind = "move", x = 500.0f, y = 300.0f)))
+        post_command(app, "imgui_mouse_play", JV((events = events)))
+
+        // Sleep through the mouse tour. Polling status in a tight loop while the
+        // recorder is grabbing every frame thrashes the host's HTTP handler —
+        // sleep through it instead. Mouse tour ends at ~7.4s + extra buffer so
+        // the last narrate callout / click flash play out fully and the viewer
+        // has a beat to take it in before keyboard tour starts.
+        sleep(9000u)
+
+        // --- Keyboard tour ---
+        // Move cursor visually to NAME_INPUT, then activate via imgui_focus. The
+        // cursor motion gives a visible cue; the SetKeyboardFocusHere path
+        // lights up the focus rect AND establishes the nav state Shortcut() keys
+        // off, so Ctrl+A / Ctrl+Backspace route into the InputText afterward.
+        // (Under the legacy glfw_live driver, synth mouse-clicks dropped the
+        // shortcut-routing path; imgui_live's full bypass + g.InputEventsQueue
+        // purge fixes that, but a focus-via-API activation is still cleaner than
+        // a synth click for tour purposes.)
+        var move_events <- [
+            JV((t_ms = 0,   kind = "move", x = p_name_input._0, y = p_name_input._1)),
+            JV((t_ms = 400, kind = "move", x = p_name_input._0, y = p_name_input._1))
+        ]
+        post_command(app, "imgui_mouse_play", JV((events = move_events)))
+        sleep(800u)
+        post_command(app, "imgui_focus", JV((target = "SUBJECT_WIN/NAME_INPUT")))
+        sleep(400u)
+
+        // Narrate the keyboard half so the viewer knows what's coming.
+        post_command(app, "imgui_narrate", JV((
+            text = "Watch the keycap HUD as we type.",
+            target = "SUBJECT_WIN/NAME_INPUT",
+            frames = 180
+        )))
+        sleep(2200u)
+
+        // Type "Hello, World!" over 4 seconds. Mixed caps + comma + space + bang
+        // exercise auto-Shift around capitals and shifted punctuation, so the
+        // modifier strip should flash amber on H, W, and ! while the keycaps
+        // pop at bottom-center.
+        post_command(app, "imgui_key_type", JV((text = "Hello, World!", total_duration_s = 4.0f)))
+        sleep(4800u)
+
+        // Demonstrate a chord: Ctrl+A. Both Ctrl pill and the "A" keycap pop.
+        post_command(app, "imgui_narrate", JV((
+            text = "Ctrl+A selects all.",
+            target = "SUBJECT_WIN/NAME_INPUT",
+            frames = 150
+        )))
+        sleep(1600u)
+        post_command(app, "imgui_key_chord", JV((mods = ["Ctrl"], key = "A")))
+        sleep(1400u)
+
+        // Clear the field — Backspace once (selection is active, so one press
+        // empties the buffer). "Bksp" appears in the keycap row.
+        let backspace_key = int(ImGuiKey.Backspace)
+        post_command(app, "imgui_key_press",   JV((key = backspace_key)))
+        post_command(app, "imgui_key_release", JV((key = backspace_key)))
+        sleep(1800u)
+
+        // Disable tour-specific overlays — the helper handles trail + sprite.
+        post_command(app, "imgui_key_hud",       JV((enabled = false)))
+        post_command(app, "imgui_focus_rect",    JV((enabled = false)))
     }
-
-    // Resolve widget centers from the running app's snapshot — tolerant to
-    // layout drift. SAVE_BTN is the gate: if we can see it we're on the tour.
-    var snap = wait_for_render(app, "SUBJECT_WIN/SAVE_BTN", 10.0f)
-    if (snap == null) {
-        panic("SAVE_BTN never rendered — wrong app running on {BASE_URL}?")
-    }
-    let p_hi_status   = widget_center(snap, "CONTROLS_WIN/BTN_HIGHLIGHT_STATUS")
-    let p_hi_volume   = widget_center(snap, "CONTROLS_WIN/BTN_HIGHLIGHT_VOLUME")
-    let p_hi_save     = widget_center(snap, "CONTROLS_WIN/BTN_HIGHLIGHT_SAVE")
-    let p_narrate_vol  = widget_center(snap, "CONTROLS_WIN/BTN_NARRATE_VOLUME")
-    let p_narrate_save = widget_center(snap, "CONTROLS_WIN/BTN_NARRATE_SAVE")
-    let p_name_input   = widget_center(snap, "SUBJECT_WIN/NAME_INPUT")
-    // Slider drag: from ~20% along VOLUME's bbox to ~85%, vertically centered.
-    let vol_bb = widget_bbox(snap, "SUBJECT_WIN/VOLUME")
-    let vol_y   = (vol_bb.y + vol_bb.w) * 0.5f
-    let vol_x0  = vol_bb.x + (vol_bb.z - vol_bb.x) * 0.20f
-    let vol_x1  = vol_bb.x + (vol_bb.z - vol_bb.x) * 0.85f
-
-    // Visual aids on. mouse_trail draws the synth path; cursor_sprite is the
-    // in-frame cursor pointer; click flash fires on every synth press (button
-    // events live in glfw_live, painter in imgui_visual_aids). key_hud +
-    // focus_rect are new for the keyboard half of the tour.
-    post_command(app, "imgui_mouse_trail",   JV((enabled = true)))
-    post_command(app, "imgui_cursor_sprite", JV((enabled = true)))
-    post_command(app, "imgui_key_hud",       JV((enabled = true, show_modifiers = true)))
-    post_command(app, "imgui_focus_rect",    JV((enabled = true)))
-    post_command(app, "record_start", JV((file = OUTPUT, fps = 30, max_seconds = 60)))
-
-    // --- Mouse tour ---
-    //   - Click each highlight button (yellow rect appears around target).
-    //   - Drag the VOLUME slider (press → move-while-pressed → release).
-    //   - Click each narrate button (callout box + connector line appears).
-    // Highlights last ~2s by default so a prior highlight is still visible
-    // while we tour the next widget.
-    var events : array<JsonValue?>
-    events |> push(JV((t_ms = 0, kind = "move", x = 40.0f, y = 380.0f)))
-    events |> stop_at(700,  p_hi_status)
-    events |> stop_at(1500, p_hi_volume)
-    events |> stop_at(2300, p_hi_save)
-    events |> drag_along_local(3100, (vol_x0, vol_y), (vol_x1, vol_y), 1000)
-    events |> stop_at(5500, p_narrate_vol)
-    events |> stop_at(6400, p_narrate_save)
-    events |> push(JV((t_ms = 7400, kind = "move", x = 500.0f, y = 300.0f)))
-    post_command(app, "imgui_mouse_play", JV((events = events)))
-
-    // Sleep through the mouse tour. Polling status in a tight loop while the
-    // recorder is grabbing every frame thrashes the host's HTTP handler —
-    // sleep through it instead. Mouse tour ends at ~7.4s + extra buffer so
-    // the last narrate callout / click flash play out fully and the viewer
-    // has a beat to take it in before keyboard tour starts.
-    sleep(9000u)
-
-    // --- Keyboard tour ---
-    // Move cursor visually to NAME_INPUT, then activate via imgui_focus. The
-    // cursor motion gives a visible cue; the SetKeyboardFocusHere path
-    // lights up the focus rect AND establishes the nav state Shortcut() keys
-    // off, so Ctrl+A / Ctrl+Backspace route into the InputText afterward.
-    // (Under the legacy glfw_live driver, synth mouse-clicks dropped the
-    // shortcut-routing path; imgui_live's full bypass + g.InputEventsQueue
-    // purge fixes that, but a focus-via-API activation is still cleaner than
-    // a synth click for tour purposes.)
-    var move_events <- [
-        JV((t_ms = 0,   kind = "move", x = p_name_input._0, y = p_name_input._1)),
-        JV((t_ms = 400, kind = "move", x = p_name_input._0, y = p_name_input._1))
-    ]
-    post_command(app, "imgui_mouse_play", JV((events = move_events)))
-    sleep(800u)
-    post_command(app, "imgui_focus", JV((target = "SUBJECT_WIN/NAME_INPUT")))
-    sleep(400u)
-
-    // Narrate the keyboard half so the viewer knows what's coming.
-    post_command(app, "imgui_narrate", JV((
-        text = "Watch the keycap HUD as we type.",
-        target = "SUBJECT_WIN/NAME_INPUT",
-        frames = 180
-    )))
-    sleep(2200u)
-
-    // Type "Hello, World!" over 4 seconds. Mixed caps + comma + space + bang
-    // exercise auto-Shift around capitals and shifted punctuation, so the
-    // modifier strip should flash amber on H, W, and ! while the keycaps
-    // pop at bottom-center.
-    post_command(app, "imgui_key_type", JV((text = "Hello, World!", total_duration_s = 4.0f)))
-    sleep(4800u)
-
-    // Demonstrate a chord: Ctrl+A. Both Ctrl pill and the "A" keycap pop.
-    post_command(app, "imgui_narrate", JV((
-        text = "Ctrl+A selects all.",
-        target = "SUBJECT_WIN/NAME_INPUT",
-        frames = 150
-    )))
-    sleep(1600u)
-    post_command(app, "imgui_key_chord", JV((mods = ["Ctrl"], key = "A")))
-    sleep(1400u)
-
-    // Clear the field — Backspace once (selection is active, so one press
-    // empties the buffer). "Bksp" appears in the keycap row.
-    let backspace_key = int(ImGuiKey.Backspace)
-    post_command(app, "imgui_key_press",   JV((key = backspace_key)))
-    post_command(app, "imgui_key_release", JV((key = backspace_key)))
-    sleep(1800u)
-
-    let stopped = post_command(app, "record_stop", null)
-    let stop_dump = stopped != null ? write_json(stopped) : "<null>"
-    print("[record] record_stop -> {stop_dump}\n")
-    print("[record] APNG saved to {OUTPUT} (next to daslang-live's CWD)\n")
-
-    // Disable overlays so a follow-up session doesn't inherit them.
-    post_command(app, "imgui_key_hud",       JV((enabled = false)))
-    post_command(app, "imgui_focus_rect",    JV((enabled = false)))
-    post_command(app, "imgui_cursor_sprite", JV((enabled = false)))
-    post_command(app, "imgui_mouse_trail",   JV((enabled = false)))
 }
