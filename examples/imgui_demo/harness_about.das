@@ -23,6 +23,7 @@ def init() {
 [export]
 def update() {
     if (!harness_begin_frame()) return
+    harness_apply_synth_io()
     harness_new_frame()
     about::ShowAboutWindow()
     harness_end_frame()
