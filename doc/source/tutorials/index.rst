@@ -26,4 +26,5 @@ construction.
    visual_aids_tour.rst
    recording.rst
    imgui_demo_about.rst
+   imgui_demo_app_main_menu.rst
    harness_headless_mode.rst
