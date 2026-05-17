@@ -1,5 +1,4 @@
 options gen2
-options _allow_imgui_legacy = true
 
 require imgui
 require imgui_app

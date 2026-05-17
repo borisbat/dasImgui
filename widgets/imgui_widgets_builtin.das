@@ -1234,8 +1234,20 @@ def public passes_filter(var state : TextFilterState; line : string) : bool {
     //! `PassFilter(filter, text)` standalone helper at
     //! `src/dasIMGUI.main.cpp:305`. While the editor is empty the
     //! underlying `Filters` `ImVector` is empty too and PassFilter returns
-    //! true for all lines.
+    //! true for all lines. NB: an exclude-only filter (e.g. `-error`) has
+    //! no include terms either, so `passes_filter(state, "")` returns
+    //! `true` even though the filter is active — use `is_active(state)`,
+    //! not `passes_filter(state, "")`, to detect the active/inactive
+    //! transition.
     return PassFilter(state.filter, line)
+}
+
+def public is_active(var state : TextFilterState) : bool {
+    //! `ImGuiTextFilter::IsActive()` — true iff parsing produced at least
+    //! one include OR exclude term. Use this to gate filter-active vs
+    //! filter-inactive code paths (e.g. clipper-cull vs sequential scan
+    //! in scrolling log views).
+    return state.filter |> IsActive()
 }
 
 // ===== Combo (callback-getter) =====

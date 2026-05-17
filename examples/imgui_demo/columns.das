@@ -1,6 +1,5 @@
 options gen2
 options indenting = 4
-options _allow_imgui_legacy = true
 
 module columns
 
@@ -36,10 +35,9 @@ require daslib/safe_addr
 //         `selectable` toggles — the boost selectable owns its own bool and
 //         we keep the demo focused on columns, not selection model. See note
 //         at PortSecondBasicTable.
-//       * The "Horizontal Scrolling" sub-section uses `ImGuiListClipper`, which
-//         the daslang binding exposes as a constructed object with Begin/Step/
-//         End methods. We use the binding directly inside the
-//         `child(...) { ... }` container.
+//       * The "Horizontal Scrolling" sub-section uses the `list_clipper`
+//         boost helper to cull 2000 virtual rows down to the visible
+//         region inside the `child(...) { ... }` container.
 // =============================================================================
 
 // ----- Sub-section TreeNodes (outer + 6 sub-sections) -----
@@ -63,6 +61,8 @@ var COLUMNS_MIXED_BAR = 1.0f
 //       NOT auto-emit table<K; ST> globals for indexed-ident forms) -----
 var private COLUMNS_BASIC_SEL1 : table<int; ToggleState>
 var private COLUMNS_BASIC_SEL2 : table<int; ToggleState>
+var private COLUMNS_BORDERS_ROW_SEP : table<int; EmptyMarkerState>
+var private COLUMNS_BORDERS_BTN : table<int; ClickState>
 var private COLUMNS_TREE_OUTER : table<int; TreeNodeState>
 var private COLUMNS_TREE_INNER : table<int; TreeNodeState>
 
@@ -72,7 +72,7 @@ var private COLUMNS_TREE_INNER : table<int; TreeNodeState>
 def ShowDemoWindowColumns() {
     tree_node(COLUMNS_OUTER,
         (text = "Legacy Columns API", flags = ImGuiTreeNodeFlags.None)) {
-        SameLine()
+        same_line()
         text_disabled("(?)")
         item_tooltip(COLUMNS_OUTER_HELP) {
             with_text_wrap_pos(GetFontSize() * 35.0f) {
@@ -98,25 +98,25 @@ def private BasicSection() {
         text("Without border:")
         // 3-way, no border. Dynamic 14-item loop ⇒ call columns_open/next_col
         // directly (the columns(N, ...) macro requires N literal blocks).
-        Columns(3, "mycolumns3", false)
-        Separator()
+        columns_open(3, "mycolumns3", false)
+        separator(COLUMNS_BASIC_SEP_TOP)
         for (n in range(14)) {
             selectable(COLUMNS_BASIC_SEL1[n], (text = "Item {n}"))
-            NextColumn()
+            next_col()
         }
         columns_close()
-        Separator()
+        separator(COLUMNS_BASIC_SEP_MID)
 
         text("With border:")
         // 4-way, with border. Header row + 3 data rows; structure is regular
         // but still loop-driven on row count.
-        Columns(4, "mycolumns", true)
-        Separator()
-        text("ID"); NextColumn()
-        text("Name"); NextColumn()
-        text("Path"); NextColumn()
-        text("Hovered"); NextColumn()
-        Separator()
+        columns_open(4, "mycolumns")
+        separator(COLUMNS_BASIC_SEP_HDR_TOP)
+        text("ID"); next_col()
+        text("Name"); next_col()
+        text("Path"); next_col()
+        text("Hovered"); next_col()
+        separator(COLUMNS_BASIC_SEP_HDR_BOT)
         let names = fixed_array("One", "Two", "Three")
         let paths = fixed_array("/path/one", "/path/two", "/path/three")
         for (i in range(3)) {
@@ -127,13 +127,13 @@ def private BasicSection() {
                 (text = "{i}",
                  flags = ImGuiSelectableFlags.SpanAllColumns))
             let hovered = IsItemHovered()
-            NextColumn()
-            text("{names[i]}"); NextColumn()
-            text("{paths[i]}"); NextColumn()
-            text("{hovered ? 1 : 0}"); NextColumn()
+            next_col()
+            text("{names[i]}"); next_col()
+            text("{paths[i]}"); next_col()
+            text("{hovered ? 1 : 0}"); next_col()
         }
         columns_close()
-        Separator()
+        separator(COLUMNS_BASIC_SEP_BOT)
     }
 }
 
@@ -150,17 +150,17 @@ def private BordersSection() {
         if (COLUMNS_BORDERS_COUNT < 2) {
             COLUMNS_BORDERS_COUNT = 2
         }
-        SameLine()
+        same_line()
         edit_checkbox(safe_addr(COLUMNS_BORDERS_H),
             (id = "COLUMNS_BORDERS_H", text = "horizontal"))
-        SameLine()
+        same_line()
         edit_checkbox(safe_addr(COLUMNS_BORDERS_V),
             (id = "COLUMNS_BORDERS_V", text = "vertical"))
-        // Dynamic column count ⇒ raw Columns() call.
-        Columns(COLUMNS_BORDERS_COUNT, "", COLUMNS_BORDERS_V)
+        // Dynamic column count + dynamic border ⇒ columns_open with all args.
+        columns_open(COLUMNS_BORDERS_COUNT, "", COLUMNS_BORDERS_V)
         for (i in range(COLUMNS_BORDERS_COUNT * lines_count)) {
             if (COLUMNS_BORDERS_H && GetColumnIndex() == 0) {
-                Separator()
+                separator(COLUMNS_BORDERS_ROW_SEP[i])
             }
             // C++ uses ImGui::Text("%c%c%c", 'a' + i, ...); daslang has no
             // int→char primitive — splice via a precomputed alphabet table.
@@ -174,15 +174,15 @@ def private BordersSection() {
             text("Avail {GetContentRegionAvail().x}")
             text("Offset {GetColumnOffset(-1)}")
             text("Long text that is likely to clip")
-            // Per-cell button — indexed; full-width via Button raw call so we
-            // can pass ImVec2(-FLT_MIN, 0). The boost button widget defaults
-            // size to (0,0).
-            if (Button("Button##{i}", ImVec2(-3.40282347e+38f, 0.0f))) {}
-            NextColumn()
+            // Per-cell full-width button via `size=` (-FLT_MIN, 0) → stretch.
+            button(COLUMNS_BORDERS_BTN[i],
+                (text = "Button##{i}",
+                 size = float2(-3.40282347e+38f, 0.0f)))
+            next_col()
         }
         columns_close()
         if (COLUMNS_BORDERS_H) {
-            Separator()
+            separator(COLUMNS_BORDERS_SEP_BOT)
         }
     }
 }
@@ -193,7 +193,7 @@ def private BordersSection() {
 def private MixedItemsSection() {
     tree_node(COLUMNS_MIXED, (text = "Mixed items", flags = ImGuiTreeNodeFlags.None)) {
         columns(3, ${
-            Separator()
+            separator(COLUMNS_MIXED_SEP_TOP)
             text("Hello")
             button(COLUMNS_MIXED_BTN_BANANA, (text = "Banana"))
         }, ${
@@ -235,7 +235,7 @@ def private MixedItemsSection() {
                 text("Blah blah blah")
             }
         })
-        Separator()
+        separator(COLUMNS_MIXED_SEP)
     }
 }
 
@@ -245,7 +245,7 @@ def private MixedItemsSection() {
 def private WordWrappingSection() {
     tree_node(COLUMNS_WRAP, (text = "Word-wrapping", flags = ImGuiTreeNodeFlags.None)) {
         columns(2, ${
-            Separator()
+            separator(COLUMNS_WRAP_SEP_L)
             text_wrapped(COLUMNS_WRAP_TXT_L1,
                 (text = "The quick brown fox jumps over the lazy dog."))
             text_wrapped(COLUMNS_WRAP_TXT_L2, (text = "Hello Left"))
@@ -254,7 +254,7 @@ def private WordWrappingSection() {
                 (text = "The quick brown fox jumps over the lazy dog."))
             text_wrapped(COLUMNS_WRAP_TXT_R2, (text = "Hello Right"))
         })
-        Separator()
+        separator(COLUMNS_WRAP_SEP_BOT)
     }
 }
 
@@ -270,23 +270,16 @@ def private HorizontalScrollingSection() {
             (text = "##ScrollingRegion", size = child_size,
              child_flags = ImGuiChildFlags.None,
              window_flags = ImGuiWindowFlags.HorizontalScrollbar)) {
-            Columns(10, "", true)
-            // ImGuiListClipper culls the 2000 virtual rows down to the visible
-            // window — same pattern as the C++ demo. The class has a default
-            // ctor on the C++ side; require `unsafe` because the binding
-            // doesn't mark the type safe-to-construct.
-            unsafe {
-                var clipper = ImGuiListClipper()
-                clipper |> Begin(2000, -1.0f)
-                while (clipper |> Step()) {
-                    for (i in range(clipper.DisplayStart, clipper.DisplayEnd)) {
-                        for (j in range(10)) {
-                            text("Line {i} Column {j}...")
-                            NextColumn()
-                        }
+            columns_open(10)
+            // Cull the 2000 virtual rows to the visible region via the
+            // list_clipper boost helper (wraps ImGuiListClipper Begin/Step/End).
+            list_clipper(2000) <| $(start, end_) {
+                for (i in range(start, end_)) {
+                    for (j in range(10)) {
+                        text("Line {i} Column {j}...")
+                        next_col()
                     }
                 }
-                clipper |> End()
             }
             columns_close()
         }
@@ -298,45 +291,45 @@ def private HorizontalScrollingSection() {
 // =============================================================================
 def private TreeSection() {
     tree_node(COLUMNS_TREE, (text = "Tree", flags = ImGuiTreeNodeFlags.None)) {
-        Columns(2, "tree", true)
+        columns_open(2, "tree")
         for (x in range(3)) {
             tree_node(COLUMNS_TREE_OUTER[x],
                 (text = "Node{x}", flags = ImGuiTreeNodeFlags.None)) {
-                NextColumn()
+                next_col()
                 text("Node contents")
-                NextColumn()
+                next_col()
                 for (y in range(3)) {
                     let inner_key = x * 10 + y
                     tree_node(COLUMNS_TREE_INNER[inner_key],
                         (text = "Node{x}.{y}", flags = ImGuiTreeNodeFlags.None)) {
-                        NextColumn()
+                        next_col()
                         text("Node contents")
                         text("Even more contents")
                         tree_node(COLUMNS_TREE_LEAF,
                             (text = "Tree in column", flags = ImGuiTreeNodeFlags.None)) {
                             text("The quick brown fox jumps over the lazy dog")
                         }
-                        NextColumn()
+                        next_col()
                     }
                     if (!COLUMNS_TREE_INNER[inner_key].opened) {
-                        // The outer NextColumn pair is owned by the open
+                        // The outer next_col pair is owned by the open
                         // branch in C++ (gated by `if (open2)`). Mirror that:
                         // when the inner tree was NOT expanded, the outer
                         // already advanced once for the title; we still need
                         // to fill the body column.
-                        NextColumn()
+                        next_col()
                         text("Node contents")
-                        NextColumn()
+                        next_col()
                     }
                 }
             }
-            // C++ structure: the outer NextColumns inside the open-branch
+            // C++ structure: the outer next_col pair inside the open-branch
             // already advanced when expanded. When the outer tree was NOT
             // expanded, we still need to skip past its two columns to land
             // on the next row.
             if (!COLUMNS_TREE_OUTER[x].opened) {
-                NextColumn()
-                NextColumn()
+                next_col()
+                next_col()
             }
         }
         columns_close()

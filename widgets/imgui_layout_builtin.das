@@ -202,9 +202,13 @@ def dock_left(var state : SliderStateFloat; blk : block) {
 
 // ===== columns =====
 
-def public columns_open(n : int) {
-    //! Open an N-column block (borders on). Underlying primitive emitted by the ``columns(N, …)`` call_macro.
-    Columns(n, "", true)
+def public columns_open(n : int; id : string = ""; border : bool = true) {
+    //! Open an N-column block. `id` (default empty) is the ImGui id-stack
+    //! tag used for column-width persistence; `border` (default on) draws
+    //! the vertical dividers. Primitive emitted by the ``columns(N, …)``
+    //! call_macro; callable directly when the column count or shape is
+    //! dynamic.
+    Columns(n, id, border)
 }
 
 def public next_col() {
@@ -215,6 +219,23 @@ def public next_col() {
 def public columns_close() {
     //! Close a columns block (return to single-column layout). Underlying primitive emitted by the ``columns(N, …)`` call_macro.
     Columns(1, "", false)
+}
+
+// ===== list_clipper =====
+
+def public list_clipper(items_count : int;
+                        body : block<(start : int; end_ : int) : void>) {
+    //! Cull a virtual list of `items_count` items to the visible region.
+    //! The block fires once per visible chunk with `[start, end_)` indices;
+    //! render exactly those rows inside the block.
+    unsafe {
+        var clipper = ImGuiListClipper()
+        clipper |> Begin(items_count, -1.0f)
+        while (clipper |> Step()) {
+            invoke(body, clipper.DisplayStart, clipper.DisplayEnd)
+        }
+        clipper |> End()
+    }
 }
 
 [call_macro(name = "columns")]
