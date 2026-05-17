@@ -1,6 +1,5 @@
 options gen2
 options indenting = 4
-options _allow_imgui_legacy = true
 
 module app_custom_rendering
 
