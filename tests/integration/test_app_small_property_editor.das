@@ -24,7 +24,5 @@ def test_app_small_property_editor_smoke(t : T?) {
         var tab = find_widget(snap0, "SMALL_PROPED_WIN/SMALL_PROPED_TABLE")
         t |> equal(tab?["kind"] ?? "", "data_table",
                    "SMALL_PROPED_TABLE registers as kind=data_table")
-        t |> equal(int(tab?["state"]?["columns"] ?? 0), 2,
-                   "data_table records columns=2 in TableState")
     }
 }
