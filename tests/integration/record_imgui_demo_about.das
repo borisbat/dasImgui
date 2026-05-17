@@ -65,32 +65,40 @@ def main {
 
     post_command(app, "imgui_mouse_trail",   JV((enabled = true)))
     post_command(app, "imgui_cursor_sprite", JV((enabled = true)))
-    post_command(app, "record_start", JV((file = OUTPUT, fps = 30, max_seconds = 30)))
+    post_command(app, "record_start", JV((file = OUTPUT, fps = 30, max_seconds = 45)))
 
-    //! Pacing rule (LOCKED): `frames` is the app's frame counter (60 fps),
-    //! NOT the recorder's fps. frames=180 -> 3.0s visible narrate;
-    //! sleep=3500u -> ~500ms gap; sleep=1500u -> ~1.5s result dwell.
+    //! Reader pacing: narrate frames=240 -> 4.0s visible at 60 fps app.
+    //! READ_MS=5000 lets reader finish + 1s gap before the next action.
+    let NARRATE_FRAMES = 240
+    let READ_MS    = 5000u
+    let SETTLE_MS  = 1500u
+    let RESULT_MS  = 2000u
+
+    //! Initial cursor placement (synth IO flips `cursor_owned` on first move).
+    move_to(app, (360.0f, 270.0f), 600)
+    sleep(SETTLE_MS)
 
     // ---- Stage 1: title + version ----
     post_command(app, "imgui_narrate", JV((
         text = "Dear ImGui about window -- daslang port of ShowAboutWindow.",
         target = T_WIN,
-        frames = 180
+        frames = NARRATE_FRAMES
     )))
-    sleep(3500u)
+    sleep(READ_MS)
 
     // ---- Stage 2: toggle config/build dump ----
+    move_to(app, p_cb, 900)
+    sleep(SETTLE_MS)
     post_command(app, "imgui_narrate", JV((
         text = "Tick the checkbox to expand the io/style dump.",
         target = T_CB,
-        frames = 180
+        frames = NARRATE_FRAMES
     )))
-    move_to(app, p_cb)
-    sleep(3500u)
+    sleep(READ_MS)
     var cb_events : array<JsonValue?>
-    cb_events |> click_at(0, p_cb)
+    cb_events |> click_at(0, p_cb, 250)
     post_command(app, "imgui_mouse_play", JV((events = cb_events)))
-    sleep(1500u)
+    sleep(RESULT_MS)
 
     // ---- Stage 3: copy-to-clipboard button (now visible) ----
     var snap2 = wait_for_render(app, T_COPY, 5.0f)
@@ -98,17 +106,18 @@ def main {
         panic("{T_COPY} never rendered after expand -- about.das port broken?")
     }
     let p_copy = widget_center(snap2, T_COPY)
+    move_to(app, p_copy, 900)
+    sleep(SETTLE_MS)
     post_command(app, "imgui_narrate", JV((
         text = "Copy to clipboard -- log_to_clipboard / log_text / log_finish tee the dump.",
         target = T_COPY,
-        frames = 200
+        frames = NARRATE_FRAMES
     )))
-    move_to(app, p_copy)
-    sleep(3500u)
+    sleep(READ_MS)
     var copy_events : array<JsonValue?>
-    copy_events |> click_at(0, p_copy)
+    copy_events |> click_at(0, p_copy, 250)
     post_command(app, "imgui_mouse_play", JV((events = copy_events)))
-    sleep(1800u)
+    sleep(RESULT_MS)
 
     let stopped = post_command(app, "record_stop", null)
     let stop_dump = stopped != null ? write_json(stopped) : "<null>"
