@@ -36,7 +36,7 @@ Shell 1 (host) — cwd = the asset directory so the APNG lands next to its sibli
 ```bash
 cd <dasimgui>/doc/source/_static/tutorials
 <daslang>/bin/Release/daslang-live -project_root <dasimgui> \
-    <dasimgui>/examples/imgui_demo/harness_about.das
+    <dasimgui>/examples/tutorial/with_id.das
 ```
 
 Wait for `live_api: server started on port 9090` to print.
@@ -45,7 +45,7 @@ Shell 2 (driver):
 
 ```bash
 <daslang>/bin/Release/daslang -project_root <dasimgui> \
-    <dasimgui>/tests/integration/record_imgui_demo_about.das
+    <dasimgui>/tests/integration/record_with_id.das
 ```
 
 Driver exits when `record_stop` returns. The APNG lands in shell 1's cwd (`doc/source/_static/tutorials/`).
@@ -54,7 +54,7 @@ Driver exits when `record_stop` returns. The APNG lands in shell 1's cwd (`doc/s
 
 ## Driver template
 
-Mirror `tests/integration/record_with_id.das` (canonical) or `record_imgui_demo_about.das` (harness-targeting). Spine:
+Mirror `tests/integration/record_with_id.das` (canonical, `live_*` tutorial host) or `record_drag_drop.das` (harness-targeting). Spine:
 
 ```daslang
 options gen2
@@ -164,7 +164,7 @@ If you need a `main_menu_bar` screen position (e.g. clicking outside any child m
 
 Submenu items DO register bboxes **once the parent is open** — click parent first via the parent's registered header bbox, then `wait_for_render` + `widget_center` for the child item.
 
-`record_imgui_demo_app_main_menu.das` predates the bbox fix and uses hardcoded pixel coords throughout (committed APNG already produced). New drivers should prefer `widget_center` against `MENU_PATH/CHILD_NAME` snapshot entries.
+For drivers that need to click outside any registered widget (`main_menu_bar` strip dismissal, raw-canvas coordinates, viewport-corner anchors), capture pixel coords empirically and bake them as named constants — see the "Resolving widget coords" recipe above.
 
 ## Verifying a recording without playing it
 
