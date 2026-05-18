@@ -279,6 +279,22 @@ def selectable(var state : ToggleState; text : string;
 }
 
 [widget]
+def selectable_hover(var state : EmptyMarkerState; text : string;
+                     flags : ImGuiSelectableFlags = ImGuiSelectableFlags.None;
+                     size : float2 = float2(0.0f, 0.0f)) : bool {
+    //! Hover-target selectable. Renders a selectable row like `selectable`
+    //! but `selected` is pinned to `false` and never toggles — use when the
+    //! row's hover surface drives a side-effect (e.g. "while hovering this
+    //! row, set the cursor to X") and the click semantics of the regular
+    //! `selectable` would be wrong. Returns true when ImGui considers the
+    //! just-drawn item hovered this frame.
+    Selectable(text, false, flags, size)
+    let hovered = IsItemHovered()
+    marker_finalize(widget_ident, "selectable_hover", state)
+    return hovered
+}
+
+[widget]
 def menu_item(var state : ToggleState; text : string;
               shortcut : string = ""; enabled : bool = true) : bool {
     //! Toggleable menu item — `state.value` is the check-mark state and
@@ -1001,6 +1017,22 @@ def color_button(var state : ClickState; desc_id : string;
     }
     click_finalize(widget_ident, "color_button", state)
     return clicked
+}
+
+[widget]
+def color_button_hover(var state : EmptyMarkerState; desc_id : string;
+                       col : float4;
+                       size : float2 = float2(0.0f, 0.0f);
+                       flags : ImGuiColorEditFlags = ImGuiColorEditFlags.None) : bool {
+    //! Hover-target swatch. Renders a color swatch like `color_button` but
+    //! never registers a click trigger — use when the swatch is the surface
+    //! on which a hover-driven side-effect is mounted at the call site
+    //! (e.g. "while hovering this, override io.WantCaptureMouse"). Returns
+    //! true when ImGui considers the just-drawn item hovered this frame.
+    ColorButton(desc_id, col, flags, size)
+    let hovered = IsItemHovered()
+    marker_finalize(widget_ident, "color_button_hover", state)
+    return hovered
 }
 
 // ===== Text-input family (Phase 0b.4) =====

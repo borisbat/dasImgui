@@ -1,6 +1,5 @@
 options gen2
 options indenting = 4
-options _allow_imgui_legacy = true
 
 module inputs
 
@@ -12,34 +11,6 @@ require daslib/safe_addr
 require daslib/enum_trait
 
 // Mirrors imgui_demo.cpp:6249-6452 — static void ShowDemoWindowInputs().
-//
-// Boost-surface notes for this port:
-//   - Almost all of this section is read-only state inspection of ImGuiIO
-//     (mouse pos / mouse delta / key-down flags / nav-active / etc.). Each
-//     readout becomes a single narrative `text("...")` line; the
-//     C++ pattern of `Text() ... SameLine() Text()` inside a loop is
-//     collapsed into one concatenated string accumulated with `+=` so each
-//     per-frame line stays a single widget (no indexed-table boilerplate
-//     for the per-button / per-key SameLine chain).
-//   - TreeNode'd sub-sections (Inputs / Outputs / Mouse Cursors / Tabbing /
-//     Focus from code / Dragging) go through the `tree_node` container.
-//   - The Outputs/WantCapture-override block uses `edit_slider_int` (int?
-//     bound to a module-scope plain var) for the SetNextFrameWantCapture*
-//     sliders, then a raw `ColorButton` swatch as the hover target — there
-//     is no boost form for the "click-less swatch used purely as a hover
-//     receptor" pattern, and the ImGui surface (`IsItemHovered()` after
-//     a raw call) is the simpler path here.
-//   - The Mouse Cursors row loop renders a per-row `Bullet(); Selectable`
-//     pair via indexed narrative + indexed selectable; raw `Selectable` is
-//     used because the boost `selectable` is a stateful toggle and we want
-//     pure-hover semantics (no toggling).
-//   - The Dragging section's `GetForegroundDrawList().AddLine(...)` call
-//     is preserved as a raw call; the foreground draw list has no boost
-//     wrapper and is intentionally low-level.
-//   - `IMGUI_DEMO_MARKER` test-engine markers dropped (off-limits per
-//     CLAUDE.md).
-//   - HelpMarker pattern follows widgets.das: `text_disabled("(?)")` +
-//     `item_tooltip { with_text_wrap_pos { text_unformatted(...) } }`.
 
 // ----- Outputs/WantCapture override — external-pointer plain vars -----
 // `edit_slider_int` ties these to the SliderInt widgets below; the
@@ -54,10 +25,10 @@ var INPUTS_CAPTURE_OVERRIDE_KEYBOARD = -1
 
 // ----- Indexed loop tables -----
 // Per-row state for the Mouse Cursors list (9 rows for the 9 standard
-// cursors). Each row needs its own narrative state global so the bullet +
-// hover-detection pairing renders cleanly.
+// cursors). Bullet + same_line + selectable_hover per row.
 var private INPUTS_LOOP_CURSOR_BULLET : table<int; EmptyMarkerState>
 var private INPUTS_LOOP_CURSOR_SL : table<int; EmptyMarkerState>
+var private INPUTS_LOOP_CURSOR_SL_HOVER : table<int; EmptyMarkerState>
 
 def ShowDemoWindowInputs() {
     collapsing_header(INPUTS_SECTION,
@@ -221,16 +192,14 @@ def private WantCaptureOverrideSubSection() {
              v_min = -1, v_max = 1, format = kbd_label,
              flags = ImGuiSliderFlags.AlwaysClamp));
 
-        // Hover-target swatch. Boost `color_button` is a click trigger
-        // (ClickState); we want pure-hover, so the raw ColorButton stays.
-        // The `##panel` prefix keeps the ID unique without a visible label.
         let swatch_flags = (ImGuiColorEditFlags.NoTooltip | ImGuiColorEditFlags.NoDragDrop)
-        ColorButton("##panel", float4(0.7f, 0.1f, 0.7f, 1.0f), swatch_flags,
-                    float2(128.0f, 96.0f))
-        if (IsItemHovered() && INPUTS_CAPTURE_OVERRIDE_MOUSE != -1) {
+        let hovered = color_button_hover(INPUTS_CAP_SWATCH,
+            (desc_id = "##panel", col = float4(0.7f, 0.1f, 0.7f, 1.0f),
+             size = float2(128.0f, 96.0f), flags = swatch_flags))
+        if (hovered && INPUTS_CAPTURE_OVERRIDE_MOUSE != -1) {
             SetNextFrameWantCaptureMouse(INPUTS_CAPTURE_OVERRIDE_MOUSE == 1)
         }
-        if (IsItemHovered() && INPUTS_CAPTURE_OVERRIDE_KEYBOARD != -1) {
+        if (hovered && INPUTS_CAPTURE_OVERRIDE_KEYBOARD != -1) {
             SetNextFrameWantCaptureKeyboard(INPUTS_CAPTURE_OVERRIDE_KEYBOARD == 1)
         }
     }
@@ -279,13 +248,9 @@ def private MouseCursorsSubSection() {
         for (i in range(int(ImGuiMouseCursor.COUNT))) {
             bullet(INPUTS_LOOP_CURSOR_BULLET[i])
             same_line(INPUTS_LOOP_CURSOR_SL[i])
-            // `Selectable` here is a hover-target only (selected=false
-            // pinned); boost `selectable` is a stateful toggle, so the
-            // raw call matches the C++ semantics directly.
-            Selectable("Mouse cursor {i}: {cursors[i]}", false,
-                       ImGuiSelectableFlags.None,
-                       float2(0.0f, 0.0f))
-            if (IsItemHovered()) {
+            let hovered = selectable_hover(INPUTS_LOOP_CURSOR_SL_HOVER[i],
+                (text = "Mouse cursor {i}: {cursors[i]}"))
+            if (hovered) {
                 SetMouseCursor(unsafe(reinterpret<ImGuiMouseCursor>(i)))
             }
         }
@@ -305,16 +270,16 @@ def private TabbingSubSection() {
         input_text(INPUTS_TAB_1, (text = "1", init = "hello"))
         input_text(INPUTS_TAB_2, (text = "2", init = "hello"))
         input_text(INPUTS_TAB_3, (text = "3", init = "hello"))
-        PushTabStop(false)
-        input_text(INPUTS_TAB_4, (text = "4 (tab skip)", init = "hello"))
-        same_line(INPUTS_SL_TAB_4)
-        text_disabled("(?)")
-        item_tooltip(INPUTS_HM_TAB) {
-            with_text_wrap_pos(GetFontSize() * 35.0f) {
-                text_unformatted("Item won't be cycled through when using TAB or Shift+Tab.")
+        with_tab_stop(false) {
+            input_text(INPUTS_TAB_4, (text = "4 (tab skip)", init = "hello"))
+            same_line(INPUTS_SL_TAB_4)
+            text_disabled("(?)")
+            item_tooltip(INPUTS_HM_TAB) {
+                with_text_wrap_pos(GetFontSize() * 35.0f) {
+                    text_unformatted("Item won't be cycled through when using TAB or Shift+Tab.")
+                }
             }
         }
-        PopTabStop()
         input_text(INPUTS_TAB_5, (text = "5", init = "hello"))
     }
 }
@@ -354,23 +319,23 @@ def private FocusFromCodeSubSection() {
             has_focus = 2
         }
 
-        PushTabStop(false)
-        if (focus_3) {
-            SetKeyboardFocusHere(0)
-        }
-        input_text(INPUTS_FOCUS_TXT_3,
-            (text = "3 (tab skip)", init = "click on a button to set focus"))
-        if (IsItemActive()) {
-            has_focus = 3
-        }
-        same_line(INPUTS_SL_FOCUS_3)
-        text_disabled("(?)")
-        item_tooltip(INPUTS_HM_FOCUS_TAB) {
-            with_text_wrap_pos(GetFontSize() * 35.0f) {
-                text_unformatted("Item won't be cycled through when using TAB or Shift+Tab.")
+        with_tab_stop(false) {
+            if (focus_3) {
+                SetKeyboardFocusHere(0)
+            }
+            input_text(INPUTS_FOCUS_TXT_3,
+                (text = "3 (tab skip)", init = "click on a button to set focus"))
+            if (IsItemActive()) {
+                has_focus = 3
+            }
+            same_line(INPUTS_SL_FOCUS_3)
+            text_disabled("(?)")
+            item_tooltip(INPUTS_HM_FOCUS_TAB) {
+                with_text_wrap_pos(GetFontSize() * 35.0f) {
+                    text_unformatted("Item won't be cycled through when using TAB or Shift+Tab.")
+                }
             }
         }
-        PopTabStop()
 
         if (has_focus != 0) {
             text("Item with focus: {has_focus}")
@@ -431,9 +396,9 @@ def private DraggingSubSection() {
 
         button(INPUTS_DRAG_ME, (text = "Drag Me"))
         if (IsItemActive()) {
-            // Foreground draw list — no boost wrapper; raw API stays.
-            // AddLine takes `ImDrawList` (not pointer), so deref the
-            // foreground-list pointer first.
+            // Foreground drawlist — temp ALLOWED carve-out; retires when
+            // PR-B1's drawlist rail (with_foreground_drawlist + add_line)
+            // lands and this site migrates over.
             var dl & = unsafe(*GetForegroundDrawList())
             let col = GetColorU32(ImGuiCol.Button, 1.0f)
             dl |> AddLine(io.MouseClickedPos[0], io.MousePos, col, 4.0f)

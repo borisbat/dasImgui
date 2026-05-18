@@ -34,3 +34,6 @@ src/imgui_vulkan_headers.h.json.log
 doc/source/stdlib/generated/
 doc/source/__pycache__/
 doc/build_html/
+
+# Transient artifacts dropped by the daslang MCP grep/find tools.
+index.db
