@@ -114,15 +114,15 @@ for the upstream definition.
 .. _alias-imvec4:
 .. _alias-imcolor:
 
-``imgui::ImVec2`` / ``ImVec4`` / ``ImColor``
-============================================
+ImVec2 / ImVec4 / ImColor
+=========================
 
-C++ value-type aliases exposed by the ``imgui`` builtin module, bound to
-daslang's vector workhorses (``ImVec2`` → ``float2``, ``ImVec4`` → ``float4``,
-``ImColor`` → ``float4``). The doc generator emits cross-refs to
-``alias-imvec2`` / ``alias-imvec4`` / ``alias-imcolor`` from any function
-signature whose argument or return type carries one of these aliases; the
-anchors here resolve those refs without dasImgui having to document the
-``imgui`` core module itself. See
-`ImVec2 / ImVec4 / ImColor in imgui.h <https://github.com/ocornut/imgui/blob/master/imgui.h>`_
-for the upstream definitions.
+C++ value-type aliases exposed by the imgui builtin module, bound to
+daslang's vector workhorses (ImVec2 -> float2, ImVec4 -> float4,
+ImColor -> float4). The doc generator emits cross-refs to alias-imvec2
+/ alias-imvec4 / alias-imcolor from any function signature whose
+argument or return type carries one of these aliases; the anchors here
+resolve those refs without dasImgui having to document the imgui core
+module itself. See `ImVec2 / ImVec4 / ImColor in imgui.h
+<https://github.com/ocornut/imgui/blob/master/imgui.h>`_ for the
+upstream definitions.
