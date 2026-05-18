@@ -201,6 +201,23 @@ def child(var state : ChildState; text : string; size : float2;
     stateless_finalize(widget_ident, "child", state)
 }
 
+def public child_scroll_reenter(widget_ident : string; text : string; blk : block) {
+    //! Re-enter an existing child window (created earlier this frame by
+    //! `child(IDENT, (text = ...))`) to nudge its scroll position via
+    //! `SetScrollX` / `SetScrollY` inside `blk`. Replicates the original
+    //! container's `PushID(IDENT)` frame (emitted by `widget_prelude`) so
+    //! `BeginChild(text, ...)` hashes to the SAME window — without it ImGui
+    //! creates a phantom sibling and the scroll nudge silently has no visible
+    //! effect. `widget_ident` MUST be the literal IDENT string the original
+    //! `child` was called with — typo = silent miss. No registry entry; this
+    //! is a scroll-nudge, not a container.
+    PushID(widget_ident)
+    BeginChild(text, float2(0.0f, 0.0f), ImGuiChildFlags.None, ImGuiWindowFlags.None)
+    invoke(blk)
+    EndChild()
+    PopID()
+}
+
 [container]
 def group(var state : GroupState; blk : block) {
     //! `BeginGroup()` / `EndGroup()` — pure layout grouping, no return value
