@@ -3,9 +3,110 @@ options indenting = 4
 
 module app_dockspace
 
-require imgui
+require imgui public
+require imgui/imgui_widgets_builtin public
+require imgui/imgui_containers_builtin public
+require imgui/imgui_docking_builtin public
+require daslib/safe_addr
 
 // Mirrors imgui_demo.cpp:8424-8551 — static void ShowExampleAppDockSpace(bool* p_open).
-def ShowExampleAppDockSpace() {
-    // TODO: port section (imgui_demo.cpp:8424-8551)
+//
+// The C++ original supports a "fullscreen" mode that claims the full viewport
+// via SetNextWindowPos/Size/Viewport + WindowRounding/BorderSize style-vars +
+// NoTitleBar/NoCollapse/NoResize/NoMove window flags. We port the simpler
+// floating-host form (which the C++ comments call out as the typical use).
+// The floating form still shows the load-bearing pieces: a host window with
+// its own MenuBar + NoDocking (so the host itself isn't dockable into),
+// dockspace_in_window for the explicit DockSpace call, dockspace flag
+// toggles, and the "Close" menu item routing through take_close_request().
+
+// ===== Module-scope state =====
+
+var private DS_PADDING = false
+var private DS_FLAG_NO_DOCKING_OVER_CENTRAL = false
+var private DS_FLAG_NO_DOCKING_SPLIT = false
+var private DS_FLAG_NO_UNDOCKING = false
+var private DS_FLAG_NO_RESIZE = false
+var private DS_FLAG_AUTO_HIDE_TAB_BAR = false
+var private DS_FLAG_PASSTHRU_CENTRAL = false
+
+// Set by the "Close" menu entry; caller polls via take_close_request().
+var private DS_REQUEST_CLOSE = false
+
+def public take_close_request() : bool {
+    let v = DS_REQUEST_CLOSE
+    DS_REQUEST_CLOSE = false
+    return v
+}
+
+def private current_dockspace_flags() : ImGuiDockNodeFlags {
+    // ImGuiDockNodeFlags is a plain int enum on the C++ side; build the bit
+    // set as int and cast back at the call site.
+    var bits = 0
+    if (DS_FLAG_NO_DOCKING_OVER_CENTRAL) {
+        bits |= int(ImGuiDockNodeFlags.NoDockingOverCentralNode)
+    }
+    if (DS_FLAG_NO_DOCKING_SPLIT) {
+        bits |= int(ImGuiDockNodeFlags.NoDockingSplit)
+    }
+    if (DS_FLAG_NO_UNDOCKING) {
+        bits |= int(ImGuiDockNodeFlags.NoUndocking)
+    }
+    if (DS_FLAG_NO_RESIZE) {
+        bits |= int(ImGuiDockNodeFlags.NoResize)
+    }
+    if (DS_FLAG_AUTO_HIDE_TAB_BAR) {
+        bits |= int(ImGuiDockNodeFlags.AutoHideTabBar)
+    }
+    if (DS_FLAG_PASSTHRU_CENTRAL) {
+        bits |= int(ImGuiDockNodeFlags.PassthruCentralNode)
+    }
+    return unsafe(reinterpret<ImGuiDockNodeFlags>(bits))
+}
+
+def public ShowExampleAppDockSpace() {
+    SetNextWindowSize(ImVec2(720.0f, 480.0f), ImGuiCond.FirstUseEver)
+    window(DS_WIN, (text = "DockSpace Demo", closable = true,
+                    flags = ImGuiWindowFlags.MenuBar |
+                            ImGuiWindowFlags.NoDocking)) {
+        menu_bar(DS_MENU) {
+            menu(DS_OPTIONS_MENU, (text = "Options", enabled = true)) {
+                edit_checkbox(safe_addr(DS_PADDING),
+                    (id = "DS_PADDING_CB", text = "Padding"))
+                separator(DS_SEP_PAD)
+
+                edit_checkbox(safe_addr(DS_FLAG_NO_DOCKING_OVER_CENTRAL),
+                    (id = "DS_F_NDOC_CN", text = "Flag: NoDockingOverCentralNode"))
+                edit_checkbox(safe_addr(DS_FLAG_NO_DOCKING_SPLIT),
+                    (id = "DS_F_NDOC_SPLIT", text = "Flag: NoDockingSplit"))
+                edit_checkbox(safe_addr(DS_FLAG_NO_UNDOCKING),
+                    (id = "DS_F_NO_UNDOCK", text = "Flag: NoUndocking"))
+                edit_checkbox(safe_addr(DS_FLAG_NO_RESIZE),
+                    (id = "DS_F_NO_RESIZE", text = "Flag: NoResize"))
+                edit_checkbox(safe_addr(DS_FLAG_AUTO_HIDE_TAB_BAR),
+                    (id = "DS_F_AUTO_HIDE", text = "Flag: AutoHideTabBar"))
+                edit_checkbox(safe_addr(DS_FLAG_PASSTHRU_CENTRAL),
+                    (id = "DS_F_PASSTHRU", text = "Flag: PassthruCentralNode"))
+                separator(DS_SEP_CLOSE)
+
+                if (menu_item(DS_CLOSE_ITEM,
+                              (text = "Close", shortcut = "", enabled = true))) {
+                    DS_REQUEST_CLOSE = true
+                }
+            }
+        }
+
+        dockspace_in_window(DS, (size = float2(0.0f, 0.0f),
+                                 flags = current_dockspace_flags())) {
+            // Sample dockable panels so the dockspace has content.
+            dock_window(DS_PANEL_A, (text = "Panel A", closable = false,
+                                     flags = ImGuiWindowFlags.None)) {
+                text(DS_PANEL_A_LINE, (text = "Drag this tab to dock / undock."))
+            }
+            dock_window(DS_PANEL_B, (text = "Panel B", closable = false,
+                                     flags = ImGuiWindowFlags.None)) {
+                text(DS_PANEL_B_LINE, (text = "Right-click the title for the window menu."))
+            }
+        }
+    }
 }
