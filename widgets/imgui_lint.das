@@ -76,10 +76,20 @@ let private ALLOWED_IMGUI : table<string> <- {
     "SetNextWindowPos", "SetNextWindowSize", "SetNextWindowSizeConstraints",
     "SetNextWindowContentSize", "SetNextWindowCollapsed", "SetNextWindowFocus",
     "SetNextWindowBgAlpha", "SetNextWindowViewport",
-    "SetNextItemWidth", "SetNextItemOpen",
+    "SetNextItemWidth", "SetNextItemOpen", "SetNextItemAllowOverlap",
+    "SetNextWindowContentWidth",
     "SetKeyboardFocusHere", "SetItemDefaultFocus", "SetScrollHereX", "SetScrollHereY",
-    "SetScrollX", "SetScrollY", "GetScrollX", "GetScrollY",
+    "SetScrollX", "SetScrollY", "SetScrollFromPosX", "SetScrollFromPosY",
+    "GetScrollX", "GetScrollY",
     "GetScrollMaxX", "GetScrollMaxY",
+    // Cursor write-state — paired with the read-side Get* above.
+    "SetCursorPos", "SetCursorPosX", "SetCursorPosY", "SetCursorScreenPos",
+    "GetWindowContentRegionMax",
+    // BeginChild / EndChild — strictly for the "re-enter an existing child by
+    // name to nudge its scroll state" idiom (layout.das:3938-3940). The
+    // `child(...)` container is the primary surface; these naked calls are
+    // only for the re-entry trick.
+    "BeginChild", "EndChild",
     // Drag-drop payload primitives — caller owns memory, payload typing is
     // user-controlled. v2 drag_drop_source/_target containers gate the body;
     // these calls are the payload exchange inside.

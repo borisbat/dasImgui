@@ -221,12 +221,22 @@ def public columns_close() {
     Columns(1, "", false)
 }
 
-// ===== tree_pop =====
+// ===== tree_node primitives =====
+
+def public tree_node_open(text : string;
+                          flags : ImGuiTreeNodeFlags = ImGuiTreeNodeFlags.None) : bool {
+    //! `TreeNodeEx(label, flags) : bool` — open form WITHOUT auto-pair TreePop.
+    //! Use when the body needs to render outside the conditional (e.g.
+    //! ``same_line()`` immediately after the header trigger). Caller MUST
+    //! invoke ``tree_pop()`` when the return value is true.
+    return TreeNodeEx(text, flags)
+}
 
 def public tree_pop() {
-    //! Pair with `tree_node_ex` (the leaf-bool overload) when its return value
-    //! is true AND the `NoTreePushOnOpen` flag was NOT set. The `tree_node`
-    //! container auto-pairs TreePop; this wrapper covers the manual case.
+    //! Pair with `tree_node_open` (or the leaf-bool TreeNodeEx overload) when
+    //! the return value is true AND the `NoTreePushOnOpen` flag was NOT set.
+    //! The `tree_node` container auto-pairs TreePop; this wrapper covers the
+    //! manual case.
     TreePop()
 }
 
