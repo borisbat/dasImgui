@@ -56,7 +56,7 @@ let private ALLOWED_IMGUI : table<string> <- {
     "GetContentRegionAvail",
     "GetWindowSize", "GetWindowPos", "GetWindowWidth", "GetWindowHeight",
     "GetItemRectMin", "GetItemRectMax", "GetItemRectSize",
-    "CalcTextSize", "CalcItemWidth",
+    "CalcTextSize", "CalcItemWidth", "GetTreeNodeToLabelSpacing",
     // Column position queries (read-only) — paired with the columns_open /
     // next_col / columns_close primitives in imgui_layout_builtin.
     "GetColumnIndex", "GetColumnWidth", "GetColumnOffset", "GetColumnsCount",
@@ -65,10 +65,12 @@ let private ALLOWED_IMGUI : table<string> <- {
     "GetTextLineHeight", "GetTextLineHeightWithSpacing",
     "GetFrameHeight", "GetFrameHeightWithSpacing",
     "GetStyleColorVec4", "GetColorU32", "GetStyleColorName",
-    // Draw-list primitives. Narrow carve-out for what `app_main_menu`'s
-    // Colors-submenu swatch paints today; extend the Add* set when a
-    // second caller surfaces.
-    "GetWindowDrawList", "AddRectFilled",
+    // Draw-list primitives. Narrow carve-out for callers that paint
+    // simple outlines today (app_main_menu Colors swatch, widgets.das
+    // wrapped-text marker). Slated for removal in the drawlist-rail PR
+    // (with_window_drawlist + add_rect/add_rect_filled) — these three
+    // entries retire as a group.
+    "GetWindowDrawList", "AddRect", "AddRectFilled",
     // Demo / debug entry points (built-in windows we deliberately surface as-is)
     "ShowDemoWindow", "ShowMetricsWindow", "ShowDebugLogWindow",
     "ShowIDStackToolWindow", "ShowAboutWindow",

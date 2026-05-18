@@ -1,6 +1,5 @@
 options gen2
 options indenting = 4
-options _allow_imgui_legacy = true
 
 module widgets
 
@@ -8,6 +7,7 @@ require imgui
 require imgui/imgui_widgets_builtin
 require imgui/imgui_containers_builtin
 require imgui/imgui_id_builtin
+require imgui/imgui_layout_builtin       // tree_pop pass-through
 require imgui/imgui_scope_builtin
 require imgui/imgui_style_builtin        // with_style call_macro
 require imgui/imgui_colors               // rgba packer (formerly v1 IM_COL32)
@@ -384,11 +384,8 @@ def private TooltipsSection() {
         button(WIDGETS_TIP_FANCY, (text = "Fancy"))
         item_tooltip(WIDGETS_TIP_FANCY_TIP) {
             text("I am a fancy tooltip")
-            let arr = fixed_array<float>(0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f)
-            // PlotLines's binding takes the full overload — no defaults — so all
-            // 9 args are supplied. stride is sizeof(float) = 4.
-            PlotLines("Curve", unsafe(addr(arr[0])), length(arr),
-                      0, "", FLT_MAX, FLT_MAX, float2(0.0f, 0.0f), 4)
+            plot_lines(WIDGETS_TIP_CURVE, "Curve",
+                       [0.6f, 0.1f, 1.0f, 0.5f, 0.92f, 0.1f, 0.2f])
             text("Sin(time) = {sin(float(GetTime()))}")
         }
 
@@ -607,7 +604,7 @@ def private TreeNodesSection() {
                         }
                         if (node_open) {
                             bullet_text(WIDGETS_LOOP_TREE_BULLETTEXT[i], (text = "Blah blah\nBlah Blah"))
-                            TreePop()
+                            tree_pop()
                         }
                     } else {
                         // Leaves: Leaf + NoTreePushOnOpen — no TreePop is paired.
