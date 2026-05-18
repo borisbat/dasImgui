@@ -17,10 +17,17 @@ require daslib/json_boost public
 let DRAWLIST_FEATURE = "modules/dasImgui/examples/features/drawlist.das"
 
 let EXPECTED_KINDS : array<string> = [
+    // Original 8 primitives.
     "add_line", "add_rect", "add_rect_filled",
     "add_circle", "add_circle_filled",
     "add_triangle", "add_triangle_filled",
-    "add_text"
+    "add_text",
+    // v2 shape extras (added in Phase 1A).
+    "add_rect_filled_multi_color",
+    "add_ellipse", "add_ellipse_filled",
+    "add_ngon", "add_ngon_filled",
+    "add_polyline",
+    "add_bezier_cubic", "add_bezier_quadratic"
 ]
 
 def has_kind(var snap : JsonValue?; kind : string) : bool {

@@ -42,6 +42,13 @@ def main {
         sleep(3500u)
 
         post_command(app, "imgui_narrate", JV((
+            text = "Shape extras — gradient rect, ellipse, hexagon (ngon), polyline, bezier curves.",
+            target = T_BAND,
+            frames = 200
+        )))
+        sleep(3500u)
+
+        post_command(app, "imgui_narrate", JV((
             text = "with_foreground_drawlist — paints over every window (top-left FG ribbon).",
             target = T_FG,
             frames = 200
