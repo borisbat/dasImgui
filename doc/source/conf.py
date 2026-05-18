@@ -50,6 +50,15 @@ todo_include_todos = False
 # -- Options for HTML output ----------------------------------------------
 
 html_theme = 'sphinx_rtd_theme'
+html_theme_options = {
+    'style_nav_header_background': '#0d0c0a',
+    'collapse_navigation': False,
+    'sticky_navigation': True,
+    'navigation_depth': 4,
+    'titles_only': False,
+}
+html_logo = '_static/forge-logo.svg'
+html_favicon = 'daslang.ico'
 html_static_path = ['_static']
 # Forge dark retoken — matches daslang.io/doc/ visually. Vendored from
 # daslang's doc/source/_static/custom.css; reconcile against upstream when

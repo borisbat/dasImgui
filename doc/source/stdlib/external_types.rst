@@ -58,6 +58,18 @@ enumerants; see the
 `Dear ImGui ImGuiCond_ reference <https://github.com/ocornut/imgui/blob/master/imgui.h>`_
 for the full list.
 
+.. _alias-imvec2:
+.. _alias-imvec4:
+
+``imgui::ImVec2`` / ``imgui::ImVec4``
+======================================
+
+Core vector aliases exposed by the ``imgui`` builtin module and consumed across
+the style/layout APIs. ``ImVec2`` is used for 2D positions/sizes (window pos,
+cursor pos, spacing, paddings). ``ImVec4`` is used for RGBA colors and 4D style
+values. These aliases map directly to Dear ImGui's ``ImVec2``/``ImVec4``
+structs.
+
 .. _handle-imgui-ImGuiViewport:
 
 ``imgui::ImGuiViewport``
