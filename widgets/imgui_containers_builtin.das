@@ -62,8 +62,8 @@ def private open_close_finalize(widget_ident : string; kind : string; var state 
     }
 }
 
-def private stateless_finalize(widget_ident : string; kind : string; var state : auto;
-                               bbox : float4 = float4(0.0f, 0.0f, 0.0f, 0.0f)) {
+def public stateless_finalize(widget_ident : string; kind : string; var state : auto;
+                              bbox : float4 = float4(0.0f, 0.0f, 0.0f, 0.0f)) {
     let path = container_path_key()
     var entry : WidgetEntry
     entry.bbox = bbox
@@ -152,6 +152,32 @@ def window(var state : WindowState; text : string; closable : bool;
         End()
     }
     open_close_finalize(widget_ident, "window", state)
+}
+
+// ===== Window mutation / viewport helpers =====
+//
+// `SetWindowSize` mid-frame mutation (operates on the current/last window),
+// the `GetCenter()` viewport method, and `IsMousePosValid` mouse query are
+// thin pass-throughs — caller-driven, no widget host needed. Wrapped (not
+// allow-listed) so consumer code stays free of raw `imgui::*` calls.
+
+def public set_window_size(size : float2; cond : ImGuiCond = ImGuiCond.None) {
+    //! `SetWindowSize(size, cond)` — resize the current/last window. Pair with
+    //! `SetNextWindowSizeConstraints` to clamp into a fixed range.
+    SetWindowSize(size, cond)
+}
+
+def public viewport_center(self : ImGuiViewport implicit) : float2 {
+    //! `viewport.GetCenter()` — viewport's center-screen position. Pair with
+    //! `SetNextWindowPos(center, ImGuiCond.Always, float2(0.5,0.5))` to center
+    //! the next window on the viewport.
+    return self |> GetCenter()
+}
+
+def public is_mouse_pos_valid() : bool {
+    //! `IsMousePosValid(NULL)` — true when ImGui has a sensible mouse position
+    //! (false on platforms / first frame where the mouse hasn't been observed).
+    return IsMousePosValid(null)
 }
 
 [container]

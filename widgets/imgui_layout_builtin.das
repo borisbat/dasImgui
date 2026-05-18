@@ -221,6 +221,15 @@ def public columns_close() {
     Columns(1, "", false)
 }
 
+// ===== tree_pop =====
+
+def public tree_pop() {
+    //! Pair with `tree_node_ex` (the leaf-bool overload) when its return value
+    //! is true AND the `NoTreePushOnOpen` flag was NOT set. The `tree_node`
+    //! container auto-pairs TreePop; this wrapper covers the manual case.
+    TreePop()
+}
+
 // ===== list_clipper =====
 
 def public list_clipper(items_count : int;

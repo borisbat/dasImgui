@@ -490,6 +490,17 @@ struct TabBarState {
     @optional flags : ImGuiTabBarFlags        //! per-call ImGuiTabBarFlags
 }
 
+struct TableState {
+    //! Backs the `table` container. ImGui owns column-resize/sort state
+    //! internally (TableSettings). Per-call config is echoed for snapshot
+    //! consumers; sort_specs / multi-select capture is deferred to the
+    //! `tables.das` port.
+    @optional columns : int                   //! per-call column count
+    @optional flags : ImGuiTableFlags         //! per-call ImGuiTableFlags
+    @optional outer_size : float2             //! per-call outer_size (echoed)
+    @optional inner_width : float             //! per-call inner_width (echoed)
+}
+
 struct TabItemState {
     //! Backs the `tab_item` container. `open` defaults to true so a closable
     //! tab renders from frame 1; the X-button or `imgui_close` flips it false.

@@ -28,18 +28,64 @@ for the full enumerator list.
 .. _enum-imgui-ImGuiTabItemFlags:
 .. _enum-imgui-ImGuiTreeNodeFlags:
 .. _enum-imgui-ImGuiPopupFlags:
+.. _enum-imgui-ImGuiTableFlags:
+.. _enum-imgui-ImGuiTableColumnFlags:
+.. _enum-imgui-ImGuiTableRowFlags:
 
 ``imgui::ImGui*Flags``
 ======================
 
 Bitfield enums exposed by the ``imgui`` builtin module: ``ImGuiWindowFlags``,
 ``ImGuiChildFlags``, ``ImGuiTabBarFlags``, ``ImGuiTabItemFlags``,
-``ImGuiTreeNodeFlags``, ``ImGuiPopupFlags``. Passed to the corresponding
+``ImGuiTreeNodeFlags``, ``ImGuiPopupFlags``, ``ImGuiTableFlags``,
+``ImGuiTableColumnFlags``, ``ImGuiTableRowFlags``. Passed to the corresponding
 ``imgui::Begin*`` / ``BeginTabBar`` / ``BeginTabItem`` / ``TreeNodeEx`` /
-``OpenPopup`` calls. Values map directly to upstream ``ImGui*Flags_*``
-enumerants; see the
+``OpenPopup`` / ``BeginTable`` / ``TableSetupColumn`` / ``TableNextRow`` calls.
+Values map directly to upstream ``ImGui*Flags_*`` enumerants; see the
 `Dear ImGui flag enums <https://github.com/ocornut/imgui/blob/master/imgui.h>`_
 for the full enumerator lists.
+
+.. _enum-imgui-ImGuiCond:
+
+``imgui::ImGuiCond``
+====================
+
+Window-state condition enum exposed by the ``imgui`` builtin module. Used as
+the trailing ``cond`` argument to ``SetNextWindowPos`` / ``SetNextWindowSize`` /
+``set_window_size`` etc. to gate when the value applies (``Always`` / ``Once`` /
+``FirstUseEver`` / ``Appearing``). Values map directly to upstream ``ImGuiCond_*``
+enumerants; see the
+`Dear ImGui ImGuiCond_ reference <https://github.com/ocornut/imgui/blob/master/imgui.h>`_
+for the full list.
+
+.. _handle-imgui-ImGuiViewport:
+
+``imgui::ImGuiViewport``
+========================
+
+Per-viewport handle exposed by the ``imgui`` builtin module. Returned (as
+``ImGuiViewport?``) from ``GetMainViewport`` and consumed by the
+``viewport_center`` wrapper plus the multi-viewport docking pipeline. Fields
+``Pos`` / ``Size`` / ``WorkPos`` / ``WorkSize`` / ``ID`` are directly accessible;
+the ``GetCenter()`` method is wrapped as ``viewport_center(self)`` in
+``imgui/imgui_containers_builtin``. See
+`ImGuiViewport in imgui.h <https://github.com/ocornut/imgui/blob/master/imgui.h>`_
+for the upstream definition.
+
+.. _handle-imgui-ImGuiSizeCallbackData:
+
+``imgui::ImGuiSizeCallbackData``
+================================
+
+Per-resize callback payload passed by ImGui to the
+``SetNextWindowSizeConstraints`` callback (``ImGuiSizeCallback``). Daslang
+exposes this through the ``ImGuiSizeConstraints`` lambda wrapper in
+``imgui/imgui_window_constraints_builtin``: the lambda body reads
+``data.CurrentSize`` and writes ``data.DesiredSize`` to re-shape the requested
+window size (aspect-ratio lock, fixed-step quantization, "always square", …).
+See
+`ImGuiSizeCallbackData in imgui.h <https://github.com/ocornut/imgui/blob/master/imgui.h>`_
+for the upstream definition.
 
 .. _handle-glfw-GLFWwindow:
 

@@ -28,3 +28,5 @@ construction.
    edit_external_tour.rst
    recording.rst
    harness_headless_mode.rst
+   data_table.rst
+   window_size_constraints.rst
