@@ -44,10 +44,12 @@ let private ALLOWED_IMGUI : table<string> <- {
     "IsItemToggledOpen", "IsItemVisible", "IsItemEdited",
     "IsAnyItemHovered", "IsAnyItemActive", "IsAnyItemFocused",
     // Mouse / keyboard state queries — pure reads, no widget host.
-    "GetMousePos", "GetMousePosOnOpeningCurrentPopup",
+    "GetMousePos", "GetMousePosOnOpeningCurrentPopup", "IsMousePosValid",
     "IsMouseDown", "IsMouseClicked", "IsMouseReleased", "IsMouseDoubleClicked",
     "IsMouseHoveringRect", "IsAnyMouseDown",
     "GetMouseDragDelta", "ResetMouseDragDelta", "IsMouseDragging",
+    "GetMouseCursor", "SetMouseCursor",
+    "SetNextFrameWantCaptureMouse", "SetNextFrameWantCaptureKeyboard",
     "IsKeyDown", "IsKeyPressed", "IsKeyReleased",
     "GetKeyName", "GetTime", "GetFrameCount",
     // Cursor / layout queries (read-only)
@@ -67,10 +69,12 @@ let private ALLOWED_IMGUI : table<string> <- {
     "GetStyleColorVec4", "GetColorU32", "GetStyleColorName",
     // Draw-list primitives. Narrow carve-out for callers that paint
     // simple outlines today (app_main_menu Colors swatch, widgets.das
-    // wrapped-text marker). Slated for removal in the drawlist-rail PR
-    // (with_window_drawlist + add_rect/add_rect_filled) — these three
-    // entries retire as a group.
+    // wrapped-text marker, inputs.das Dragging foreground-line). Slated
+    // for removal in the drawlist-rail PR (with_window_drawlist +
+    // with_foreground_drawlist + add_rect/add_rect_filled/add_line) —
+    // these five entries retire as a group.
     "GetWindowDrawList", "AddRect", "AddRectFilled",
+    "GetForegroundDrawList", "AddLine",
     // Demo / debug entry points (built-in windows we deliberately surface as-is)
     "ShowDemoWindow", "ShowMetricsWindow", "ShowDebugLogWindow",
     "ShowIDStackToolWindow", "ShowAboutWindow",

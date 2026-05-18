@@ -65,3 +65,11 @@ def public with_clip_rect(clip_rect_min : float2; clip_rect_max : float2;
     invoke(blk)
     PopClipRect()
 }
+
+def public with_tab_stop(tab_stop : bool; blk : block) {
+    //! Run ``blk`` with ``PushTabStop(tab_stop)`` applied; matching ``PopTabStop()`` on return.
+    //! When ``tab_stop=false`` every widget inside ``blk`` is skipped by TAB / Shift+Tab focus cycling.
+    PushTabStop(tab_stop)
+    invoke(blk)
+    PopTabStop()
+}

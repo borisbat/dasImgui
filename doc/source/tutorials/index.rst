@@ -30,3 +30,6 @@ construction.
    harness_headless_mode.rst
    data_table.rst
    window_size_constraints.rst
+   with_tab_stop.rst
+   color_button_hover.rst
+   selectable_hover.rst
