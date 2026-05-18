@@ -103,7 +103,7 @@ let private ALLOWED_IMGUI : table<string> <- {
     "DockBuilderSetNodeSize", "DockBuilderSetNodePos",
     "DockBuilderSplitNode", "DockBuilderDockWindow", "DockBuilderFinish",
     "DockBuilderGetNode", "DockBuilderCopyNode",
-    "DockSpace", "DockSpaceOverViewport"
+    "DockSpace", "DockSpaceOverViewport", "GetID"
 }
 
 class ImguiLintVisitor : AstVisitor {
