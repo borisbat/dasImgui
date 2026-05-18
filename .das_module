@@ -61,6 +61,12 @@ def initialize(project_path : string) {
     register_native_path("imgui", "imgui_table_builtin", "{project_path}/widgets/imgui_table_builtin.das")
     // Window-size constraints — lambda-bearing overload (3-arg SetNextWindowSizeConstraints).
     register_native_path("imgui", "imgui_window_constraints_builtin", "{project_path}/widgets/imgui_window_constraints_builtin.das")
+    // Drawlist rail — with_window_drawlist / with_foreground_drawlist /
+    // with_background_drawlist scope wrappers + 8 [drawlist_prim] primitives
+    // (add_line/add_rect/add_rect_filled/add_circle/add_circle_filled/
+    // add_triangle/add_triangle_filled/add_text). Per-call-site path key
+    // (<mod>:<line>:<col>) feeds g_registry; no state global.
+    register_native_path("imgui", "imgui_drawlist_builtin", "{project_path}/widgets/imgui_drawlist_builtin.das")
     // IM_COL32 packer split out from v1 imgui_boost (the legacy module is
     // non-compileable during the v2 refactor; rgba+constants live here).
     register_native_path("imgui", "imgui_colors", "{project_path}/widgets/imgui_colors.das")

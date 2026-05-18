@@ -77,7 +77,7 @@ jobs:
             -DDAS_LLVM_DISABLED=ON \
             -DDAS_GLFW_DISABLED=OFF \
             -G Ninja
-          cmake --build ./build --target daslang
+          cmake --build ./build --parallel --target daslang
 
       - name: "daspkg install dasImgui (global)"
         run: |

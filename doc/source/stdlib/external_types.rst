@@ -60,15 +60,17 @@ for the full list.
 
 .. _alias-imvec2:
 .. _alias-imvec4:
+.. _alias-imcolor:
 
-``imgui::ImVec2`` / ``imgui::ImVec4``
-======================================
+``imgui::ImVec2`` / ``imgui::ImVec4`` / ``imgui::ImColor``
+==========================================================
 
 Core vector aliases exposed by the ``imgui`` builtin module and consumed across
 the style/layout APIs. ``ImVec2`` is used for 2D positions/sizes (window pos,
 cursor pos, spacing, paddings). ``ImVec4`` is used for RGBA colors and 4D style
-values. These aliases map directly to Dear ImGui's ``ImVec2``/``ImVec4``
-structs.
+values. ``ImColor`` is a ``float4``-aliased convenience wrapper for RGBA
+colors. These aliases map directly to Dear ImGui's ``ImVec2``/``ImVec4``/
+``ImColor`` structs.
 
 .. _handle-imgui-ImGuiViewport:
 

@@ -9,6 +9,7 @@ require imgui/imgui_containers_builtin
 require imgui/imgui_id_builtin
 require imgui/imgui_layout_builtin       // tree_pop pass-through
 require imgui/imgui_scope_builtin
+require imgui/imgui_drawlist_builtin     // with_window_drawlist + add_rect / add_rect_filled
 require imgui/imgui_style_builtin        // with_style call_macro
 require imgui/imgui_colors               // rgba packer (formerly v1 IM_COL32)
 require daslib/safe_addr
@@ -744,13 +745,12 @@ def private TextSection() {
                             text((text = "aaaaaaaa bbbbbbbb, c cccccccc,dddddddd. d " +
                                          "eeeeeeee   ffffffff. gggggggg!hhhhhhhh"))
                         }
-                        // Inline `*GetWindowDrawList()` so the receiver doesn't
-                        // pick up `let`-const from a binding — AddRect/Filled
-                        // need a non-const ImDrawList&.
-                        *GetWindowDrawList() |> AddRect(GetItemRectMin(),
-                            GetItemRectMax(), rgba(255u, 255u, 0u, 255u))
-                        *GetWindowDrawList() |> AddRectFilled(marker_min,
-                            marker_max, rgba(255u, 0u, 255u, 255u))
+                        with_window_drawlist() $(var dl) {
+                            dl |> add_rect(GetItemRectMin(), GetItemRectMax(),
+                                           rgba(255u, 255u, 0u, 255u))
+                            dl |> add_rect_filled(marker_min, marker_max,
+                                                  rgba(255u, 0u, 255u, 255u))
+                        }
                     }
                 }
             }

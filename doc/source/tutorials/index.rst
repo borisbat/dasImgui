@@ -33,3 +33,4 @@ construction.
    with_tab_stop.rst
    color_button_hover.rst
    selectable_hover.rst
+   drawlist.rst

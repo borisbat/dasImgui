@@ -54,6 +54,56 @@ class ContainerFunctionMacro : AstFunctionAnnotation {
     }
 }
 
+// `[drawlist_prim]` mirrors `[widget]` but skips state-global synthesis.
+// The annotation injects `widget_ident : string` at position 0 of the
+// function's arguments; the per-kind `DrawlistPrimCallMacro` rewrites
+// each call site, prepending a fresh `ExprConstString("<mod>:<line>:<col>")`
+// as the first positional arg. No `__widget_<line>_<col>` global is
+// emitted; the registry entry alone is enough for mouse-cards / playwright
+// targeting because drawlist primitives don't carry interactive state
+// worth pinning across `@live` reload.
+
+class DrawlistPrimCallMacro : AstCallMacro {
+    kind_name : string
+
+    def override visit(prog : ProgramPtr; mod : Module?;
+                       var expr : ExprCallMacro?) : ExpressionPtr {
+        let modName = mod == null ? "anon" : string(mod.name)
+        let path_key = "{modName}:{expr.at.line:d}:{expr.at.column:d}"
+        var rewritten = new ExprCall(at = expr.at, name := kind_name)
+        var pathArg = new ExprConstString(at = expr.at, value := path_key)
+        rewritten.arguments |> push(pathArg)
+        for (a in expr.arguments) {
+            rewritten.arguments |> push(clone_expression(a))
+        }
+        return <- rewritten
+    }
+}
+
+[function_macro(name = "drawlist_prim")]
+class DrawlistPrimFunctionMacro : AstFunctionAnnotation {
+    //! ``[drawlist_prim]`` — registers ``def fn(var dl, ...)`` as a drawlist
+    //! primitive. Injects ``widget_ident`` at position 0 and a per-kind
+    //! call_macro that prepends a synthesized ``<mod>:<line>:<col>`` path key.
+    def override apply(var func : FunctionPtr; var group : ModuleGroup;
+                       args : AnnotationArgumentList; var errors : das_string) : bool {
+        if (empty(func.arguments)) {
+            errors := "[drawlist_prim] requires at least one parameter (the drawlist pointer)"
+            return false
+        }
+        let kind = string(func.name)
+        func.flags.generated = true
+        var widthIdentVar = new Variable(at = func.at,
+            name := "widget_ident",
+            _type <- new TypeDecl(baseType = Type.tString, at = func.at))
+        widthIdentVar.flags.generated = true
+        func.arguments |> emplace(widthIdentVar, 0)
+        var inst = new DrawlistPrimCallMacro(kind_name = kind)
+        compiling_module() |> add_call_macro(make_call_macro(kind, inst))
+        return true
+    }
+}
+
 def private apply_widget_or_container(var func : FunctionPtr; var errors : das_string;
                                       is_container : bool) : bool {
     if (empty(func.arguments)) {
