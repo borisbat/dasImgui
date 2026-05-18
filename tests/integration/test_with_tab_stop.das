@@ -10,10 +10,10 @@ require daslib/json_boost public
 
 //! Integration smoke for `with_tab_stop` — stateless block-arg wrapper around
 //! PushTabStop/PopTabStop. The wrapper itself doesn't register a widget; this
-//! test verifies the tutorial demo renders and the host window + all five
-//! input fields (including the wrapped TS_FIELD_SKIP) reach the snapshot.
+//! test verifies the feature demo renders and the host window + the wrapped
+//! TS_FIELD_SKIP both reach the snapshot.
 
-let WITH_TAB_STOP_FEATURE = "modules/dasImgui/examples/tutorial/with_tab_stop.das"
+let WITH_TAB_STOP_FEATURE = "modules/dasImgui/examples/features/with_tab_stop.das"
 
 [test]
 def test_with_tab_stop_smoke(t : T?) {

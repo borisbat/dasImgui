@@ -9,11 +9,11 @@ require daslib/json public
 require daslib/json_boost public
 
 //! Integration smoke for `color_button_hover` — hover-target variant of
-//! `color_button`. Verifies the tutorial demo renders, the three swatches
+//! `color_button`. Verifies the feature demo renders, the three swatches
 //! register under their idents, and `find_widget` reports the
 //! `color_button_hover` kind.
 
-let COLOR_BUTTON_HOVER_FEATURE = "modules/dasImgui/examples/tutorial/color_button_hover.das"
+let COLOR_BUTTON_HOVER_FEATURE = "modules/dasImgui/examples/features/color_button_hover.das"
 
 [test]
 def test_color_button_hover_smoke(t : T?) {

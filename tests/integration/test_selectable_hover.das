@@ -9,11 +9,11 @@ require daslib/json public
 require daslib/json_boost public
 
 //! Integration smoke for `selectable_hover` — hover-target variant of
-//! `selectable`. Verifies the tutorial demo renders, all five rows of
+//! `selectable`. Verifies the feature demo renders, all five rows of
 //! the indexed table register under SH_ROW[i], and `find_widget` reports
 //! the `selectable_hover` kind.
 
-let SELECTABLE_HOVER_FEATURE = "modules/dasImgui/examples/tutorial/selectable_hover.das"
+let SELECTABLE_HOVER_FEATURE = "modules/dasImgui/examples/features/selectable_hover.das"
 
 [test]
 def test_selectable_hover_smoke(t : T?) {
