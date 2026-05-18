@@ -6,6 +6,7 @@ module app_main_menu
 require imgui
 require imgui/imgui_widgets_builtin
 require imgui/imgui_containers_builtin
+require imgui/imgui_drawlist_builtin     // with_window_drawlist + add_rect_filled
 require daslib/enum_trait
 
 // Indexed widget tables for the per-frame loops:
@@ -91,8 +92,9 @@ def ShowExampleMenuFile() {
             if (col == ImGuiCol.COUNT) continue
             let name = GetStyleColorName(col)
             let p = GetCursorScreenPos()
-            *GetWindowDrawList() |> AddRectFilled(p, float2(p.x + sz, p.y + sz),
-                                                  GetColorU32(col))
+            with_window_drawlist() $(var dl) {
+                dl |> add_rect_filled(p, float2(p.x + sz, p.y + sz), GetColorU32(col))
+            }
             dummy(FILE_COLORS_DUMMY[int(col)], (size = float2(sz, sz)))
             same_line(FILE_COLORS_SAMELINE[int(col)])
             menu_item(FILE_COLORS_ITEM[int(col)], (text = name))

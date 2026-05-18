@@ -67,14 +67,6 @@ let private ALLOWED_IMGUI : table<string> <- {
     "GetTextLineHeight", "GetTextLineHeightWithSpacing",
     "GetFrameHeight", "GetFrameHeightWithSpacing",
     "GetStyleColorVec4", "GetColorU32", "GetStyleColorName",
-    // Draw-list primitives. Narrow carve-out for callers that paint
-    // simple outlines today (app_main_menu Colors swatch, widgets.das
-    // wrapped-text marker, inputs.das Dragging foreground-line). Slated
-    // for removal in the drawlist-rail PR (with_window_drawlist +
-    // with_foreground_drawlist + add_rect/add_rect_filled/add_line) —
-    // these five entries retire as a group.
-    "GetWindowDrawList", "AddRect", "AddRectFilled",
-    "GetForegroundDrawList", "AddLine",
     // Demo / debug entry points (built-in windows we deliberately surface as-is)
     "ShowDemoWindow", "ShowMetricsWindow", "ShowDebugLogWindow",
     "ShowIDStackToolWindow", "ShowAboutWindow",

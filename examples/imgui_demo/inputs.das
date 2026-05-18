@@ -7,6 +7,7 @@ require imgui
 require imgui/imgui_widgets_builtin
 require imgui/imgui_containers_builtin
 require imgui/imgui_scope_builtin
+require imgui/imgui_drawlist_builtin     // with_foreground_drawlist + add_line
 require daslib/safe_addr
 require daslib/enum_trait
 
@@ -396,12 +397,10 @@ def private DraggingSubSection() {
 
         button(INPUTS_DRAG_ME, (text = "Drag Me"))
         if (IsItemActive()) {
-            // Foreground drawlist — temp ALLOWED carve-out; retires when
-            // PR-B1's drawlist rail (with_foreground_drawlist + add_line)
-            // lands and this site migrates over.
-            var dl & = unsafe(*GetForegroundDrawList())
-            let col = GetColorU32(ImGuiCol.Button, 1.0f)
-            dl |> AddLine(io.MouseClickedPos[0], io.MousePos, col, 4.0f)
+            with_foreground_drawlist() $(var dl) {
+                let col = GetColorU32(ImGuiCol.Button, 1.0f)
+                dl |> add_line(io.MouseClickedPos[0], io.MousePos, col, 4.0f)
+            }
         }
 
         let value_raw = GetMouseDragDelta(ImGuiMouseButton.Left, 0.0f)
