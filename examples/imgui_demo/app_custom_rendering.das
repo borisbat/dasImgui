@@ -413,7 +413,7 @@ def private show_channels_tab() {
 
 // ===== Entry point =====
 
-def public ShowExampleAppCustomRendering() {
+def public ShowExampleAppCustomRendering() : bool {
     window(CR_WIN, (text = "Example: Custom rendering", closable = true,
                     flags = ImGuiWindowFlags.None)) {
         tab_bar(CR_TABS, (text = "##TabBar", flags = ImGuiTabBarFlags.None)) {
@@ -435,4 +435,5 @@ def public ShowExampleAppCustomRendering() {
             }
         }
     }
+    return CR_WIN.open
 }

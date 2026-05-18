@@ -30,14 +30,11 @@ var private DS_FLAG_NO_RESIZE = false
 var private DS_FLAG_AUTO_HIDE_TAB_BAR = false
 var private DS_FLAG_PASSTHRU_CENTRAL = false
 
-// Set by the "Close" menu entry; caller polls via take_close_request().
+// Set by the "Close" menu entry. ShowExampleAppDockSpace returns false when
+// this flips OR when the X-button closes the window, so the aggregator's
+// `if (SHOW_X && !ShowExampleAppDockSpace()) SHOW_X = false` pattern works
+// uniformly across both close paths.
 var private DS_REQUEST_CLOSE = false
-
-def public take_close_request() : bool {
-    let v = DS_REQUEST_CLOSE
-    DS_REQUEST_CLOSE = false
-    return v
-}
 
 def private current_dockspace_flags() : ImGuiDockNodeFlags {
     // ImGuiDockNodeFlags is a plain int enum on the C++ side; build the bit
@@ -64,7 +61,7 @@ def private current_dockspace_flags() : ImGuiDockNodeFlags {
     return unsafe(reinterpret<ImGuiDockNodeFlags>(bits))
 }
 
-def public ShowExampleAppDockSpace() {
+def public ShowExampleAppDockSpace() : bool {
     SetNextWindowSize(ImVec2(720.0f, 480.0f), ImGuiCond.FirstUseEver)
     window(DS_WIN, (text = "DockSpace Demo", closable = true,
                     flags = ImGuiWindowFlags.MenuBar |
@@ -109,4 +106,7 @@ def public ShowExampleAppDockSpace() {
             }
         }
     }
+    let menu_closed = DS_REQUEST_CLOSE
+    DS_REQUEST_CLOSE = false
+    return DS_WIN.open && !menu_closed
 }

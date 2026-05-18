@@ -59,14 +59,9 @@ var private DOCS_OPEN_CHECKBOX : table<int; ToggleState>
 var private DOCS_CLOSE_NAME : table<int; NarrativeState>
 var private DOCS_DEBUG_SL : table<int; EmptyMarkerState>
 
-// "Close" menu sets the close-this-window request; caller polls.
+// "Exit" menu sets this; ShowExampleAppDocuments returns false when set OR
+// when the X-button closes the window.
 var private DOCS_REQUEST_CLOSE = false
-
-def public take_close_request() : bool {
-    let v = DOCS_REQUEST_CLOSE
-    DOCS_REQUEST_CLOSE = false
-    return v
-}
 
 def private seed_docs() {
     DOCS |> emplace(new_doc("Lettuce", true, float4(0.4f, 0.8f, 0.4f, 1.0f)))
@@ -243,7 +238,7 @@ def private show_close_confirm() {
 
 // ===== Entry point =====
 
-def public ShowExampleAppDocuments() {
+def public ShowExampleAppDocuments() : bool {
     if (!DOCS_SEEDED) {
         seed_docs()
         DOCS_SEEDED = true
@@ -302,4 +297,7 @@ def public ShowExampleAppDocuments() {
         rebuild_close_queue()
         show_close_confirm()
     }
+    let menu_closed = DOCS_REQUEST_CLOSE
+    DOCS_REQUEST_CLOSE = false
+    return DOCS_WIN.open && !menu_closed
 }

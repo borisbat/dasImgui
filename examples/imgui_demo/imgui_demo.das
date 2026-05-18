@@ -40,6 +40,9 @@ var private SHOW_APP_CONSTRAINED_RESIZE = false
 var private SHOW_APP_SIMPLE_OVERLAY = false
 var private SHOW_APP_FULLSCREEN = false
 var private SHOW_APP_WINDOW_TITLES = false
+var private SHOW_APP_CUSTOM_RENDERING = false
+var private SHOW_APP_DOCKSPACE = false
+var private SHOW_APP_DOCUMENTS = false
 
 // Mirrors imgui_demo.cpp:275-6455 — void ImGui::ShowDemoWindow(bool* p_open).
 // Renamed to avoid collision with ImGui's built-in ShowDemoWindow binding.
@@ -49,7 +52,7 @@ var private SHOW_APP_WINDOW_TITLES = false
 def RunImGuiDemo() {
     window(DEMO_WIN, (text = "Dear ImGui Demo (daslang port — Phase 2a skeleton)",
                        closable = false, flags = ImGuiWindowFlags.None)) {
-        text("Phase 2a skeleton — 0/24 SECTION blocks ported + 2 example apps (Console, Log).")
+        text("Phase 2a skeleton — 0/24 SECTION blocks ported + 5 example apps (Console, Log, Custom Rendering, DockSpace, Documents).")
         text("Section stubs render below; example apps and meta windows are")
         text("not yet wired into the menu — temporary checkboxes at the bottom")
         text("toggle individual app windows.")
@@ -83,6 +86,12 @@ def RunImGuiDemo() {
                       (id = "EXAMPLES_SHOW_FULLSCREEN", text = "Show Example: Fullscreen Window"))
         edit_checkbox(safe_addr(SHOW_APP_WINDOW_TITLES),
                       (id = "EXAMPLES_SHOW_TITLES", text = "Show Example: Manipulating Window Titles"))
+        edit_checkbox(safe_addr(SHOW_APP_CUSTOM_RENDERING),
+                      (id = "EXAMPLES_SHOW_CUSTOM_RENDERING", text = "Show Example: Custom Rendering"))
+        edit_checkbox(safe_addr(SHOW_APP_DOCKSPACE),
+                      (id = "EXAMPLES_SHOW_DOCKSPACE", text = "Show Example: DockSpace"))
+        edit_checkbox(safe_addr(SHOW_APP_DOCUMENTS),
+                      (id = "EXAMPLES_SHOW_DOCUMENTS", text = "Show Example: Documents"))
     }
 
     // Example-app windows live OUTSIDE the demo window — each opens its own.
@@ -125,5 +134,16 @@ def RunImGuiDemo() {
     // WindowTitles is closable=false in cpp (all 3 windows have nullptr p_open).
     if (SHOW_APP_WINDOW_TITLES) {
         ShowExampleAppWindowTitles()
+    }
+    // PR-C/2: three example apps. All three return bool — false when the
+    // window's X-button or local menu close fires.
+    if (SHOW_APP_CUSTOM_RENDERING && !ShowExampleAppCustomRendering()) {
+        SHOW_APP_CUSTOM_RENDERING = false
+    }
+    if (SHOW_APP_DOCKSPACE && !ShowExampleAppDockSpace()) {
+        SHOW_APP_DOCKSPACE = false
+    }
+    if (SHOW_APP_DOCUMENTS && !ShowExampleAppDocuments()) {
+        SHOW_APP_DOCUMENTS = false
     }
 }
