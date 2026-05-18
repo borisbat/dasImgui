@@ -103,26 +103,6 @@ jobs:
             exit 1
           fi
 
-      - name: "DEBUG: dump external_types.rst + check duplicate sources"
-        working-directory: ${{ github.workspace }}/daslang-src/modules/dasImgui
-        run: |
-          set -eux
-          echo "=== external_types.rst (lines 108-128) ==="
-          nl -ba doc/source/stdlib/external_types.rst | sed -n '108,128p'
-          echo "=== all _alias-imvec/_alias-ImVec/_alias-imcolor in doc/source ==="
-          grep -rn '_alias-imvec\|_alias-ImVec\|_alias-imcolor\|_alias-ImColor' doc/source/ || echo '(no matches)'
-          echo "=== same in workspace dasImgui checkout (for comparison) ==="
-          grep -rn '_alias-imvec\|_alias-ImVec\|_alias-imcolor\|_alias-ImColor' ${{ github.workspace }}/dasImgui/doc/source/ || echo '(no matches)'
-          echo "=== generated rsts after imgui2rst run ==="
-          grep -rn 'alias-imvec\|alias-ImVec\|alias-imcolor\|alias-ImColor' doc/source/stdlib/generated/ || echo '(no matches in generated)'
-          echo "=== file size + sha256 ==="
-          stat doc/source/stdlib/external_types.rst
-          sha256sum doc/source/stdlib/external_types.rst
-          echo "=== python + sphinx + docutils versions ==="
-          python3 --version
-          sphinx-build --version
-          python3 -c "import docutils; print('docutils', docutils.__version__)"
-
       - name: "Build Sphinx HTML"
         working-directory: ${{ github.workspace }}/daslang-src/modules/dasImgui
         run: |

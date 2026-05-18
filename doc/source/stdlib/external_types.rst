@@ -60,15 +60,17 @@ for the full list.
 
 .. _alias-imvec2:
 .. _alias-imvec4:
+.. _alias-imcolor:
 
-``imgui::ImVec2`` / ``imgui::ImVec4``
-======================================
+``imgui::ImVec2`` / ``imgui::ImVec4`` / ``imgui::ImColor``
+==========================================================
 
 Core vector aliases exposed by the ``imgui`` builtin module and consumed across
 the style/layout APIs. ``ImVec2`` is used for 2D positions/sizes (window pos,
 cursor pos, spacing, paddings). ``ImVec4`` is used for RGBA colors and 4D style
-values. These aliases map directly to Dear ImGui's ``ImVec2``/``ImVec4``
-structs.
+values. ``ImColor`` is a ``float4``-aliased convenience wrapper for RGBA
+colors. These aliases map directly to Dear ImGui's ``ImVec2``/``ImVec4``/
+``ImColor`` structs.
 
 .. _handle-imgui-ImGuiViewport:
 
@@ -121,20 +123,3 @@ width)`` and a ``PassFilter(text)`` predicate. Held inline as a value field
 of ``TextFilterState`` backing the ``text_filter`` boost widget. See
 `ImGuiTextFilter in imgui.h <https://github.com/ocornut/imgui/blob/master/imgui.h>`_
 for the upstream definition.
-
-.. _alias-imvec2:
-.. _alias-imvec4:
-.. _alias-imcolor:
-
-ImVec2 / ImVec4 / ImColor
-=========================
-
-C++ value-type aliases exposed by the imgui builtin module, bound to
-daslang's vector workhorses (ImVec2 -> float2, ImVec4 -> float4,
-ImColor -> float4). The doc generator emits cross-refs to alias-imvec2
-/ alias-imvec4 / alias-imcolor from any function signature whose
-argument or return type carries one of these aliases; the anchors here
-resolve those refs without dasImgui having to document the imgui core
-module itself. See `ImVec2 / ImVec4 / ImColor in imgui.h
-<https://github.com/ocornut/imgui/blob/master/imgui.h>`_ for the
-upstream definitions.
