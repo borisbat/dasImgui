@@ -4,11 +4,13 @@ require imgui/imgui_harness
 
 // =============================================================================
 // FEATURE: drawlist — window/foreground/background drawlist rail.
-//          Exercises every primitive (line/rect/rect_filled/circle/
-//          circle_filled/triangle/triangle_filled/text) under one window so
-//          tests can wait_for_widget("DRAW_WIN/...") and snapshot bboxes.
-// SHOWS:   3 scope wrappers + 8 primitives; foreground swatch overlays the
-//          window content; background swatch paints under.
+//          INSIDE window(DRAW_WIN, ...): `with_window_drawlist` exercises all
+//          8 primitives (line/rect/rect_filled/circle/circle_filled/triangle/
+//          triangle_filled/text) nested under DRAW_WIN/.
+//          OUTSIDE the window block: `with_foreground_drawlist` +
+//          `with_background_drawlist` each call `add_rect_filled` at the
+//          viewport level — those path keys have no container prefix.
+// SHOWS:   3 scope wrappers + 8 primitives; nested-vs-unnested telemetry.
 // STANDALONE: daslang.exe modules/dasImgui/examples/features/drawlist.das
 // HEADLESS:   daslang.exe modules/dasImgui/examples/features/drawlist.das -- --headless --headless-frames=60
 // =============================================================================
@@ -30,12 +32,10 @@ def update() {
         separator()
 
         let origin = GetCursorScreenPos()
-        let red    = rgba(220u,  60u,  60u, 255u)
         let green  = rgba( 60u, 220u, 100u, 255u)
         let blue   = rgba( 70u, 130u, 240u, 255u)
         let yellow = rgba(240u, 220u,  60u, 255u)
         let gray   = rgba(200u, 200u, 210u, 255u)
-        let bg_tint = rgba(20u, 30u, 50u, 120u)
 
         with_window_drawlist() $(var dl) {
             // Filled rect across the canvas band.
@@ -70,21 +70,24 @@ def update() {
         dummy(DRAW_BAND_SLOT, (size = float2(460.0f, 220.0f)))
 
         text(DRAW_FG_LABEL, (text = "foreground swatch (overlays window):"))
-        // Foreground drawlist — a small red ribbon at the top of the viewport.
-        let vp_pos = GetMainViewport().Pos
-        let vp_size = GetMainViewport().Size
-        with_foreground_drawlist() $(var fdl) {
-            fdl |> add_rect_filled(float2(vp_pos.x + 12.0f, vp_pos.y + 12.0f),
-                                   float2(vp_pos.x + 80.0f, vp_pos.y + 22.0f),
-                                   red)
-        }
-
-        // Background drawlist — full-viewport tint behind everything.
-        with_background_drawlist() $(var bdl) {
-            bdl |> add_rect_filled(float2(vp_pos.x, vp_pos.y),
-                                   float2(vp_pos.x + vp_size.x, vp_pos.y + vp_size.y),
-                                   bg_tint)
-        }
+    }
+    // Outside the window() block — primitives here have no DRAW_WIN/ container
+    // prefix. Foreground / background drawlists are viewport-level so they can
+    // be reached from anywhere inside the frame. Test asserts both nested (above)
+    // and unnested (here) primitives land in the registry.
+    let vp_pos = GetMainViewport().Pos
+    let vp_size = GetMainViewport().Size
+    let red    = rgba(220u,  60u,  60u, 255u)
+    let bg_tint = rgba(20u, 30u, 50u, 120u)
+    with_foreground_drawlist() $(var fdl) {
+        fdl |> add_rect_filled(float2(vp_pos.x + 12.0f, vp_pos.y + 12.0f),
+                               float2(vp_pos.x + 80.0f, vp_pos.y + 22.0f),
+                               red)
+    }
+    with_background_drawlist() $(var bdl) {
+        bdl |> add_rect_filled(float2(vp_pos.x, vp_pos.y),
+                               float2(vp_pos.x + vp_size.x, vp_pos.y + vp_size.y),
+                               bg_tint)
     }
 
     harness_end_frame()

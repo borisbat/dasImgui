@@ -72,22 +72,26 @@ def test_drawlist_path_key_shape(t : T?) {
                    "every drawlist primitive path-key leaf matches `<mod>:<line>:<col>`")
         t |> equal(bad_bbox, "",
                    "every drawlist primitive has a bbox field")
-        // No state-global emission: assert no `__widget_<line>_<col>` keys
-        // appear in the globals (they would if the macro registered state
-        // globals — confirms the path-key-only design).
+        // No state-global emission for DRAWLIST primitives — assert no
+        // drawlist-kind path leaf matches `__widget_<line>_<col>`. Sibling
+        // `[widget]` calls in the same feature legitimately auto-synthesize
+        // that form (e.g. `separator()`'s bare Form 4); we filter on kind
+        // first so this test verifies the rail's no-state-global contract
+        // without snagging neighbouring widget machinery.
         var state_global_leaks = ""
-        for (k in keys(globals.value as _object)) {
-            let tail = k
-            var leaf = tail
-            let last_slash = rfind(tail, "/")
+        for (k, v in keys(globals.value as _object), values(globals.value as _object)) {
+            let kind = string(v?["kind"] ?? "")
+            if (!is_drawlist_kind(kind)) continue
+            var leaf = k
+            let last_slash = rfind(k, "/")
             if (last_slash >= 0) {
-                leaf = slice(tail, last_slash + 1)
+                leaf = slice(k, last_slash + 1)
             }
             if (length(leaf) > 9 && slice(leaf, 0, 9) == "__widget_" && length(state_global_leaks) < 200) {
                 state_global_leaks = "{state_global_leaks}{leaf};"
             }
         }
         t |> equal(state_global_leaks, "",
-                   "no `__widget_<line>_<col>` state-global leaked into globals")
+                   "no drawlist primitive leaks a `__widget_<line>_<col>` state-global path")
     }
 }
