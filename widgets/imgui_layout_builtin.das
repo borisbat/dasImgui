@@ -228,7 +228,9 @@ def public tree_node_open(text : string;
     //! `TreeNodeEx(label, flags) : bool` — open form WITHOUT auto-pair TreePop.
     //! Use when the body needs to render outside the conditional (e.g.
     //! ``same_line()`` immediately after the header trigger). Caller MUST
-    //! invoke ``tree_pop()`` when the return value is true.
+    //! invoke ``tree_pop()`` when the return value is true AND the
+    //! ``NoTreePushOnOpen`` flag was NOT set (passing that flag skips the
+    //! TreePush, so a matching TreePop would underflow the stack).
     return TreeNodeEx(text, flags)
 }
 

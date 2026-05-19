@@ -7,7 +7,13 @@ Drawlist rail
 ImGui exposes three viewport-level draw lists — window, foreground, background —
 plus a family of low-level ``Add*`` primitives that paint directly to them
 (``AddLine``, ``AddRect``, ``AddCircle``, etc.). The boost layer wraps them
-behind three scope wrappers and eight primitive functions:
+behind three scope wrappers and a primitive set covering the geometric basics
+(line / rect / circle / triangle / text) plus the v2 extras
+(rect_filled_multi_color / ellipse / ngon / polyline / bezier). The
+path-building (``path_*``), channel-splitting (``channels_*``), and
+clip-rect rails are control-flow helpers, not registered ``[drawlist_prim]``
+entries — they shape what the primitives render but do not themselves
+create snapshot rows:
 
 .. code-block:: das
 
@@ -75,6 +81,78 @@ Eight ``[drawlist_prim]``-tagged painters cover the geometric basics:
 or ``GetColorU32(ImGuiCol.*)`` for style-colour references. Positions are
 screen-space pixels; widget-relative drawing typically anchors on
 ``GetCursorScreenPos`` / ``GetItemRectMin`` / ``GetItemRectMax``.
+
+Shape extras (v2 additions)
+===========================
+
+Eight additional ``[drawlist_prim]`` painters round out the shape set:
+
+* ``add_rect_filled_multi_color(dl, a, b, col_ul, col_ur, col_br, col_bl)`` —
+  per-corner gradient (4 colours, bilinearly interpolated).
+* ``add_ellipse(dl, center, radii, col, rot = 0.0f, num_segments = 0, thickness = 1.0f)``
+  / ``add_ellipse_filled(dl, center, radii, col, rot = 0.0f, num_segments = 0)``
+  — ``radii`` = ``(rx, ry)`` half-axes; ``rot`` rotates the ellipse about
+  ``center`` (radians).
+* ``add_ngon(dl, center, radius, col, num_segments, thickness = 1.0f)``
+  / ``add_ngon_filled(dl, center, radius, col, num_segments)`` —
+  regular N-gons; ``num_segments`` required (no adaptive default).
+* ``add_polyline(dl, points : array<float2>, col, flags = ImDrawFlags.None, thickness = 1.0f)``
+  — open or closed polyline through ``points`` (use
+  ``ImDrawFlags.Closed`` to close).
+* ``add_bezier_cubic(dl, p1, p2, p3, p4, col, thickness = 1.0f, num_segments = 0)``
+  / ``add_bezier_quadratic(dl, p1, p2, p3, col, thickness = 1.0f, num_segments = 0)``
+  — bezier curves through anchor + control points.
+
+Path building
+=============
+
+For complex one-off shapes (rounded rects assembled from arcs, custom
+polygons, etc.) the path family lets the caller build a vertex stack
+incrementally then terminate with one of ``path_stroke`` /
+``path_fill_convex`` / ``path_fill_concave``:
+
+* ``path_clear(dl)`` — discard pending path vertices.
+* ``path_line_to(dl, pos)`` — append a straight-line segment.
+* ``path_arc_to(dl, center, radius, a_min, a_max, num_segments = 0)`` —
+  append a circular arc.
+* ``path_bezier_quadratic_curve_to(dl, p2, p3, num_segments = 0)`` —
+  append a quadratic bezier curve from the path's current endpoint.
+* ``path_fill_convex(dl, col)`` / ``path_fill_concave(dl, col)`` —
+  close + fill (convex is faster; concave handles non-convex polygons).
+* ``path_stroke(dl, col, flags = ImDrawFlags.None, thickness = 1.0f)`` —
+  stroke the pending path (open by default). Pass
+  ``ImDrawFlags.Closed`` to join the last vertex back to the first.
+
+See :download:`examples/features/drawlist_path.das
+<../../../examples/features/drawlist_path.das>` for a stroked rounded
+rect, filled convex pentagon, and filled concave arrow built path-style.
+
+Channel splitting
+=================
+
+ImGui drawlists are append-only — once a vertex lands, later draws sit
+on top. ``channels_split`` defers ordering: split the drawlist into N
+channels, submit each layer in convenient order, then ``channels_merge``
+flattens them in channel-index order (channel 0 first, channel N-1 last).
+
+* ``channels_split(dl, count)`` — push ``count`` channels.
+* ``channels_set_current(dl, idx)`` — switch the active channel.
+* ``channels_merge(dl)`` — flatten back to the main draw stream.
+
+Typical use: draw a card's foreground content first to measure its
+bounding box, then go back to channel 0 to paint the background card
+behind it. See :download:`examples/features/drawlist_channels.das
+<../../../examples/features/drawlist_channels.das>`.
+
+Clip rect scope
+===============
+
+``with_clip_rect(min, max, intersect_with_current) { ... }`` (lives in
+``imgui_scope_builtin``) restricts every widget and drawlist primitive
+submitted inside the block to the given screen-space rect. Set
+``intersect_with_current=true`` (typical) to intersect with the existing
+clip; ``false`` replaces it. See :download:`examples/features/clip_rect.das
+<../../../examples/features/clip_rect.das>`.
 
 Path-key telemetry
 ==================

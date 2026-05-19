@@ -28,7 +28,7 @@ def main {
         }
 
         post_command(app, "imgui_narrate", JV((
-            text = "Three scope wrappers + eight primitives — the drawlist rail.",
+            text = "Three scope wrappers + shape primitives (8 originals + v2 extras) — the drawlist rail.",
             target = T_WIN,
             frames = 180
         )))
@@ -36,6 +36,13 @@ def main {
 
         post_command(app, "imgui_narrate", JV((
             text = "with_window_drawlist — rect / line / circle / triangle / text inside the window.",
+            target = T_BAND,
+            frames = 200
+        )))
+        sleep(3500u)
+
+        post_command(app, "imgui_narrate", JV((
+            text = "Shape extras — gradient rect, ellipse, hexagon (ngon), polyline, bezier curves.",
             target = T_BAND,
             frames = 200
         )))

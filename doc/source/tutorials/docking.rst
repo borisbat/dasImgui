@@ -7,10 +7,12 @@ Docking
 ImGui's native docking lets the user grab a window's tab and drop it into a
 side pane, the bottom pane, or even pop it out to a free-floating window —
 all preserved across runs through ``imgui.ini``. The dasImgui boost layer
-wraps the C++ surface in two macros: ``dockspace`` (the full-viewport
-dockable region) and ``dock_window`` (each dockable panel inside it). A
-small ``DockBuilder`` helper seeds a 3-pane initial layout so first-run
-users see something meaningful before they start dragging tabs around.
+wraps the C++ surface in three macros: ``dockspace`` (the full-viewport
+dockable region), the sibling ``dockspace_in_window`` (an explicit
+``DockSpace`` nested inside a host ``window(HOST, …)``), and
+``dock_window`` (each dockable panel inside either dockspace). A small
+``DockBuilder`` helper seeds an initial layout so first-run users see
+something meaningful before they start dragging tabs around.
 
 Source: ``examples/tutorial/docking.das``.
 
@@ -31,9 +33,9 @@ Requires
 Same backend + boost layer as :ref:`tutorial_layout`, but layout helpers are
 replaced by the docking module:
 
-* ``imgui/imgui_docking_builtin`` — the ``dockspace`` and ``dock_window``
-  macros, plus the ``DockBuilder*`` bindings cherry-picked from ImGui's
-  internal API.
+* ``imgui/imgui_docking_builtin`` — the ``dockspace``,
+  ``dockspace_in_window``, and ``dock_window`` macros, plus the
+  ``DockBuilder*`` bindings cherry-picked from ImGui's internal API.
 
 The flag that lights it up
 ==========================
@@ -75,6 +77,50 @@ explicit.
 
 The setup is gated on ``state.has_initial_layout`` so it runs once per
 session — or after ``imgui_dock_reset`` flips the flag back to false.
+
+Variant: dockspace inside a host window
+=======================================
+
+``dockspace`` wraps ``DockSpaceOverViewport`` — the dock region claims the
+entire OS window. The sibling ``dockspace_in_window`` wraps the explicit
+``DockSpace(id, size, flags, null)`` call so the dock node lives INSIDE
+an enclosing ``window(HOST, ...)`` rather than over the viewport. Use
+this when the host window needs its own menu bar, decorations, or a
+floating / moveable frame around the dockable area.
+
+.. code-block:: das
+
+   SetNextWindowSize(ImVec2(680.0f, 440.0f), ImGuiCond.FirstUseEver)
+   window(HOST, (text = "Editor",
+                 closable = false,
+                 flags = ImGuiWindowFlags.MenuBar |
+                         ImGuiWindowFlags.NoDocking)) {
+       menu_bar(HOST_MENU) {
+           menu(FILE_MENU, (text = "File", enabled = true)) {
+               menu_item(SAVE_ITEM, (text = "Save"))
+           }
+       }
+       dockspace_in_window(DS, (size = float2(0.0f, 0.0f),
+                                flags = ImGuiDockNodeFlags.None)) {
+           dock_window(FILES, (text = "Files", closable = false,
+                               flags = ImGuiWindowFlags.None)) { ... }
+           dock_window(OUTPUT, (text = "Output", closable = false,
+                                flags = ImGuiWindowFlags.None)) { ... }
+       }
+   }
+
+The host's ``ImGuiWindowFlags.MenuBar`` / ``NoDocking`` live on the
+``window`` call, not on ``dockspace_in_window`` — the dockspace container
+only manages the dock node. ``size = (0,0)`` (typical) fills the host's
+available content region after the menu bar.
+
+``DS.dock_id`` is captured for ``DockBuilder*`` layout calls the same way
+as ``dockspace`` — the choice between the two is purely about whether
+you want the host frame around the dock area.
+
+See :download:`examples/features/dockspace_in_window.das
+<../../../examples/features/dockspace_in_window.das>` for the full
+scene.
 
 The frame loop
 ==============

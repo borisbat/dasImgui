@@ -67,7 +67,8 @@ struct DockWindowState {
 // dispatcher lambda — keeps the per-target dispatcher install single-call
 // and matches the existing `open_close_finalize` shape in containers_builtin.
 
-def private dockspace_finalize(widget_ident : string; var state : DockSpaceState) {
+def private dockspace_finalize(widget_ident : string; kind : string;
+                               var state : DockSpaceState) {
     let path = container_path_key()
     var entry : WidgetEntry
     unsafe {
@@ -81,7 +82,7 @@ def private dockspace_finalize(widget_ident : string; var state : DockSpaceState
                 }
             }
         }
-        container_finalize(widget_ident, "dockspace", entry, ser, disp)
+        container_finalize(widget_ident, kind, entry, ser, disp)
     }
 }
 
@@ -138,7 +139,28 @@ def dockspace(var state : DockSpaceState; flags : ImGuiDockNodeFlags; blk : bloc
     let id = DockSpaceOverViewport(viewport, int(flags), null)
     state.dock_id = id
     invoke(blk)
-    dockspace_finalize(widget_ident, state)
+    dockspace_finalize(widget_ident, "dockspace", state)
+}
+
+// ===== dockspace_in_window =====
+
+[container]
+def dockspace_in_window(var state : DockSpaceState; size : float2;
+                        flags : ImGuiDockNodeFlags; blk : block) {
+    //! Explicit-host dockspace — call inside a `window(HOST, (flags = MenuBar | NoDocking | ...))` body. Emits `DockSpace(GetID(widget_ident), size, flags, null)` so the dock node lives inside the host window rather than claiming the full viewport (compare `dockspace` which uses `DockSpaceOverViewport`). The host window owns its own MenuBar / NoDocking flags; this container only manages the dock node. `size=(0,0)` (typical) fills the host's available content region. `state.dock_id` is captured for `DockBuilder*` layout calls and `imgui_dock_reset` re-runs the user's setup.
+    if (state.pending_reset) {
+        if (state.dock_id != 0u) {
+            DockBuilderRemoveNode(state.dock_id)
+        }
+        state.has_initial_layout = false
+        state.pending_reset = false
+    }
+    state.flags = flags
+    let id = GetID(widget_ident)
+    DockSpace(id, size, int(flags), null)
+    state.dock_id = id
+    invoke(blk)
+    dockspace_finalize(widget_ident, "dockspace_in_window", state)
 }
 
 // ===== dock_window =====

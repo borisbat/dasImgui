@@ -43,9 +43,11 @@ require math
 //     stubs; the drawlist rail (PR-B1) doesn't carry the per-region clip-rect
 //     overrides the C++ branch uses (PushClipRect-then-AddText). TODO Phase 3.
 //   - cpp:3392-3398: BeginChild("scrolling") re-entry trick to nudge scroll
-//     state from outside the child body. ImGui hashes the child by name; the
-//     `child(...)` container would push a new ID. The two raw BeginChild /
-//     EndChild calls are ALLOWED for this idiom only.
+//     state from outside the child body. The `child_scroll_reenter(IDENT,
+//     text) { ... }` wrapper replicates the original `child(IDENT)` container's
+//     PushID(IDENT) frame so BeginChild hashes to the SAME window — without
+//     it ImGui creates a phantom sibling and SetScrollX has no visible effect.
+//     See widgets/imgui_containers_builtin.das for the wrapper definition.
 // =============================================================================
 
 // ----- Child windows section -----
@@ -53,9 +55,9 @@ var LAYOUT_CHILD_DISABLE_MOUSE_WHEEL = false
 var LAYOUT_CHILD_DISABLE_MENU = false
 var LAYOUT_CHILD_OFFSET_X = 0
 var LAYOUT_CHILD_OVERRIDE_BG = true
-var LAYOUT_CHILD_FLAGS = (int(ImGuiChildFlags.Border) |
-                          int(ImGuiChildFlags.ResizeX) |
-                          int(ImGuiChildFlags.ResizeY))
+var LAYOUT_CHILD_FLAGS = int(ImGuiChildFlags.Border |
+                             ImGuiChildFlags.ResizeX |
+                             ImGuiChildFlags.ResizeY)
 
 // ----- Widgets Width -----
 var LAYOUT_WW_FLOAT = 0.0f
@@ -209,8 +211,8 @@ def private ChildWindowsSection() {
                         }
                     }
                 }
-                let table_flags = (int(ImGuiTableFlags.Resizable) |
-                                   int(ImGuiTableFlags.NoSavedSettings))
+                let table_flags = int(ImGuiTableFlags.Resizable |
+                                      ImGuiTableFlags.NoSavedSettings)
                 data_table(LAYOUT_CHILD_TABLE,
                            (text = "split", columns = 2,
                             flags = unsafe(reinterpret<ImGuiTableFlags>(table_flags)),
@@ -234,7 +236,7 @@ def private ChildWindowsSection() {
                 "to auto-fit to vertical contents."))
         }
         with_style((ImGuiCol.ChildBg, GetStyleColorVec4(ImGuiCol.FrameBg))) {
-            let flags3 = int(ImGuiChildFlags.Border) | int(ImGuiChildFlags.ResizeY)
+            let flags3 = int(ImGuiChildFlags.Border | ImGuiChildFlags.ResizeY)
             child(LAYOUT_CHILD_RESIZABLE,
                   (text = "ResizableChild",
                    size = float2(-FLT_MIN, GetTextLineHeightWithSpacing() * 8.0f),
@@ -260,7 +262,7 @@ def private ChildWindowsSection() {
             ImVec2(0.0f, GetTextLineHeightWithSpacing() * 1.0f),
             ImVec2(FLT_MAX,
                    GetTextLineHeightWithSpacing() * float(LAYOUT_CHILD_MAX_LINES)))
-        let flags4 = int(ImGuiChildFlags.Border) | int(ImGuiChildFlags.AutoResizeY)
+        let flags4 = int(ImGuiChildFlags.Border | ImGuiChildFlags.AutoResizeY)
         child(LAYOUT_CHILD_CONSTRAINED,
               (text = "ConstrainedChild",
                size = float2(-FLT_MIN, 0.0f),
@@ -948,13 +950,13 @@ def private ScrollingSection() {
             }
         }
         var scroll_x_delta = 0.0f
-        if (small_button("<<")) {}
+        if (small_button(LAYOUT_SCROLL_LT, (text = "<<"))) {}
         if (IsItemActive()) {
             scroll_x_delta = -GetIO().DeltaTime * 1000.0f
         }
         same_line()
         text("Scroll from code"); same_line()
-        if (small_button(">>")) {}
+        if (small_button(LAYOUT_SCROLL_RT, (text = ">>"))) {}
         if (IsItemActive()) {
             scroll_x_delta = +GetIO().DeltaTime * 1000.0f
         }
@@ -963,14 +965,13 @@ def private ScrollingSection() {
         let fb_state & = LAYOUT_SCROLL_FB_CHILD
         text("{fmt_0f(fb_state.scroll.x)}/{fmt_0f(fb_state.scroll_max.x)}")
         if (scroll_x_delta != 0.0f) {
-            // Re-enter the child by name to nudge its scroll position. This
-            // is the standard ImGui trick — BeginChild outside the child body.
-            // The naked Begin/End pair is on the lint ALLOWED list for this
-            // idiom only; the `child(...)` container would push a new ID.
-            BeginChild("scrolling", float2(0.0f, 0.0f), ImGuiChildFlags.None,
-                       ImGuiWindowFlags.None)
-            SetScrollX(GetScrollX() + scroll_x_delta)
-            EndChild()
+            // Re-enter the child by name to nudge its scroll position. The
+            // wrapper replicates the `child` container's PushID(IDENT) frame
+            // so BeginChild hashes to the SAME window — without it ImGui
+            // creates a phantom sibling and SetScrollX has no visible effect.
+            child_scroll_reenter("LAYOUT_SCROLL_FB_CHILD", "scrolling") {
+                SetScrollX(GetScrollX() + scroll_x_delta)
+            }
         }
         spacing()
 

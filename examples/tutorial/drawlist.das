@@ -22,10 +22,17 @@ require imgui/imgui_visual_aids
 
 // =============================================================================
 // TUTORIAL: drawlist — three scope wrappers (with_window_drawlist /
-//           with_foreground_drawlist / with_background_drawlist) and eight
-//           primitive painters (add_line, add_rect, add_rect_filled,
-//           add_circle, add_circle_filled, add_triangle, add_triangle_filled,
-//           add_text).
+//           with_foreground_drawlist / with_background_drawlist) and the
+//           full primitive set: 8 originals (add_line, add_rect,
+//           add_rect_filled, add_circle, add_circle_filled, add_triangle,
+//           add_triangle_filled, add_text) plus the v2 additions
+//           (add_rect_filled_multi_color, add_ellipse, add_ellipse_filled,
+//           add_ngon, add_ngon_filled, add_polyline, add_bezier_cubic,
+//           add_bezier_quadratic). For the path-building, channel-splitting,
+//           and clip-rect rails see the dedicated feature files
+//           (examples/features/drawlist_path.das,
+//           examples/features/drawlist_channels.das,
+//           examples/features/clip_rect.das).
 //
 // The rail bridges to ImGui's three viewport-level draw lists with the same
 // telemetry surface as `[widget]`: path-keyed entries land in `g_registry`
@@ -39,7 +46,7 @@ require imgui/imgui_visual_aids
 
 [export]
 def init() {
-    live_create_window("dasImgui drawlist tutorial", 760, 540)
+    live_create_window("dasImgui drawlist tutorial", 760, 760)
     live_imgui_init(live_window)
     var io & = unsafe(GetIO())
     io.FontGlobalScale = 1.2
@@ -56,16 +63,16 @@ def update() {
     NewFrame()
 
     SetNextWindowPos(ImVec2(30.0f, 30.0f), ImGuiCond.Always)
-    SetNextWindowSize(ImVec2(700.0f, 480.0f), ImGuiCond.Always)
+    SetNextWindowSize(ImVec2(700.0f, 700.0f), ImGuiCond.Always)
     window(DRAW_WIN, (text = "drawlist — rail tour", closable = false,
                       flags = ImGuiWindowFlags.None)) {
-        text(DRAW_INTRO, (text = "The three scope wrappers + eight primitives."))
+        text(DRAW_INTRO, (text = "Three scope wrappers + shape primitives (8 originals + v2 extras)."))
         separator()
 
         let origin = GetCursorScreenPos()
         let red    = rgba(220u,  60u,  60u, 255u)
-        let green  = rgba( 60u, 220u, 100u, 255u)
-        let blue   = rgba( 70u, 130u, 240u, 255u)
+        let green  = rgba(60u, 220u, 100u, 255u)
+        let blue   = rgba(70u, 130u, 240u, 255u)
         let yellow = rgba(240u, 220u,  60u, 255u)
         let gray   = rgba(200u, 200u, 210u, 255u)
         let bg_tint = rgba(20u, 30u, 50u, 120u)
@@ -81,7 +88,7 @@ def update() {
                            float2(origin.x + 652.0f, origin.y + 72.0f),
                            yellow, 2.0f)
             dl |> add_circle_filled(float2(origin.x +  60.0f, origin.y + 160.0f), 32.0f, blue, 0)
-            dl |> add_circle(       float2(origin.x + 150.0f, origin.y + 160.0f), 32.0f, blue, 0, 2.0f)
+            dl |> add_circle(float2(origin.x + 150.0f, origin.y + 160.0f), 32.0f, blue, 0, 2.0f)
             dl |> add_triangle_filled(float2(origin.x + 260.0f, origin.y + 124.0f),
                                       float2(origin.x + 226.0f, origin.y + 196.0f),
                                       float2(origin.x + 294.0f, origin.y + 196.0f), green)
@@ -90,9 +97,49 @@ def update() {
                                float2(origin.x + 414.0f, origin.y + 196.0f), green, 2.0f)
             dl |> add_text(float2(origin.x +  16.0f, origin.y + 220.0f), gray,
                            "add_text — rendered onto the window drawlist")
+
+            // ----- v2 additions: shape extras -----
+            // Multi-color gradient rect.
+            dl |> add_rect_filled_multi_color(
+                float2(origin.x +  16.0f, origin.y + 260.0f),
+                float2(origin.x + 240.0f, origin.y + 290.0f),
+                rgba(255u, 0u, 0u, 220u), rgba(0u, 255u, 0u, 220u),
+                rgba(0u, 0u, 255u, 220u), rgba(255u, 255u, 0u, 220u))
+            // Stroked + filled ellipse.
+            dl |> add_ellipse(float2(origin.x + 300.0f, origin.y + 275.0f),
+                              float2(36.0f, 16.0f), yellow, 0.0f, 0, 1.5f)
+            dl |> add_ellipse_filled(float2(origin.x + 400.0f, origin.y + 275.0f),
+                                     float2(36.0f, 16.0f), blue, 0.0f, 0)
+            // Stroked + filled N-gon (hexagon).
+            dl |> add_ngon(float2(origin.x + 500.0f, origin.y + 275.0f),
+                           22.0f, green, 6, 2.0f)
+            dl |> add_ngon_filled(float2(origin.x + 580.0f, origin.y + 275.0f),
+                                  22.0f, green, 6)
+            // Cubic + quadratic bezier curves.
+            dl |> add_bezier_cubic(
+                float2(origin.x +  16.0f, origin.y + 330.0f),
+                float2(origin.x + 110.0f, origin.y + 290.0f),
+                float2(origin.x + 200.0f, origin.y + 360.0f),
+                float2(origin.x + 300.0f, origin.y + 310.0f),
+                yellow, 2.0f, 0)
+            dl |> add_bezier_quadratic(
+                float2(origin.x + 320.0f, origin.y + 330.0f),
+                float2(origin.x + 430.0f, origin.y + 290.0f),
+                float2(origin.x + 540.0f, origin.y + 330.0f),
+                blue, 2.0f, 0)
+            // Polyline (open M-shape) below.
+            var poly <- [
+                float2(origin.x +  16.0f, origin.y + 380.0f),
+                float2(origin.x +  60.0f, origin.y + 350.0f),
+                float2(origin.x + 100.0f, origin.y + 370.0f),
+                float2(origin.x + 140.0f, origin.y + 350.0f),
+                float2(origin.x + 180.0f, origin.y + 380.0f)
+            ]
+            dl |> add_polyline(poly, gray, ImDrawFlags.None, 1.5f)
+            delete poly
         }
 
-        dummy(DRAW_BAND_SLOT, (size = float2(660.0f, 240.0f)))
+        dummy(DRAW_BAND_SLOT, (size = float2(660.0f, 400.0f)))
 
         text(DRAW_FG_LABEL, (text = "Foreground swatch (overlays everything):"))
 
