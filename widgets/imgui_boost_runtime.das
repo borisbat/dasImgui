@@ -2,7 +2,6 @@ options gen2
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
-options _allow_imgui_legacy = true
 
 module imgui_boost_runtime shared
 
@@ -1145,7 +1144,7 @@ def private io_jv() : JsonValue? {
     tab |> insert("key_shift", JV(IsKeyDown(ImGuiKey.ImGuiMod_Shift)))
     tab |> insert("key_alt",   JV(IsKeyDown(ImGuiKey.ImGuiMod_Alt)))
     tab |> insert("key_super", JV(IsKeyDown(ImGuiKey.ImGuiMod_Super)))
-    tab |> insert("config_macos_behaviors", JV(unsafe(GetIO()).ConfigMacOSXBehaviors))
+    tab |> insert("config_macos_behaviors", JV(GetIO().ConfigMacOSXBehaviors))
     let active_id = GetActiveID()
     if (active_id != 0u) {
         tab |> insert("active_id", JV(active_id))

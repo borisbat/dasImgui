@@ -2,7 +2,6 @@ options gen2
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
-options _allow_imgui_legacy = true
 
 module imgui_live shared public
 
@@ -77,7 +76,7 @@ def public live_imgui_init(window : GLFWwindow?; glsl_version : string = "#versi
     }
     load_daslang_font(14.0f * live_imgui_content_scale)
     apply_daslang_theme()
-    ScaleAllSizes(unsafe(GetStyle()), live_imgui_content_scale)
+    ScaleAllSizes(GetStyle(), live_imgui_content_scale)
     ImGui_ImplGlfw_InitForOpenGL(window, true)
     ImGui_ImplOpenGL3_Init(glsl_version)
     return live_imgui_ctx

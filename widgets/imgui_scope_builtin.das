@@ -1,7 +1,6 @@
 options gen2
 options indenting = 4
 options no_unused_block_arguments = false
-options _allow_imgui_legacy = true
 
 module imgui_scope_builtin shared
 
