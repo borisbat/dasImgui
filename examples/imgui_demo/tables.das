@@ -17,11 +17,20 @@ require math
 // =============================================================================
 // Mirrors imgui_demo.cpp:4154-6044 — static void ShowDemoWindowTables().
 //
-// Port status (PR-D, this commit): section 1 Basic + section 2 Borders,
-// background. Remaining 22 sections (Resizable family / Padding / Sizing
-// policies / Scrolling / Columns flags / Background color / Tree view /
-// Custom headers / Angled headers / Context menus / Synced instances /
-// Sorting / Advanced) land in follow-up commits.
+// Port status: 24 / 24 sub-sections ported. ~2911 das lines across 8
+// commits (PR-D/2 chunks 1-8, see dasImgui PR #52). Two cpp constructs
+// deliberately partial:
+//   - Section 21 Context menus sub 2 per-column manual-open popups
+//     (cpp:5560-5582 raw `OpenPopup`/`BeginPopup` keyed on a shared
+//     "MyPopup" str_id): boost surface has no stateless `popup_window`
+//     wrapper for this pattern. Fallback: default per-column context
+//     menu (auto-emitted by `table_headers_row`) + hovered-column
+//     readout. See `show_context_menus()` body comment + backlog memory
+//     `project_dasimgui_popup_window_backlog.md`.
+//   - Section 24 Advanced Debug-details readout (cpp:6019-6031): drops
+//     the `Debug details` checkbox + `ImDrawList.CmdBuffer.Size`
+//     readout because `ImVector\`ImDrawCmd` has no `Size` accessor in
+//     the daslang binding. See `show_advanced()` body comment.
 //
 // Boost-surface conventions:
 // - cpp `static` locals → module-scope `var private` (state-hoist).
@@ -463,6 +472,13 @@ var private TABLES_ADV_SHOW_WRAPPED_TEXT  : bool   = false
 var private TABLES_ADV_ITEMS     : array<SortItem>
 var private TABLES_ADV_SELECTION : array<int>
 var private TABLES_ADV_ITEMS_NEED_SORT : bool = false
+// Cache of last-seen TableSortSpec list — populated whenever the
+// sort_specs() block fires (i.e. when ImGui reports SpecsDirty),
+// consumed when TABLES_ADV_ITEMS_NEED_SORT was set last frame by
+// Chop/Eat. Mirrors cpp's `sort_specs` pointer reuse: the boost block
+// helper auto-clears SpecsDirty on return so the raw pointer isn't
+// available to the Chop/Eat-triggered re-sort path; cache instead.
+var private TABLES_ADV_LAST_SPECS : array<TableSortSpec>
 
 // Per-row widget state — keyed by SortItem.id so paths track items
 // across re-sorts. We do NOT pre-seed: the row helper auto-inserts on
@@ -2298,7 +2314,12 @@ def private show_context_menus() {
             // menu (provided by table_headers_row above) plus a
             // hovered-column readout below.
             var hovered = -1
-            for (column in range(column_count + 1)) {
+            for (column in range(column_count)) {
+                // cpp iterates COLUMNS_COUNT + 1 to special-case the
+                // trailing unused-space column; the das port simplified
+                // that away, so cap the loop at column_count —
+                // table_get_column_flags(column_count) asserts on a
+                // 3-column table (valid indices: -1 or 0..N-1).
                 if ((int(table_get_column_flags(column)) &
                      int(ImGuiTableColumnFlags.IsHovered)) != 0) {
                     hovered = column
@@ -2746,17 +2767,31 @@ def private show_advanced() {
             table_setup_scroll_freeze(TABLES_ADV_FREEZE_COLS,
                                       TABLES_ADV_FREEZE_ROWS)
 
-            // ---- Sort (cpp:5904-5912) ----
+            // ---- Chop/Eat-triggered re-sort (cpp:5905-5910 items_need_sort path) ----
+            // Last frame's Chop/Eat may have set NEED_SORT (without
+            // dirtying SpecsDirty). Re-run the comparator against the
+            // cached specs so a quantity edit while sorted-by-quantity
+            // visibly re-orders next frame.
+            if (TABLES_ADV_ITEMS_NEED_SORT && !empty(TABLES_ADV_LAST_SPECS)) {
+                TABLES_ADV_ITEMS |> sort() $(a, b) {
+                    return adv_compare(a, b, TABLES_ADV_LAST_SPECS)
+                }
+            }
+            TABLES_ADV_ITEMS_NEED_SORT = false
+
+            // ---- SpecsDirty-driven sort (cpp:5904-5912 sort_specs path) ----
             sort_specs() $(specs) {
+                // Cache specs for the next-frame Chop/Eat-triggered
+                // re-sort path above. Clear+push avoids cross-context
+                // pointer reuse — TableSortSpec is plain workhorse fields.
+                TABLES_ADV_LAST_SPECS |> clear
+                for (s in specs) {
+                    TABLES_ADV_LAST_SPECS |> push(s)
+                }
                 TABLES_ADV_ITEMS |> sort() $(a, b) {
                     return adv_compare(a, b, specs)
                 }
             }
-            // cpp:5912 — always resets after the dirty pass. The
-            // sort_specs() helper clears the dirty flag on its own when
-            // invoked, so this is purely a local guard for the
-            // quantity-edit-induced re-sort (set below).
-            TABLES_ADV_ITEMS_NEED_SORT = false
 
             // cpp:5916 — track whether the Quantity column is currently
             // sorted; if so, Chop/Eat triggers a re-sort on button-release.
