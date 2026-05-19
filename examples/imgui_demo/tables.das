@@ -202,6 +202,43 @@ var private TABLES_COLFLAGS_LABEL         : table<int; NarrativeState>
 var private TABLES_COLFLAGS_INFLAG_LABEL  : table<int; NarrativeState>
 var private TABLES_COLFLAGS_OUTFLAG_LABEL : table<int; NarrativeState>
 
+// ---- Section 12 Columns widths state ----
+// Sub-table 1: default-width via TableSetupColumn (cpp:4938-4967).
+var private TABLES_CW1_FLAGS : int = int(ImGuiTableFlags.Borders |
+                                         ImGuiTableFlags.NoBordersInBodyUntilResize)
+var private TABLES_CW1_CELL : table<int; NarrativeState>  // 4*3 cells
+// Sub-table 2: explicit-width via TableSetupColumn (cpp:4969-5000).
+var private TABLES_CW2_FLAGS : int = int(ImGuiTableFlags.None)
+var private TABLES_CW2_CELL : table<int; NarrativeState>  // 5*4 cells
+
+// ---- Section 13 Nested tables state ----
+// One outer 2-col table holding a nested 2-col table in its first cell.
+var private TABLES_NESTED_OUTER_CELL : table<int; NarrativeState>  // 4 cells
+var private TABLES_NESTED_INNER_CELL : table<int; NarrativeState>  // 4 cells
+
+// ---- Section 14 Row height state ----
+// Sub 1: variable min_row_height per row.
+var private TABLES_RH1_CELL : table<int; NarrativeState>  // 8 cells
+// Sub 2: SameLine(0,0) line-height share — two rows, ColorButton + 2-line text.
+var private TABLES_RH2_COLOR_BTN : table<int; ClickState>     // 2 cells
+var private TABLES_RH2_LINE1     : table<int; NarrativeState> // 2 cells
+var private TABLES_RH2_LINE2     : table<int; NarrativeState> // 2 cells
+// Sub 3: per-row CellPadding.y mutation (every 3rd row).
+var private TABLES_RH3_CELL : table<int; NarrativeState>  // 8 cells
+
+// ---- Section 15 Outer size state ----
+// Sub 1: NoHostExtendX/Y toggles + sliding "Hello!" SameLine target.
+var private TABLES_OS1_FLAGS : int = int(ImGuiTableFlags.Borders |
+                                         ImGuiTableFlags.Resizable |
+                                         ImGuiTableFlags.ContextMenuInBody |
+                                         ImGuiTableFlags.RowBg |
+                                         ImGuiTableFlags.SizingFixedFit |
+                                         ImGuiTableFlags.NoHostExtendX)
+var private TABLES_OS1_CELL : table<int; NarrativeState>  // 10*3 cells
+// Sub 2 + 3: two explicit-size tables side-by-side.
+var private TABLES_OS2_CELL : table<int; NarrativeState>  // 5*3 cells
+var private TABLES_OS3_CELL : table<int; NarrativeState>  // 3*3 cells
+
 [init]
 def seed_columns_flags() {
     // cpp:4868 — `column_flags[3] = { DefaultSort, None, DefaultHide }`.
@@ -258,6 +295,10 @@ def ShowDemoWindowTables() {
         show_vertical_scrolling()
         show_horizontal_scrolling()
         show_columns_flags()
+        show_columns_widths()
+        show_nested_tables()
+        show_row_height()
+        show_outer_size()
 
         // Reset open_action so the next frame's tree_nodes inherit their
         // sticky open/closed state instead of being forced again.
@@ -1201,4 +1242,307 @@ def private show_column_status_flags(flags : int) {
     edit_checkbox_flags(unsafe(addr(local)),
         (id = "CSF_IH", text = "_IsHovered",
          flags_value = int(ImGuiTableColumnFlags.IsHovered)))
+}
+
+// =============================================================================
+// Section 12: Columns widths — cpp:4938-5002
+// =============================================================================
+def private show_columns_widths() {
+    apply_open_action()
+    tree_node(TABLES_CW, (text = "Columns widths",
+                          flags = ImGuiTreeNodeFlags.None)) {
+        // ----- Sub-table 1: TableSetupColumn default-width form -----
+        edit_checkbox_flags(safe_addr(TABLES_CW1_FLAGS),
+            (id = "TBL_CW1_F_RESIZABLE", text = "ImGuiTableFlags_Resizable",
+             flags_value = int(ImGuiTableFlags.Resizable)))
+        edit_checkbox_flags(safe_addr(TABLES_CW1_FLAGS),
+            (id = "TBL_CW1_F_NBINBODYUNTILRESIZE",
+             text = "ImGuiTableFlags_NoBordersInBodyUntilResize",
+             flags_value = int(ImGuiTableFlags.NoBordersInBodyUntilResize)))
+
+        data_table(TABLES_CW1_T,
+                   (text = "##cw_table1", columns = 3,
+                    flags = unsafe(reinterpret<ImGuiTableFlags>(TABLES_CW1_FLAGS)),
+                    outer_size = float2(0.0f, 0.0f),
+                    inner_width = 0.0f)) {
+            // Could alternatively set _SizingFixedFit on the table.
+            table_setup_column("one", ImGuiTableColumnFlags.WidthFixed, 100.0f)
+            table_setup_column("two", ImGuiTableColumnFlags.WidthFixed, 200.0f)
+            table_setup_column("three", ImGuiTableColumnFlags.WidthFixed)
+            table_headers_row()
+            for (row in range(4)) {
+                table_next_row()
+                for (col in range(3)) {
+                    table_set_column_index(col)
+                    let key = row * 3 + col
+                    if (row == 0) {
+                        let w = GetContentRegionAvail().x
+                        text(TABLES_CW1_CELL[key], (text = "(w: {w})"))
+                    } else {
+                        text(TABLES_CW1_CELL[key],
+                             (text = "Hello {col},{row}"))
+                    }
+                }
+            }
+        }
+
+        // ----- Sub-table 2: explicit width per column (TEXT_BASE_WIDTH * N) -----
+        edit_checkbox_flags(safe_addr(TABLES_CW2_FLAGS),
+            (id = "TBL_CW2_F_NOKEEP", text = "ImGuiTableFlags_NoKeepColumnsVisible",
+             flags_value = int(ImGuiTableFlags.NoKeepColumnsVisible)))
+        edit_checkbox_flags(safe_addr(TABLES_CW2_FLAGS),
+            (id = "TBL_CW2_F_BORDERS_IV", text = "ImGuiTableFlags_BordersInnerV",
+             flags_value = int(ImGuiTableFlags.BordersInnerV)))
+        edit_checkbox_flags(safe_addr(TABLES_CW2_FLAGS),
+            (id = "TBL_CW2_F_BORDERS_OV", text = "ImGuiTableFlags_BordersOuterV",
+             flags_value = int(ImGuiTableFlags.BordersOuterV)))
+
+        let text_base_width = CalcTextSize("A").x
+        data_table(TABLES_CW2_T,
+                   (text = "##cw_table2", columns = 4,
+                    flags = unsafe(reinterpret<ImGuiTableFlags>(TABLES_CW2_FLAGS)),
+                    outer_size = float2(0.0f, 0.0f),
+                    inner_width = 0.0f)) {
+            table_setup_column("", ImGuiTableColumnFlags.WidthFixed, 100.0f)
+            table_setup_column("", ImGuiTableColumnFlags.WidthFixed,
+                               text_base_width * 15.0f)
+            table_setup_column("", ImGuiTableColumnFlags.WidthFixed,
+                               text_base_width * 30.0f)
+            table_setup_column("", ImGuiTableColumnFlags.WidthFixed,
+                               text_base_width * 15.0f)
+            for (row in range(5)) {
+                table_next_row()
+                for (col in range(4)) {
+                    table_set_column_index(col)
+                    let key = row * 4 + col
+                    if (row == 0) {
+                        let w = GetContentRegionAvail().x
+                        text(TABLES_CW2_CELL[key], (text = "(w: {w})"))
+                    } else {
+                        text(TABLES_CW2_CELL[key],
+                             (text = "Hello {col},{row}"))
+                    }
+                }
+            }
+        }
+    }
+}
+
+// =============================================================================
+// Section 13: Nested tables — cpp:5006-5047
+// =============================================================================
+def private show_nested_tables() {
+    apply_open_action()
+    tree_node(TABLES_NESTED, (text = "Nested tables",
+                              flags = ImGuiTreeNodeFlags.None)) {
+        let outer_flags = (ImGuiTableFlags.Borders | ImGuiTableFlags.Resizable |
+                           ImGuiTableFlags.Reorderable | ImGuiTableFlags.Hideable)
+        data_table(TABLES_NESTED_OUTER_T,
+                   (text = "##nested_outer", columns = 2,
+                    flags = outer_flags,
+                    outer_size = float2(0.0f, 0.0f),
+                    inner_width = 0.0f)) {
+            table_setup_column("A0")
+            table_setup_column("A1")
+            table_headers_row()
+
+            // Cell (0, 0): outer label + nested 2-col data_table.
+            table_next_column()
+            text(TABLES_NESTED_OUTER_CELL[0], (text = "A0 Row 0"))
+
+            let rows_height = GetTextLineHeightWithSpacing() * 2.0f
+            data_table(TABLES_NESTED_INNER_T,
+                       (text = "##nested_inner", columns = 2,
+                        flags = outer_flags,
+                        outer_size = float2(0.0f, 0.0f),
+                        inner_width = 0.0f)) {
+                table_setup_column("B0")
+                table_setup_column("B1")
+                table_headers_row()
+
+                table_next_row(ImGuiTableRowFlags.None, rows_height)
+                table_next_column()
+                text(TABLES_NESTED_INNER_CELL[0], (text = "B0 Row 0"))
+                table_next_column()
+                text(TABLES_NESTED_INNER_CELL[1], (text = "B1 Row 0"))
+                table_next_row(ImGuiTableRowFlags.None, rows_height)
+                table_next_column()
+                text(TABLES_NESTED_INNER_CELL[2], (text = "B0 Row 1"))
+                table_next_column()
+                text(TABLES_NESTED_INNER_CELL[3], (text = "B1 Row 1"))
+            }
+
+            // Continue outer table after the nested one.
+            table_next_column()
+            text(TABLES_NESTED_OUTER_CELL[1], (text = "A1 Row 0"))
+            table_next_column()
+            text(TABLES_NESTED_OUTER_CELL[2], (text = "A0 Row 1"))
+            table_next_column()
+            text(TABLES_NESTED_OUTER_CELL[3], (text = "A1 Row 1"))
+        }
+    }
+}
+
+// =============================================================================
+// Section 14: Row height — cpp:5052-5112
+// =============================================================================
+def private show_row_height() {
+    apply_open_action()
+    tree_node(TABLES_RH, (text = "Row height",
+                          flags = ImGuiTreeNodeFlags.None)) {
+        let line_height = GetTextLineHeightWithSpacing()
+
+        // ----- Sub 1: min_row_height grows linearly per row -----
+        data_table(TABLES_RH1_T,
+                   (text = "##rh_table", columns = 1,
+                    flags = ImGuiTableFlags.Borders,
+                    outer_size = float2(0.0f, 0.0f),
+                    inner_width = 0.0f)) {
+            for (row in range(8)) {
+                let min_row_height = float(int(line_height * 0.30f * float(row)))
+                table_next_row(ImGuiTableRowFlags.None, min_row_height)
+                table_next_column()
+                text(TABLES_RH1_CELL[row],
+                     (text = "min_row_height = {min_row_height}"))
+            }
+        }
+
+        // ----- Sub 2: SameLine(0, 0) shares line height across cells -----
+        // Two rows; each has a ColorButton in col 0 and a 2-line text in
+        // col 1. Row 1 puts an explicit `SameLine(0, 0)` before the
+        // first text line to demonstrate sharing the previous column's
+        // line height.
+        data_table(TABLES_RH2_T,
+                   (text = "##rh_share", columns = 2,
+                    flags = ImGuiTableFlags.Borders,
+                    outer_size = float2(0.0f, 0.0f),
+                    inner_width = 0.0f)) {
+            let cb_color = float4(0.13f, 0.26f, 0.40f, 1.0f)
+            let cb_size = float2(40.0f, 40.0f)
+
+            table_next_row()
+            table_next_column()
+            color_button(TABLES_RH2_COLOR_BTN[0],
+                         (desc_id = "##rh2_cb0", col = cb_color, size = cb_size,
+                          flags = ImGuiColorEditFlags.None))
+            table_next_column()
+            text(TABLES_RH2_LINE1[0], (text = "Line 1"))
+            text(TABLES_RH2_LINE2[0], (text = "Line 2"))
+
+            table_next_row()
+            table_next_column()
+            color_button(TABLES_RH2_COLOR_BTN[1],
+                         (desc_id = "##rh2_cb1", col = cb_color, size = cb_size,
+                          flags = ImGuiColorEditFlags.None))
+            table_next_column()
+            // SameLine(0, 0) reuses line height from previous column.
+            same_line(TABLES_RH2_SL_REUSE,
+                      (offset_from_start_x = 0.0f, spacing = 0.0f))
+            text(TABLES_RH2_LINE1[1], (text = "Line 1, with SameLine(0,0)"))
+            text(TABLES_RH2_LINE2[1], (text = "Line 2"))
+        }
+
+        // ----- Sub 3: per-row CellPadding.y mutation (every 3rd row) -----
+        // cpp uses raw `Push/PopStyleVar(CellPadding)` only on rows where
+        // `row % 3 == 2`. The boost `with_style(...)` block scopes the
+        // push to its body, so we wrap just the row-2 emit in it.
+        data_table(TABLES_RH3_T,
+                   (text = "##rh_cellpad_y", columns = 1,
+                    flags = ImGuiTableFlags.Borders,
+                    outer_size = float2(0.0f, 0.0f),
+                    inner_width = 0.0f)) {
+            let cell_padding_x = GetStyle().CellPadding.x
+            let cell_padding_y = GetStyle().CellPadding.y
+            for (row in range(8)) {
+                if (row % 3 == 2) {
+                    with_style((ImGuiStyleVar.CellPadding,
+                                float2(cell_padding_x, 20.0f))) {
+                        table_next_row(ImGuiTableRowFlags.None)
+                        table_next_column()
+                        text(TABLES_RH3_CELL[row],
+                             (text = "CellPadding.y = {cell_padding_y}"))
+                    }
+                } else {
+                    table_next_row(ImGuiTableRowFlags.None)
+                    table_next_column()
+                    text(TABLES_RH3_CELL[row],
+                         (text = "CellPadding.y = {cell_padding_y}"))
+                }
+            }
+        }
+    }
+}
+
+// =============================================================================
+// Section 15: Outer size — cpp:5117-5179
+// =============================================================================
+def private show_outer_size() {
+    apply_open_action()
+    tree_node(TABLES_OS, (text = "Outer size",
+                          flags = ImGuiTreeNodeFlags.None)) {
+        text(TABLES_OS_HEADER_TEXT, (text = "Using NoHostExtendX and NoHostExtendY:"))
+
+        edit_checkbox_flags(safe_addr(TABLES_OS1_FLAGS),
+            (id = "TBL_OS1_F_NOHOSTX", text = "ImGuiTableFlags_NoHostExtendX",
+             flags_value = int(ImGuiTableFlags.NoHostExtendX)))
+        edit_checkbox_flags(safe_addr(TABLES_OS1_FLAGS),
+            (id = "TBL_OS1_F_NOHOSTY", text = "ImGuiTableFlags_NoHostExtendY",
+             flags_value = int(ImGuiTableFlags.NoHostExtendY)))
+
+        let line_height = GetTextLineHeightWithSpacing()
+        let outer_size_1 = float2(0.0f, line_height * 5.5f)
+        data_table(TABLES_OS1_T,
+                   (text = "##os_table1", columns = 3,
+                    flags = unsafe(reinterpret<ImGuiTableFlags>(TABLES_OS1_FLAGS)),
+                    outer_size = outer_size_1,
+                    inner_width = 0.0f)) {
+            for (row in range(10)) {
+                table_next_row()
+                for (col in range(3)) {
+                    table_next_column()
+                    text(TABLES_OS1_CELL[row * 3 + col],
+                         (text = "Cell {col},{row}"))
+                }
+            }
+        }
+        same_line(TABLES_OS1_SL)
+        text(TABLES_OS1_HELLO, (text = "Hello!"))
+
+        spacing()
+        text(TABLES_OS_EXPLICIT_HEADER, (text = "Using explicit size:"))
+
+        let text_base_width = CalcTextSize("A").x
+        let explicit_size = float2(text_base_width * 30.0f, 0.0f)
+        let table_2_3_flags = (ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg)
+
+        data_table(TABLES_OS2_T,
+                   (text = "##os_table2", columns = 3,
+                    flags = table_2_3_flags,
+                    outer_size = explicit_size,
+                    inner_width = 0.0f)) {
+            for (row in range(5)) {
+                table_next_row()
+                for (col in range(3)) {
+                    table_next_column()
+                    text(TABLES_OS2_CELL[row * 3 + col],
+                         (text = "Cell {col},{row}"))
+                }
+            }
+        }
+        same_line(TABLES_OS_SL_2_3)
+        data_table(TABLES_OS3_T,
+                   (text = "##os_table3", columns = 3,
+                    flags = table_2_3_flags,
+                    outer_size = explicit_size,
+                    inner_width = 0.0f)) {
+            for (row in range(3)) {
+                table_next_row(ImGuiTableRowFlags.None, line_height * 1.5f)
+                for (col in range(3)) {
+                    table_next_column()
+                    text(TABLES_OS3_CELL[row * 3 + col],
+                         (text = "Cell {col},{row}"))
+                }
+            }
+        }
+    }
 }
