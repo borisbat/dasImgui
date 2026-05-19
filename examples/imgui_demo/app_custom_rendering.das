@@ -297,13 +297,14 @@ def private show_canvas_tab() {
 
     let drag_delta = GetMouseDragDelta(ImGuiMouseButton.Right, -1.0f)
     // Mirrors cpp original: `popup` (BeginPopup) is unconditional, but the
-    // ONLY way the popup opens is the explicit OpenPopupOnItemClick path,
-    // double-gated by CR_CANVAS_OPT_CTX and a no-right-drag guard. Using
-    // popup_context_item here would install its OWN RMB opener that bypasses
-    // both guards (round-1 fix only gated open_popup_on_item_click but kept
-    // the popup_context_item rail, so RMB still opened the menu mid-pan).
+    // ONLY way the popup opens is the explicit open_popup_on_item_click
+    // path, double-gated by CR_CANVAS_OPT_CTX and a no-right-drag guard.
+    // Uses the STATEFUL state-arg overload — the string-id form computes
+    // GetID("context") at the call site, which doesn't match the popup
+    // container's BeginPopup ID (the container does its own PushID(IDENT)),
+    // so the popup would never actually open.
     if (CR_CANVAS_OPT_CTX && drag_delta.x == 0.0f && drag_delta.y == 0.0f) {
-        open_popup_on_item_click("context", ImGuiPopupFlags.MouseButtonRight)
+        open_popup_on_item_click(CR_CV_CTX_MENU, ImGuiPopupFlags.MouseButtonRight)
     }
     popup(CR_CV_CTX_MENU,
           (text = "context", flags = ImGuiWindowFlags.None)) {

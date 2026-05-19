@@ -187,7 +187,12 @@ def private show_close_confirm() {
         return
     }
     if (!POPUP_OPEN_LATCH) {
-        open_popup("Save?", ImGuiPopupFlags.None)
+        // Stateful overload — open_popup("Save?", ...) string-id form
+        // computes GetID("Save?") at this call site, which doesn't match
+        // the popup_modal container's BeginPopupModal ID (the container
+        // does its own PushID(DOCS_CLOSE_MODAL)), so the modal would
+        // never display.
+        open_popup(DOCS_CLOSE_MODAL)
         POPUP_OPEN_LATCH = true
     }
     popup_modal(DOCS_CLOSE_MODAL, (text = "Save?", closable = false,

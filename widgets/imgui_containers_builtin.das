@@ -399,6 +399,26 @@ def open_popup_on_item_click(str_id : string;
     OpenPopupOnItemClick(str_id, flags)
 }
 
+def open_popup_on_item_click(var state : PopupState;
+                             flags : ImGuiPopupFlags = ImGuiPopupFlags.MouseButtonRight) : void {
+    //! Stateful right-click trigger paired with `popup` / `popup_modal`
+    //! containers. Checks ``IsMouseReleased`` + ``IsItemHovered`` on the
+    //! previously-submitted item, then queues ``state.pending_open`` so the
+    //! container's NEXT visit opens the popup INSIDE its own
+    //! ``PushID(IDENT)`` scope. The string-id form
+    //! (:ref:`open_popup_on_item_click(str_id, …) <function-imgui_containers_builtin_open_popup_on_item_click_string_ImGuiPopupFlags>`)
+    //! computes ``GetID(str_id)`` at the call-site ID stack, which DOES NOT
+    //! match a registered ``popup`` container's ``BeginPopup`` ID (the
+    //! container does its own ``PushID(IDENT)`` first) — so the popup never
+    //! opens. Use this overload whenever the target popup is a
+    //! ``popup(IDENT, …)`` / ``popup_modal(IDENT, …)`` container.
+    let mb = int(flags) & int(ImGuiPopupFlags.MouseButtonMask_)
+    if (IsMouseReleased(unsafe(reinterpret<ImGuiMouseButton>(mb)))
+            && IsItemHovered(ImGuiHoveredFlags.AllowWhenBlockedByPopup)) {
+        state.pending_open = true
+    }
+}
+
 def close_current_popup(var state : PopupState) : void {
     //! Close the active popup. Sets `pending_close` for state-transition
     //! telemetry AND calls `CloseCurrentPopup()` directly so the close
