@@ -80,5 +80,23 @@ def main {
         )))
         move_to(app, p_val5)
         sleep(3500u)
+
+        // ---- Stage 5: sort_specs — single-column sort on Name ----
+        post_command(app, "imgui_narrate", JV((
+            text = "sort_specs() captures column user_ids on header clicks.",
+            target = T_NAME0,
+            frames = 180
+        )))
+        move_to(app, p_name0)
+        sleep(3500u)
+
+        // ---- Stage 6: SortMulti — Shift+click adds a secondary key ----
+        post_command(app, "imgui_narrate", JV((
+            text = "SortMulti + Shift+click appends a secondary sort key.",
+            target = T_KIND2,
+            frames = 180
+        )))
+        move_to(app, p_kind2)
+        sleep(3500u)
     }
 }

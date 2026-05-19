@@ -383,8 +383,23 @@ namespace das {
         ImGui::SetNextWindowSizeConstraints(size_min, size_max);
     }
 
-    ImGuiSortDirection_ SortDirection ( const ImGuiTableColumnSortSpecs & specs ) {
-        return ImGuiSortDirection_(specs.SortDirection);
+    ImGuiSortDirection_ GetColumnSortDirection ( const ImGuiTableColumnSortSpecs * specs ) {
+        // Takes pointer (not reference) for daslang interop consistency with `GetSortSpec`.
+        // The bitfield-stored `SortDirection` is exposed as this free helper because
+        // `ImU8 SortDirection : 8` doesn't survive the generated struct-annotation binding.
+        // Renamed from bare `SortDirection` to avoid `decltype(&das::SortDirection)` ambiguity
+        // with the struct member `ImGuiTableColumnSortSpecs::SortDirection` under MSVC.
+        return ImGuiSortDirection_(specs->SortDirection);
+    }
+
+    const ImGuiTableColumnSortSpecs * GetSortSpec ( ImGuiTableSortSpecs * specs, int idx ) {
+        // Indexed access to ``ImGuiTableSortSpecs::Specs`` (a `const ImGuiTableColumnSortSpecs *`
+        // array) — daslang has no native C-pointer-arithmetic, so this small helper exposes
+        // per-index access via pointer. Returns pointer (not reference) because daslang's interop
+        // WrapType layer only handles `T*` cleanly for non-workhorse return types; `const T&`
+        // returns trigger "missing WrapType implementation" at runtime.
+        // Caller responsibility: specs != NULL && 0 <= idx < specs->SpecsCount.
+        return &specs->Specs[idx];
     }
 
     ImVec2 CalcTextSize(const char* text,bool hide_text_after_double_hash, float wrap_width) {
@@ -553,9 +568,11 @@ namespace das {
         addExtern<DAS_BIND_FUN(das::SetNextWindowSizeConstraintsNoCallback), SimNode_ExtFuncCall, imguiTempFn>(*this,lib,"SetNextWindowSizeConstraints",
             SideEffects::worstDefault,"das::SetNextWindowSizeConstraintsNoCallback")
                 ->args({"size_min","size_max"});
-        // ImGuiTableColumnSortSpecs
-        addExtern<DAS_BIND_FUN(das::SortDirection)>(*this,lib,"SortDirection",
-            SideEffects::none,"das::SortDirection");
+        // ImGuiTableColumnSortSpecs / ImGuiTableSortSpecs
+        addExtern<DAS_BIND_FUN(das::GetColumnSortDirection)>(*this,lib,"GetColumnSortDirection",
+            SideEffects::none,"das::GetColumnSortDirection");
+        addExtern<DAS_BIND_FUN(das::GetSortSpec)>(*this,lib,"GetSortSpec",
+            SideEffects::none,"das::GetSortSpec");
         // CalcTextSize
         addExtern<DAS_BIND_FUN(das::CalcTextSize)>(*this, lib, "CalcTextSize",SideEffects::worstDefault, "das::CalcTextSize")
         ->args({"text","hide_text_after_double_hash","wrap_width"})
