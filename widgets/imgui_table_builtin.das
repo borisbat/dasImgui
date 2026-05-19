@@ -67,6 +67,23 @@ def public table_headers_row() {
     TableHeadersRow()
 }
 
+def public table_header(text : string) {
+    //! `TableHeader(label)` — submit a single custom header cell (instead of
+    //! the default `table_headers_row`). Pair with `table_next_row(Headers)`
+    //! / per-column `table_set_column_index` for full control over header
+    //! contents (e.g. checkbox + label, multi-line text, custom alignment).
+    TableHeader(text)
+}
+
+def public table_angled_headers_row() {
+    //! `TableAngledHeadersRow()` — submit a header row with column labels
+    //! rotated by `ImGuiStyle.TableAngledHeadersAngle` (default 35°). Useful
+    //! when narrow columns can't fit horizontal labels. Set the
+    //! `ImGuiTableColumnFlags.AngledHeader` flag on each column before
+    //! calling.
+    TableAngledHeadersRow()
+}
+
 def public table_next_row(flags : ImGuiTableRowFlags = ImGuiTableRowFlags.None;
                           min_row_height : float = 0.0f) {
     //! `TableNextRow(flags, min_row_height)` — append a new row; pairs with
@@ -84,6 +101,48 @@ def public table_set_column_index(col : int) : bool {
     //! `TableSetColumnIndex(col)` — jump to ``col`` in the current row; returns
     //! true when the column is visible.
     return TableSetColumnIndex(col)
+}
+
+def public table_set_bg_color(target : ImGuiTableBgTarget; color : uint;
+                              column_n : int = -1) {
+    //! `TableSetBgColor(target, color, column_n)` — paint a row/cell
+    //! background. ``target`` picks the layer (``RowBg0`` / ``RowBg1`` /
+    //! ``CellBg``); ``color`` is `pack_color`-packed; ``column_n = -1``
+    //! means the current column under ``CellBg``. Call after the row's
+    //! `table_next_row` (and the relevant `table_set_column_index` for
+    //! ``CellBg``).
+    TableSetBgColor(target, color, column_n)
+}
+
+def public table_get_column_count() : int {
+    //! `TableGetColumnCount()` — column count of the current table.
+    return TableGetColumnCount()
+}
+
+def public table_get_column_index() : int {
+    //! `TableGetColumnIndex()` — 0-based index of the column the cursor is
+    //! currently in.
+    return TableGetColumnIndex()
+}
+
+def public table_get_row_index() : int {
+    //! `TableGetRowIndex()` — 0-based index of the row the cursor is
+    //! currently in.
+    return TableGetRowIndex()
+}
+
+def public table_get_column_name(col : int = -1) : string {
+    //! `TableGetColumnName(column_n)` — label of column ``col`` (the value
+    //! passed to `table_setup_column`); ``-1`` means the current column.
+    return TableGetColumnName(col)
+}
+
+def public table_get_column_flags(col : int = -1) : ImGuiTableColumnFlags {
+    //! `TableGetColumnFlags(column_n)` — current per-column flags, including
+    //! status bits set at runtime (``IsHovered`` / ``IsSorted`` / ``IsEnabled``
+    //! / ``IsVisible``); ``-1`` means the current column. Mask with
+    //! ``ImGuiTableColumnFlags.StatusMask_`` to read just the status bits.
+    return TableGetColumnFlags(col)
 }
 
 struct public TableSortSpec {
