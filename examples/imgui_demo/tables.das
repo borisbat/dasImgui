@@ -101,6 +101,31 @@ var private TABLES_RHH_FLAGS : int = int(ImGuiTableFlags.Resizable |
 var private TABLES_RHH_T1_CELL : table<int; NarrativeState>
 var private TABLES_RHH_T2_CELL : table<int; NarrativeState>
 
+// ---- Section 7 Padding state ----
+// Two sub-tables: table_padding (flag toggles + Avail/FillButton cells)
+// and table_padding_2 (CellPadding style-var + InputText grid).
+var private TABLES_PAD1_FLAGS : int = int(ImGuiTableFlags.BordersV)
+var private TABLES_PAD1_AVAIL : table<int; NarrativeState>  // row 0 cells: "Avail %.2f"
+var private TABLES_PAD1_BTN   : table<int; ClickState>      // rows 1-4 cells: FillButton "Hello c,r"
+
+var private TABLES_PAD2_FLAGS        : int    = int(ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg)
+var private TABLES_PAD2_CELL_PADDING : float2 = float2(0.0f, 0.0f)
+// 15 InputText cells; the boost (text=..., init=...) named-tuple form
+// seeds the buffer to "edit me" on first call (matches cpp's static init).
+var private TABLES_PAD2_CELL_IT      : table<int; InputTextState>
+
+[init]
+def seed_padding_cells() {
+    // Pre-populate the 15-cell InputText buffer with "edit me" to mirror
+    // the cpp static char text_bufs[3*5][16] + init flag pattern. The
+    // boost init= named-tuple sugar isn't supported on indexed [widget]
+    // form (per the macro's named-init-on-indexed-form diagnostic), so
+    // direct field set in [init] is the documented workaround.
+    for (i in range(15)) {
+        TABLES_PAD2_CELL_IT[i].value := "edit me"
+    }
+}
+
 def ShowDemoWindowTables() {
     collapsing_header(TABLES_SECTION,
                       (text = "Tables & Columns", closable = false,
@@ -121,6 +146,7 @@ def ShowDemoWindowTables() {
         show_resizable_fixed()
         show_resizable_mixed()
         show_reorderable_hideable_headers()
+        show_padding()
 
         // Reset open_action so the next frame's tree_nodes inherit their
         // sticky open/closed state instead of being forced again.
@@ -454,6 +480,120 @@ def private show_reorderable_hideable_headers() {
                     table_set_column_index(col)
                     text(TABLES_RHH_T2_CELL[row * 3 + col],
                          (text = "Fixed {col},{row}"))
+                }
+            }
+        }
+    }
+}
+
+// =============================================================================
+// Section 7: Padding — cpp:4508-4613
+// =============================================================================
+def private show_padding_inputtext_grid() {
+    // Body extracted so the outer conditional FrameBg push wraps a single
+    // call (instead of duplicating the 15-cell loop in each branch). Each
+    // cell's own (text, init) seeds the buffer to "edit me" on first call.
+    for (cell in range(15)) {
+        table_next_column()
+        SetNextItemWidth(-FLT_MIN)
+        input_text(TABLES_PAD2_CELL_IT[cell], (text = "##cell"))
+    }
+}
+
+def private show_padding() {
+    apply_open_action()
+    tree_node(TABLES_PADDING, (text = "Padding",
+                               flags = ImGuiTreeNodeFlags.None)) {
+        // ----- Sub-table 1: padding-flag effect on X spacing -----
+        // PadOuterX / NoPadOuterX / NoPadInnerX + BordersOuterV/InnerV.
+        // The first row's cell reads ContentRegionAvail.x so the
+        // available-width effect of each toggle is visible at a glance.
+        edit_checkbox_flags(safe_addr(TABLES_PAD1_FLAGS),
+            (id = "TBL_P1_F_PAD_OUT_X", text = "ImGuiTableFlags_PadOuterX",
+             flags_value = int(ImGuiTableFlags.PadOuterX)))
+        edit_checkbox_flags(safe_addr(TABLES_PAD1_FLAGS),
+            (id = "TBL_P1_F_NOPAD_OUT_X", text = "ImGuiTableFlags_NoPadOuterX",
+             flags_value = int(ImGuiTableFlags.NoPadOuterX)))
+        edit_checkbox_flags(safe_addr(TABLES_PAD1_FLAGS),
+            (id = "TBL_P1_F_NOPAD_IN_X", text = "ImGuiTableFlags_NoPadInnerX",
+             flags_value = int(ImGuiTableFlags.NoPadInnerX)))
+        edit_checkbox_flags(safe_addr(TABLES_PAD1_FLAGS),
+            (id = "TBL_P1_F_BORDERS_OV", text = "ImGuiTableFlags_BordersOuterV",
+             flags_value = int(ImGuiTableFlags.BordersOuterV)))
+        edit_checkbox_flags(safe_addr(TABLES_PAD1_FLAGS),
+            (id = "TBL_P1_F_BORDERS_IV", text = "ImGuiTableFlags_BordersInnerV",
+             flags_value = int(ImGuiTableFlags.BordersInnerV)))
+        checkbox(TABLES_PAD1_SHOW_HEADERS, (text = "show_headers", init = false))
+
+        data_table(TABLES_PAD1_T, (text = "##pad1", columns = 3,
+                                   flags = unsafe(reinterpret<ImGuiTableFlags>(TABLES_PAD1_FLAGS)),
+                                   outer_size = float2(0.0f, 0.0f),
+                                   inner_width = 0.0f)) {
+            if (TABLES_PAD1_SHOW_HEADERS.value) {
+                table_setup_column("One")
+                table_setup_column("Two")
+                table_setup_column("Three")
+                table_headers_row()
+            }
+            for (row in range(5)) {
+                table_next_row()
+                for (col in range(3)) {
+                    table_set_column_index(col)
+                    if (row == 0) {
+                        let avail = GetContentRegionAvail().x
+                        text(TABLES_PAD1_AVAIL[col],
+                             (text = "Avail {avail}"))
+                    } else {
+                        let key = (row - 1) * 3 + col
+                        button(TABLES_PAD1_BTN[key],
+                               (text = "Hello {col},{row}",
+                                size = float2(-FLT_MIN, 0.0f)))
+                    }
+                }
+            }
+        }
+
+        // ----- Sub-table 2: explicit CellPadding style-var -----
+        // Sliderable CellPadding (0..10, %.0f) overrides ImGuiStyle for the
+        // wrapped data_table call. Optional FrameBg=0 push hides the per-
+        // InputText frame so the cell padding is visually unambiguous.
+        edit_checkbox_flags(safe_addr(TABLES_PAD2_FLAGS),
+            (id = "TBL_P2_F_BORDERS", text = "ImGuiTableFlags_Borders",
+             flags_value = int(ImGuiTableFlags.Borders)))
+        edit_checkbox_flags(safe_addr(TABLES_PAD2_FLAGS),
+            (id = "TBL_P2_F_BORDERSH", text = "ImGuiTableFlags_BordersH",
+             flags_value = int(ImGuiTableFlags.BordersH)))
+        edit_checkbox_flags(safe_addr(TABLES_PAD2_FLAGS),
+            (id = "TBL_P2_F_BORDERSV", text = "ImGuiTableFlags_BordersV",
+             flags_value = int(ImGuiTableFlags.BordersV)))
+        edit_checkbox_flags(safe_addr(TABLES_PAD2_FLAGS),
+            (id = "TBL_P2_F_BORDERS_IN", text = "ImGuiTableFlags_BordersInner",
+             flags_value = int(ImGuiTableFlags.BordersInner)))
+        edit_checkbox_flags(safe_addr(TABLES_PAD2_FLAGS),
+            (id = "TBL_P2_F_BORDERS_OUT", text = "ImGuiTableFlags_BordersOuter",
+             flags_value = int(ImGuiTableFlags.BordersOuter)))
+        edit_checkbox_flags(safe_addr(TABLES_PAD2_FLAGS),
+            (id = "TBL_P2_F_ROWBG", text = "ImGuiTableFlags_RowBg",
+             flags_value = int(ImGuiTableFlags.RowBg)))
+        edit_checkbox_flags(safe_addr(TABLES_PAD2_FLAGS),
+            (id = "TBL_P2_F_RESIZABLE", text = "ImGuiTableFlags_Resizable",
+             flags_value = int(ImGuiTableFlags.Resizable)))
+        checkbox(TABLES_PAD2_SHOW_FRAMEBG, (text = "show_widget_frame_bg", init = true))
+        edit_slider_float2(safe_addr(TABLES_PAD2_CELL_PADDING),
+            (id = "TBL_P2_CELL_PAD", text = "CellPadding",
+             v_min = 0.0f, v_max = 10.0f, format = "%.0f"))
+
+        with_style((ImGuiStyleVar.CellPadding, TABLES_PAD2_CELL_PADDING)) {
+            data_table(TABLES_PAD2_T, (text = "##pad2", columns = 3,
+                                       flags = unsafe(reinterpret<ImGuiTableFlags>(TABLES_PAD2_FLAGS)),
+                                       outer_size = float2(0.0f, 0.0f),
+                                       inner_width = 0.0f)) {
+                if (!TABLES_PAD2_SHOW_FRAMEBG.value) {
+                    with_style((ImGuiCol.FrameBg, 0u)) {
+                        show_padding_inputtext_grid()
+                    }
+                } else {
+                    show_padding_inputtext_grid()
                 }
             }
         }
