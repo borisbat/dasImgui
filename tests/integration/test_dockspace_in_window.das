@@ -26,14 +26,14 @@ def test_dockspace_in_window_captures_dock_id(t : T?) {
         var ds_snap = wait_for_widget(d, "HOST/DS", 15.0f)
         t |> success(ds_snap != null, "HOST/DS dockspace registers")
         if (ds_snap == null) return
-        let dock_id_0 = uint(find_widget(ds_snap, "HOST/DS")?["state"]?["dock_id"] ?? 0u)
+        let dock_id_0 = uint(find_widget(ds_snap, "HOST/DS")?["payload"]?["dock_id"] ?? 0u)
         t |> success(dock_id_0 != 0u,
                      "DS.dock_id captured on first render (got 0x{dock_id_0})")
         // Wait a few frames; dock_id must stay stable.
         await_quiescent(d, 5.0f)
         var snap1 = snapshot(d)
         if (snap1 == null) return
-        let dock_id_1 = uint(find_widget(snap1, "HOST/DS")?["state"]?["dock_id"] ?? 0u)
+        let dock_id_1 = uint(find_widget(snap1, "HOST/DS")?["payload"]?["dock_id"] ?? 0u)
         t |> equal(dock_id_1, dock_id_0,
                    "DS.dock_id stable across frames")
     }
