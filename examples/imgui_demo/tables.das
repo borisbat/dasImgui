@@ -239,6 +239,78 @@ var private TABLES_OS1_CELL : table<int; NarrativeState>  // 10*3 cells
 var private TABLES_OS2_CELL : table<int; NarrativeState>  // 5*3 cells
 var private TABLES_OS3_CELL : table<int; NarrativeState>  // 3*3 cells
 
+// ---- Section 16 Background color state ----
+// 3 mode selectors + 5*6 cell text. Each selector is an int-backed Combo.
+var private TABLES_BG_FLAGS         : int = int(ImGuiTableFlags.RowBg)
+var private TABLES_BG_ROW_BG_TYPE   : int = 1
+var private TABLES_BG_ROW_BG_TARGET : int = 1
+var private TABLES_BG_CELL_BG_TYPE  : int = 1
+var private TABLES_BG_CELL : table<int; NarrativeState>  // 5*6 cells, "row+col" charpairs
+
+// ---- Section 17 Tree view state ----
+var private TABLES_TREE_FLAGS    : int = int(ImGuiTableFlags.BordersV |
+                                             ImGuiTableFlags.BordersOuterH |
+                                             ImGuiTableFlags.Resizable |
+                                             ImGuiTableFlags.RowBg |
+                                             ImGuiTableFlags.NoBordersInBody)
+var private TABLES_TREE_NODE_FLAGS : int = int(ImGuiTreeNodeFlags.SpanAllColumns)
+// Per-node widget state — there are 9 cpp nodes (idx 0..8). Each node has
+// 1 TreeNode + 2 trailing-column texts. Keyed by node index.
+var private TABLES_TREE_NODE       : table<int; TreeNodeState>
+var private TABLES_TREE_NODE_LEAF  : table<int; TreeNodeState>
+var private TABLES_TREE_SIZE_CELL  : table<int; NarrativeState>
+var private TABLES_TREE_TYPE_CELL  : table<int; NarrativeState>
+// File-system mirror — same shape as the cpp `MyTreeNode` array.
+struct private TreeViewNode {
+    name        : string
+    node_type   : string
+    size        : int
+    child_idx   : int
+    child_count : int
+}
+let private TREE_VIEW_NODES <- [
+    TreeViewNode(name = "Root",
+                 node_type = "Folder", size = -1, child_idx = 1, child_count = 3),
+    TreeViewNode(name = "Music",
+                 node_type = "Folder", size = -1, child_idx = 4, child_count = 2),
+    TreeViewNode(name = "Textures",
+                 node_type = "Folder", size = -1, child_idx = 6, child_count = 3),
+    TreeViewNode(name = "desktop.ini",
+                 node_type = "System file", size = 1024, child_idx = -1, child_count = -1),
+    TreeViewNode(name = "File1_a.wav",
+                 node_type = "Audio file", size = 123000, child_idx = -1, child_count = -1),
+    TreeViewNode(name = "File1_b.wav",
+                 node_type = "Audio file", size = 456000, child_idx = -1, child_count = -1),
+    TreeViewNode(name = "Image001.png",
+                 node_type = "Image file", size = 203128, child_idx = -1, child_count = -1),
+    TreeViewNode(name = "Copy of Image001.png",
+                 node_type = "Image file", size = 203256, child_idx = -1, child_count = -1),
+    TreeViewNode(name = "Copy of Image001 (Final2).png",
+                 node_type = "Image file", size = 203512, child_idx = -1, child_count = -1)]
+
+// ---- Section 18 Item width state ----
+// 3-col table, 3-row body, 9 indexed SliderFloats. cpp shares a single
+// `dummy_f` across all 9; the boost slider state owns its own value, so
+// each cell here has its own — a benign divergence (still demonstrates
+// the per-column ItemWidth setup).
+var private TABLES_ITEM_WIDTH_SLIDER : table<int; SliderStateFloat>  // 3*3 sliders
+
+[init]
+def seed_item_width_sliders() {
+    // All 9 sliders share the same [0.0, 1.0] bounds.
+    for (i in range(9)) {
+        TABLES_ITEM_WIDTH_SLIDER[i].bounds = (0.0f, 1.0f)
+    }
+}
+
+// ---- Section 19 Custom headers state ----
+// 3 per-column header checkboxes (selected[]) + 3*5 selectable cells.
+// `selectable_label` is the caller-owned-bool form (mirrors cpp
+// `Selectable(buf, column_selected[col])`); state holds click bookkeeping
+// only, the selected-appearance comes from TABLES_CHDR_SELECTED[column].
+var private TABLES_CHDR_SELECTED : table<int; bool>          // 3 entries
+var private TABLES_CHDR_CELL     : table<int; ClickState>    // 5*3 cells
+
 [init]
 def seed_columns_flags() {
     // cpp:4868 — `column_flags[3] = { DefaultSort, None, DefaultHide }`.
@@ -299,6 +371,10 @@ def ShowDemoWindowTables() {
         show_nested_tables()
         show_row_height()
         show_outer_size()
+        show_background_color()
+        show_tree_view()
+        show_item_width()
+        show_custom_headers()
 
         // Reset open_action so the next frame's tree_nodes inherit their
         // sticky open/closed state instead of being forced again.
@@ -1541,6 +1617,251 @@ def private show_outer_size() {
                     table_next_column()
                     text(TABLES_OS3_CELL[row * 3 + col],
                          (text = "Cell {col},{row}"))
+                }
+            }
+        }
+    }
+}
+
+// =============================================================================
+// Section 16: Background color — cpp:5184-5237
+// =============================================================================
+def private show_background_color() {
+    apply_open_action()
+    tree_node(TABLES_BG, (text = "Background color",
+                          flags = ImGuiTreeNodeFlags.None)) {
+        edit_checkbox_flags(safe_addr(TABLES_BG_FLAGS),
+            (id = "TBL_BG_F_BORDERS", text = "ImGuiTableFlags_Borders",
+             flags_value = int(ImGuiTableFlags.Borders)))
+        edit_checkbox_flags(safe_addr(TABLES_BG_FLAGS),
+            (id = "TBL_BG_F_ROWBG", text = "ImGuiTableFlags_RowBg",
+             flags_value = int(ImGuiTableFlags.RowBg)))
+
+        var row_bg_items <- ["None", "Red", "Gradient"]
+        edit_combo(safe_addr(TABLES_BG_ROW_BG_TYPE),
+                   (id = "TBL_BG_ROW_BG_TYPE", text = "row bg type",
+                    items = row_bg_items))
+        delete row_bg_items
+        var row_bg_target_items <- ["RowBg0", "RowBg1"]
+        edit_combo(safe_addr(TABLES_BG_ROW_BG_TARGET),
+                   (id = "TBL_BG_ROW_BG_TARGET", text = "row bg target",
+                    items = row_bg_target_items))
+        delete row_bg_target_items
+        var cell_bg_items <- ["None", "Blue"]
+        edit_combo(safe_addr(TABLES_BG_CELL_BG_TYPE),
+                   (id = "TBL_BG_CELL_BG_TYPE", text = "cell bg type",
+                    items = cell_bg_items))
+        delete cell_bg_items
+
+        // Pre-tabled charpair labels so the per-cell text matches cpp's
+        // `Text("%c%c", 'A' + row, '0' + column)` — daslang has no
+        // int→char primitive.
+        let row_letters = fixed_array("A", "B", "C", "D", "E", "F")
+        let col_digits = fixed_array("0", "1", "2", "3", "4")
+
+        data_table(TABLES_BG_T, (text = "##bg_table", columns = 5,
+                                 flags = unsafe(reinterpret<ImGuiTableFlags>(TABLES_BG_FLAGS)),
+                                 outer_size = float2(0.0f, 0.0f),
+                                 inner_width = 0.0f)) {
+            for (row in range(6)) {
+                table_next_row()
+                if (TABLES_BG_ROW_BG_TYPE != 0) {
+                    // Flat red vs gradient grey (cpp:5213). Translucent so
+                    // RowBg0/RowBg1 ordering is visible.
+                    let row_bg_color = (TABLES_BG_ROW_BG_TYPE == 1
+                        ? float4(0.7f, 0.3f, 0.3f, 0.65f)
+                        : float4(0.2f + float(row) * 0.1f, 0.2f, 0.2f, 0.65f))
+                    // ImGuiTableBgTarget.RowBg0 + N — the enum is int-castable
+                    // so the offset arithmetic is direct.
+                    let target = unsafe(reinterpret<ImGuiTableBgTarget>(
+                        int(ImGuiTableBgTarget.RowBg0) + TABLES_BG_ROW_BG_TARGET))
+                    table_set_bg_color(target, GetColorU32(row_bg_color))
+                }
+                for (col in range(5)) {
+                    table_set_column_index(col)
+                    let key = row * 5 + col
+                    text(TABLES_BG_CELL[key],
+                         (text = "{row_letters[row]}{col_digits[col]}"))
+                    // Paint cells B1->C2 in the blue cell-bg color when
+                    // cell_bg_type == 1.
+                    if (row >= 1 && row <= 2 && col >= 1 && col <= 2 &&
+                            TABLES_BG_CELL_BG_TYPE == 1) {
+                        let cell_bg_color = float4(0.3f, 0.3f, 0.7f, 0.65f)
+                        table_set_bg_color(ImGuiTableBgTarget.CellBg,
+                                           GetColorU32(cell_bg_color))
+                    }
+                }
+            }
+        }
+    }
+}
+
+// =============================================================================
+// Section 17: Tree view — cpp:5242-5315
+// =============================================================================
+// Recursive descent through TREE_VIEW_NODES (folders + files), mirroring
+// cpp's inline `MyTreeNode::DisplayNode`. Folder = ChildCount > 0, opens
+// a `tree_node_ex` and recurses; file = leaf form `tree_node_ex` with
+// `Leaf | Bullet | NoTreePushOnOpen` so there's no paired `tree_pop()`.
+def private display_tree_view_node(node_idx : int) {
+    let node = TREE_VIEW_NODES[node_idx]
+    table_next_row()
+    table_next_column()
+    let is_folder = node.child_count > 0
+    let tree_flags = unsafe(reinterpret<ImGuiTreeNodeFlags>(TABLES_TREE_NODE_FLAGS))
+    if (is_folder) {
+        let opened = tree_node_ex(TABLES_TREE_NODE[node_idx],
+                                  (text = node.name, flags = tree_flags))
+        table_next_column()
+        text_disabled(TABLES_TREE_SIZE_CELL[node_idx], "--")
+        table_next_column()
+        text(TABLES_TREE_TYPE_CELL[node_idx], (text = node.node_type))
+        if (opened) {
+            for (child_n in range(node.child_count)) {
+                display_tree_view_node(node.child_idx + child_n)
+            }
+            tree_pop()
+        }
+    } else {
+        let leaf_flags = unsafe(reinterpret<ImGuiTreeNodeFlags>(
+            TABLES_TREE_NODE_FLAGS | int(ImGuiTreeNodeFlags.Leaf) |
+            int(ImGuiTreeNodeFlags.Bullet) |
+            int(ImGuiTreeNodeFlags.NoTreePushOnOpen)))
+        tree_node_ex(TABLES_TREE_NODE_LEAF[node_idx],
+                     (text = node.name, flags = leaf_flags))
+        table_next_column()
+        let sz = node.size
+        text(TABLES_TREE_SIZE_CELL[node_idx], (text = "{sz}"))
+        table_next_column()
+        text(TABLES_TREE_TYPE_CELL[node_idx], (text = node.node_type))
+    }
+}
+
+def private show_tree_view() {
+    apply_open_action()
+    tree_node(TABLES_TREE, (text = "Tree view",
+                            flags = ImGuiTreeNodeFlags.None)) {
+        edit_checkbox_flags(safe_addr(TABLES_TREE_NODE_FLAGS),
+            (id = "TBL_TREE_F_SPANFW", text = "ImGuiTreeNodeFlags_SpanFullWidth",
+             flags_value = int(ImGuiTreeNodeFlags.SpanFullWidth)))
+        edit_checkbox_flags(safe_addr(TABLES_TREE_NODE_FLAGS),
+            (id = "TBL_TREE_F_SPANTW", text = "ImGuiTreeNodeFlags_SpanTextWidth",
+             flags_value = int(ImGuiTreeNodeFlags.SpanTextWidth)))
+        edit_checkbox_flags(safe_addr(TABLES_TREE_NODE_FLAGS),
+            (id = "TBL_TREE_F_SPANAC", text = "ImGuiTreeNodeFlags_SpanAllColumns",
+             flags_value = int(ImGuiTreeNodeFlags.SpanAllColumns)))
+
+        let text_base_width = CalcTextSize("A").x
+        data_table(TABLES_TREE_T,
+                   (text = "##tree_3ways", columns = 3,
+                    flags = unsafe(reinterpret<ImGuiTableFlags>(TABLES_TREE_FLAGS)),
+                    outer_size = float2(0.0f, 0.0f),
+                    inner_width = 0.0f)) {
+            table_setup_column("Name", ImGuiTableColumnFlags.NoHide)
+            table_setup_column("Size", ImGuiTableColumnFlags.WidthFixed,
+                               text_base_width * 12.0f)
+            table_setup_column("Type", ImGuiTableColumnFlags.WidthFixed,
+                               text_base_width * 18.0f)
+            table_headers_row()
+            display_tree_view_node(0)
+        }
+    }
+}
+
+// =============================================================================
+// Section 18: Item width — cpp:5320-5361
+// =============================================================================
+def private show_item_width() {
+    apply_open_action()
+    tree_node(TABLES_IW, (text = "Item width",
+                          flags = ImGuiTreeNodeFlags.None)) {
+        let text_base_width = CalcTextSize("A").x
+        data_table(TABLES_IW_T,
+                   (text = "##table_item_width", columns = 3,
+                    flags = ImGuiTableFlags.Borders,
+                    outer_size = float2(0.0f, 0.0f),
+                    inner_width = 0.0f)) {
+            table_setup_column("small")
+            table_setup_column("half")
+            table_setup_column("right-align")
+            table_headers_row()
+
+            for (row in range(3)) {
+                table_next_row()
+                // cpp pushes once on row 0 and relies on ImGui's per-column
+                // ItemWidth preservation across the table body. The boost
+                // surface forbids raw `PushItemWidth` (lint IMGUI002) and
+                // `with_item_width` is block-scoped (pops at exit), so we
+                // call `SetNextItemWidth` per-slider per-row instead. Same
+                // visual result; trades a few extra ImGui calls for lint
+                // compliance.
+                with_id("iw_row_{row}") {
+                    table_set_column_index(0)
+                    SetNextItemWidth(text_base_width * 3.0f)
+                    slider_float(TABLES_ITEM_WIDTH_SLIDER[row * 3 + 0],
+                                 (text = "float0"))
+                    table_set_column_index(1)
+                    SetNextItemWidth(-GetContentRegionAvail().x * 0.5f)
+                    slider_float(TABLES_ITEM_WIDTH_SLIDER[row * 3 + 1],
+                                 (text = "float1"))
+                    table_set_column_index(2)
+                    SetNextItemWidth(-FLT_MIN)
+                    slider_float(TABLES_ITEM_WIDTH_SLIDER[row * 3 + 2],
+                                 (text = "##float2"))
+                }
+            }
+        }
+    }
+}
+
+// =============================================================================
+// Section 19: Custom headers — cpp:5367-5409
+// =============================================================================
+def private show_custom_headers() {
+    apply_open_action()
+    tree_node(TABLES_CHDR, (text = "Custom headers",
+                            flags = ImGuiTreeNodeFlags.None)) {
+        let column_count = 3
+        let column_names = fixed_array("Apricot", "Banana", "Cherry")
+        let flags = (ImGuiTableFlags.Borders | ImGuiTableFlags.Reorderable |
+                     ImGuiTableFlags.Hideable)
+        data_table(TABLES_CHDR_T,
+                   (text = "##table_custom_headers", columns = column_count,
+                    flags = flags,
+                    outer_size = float2(0.0f, 0.0f),
+                    inner_width = 0.0f)) {
+            for (n in range(column_count)) {
+                table_setup_column(column_names[n])
+            }
+            // Custom-header row instead of `table_headers_row()` — per
+            // cell: tight-padded Checkbox + SameLine + TableHeader(name).
+            table_next_row(ImGuiTableRowFlags.Headers)
+            for (column in range(column_count)) {
+                table_set_column_index(column)
+                let column_name = table_get_column_name(column)
+                with_id("chdr_col_{column}") {
+                    with_style((ImGuiStyleVar.FramePadding,
+                                float2(0.0f, 0.0f))) {
+                        edit_checkbox(unsafe(addr(TABLES_CHDR_SELECTED[column])),
+                                      (id = "CHDR_CHECKALL", text = "##checkall"))
+                    }
+                    same_line(TABLES_CHDR_SL_CHK,
+                              (offset_from_start_x = 0.0f,
+                               spacing = GetStyle().ItemInnerSpacing.x))
+                    table_header(column_name)
+                }
+            }
+            // Body — 3*5 selectable cells. cpp uses `Selectable(buf,
+            // column_selected[col])` (caller-owned-bool form); boost
+            // wrapper is `selectable_label(state, text, selected)`.
+            for (row in range(5)) {
+                table_next_row()
+                for (column in range(column_count)) {
+                    table_set_column_index(column)
+                    let key = row * column_count + column
+                    selectable_label(TABLES_CHDR_CELL[key],
+                                     "Cell {column},{row}",
+                                     TABLES_CHDR_SELECTED[column])
                 }
             }
         }
