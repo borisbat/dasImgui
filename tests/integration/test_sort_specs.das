@@ -27,7 +27,7 @@ def test_sort_specs_table_renders(t : T?) {
         // SORT_WIN/LEAD races on CI's headless framebuffer — LEAD appears
         // on the first frame but the table body only drains on the second
         // (ImGui computes column widths in pass 1, renders cells in pass 2).
-        var snap = wait_for_widget(d, "SORT_WIN/SORT_TABLE/SORT_ROW_ID/0", 15.0f)
+        var snap = wait_for_widget(d, "SORT_WIN/SORT_TABLE/SORT_ROW_ID[0]", 15.0f)
         t |> success(snap != null,
                      "SORT_WIN renders with first inventory row's ID cell (sort_specs feature drained through table_next_row + table_set_column_index)")
         if (snap == null) return
