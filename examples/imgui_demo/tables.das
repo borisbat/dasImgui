@@ -311,6 +311,112 @@ def seed_item_width_sliders() {
 var private TABLES_CHDR_SELECTED : table<int; bool>          // 3 entries
 var private TABLES_CHDR_CELL     : table<int; ClickState>    // 5*3 cells
 
+// ---- Section 20 Angled headers state ----
+let private TABLES_AH_COLUMN_NAMES <- ["Track", "cabasa", "ride", "smash",
+                                       "tom-hi", "tom-mid", "tom-low",
+                                       "hihat-o", "hihat-c", "snare-s",
+                                       "snare-c", "clap", "rim", "kick"]
+let private TABLES_AH_COLUMNS_COUNT = 14
+let private TABLES_AH_ROWS_COUNT    = 12
+var private TABLES_AH_TABLE_FLAGS : int = int(ImGuiTableFlags.SizingFixedFit |
+                                              ImGuiTableFlags.ScrollX |
+                                              ImGuiTableFlags.ScrollY |
+                                              ImGuiTableFlags.BordersOuter |
+                                              ImGuiTableFlags.BordersInnerH |
+                                              ImGuiTableFlags.Hideable |
+                                              ImGuiTableFlags.Resizable |
+                                              ImGuiTableFlags.Reorderable |
+                                              ImGuiTableFlags.HighlightHoveredColumn)
+var private TABLES_AH_COLUMN_FLAGS : int = int(ImGuiTableColumnFlags.AngledHeader |
+                                               ImGuiTableColumnFlags.WidthFixed)
+var private TABLES_AH_FROZEN_COLS  : int = 1
+var private TABLES_AH_FROZEN_ROWS  : int = 2
+var private TABLES_AH_BOOLS  : table<int; bool>             // 14*12 cells
+var private TABLES_AH_CB     : table<int; EmptyMarkerState> // 14*12 checkbox state
+var private TABLES_AH_TRACK_LABEL : table<int; NarrativeState> // 12 row labels
+var private TABLES_AH_TRACK_ATFP  : table<int; EmptyMarkerState> // 12 align markers
+
+// ---- Section 21 Context menus state ----
+// Sub 1: flag toggle + 3*4 cells (default context menus only).
+var private TABLES_CM1_FLAGS : int = int(ImGuiTableFlags.Resizable |
+                                         ImGuiTableFlags.Reorderable |
+                                         ImGuiTableFlags.Hideable |
+                                         ImGuiTableFlags.Borders |
+                                         ImGuiTableFlags.ContextMenuInBody)
+var private TABLES_CM1_CELL : table<int; NarrativeState>  // 4*3 cells
+// Sub 2: per-cell ".." popup + per-column body popup.
+var private TABLES_CM2_CELL_TEXT : table<int; NarrativeState> // 4*3 cells
+var private TABLES_CM2_SL        : table<int; EmptyMarkerState> // 4*3 same_line
+var private TABLES_CM2_DOT_BTN   : table<int; ClickState>     // 4*3 ".." buttons
+var private TABLES_CM2_DOT_POPUP : table<int; PopupContextItemState> // per-cell popup
+var private TABLES_CM2_DOT_TEXT  : table<int; NarrativeState>
+var private TABLES_CM2_DOT_CLOSE : table<int; ClickState>
+var private TABLES_CM2_HOVERED_TEXT : NarrativeState
+// "MyPopup" string-id stateless popup variables — 4 columns (3 + 1 trailing-unused).
+var private TABLES_CM2_HOVERED_COLUMN : int = -1
+
+// ---- Section 22 Synced instances state ----
+var private TABLES_SYNCED_FLAGS : int = int(ImGuiTableFlags.Resizable |
+                                            ImGuiTableFlags.Reorderable |
+                                            ImGuiTableFlags.Hideable |
+                                            ImGuiTableFlags.Borders |
+                                            ImGuiTableFlags.SizingFixedFit |
+                                            ImGuiTableFlags.NoSavedSettings)
+// Per-iter CollapsingHeader state (3 iters).
+var private TABLES_SYNCED_HEADER : table<int; CollapsingHeaderState>
+// Per-iter cell text — different cell counts per iter (9 vs 27 vs 9).
+var private TABLES_SYNCED_CELL : table<int; NarrativeState>  // key = iter * 32 + cell
+
+// ---- Section 23 Sorting state ----
+let private TABLES_SORT_TEMPLATE_NAMES <- ["Banana", "Apple", "Cherry",
+                                           "Watermelon", "Grapefruit",
+                                           "Strawberry", "Mango", "Kiwi",
+                                           "Orange", "Pineapple", "Blueberry",
+                                           "Plum", "Coconut", "Pear", "Apricot"]
+// Per-column user_id codes (mirror cpp MyItemColumnID).
+let private TABLES_SORT_COL_ID       = 0u
+let private TABLES_SORT_COL_NAME     = 1u
+let private TABLES_SORT_COL_ACTION   = 2u
+let private TABLES_SORT_COL_QUANTITY = 3u
+
+struct private SortItem {
+    id       : int
+    name     : string
+    quantity : int
+}
+var private TABLES_SORT_ITEMS : array<SortItem>
+var private TABLES_SORT_FLAGS : int = int(ImGuiTableFlags.Resizable |
+                                          ImGuiTableFlags.Reorderable |
+                                          ImGuiTableFlags.Hideable |
+                                          ImGuiTableFlags.Sortable |
+                                          ImGuiTableFlags.SortMulti |
+                                          ImGuiTableFlags.RowBg |
+                                          ImGuiTableFlags.BordersOuter |
+                                          ImGuiTableFlags.BordersV |
+                                          ImGuiTableFlags.NoBordersInBody |
+                                          ImGuiTableFlags.ScrollY)
+// Per-row state: 4 cells per row (ID/Name/Action/Quantity) — keyed by
+// SortItem.id (stable across re-orderings) so widget paths track the row
+// even after sort.
+var private TABLES_SORT_ID_TEXT     : table<int; NarrativeState>
+var private TABLES_SORT_NAME_TEXT   : table<int; NarrativeState>
+var private TABLES_SORT_ACTION_BTN  : table<int; ClickState>
+var private TABLES_SORT_QTY_TEXT    : table<int; NarrativeState>
+
+[init]
+def seed_sort_items() {
+    // cpp:5643 — 50 items, name picked from template_items_names by
+    // n % template_count, quantity = (n*n - n) % 20.
+    TABLES_SORT_ITEMS |> reserve(50)
+    for (n in range(50)) {
+        let template_n = n % length(TABLES_SORT_TEMPLATE_NAMES)
+        TABLES_SORT_ITEMS |> push(SortItem(
+            id = n,
+            name = TABLES_SORT_TEMPLATE_NAMES[template_n],
+            quantity = (n * n - n) % 20))
+    }
+}
+
 [init]
 def seed_columns_flags() {
     // cpp:4868 — `column_flags[3] = { DefaultSort, None, DefaultHide }`.
@@ -375,6 +481,10 @@ def ShowDemoWindowTables() {
         show_tree_view()
         show_item_width()
         show_custom_headers()
+        show_angled_headers()
+        show_context_menus()
+        show_synced_instances()
+        show_sorting()
 
         // Reset open_action so the next frame's tree_nodes inherit their
         // sticky open/closed state instead of being forced again.
@@ -1862,6 +1972,345 @@ def private show_custom_headers() {
                     selectable_label(TABLES_CHDR_CELL[key],
                                      "Cell {column},{row}",
                                      TABLES_CHDR_SELECTED[column])
+                }
+            }
+        }
+    }
+}
+
+// =============================================================================
+// Section 20: Angled headers — cpp:5414-5476
+// =============================================================================
+def private show_angled_headers() {
+    apply_open_action()
+    tree_node(TABLES_AH, (text = "Angled headers",
+                          flags = ImGuiTreeNodeFlags.None)) {
+        edit_checkbox_flags(safe_addr(TABLES_AH_TABLE_FLAGS),
+            (id = "TBL_AH_F_SCROLLX", text = "_ScrollX",
+             flags_value = int(ImGuiTableFlags.ScrollX)))
+        edit_checkbox_flags(safe_addr(TABLES_AH_TABLE_FLAGS),
+            (id = "TBL_AH_F_SCROLLY", text = "_ScrollY",
+             flags_value = int(ImGuiTableFlags.ScrollY)))
+        edit_checkbox_flags(safe_addr(TABLES_AH_TABLE_FLAGS),
+            (id = "TBL_AH_F_RESIZABLE", text = "_Resizable",
+             flags_value = int(ImGuiTableFlags.Resizable)))
+        edit_checkbox_flags(safe_addr(TABLES_AH_TABLE_FLAGS),
+            (id = "TBL_AH_F_NBINBODY", text = "_NoBordersInBody",
+             flags_value = int(ImGuiTableFlags.NoBordersInBody)))
+        edit_checkbox_flags(safe_addr(TABLES_AH_TABLE_FLAGS),
+            (id = "TBL_AH_F_HIGHLIGHTHC", text = "_HighlightHoveredColumn",
+             flags_value = int(ImGuiTableFlags.HighlightHoveredColumn)))
+
+        SetNextItemWidth(GetFontSize() * 8.0f)
+        edit_slider_int(safe_addr(TABLES_AH_FROZEN_COLS),
+            (id = "TBL_AH_FROZEN_COLS", text = "Frozen columns",
+             v_min = 0, v_max = 2))
+        SetNextItemWidth(GetFontSize() * 8.0f)
+        edit_slider_int(safe_addr(TABLES_AH_FROZEN_ROWS),
+            (id = "TBL_AH_FROZEN_ROWS", text = "Frozen rows",
+             v_min = 0, v_max = 2))
+
+        edit_checkbox_flags(safe_addr(TABLES_AH_COLUMN_FLAGS),
+            (id = "TBL_AH_CF_NOHEADERWIDTH",
+             text = "Disable header contributing to column width",
+             flags_value = int(ImGuiTableColumnFlags.NoHeaderWidth)))
+
+        // Style settings sub-node — TableAngledHeadersAngle slider +
+        // TableAngledHeadersTextAlign 2-component slider. Both reach into
+        // the shared ImGuiStyle, so wrap pointer access in unsafe(addr(...)).
+        tree_node(TABLES_AH_STYLE_NODE,
+                  (text = "Style settings", flags = ImGuiTreeNodeFlags.None)) {
+            SetNextItemWidth(GetFontSize() * 8.0f)
+            // SliderAngle uses degrees in the UI, radians on the pointer.
+            // Style field is in radians.
+            edit_slider_angle(
+                unsafe(addr(GetStyle().TableAngledHeadersAngle)),
+                (id = "TBL_AH_STYLE_ANGLE", text = "style.TableAngledHeadersAngle",
+                 v_degrees_min = -50.0f, v_degrees_max = 50.0f))
+            SetNextItemWidth(GetFontSize() * 8.0f)
+            edit_slider_float2(
+                unsafe(addr(GetStyle().TableAngledHeadersTextAlign)),
+                (id = "TBL_AH_STYLE_ALIGN",
+                 text = "style.TableAngledHeadersTextAlign",
+                 v_min = 0.0f, v_max = 1.0f, format = "%.2f"))
+        }
+
+        let line_height = GetTextLineHeightWithSpacing()
+        data_table(TABLES_AH_T,
+                   (text = "##table_angled_headers", columns = TABLES_AH_COLUMNS_COUNT,
+                    flags = unsafe(reinterpret<ImGuiTableFlags>(TABLES_AH_TABLE_FLAGS)),
+                    outer_size = float2(0.0f, line_height * 12.0f),
+                    inner_width = 0.0f)) {
+            // Track column (col 0) — no-hide / no-reorder. Remaining
+            // columns share the angled-header flag set.
+            table_setup_column(TABLES_AH_COLUMN_NAMES[0],
+                               ImGuiTableColumnFlags.NoHide |
+                               ImGuiTableColumnFlags.NoReorder)
+            let col_flags = unsafe(reinterpret<ImGuiTableColumnFlags>(
+                                       TABLES_AH_COLUMN_FLAGS))
+            for (n in range(1, TABLES_AH_COLUMNS_COUNT)) {
+                table_setup_column(TABLES_AH_COLUMN_NAMES[n], col_flags)
+            }
+            table_setup_scroll_freeze(TABLES_AH_FROZEN_COLS, TABLES_AH_FROZEN_ROWS)
+
+            table_angled_headers_row()
+            table_headers_row()
+
+            for (row in range(TABLES_AH_ROWS_COUNT)) {
+                with_id("ah_row_{row}") {
+                    table_next_row()
+                    table_set_column_index(0)
+                    align_text_to_frame_padding(TABLES_AH_TRACK_ATFP[row])
+                    text(TABLES_AH_TRACK_LABEL[row], (text = "Track {row}"))
+                    for (column in range(1, TABLES_AH_COLUMNS_COUNT)) {
+                        continue if (!table_set_column_index(column))
+                        with_id("ah_col_{column}") {
+                            let key = row * TABLES_AH_COLUMNS_COUNT + column
+                            edit_checkbox(unsafe(addr(TABLES_AH_BOOLS[key])),
+                                          (id = "AH_CB", text = ""))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// =============================================================================
+// Section 21: Context menus — cpp:5483-5587
+// =============================================================================
+def private show_context_menus() {
+    apply_open_action()
+    tree_node(TABLES_CM, (text = "Context menus",
+                          flags = ImGuiTreeNodeFlags.None)) {
+        // ----- Sub-table 1: ContextMenuInBody flag toggle -----
+        // Right-clicking on the headers row OR (with the flag set) over
+        // the body opens the default table context menu (column hide,
+        // sort dir, etc.). No custom popup wiring needed.
+        edit_checkbox_flags(safe_addr(TABLES_CM1_FLAGS),
+            (id = "TBL_CM1_F_CTXINBODY", text = "ImGuiTableFlags_ContextMenuInBody",
+             flags_value = int(ImGuiTableFlags.ContextMenuInBody)))
+
+        let column_count = 3
+        data_table(TABLES_CM1_T,
+                   (text = "##table_context_menu", columns = column_count,
+                    flags = unsafe(reinterpret<ImGuiTableFlags>(TABLES_CM1_FLAGS)),
+                    outer_size = float2(0.0f, 0.0f),
+                    inner_width = 0.0f)) {
+            table_setup_column("One")
+            table_setup_column("Two")
+            table_setup_column("Three")
+            table_headers_row()
+            for (row in range(4)) {
+                table_next_row()
+                for (column in range(column_count)) {
+                    table_set_column_index(column)
+                    text(TABLES_CM1_CELL[row * column_count + column],
+                         (text = "Cell {column},{row}"))
+                }
+            }
+        }
+
+        // ----- Sub-table 2: custom per-cell + per-column popups -----
+        let flags2 = (ImGuiTableFlags.Resizable | ImGuiTableFlags.SizingFixedFit |
+                      ImGuiTableFlags.Reorderable | ImGuiTableFlags.Hideable |
+                      ImGuiTableFlags.Borders)
+        data_table(TABLES_CM2_T,
+                   (text = "##table_context_menu_2", columns = column_count,
+                    flags = flags2,
+                    outer_size = float2(0.0f, 0.0f),
+                    inner_width = 0.0f)) {
+            table_setup_column("One")
+            table_setup_column("Two")
+            table_setup_column("Three")
+            table_headers_row()
+            for (row in range(4)) {
+                table_next_row()
+                for (column in range(column_count)) {
+                    table_set_column_index(column)
+                    let key = row * column_count + column
+                    text(TABLES_CM2_CELL_TEXT[key],
+                         (text = "Cell {column},{row}"))
+                    same_line(TABLES_CM2_SL[key])
+                    with_id("cm2_cell_{row}_{column}") {
+                        small_button(TABLES_CM2_DOT_BTN[key], (text = ".."))
+                        popup_context_item(TABLES_CM2_DOT_POPUP[key],
+                            (str_id = "", flags = ImGuiPopupFlags.MouseButtonRight)) {
+                            text(TABLES_CM2_DOT_TEXT[key],
+                                 (text = "This is the popup for Button(\"..\") in Cell {column},{row}"))
+                            if (button(TABLES_CM2_DOT_CLOSE[key], (text = "Close"))) {
+                                close_current_popup()
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Per-column right-click popup. cpp iterates COLUMNS_COUNT + 1
+            // including the trailing unused space. The popup ID is a
+            // string-id ("MyPopup") shared across all per-column triggers —
+            // only one column is hovered at a time so they never overlap.
+            // PushID(column) keeps the popup's per-column ID disjoint.
+            // Status: simplified to track-hovered-column-only in das; the
+            // cpp manual `IsMouseReleased(1)` + `OpenPopup("MyPopup")` +
+            // `BeginPopup("MyPopup")` pattern doesn't lift to the boost
+            // surface without a stateless `popup_window` wrapper that we
+            // don't have. Falls back to the default per-column context
+            // menu (provided by table_headers_row above) plus a
+            // hovered-column readout below.
+            var hovered = -1
+            for (column in range(column_count + 1)) {
+                if ((int(table_get_column_flags(column)) &
+                     int(ImGuiTableColumnFlags.IsHovered)) != 0) {
+                    hovered = column
+                }
+            }
+            TABLES_CM2_HOVERED_COLUMN = hovered
+        }
+        text(TABLES_CM2_HOVERED_TEXT,
+             (text = "Hovered column: {TABLES_CM2_HOVERED_COLUMN}"))
+    }
+}
+
+// =============================================================================
+// Section 22: Synced instances — cpp:5594-5624
+// =============================================================================
+def private show_synced_instances() {
+    apply_open_action()
+    tree_node(TABLES_SYNCED, (text = "Synced instances",
+                              flags = ImGuiTreeNodeFlags.None)) {
+        edit_checkbox_flags(safe_addr(TABLES_SYNCED_FLAGS),
+            (id = "TBL_SYNCED_F_RESIZABLE", text = "ImGuiTableFlags_Resizable",
+             flags_value = int(ImGuiTableFlags.Resizable)))
+        edit_checkbox_flags(safe_addr(TABLES_SYNCED_FLAGS),
+            (id = "TBL_SYNCED_F_SCROLLY", text = "ImGuiTableFlags_ScrollY",
+             flags_value = int(ImGuiTableFlags.ScrollY)))
+        edit_checkbox_flags(safe_addr(TABLES_SYNCED_FLAGS),
+            (id = "TBL_SYNCED_F_FIXEDFIT", text = "ImGuiTableFlags_SizingFixedFit",
+             flags_value = int(ImGuiTableFlags.SizingFixedFit)))
+        edit_checkbox_flags(safe_addr(TABLES_SYNCED_FLAGS),
+            (id = "TBL_SYNCED_F_HIGHLIGHTHC",
+             text = "ImGuiTableFlags_HighlightHoveredColumn",
+             flags_value = int(ImGuiTableFlags.HighlightHoveredColumn)))
+
+        let line_height = GetTextLineHeightWithSpacing()
+        let tflags = unsafe(reinterpret<ImGuiTableFlags>(TABLES_SYNCED_FLAGS))
+        // 3 collapsing headers + a shared table id "Table". To match cpp's
+        // synced-instances behavior the 3 BeginTable calls must produce
+        // the SAME effective ImGui ID — the boost `data_table(IDENT, ...)`
+        // auto-PushIDs the IDENT, so we use ONE shared IDENT
+        // (TABLES_SYNCED_T) in the loop body. State is reused across the
+        // 3 iters (it's the same logical table, so this is correct).
+        // CollapsingHeader needs per-iter unique state so the open/close
+        // toggle is independent per header — indexed CollapsingHeaderState
+        // map keyed by `n`.
+        for (n in range(3)) {
+            let buf = "Synced Table {n}"
+            collapsing_header(TABLES_SYNCED_HEADER[n],
+                              (text = buf, closable = false,
+                               flags = ImGuiTreeNodeFlags.DefaultOpen)) {
+                data_table(TABLES_SYNCED_T,
+                           (text = "Table", columns = 3, flags = tflags,
+                            outer_size = float2(0.0f, line_height * 5.0f),
+                            inner_width = 0.0f)) {
+                    table_setup_column("One")
+                    table_setup_column("Two")
+                    table_setup_column("Three")
+                    table_headers_row()
+                    let cell_count = (n == 1 ? 27 : 9)
+                    for (cell in range(cell_count)) {
+                        table_next_column()
+                        text(TABLES_SYNCED_CELL[n * 32 + cell],
+                             (text = "this cell {cell}"))
+                    }
+                }
+            }
+        }
+    }
+}
+
+// =============================================================================
+// Section 23: Sorting — cpp:5637-5713
+// =============================================================================
+def private show_sorting() {
+    apply_open_action()
+    tree_node(TABLES_SORT, (text = "Sorting", flags = ImGuiTreeNodeFlags.None)) {
+        edit_checkbox_flags(safe_addr(TABLES_SORT_FLAGS),
+            (id = "TBL_SORT_F_SORTMULTI", text = "ImGuiTableFlags_SortMulti",
+             flags_value = int(ImGuiTableFlags.SortMulti)))
+        edit_checkbox_flags(safe_addr(TABLES_SORT_FLAGS),
+            (id = "TBL_SORT_F_SORTTRISTATE", text = "ImGuiTableFlags_SortTristate",
+             flags_value = int(ImGuiTableFlags.SortTristate)))
+
+        let line_height = GetTextLineHeightWithSpacing()
+        data_table(TABLES_SORT_T,
+                   (text = "##table_sorting", columns = 4,
+                    flags = unsafe(reinterpret<ImGuiTableFlags>(TABLES_SORT_FLAGS)),
+                    outer_size = float2(0.0f, line_height * 15.0f),
+                    inner_width = 0.0f)) {
+            // user_id passes per cpp:5675-5678 so the sort comparator can
+            // distinguish columns by id (vs by index — both work).
+            table_setup_column("ID",
+                ImGuiTableColumnFlags.DefaultSort | ImGuiTableColumnFlags.WidthFixed,
+                0.0f, TABLES_SORT_COL_ID)
+            table_setup_column("Name",
+                ImGuiTableColumnFlags.WidthFixed,
+                0.0f, TABLES_SORT_COL_NAME)
+            table_setup_column("Action",
+                ImGuiTableColumnFlags.NoSort | ImGuiTableColumnFlags.WidthFixed,
+                0.0f, TABLES_SORT_COL_ACTION)
+            table_setup_column("Quantity",
+                ImGuiTableColumnFlags.PreferSortDescending |
+                ImGuiTableColumnFlags.WidthStretch,
+                0.0f, TABLES_SORT_COL_QUANTITY)
+            table_setup_scroll_freeze(0, 1)
+            table_headers_row()
+
+            // Sort our items when ImGui reports the specs dirty. Multi-
+            // key comparator walks `specs` in order; ColumnUserID
+            // identifies the column. Asc/Desc flips delta sign.
+            sort_specs() $(specs) {
+                TABLES_SORT_ITEMS |> sort() $(a, b) {
+                    for (spec in specs) {
+                        var delta = 0
+                        if (spec.column_user_id == TABLES_SORT_COL_ID) {
+                            delta = a.id - b.id
+                        } elif (spec.column_user_id == TABLES_SORT_COL_NAME) {
+                            delta = a.name < b.name ? -1 : (a.name > b.name ? 1 : 0)
+                        } elif (spec.column_user_id == TABLES_SORT_COL_QUANTITY) {
+                            delta = a.quantity - b.quantity
+                        }
+                        if (delta != 0) {
+                            let asc = spec.sort_direction == ImGuiSortDirection.Ascending
+                            return asc ? delta < 0 : delta > 0
+                        }
+                    }
+                    // qsort is not stable; fall back on ID so swap order
+                    // is deterministic.
+                    return a.id < b.id
+                }
+            }
+
+            list_clipper(length(TABLES_SORT_ITEMS)) $(start, end_) {
+                for (row_n in range(start, end_)) {
+                    let item = TABLES_SORT_ITEMS[row_n]
+                    let item_id = item.id
+                    with_id("sort_item_{item_id}") {
+                        table_next_row()
+                        table_next_column()
+                        text(TABLES_SORT_ID_TEXT[item_id],
+                             (text = "{item_id}"))
+                        table_next_column()
+                        text(TABLES_SORT_NAME_TEXT[item_id],
+                             (text = item.name))
+                        table_next_column()
+                        small_button(TABLES_SORT_ACTION_BTN[item_id],
+                                     (text = "None"))
+                        table_next_column()
+                        let qty = item.quantity
+                        text(TABLES_SORT_QTY_TEXT[item_id],
+                             (text = "{qty}"))
+                    }
                 }
             }
         }
