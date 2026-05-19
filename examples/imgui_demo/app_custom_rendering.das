@@ -127,7 +127,7 @@ def private show_primitives_tab() {
             (id = "CR_CB_CURVE_OVR", text = "##curvessegmentoverride"))
         same_line()
         edit_slider_int(safe_addr(CR_CURVE_SEG_OVERRIDE_V),
-            (id = "CR_SLIDER_CURVE_OVR", text = "Curves segments override",
+            (id = "CR_SLIDER_CURVE_OVR", text = "Curve segments override",
              v_min = 3, v_max = 40))
         edit_color_edit4(safe_addr(CR_COLOR), (id = "CR_COLOR_EDIT", text = "Color"))
 
@@ -414,7 +414,7 @@ def private show_channels_tab() {
         dl |> channels_merge()
     }
     dummy(CR_CH_SPLIT_PAD, (size = float2(75.0f, 75.0f)))
-    text(CR_CH_SPLIT_NOTE, (text = "After reordering, contents of channel 0 appears below channel 1."))
+    text(CR_CH_SPLIT_NOTE, (text = "After reordering, contents of channel 0 appear below channel 1."))
 }
 
 // ===== Entry point =====

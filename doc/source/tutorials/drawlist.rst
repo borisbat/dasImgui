@@ -9,8 +9,11 @@ plus a family of low-level ``Add*`` primitives that paint directly to them
 (``AddLine``, ``AddRect``, ``AddCircle``, etc.). The boost layer wraps them
 behind three scope wrappers and a primitive set covering the geometric basics
 (line / rect / circle / triangle / text) plus the v2 extras
-(rect_filled_multi_color / ellipse / ngon / polyline / bezier) plus
-path-building, channel-splitting, and clip-rect rails:
+(rect_filled_multi_color / ellipse / ngon / polyline / bezier). The
+path-building (``path_*``), channel-splitting (``channels_*``), and
+clip-rect rails are control-flow helpers, not registered ``[drawlist_prim]``
+entries — they shape what the primitives render but do not themselves
+create snapshot rows:
 
 .. code-block:: das
 

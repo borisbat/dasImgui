@@ -7,8 +7,9 @@ require imgui/imgui_harness
 // SHOWS:   `list_clipper(items_count) $(start, end_) { ... }` — block fires
 //          once per visible chunk with `[start, end_)` row indices. Render
 //          exactly those rows inside the block; rows outside the visible
-//          region are SKIPPED entirely (no widget submission). The host
-//          window must be scrollable so the clipper has something to cull.
+//          region are SKIPPED entirely (no widget submission). The current
+//          scrolling region (this demo's `child(SCROLL_AREA, ...)`) must
+//          be scrollable so the clipper has something to cull.
 // STANDALONE: daslang.exe modules/dasImgui/examples/features/list_clipper.das
 // HEADLESS:   daslang.exe modules/dasImgui/examples/features/list_clipper.das -- --headless --headless-frames=60
 // LIVE:       daslang-live modules/dasImgui/examples/features/list_clipper.das

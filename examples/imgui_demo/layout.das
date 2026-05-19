@@ -43,9 +43,11 @@ require math
 //     stubs; the drawlist rail (PR-B1) doesn't carry the per-region clip-rect
 //     overrides the C++ branch uses (PushClipRect-then-AddText). TODO Phase 3.
 //   - cpp:3392-3398: BeginChild("scrolling") re-entry trick to nudge scroll
-//     state from outside the child body. ImGui hashes the child by name; the
-//     `child(...)` container would push a new ID. The two raw BeginChild /
-//     EndChild calls are ALLOWED for this idiom only.
+//     state from outside the child body. The `child_scroll_reenter(IDENT,
+//     text) { ... }` wrapper replicates the original `child(IDENT)` container's
+//     PushID(IDENT) frame so BeginChild hashes to the SAME window — without
+//     it ImGui creates a phantom sibling and SetScrollX has no visible effect.
+//     See widgets/imgui_containers_builtin.das for the wrapper definition.
 // =============================================================================
 
 // ----- Child windows section -----

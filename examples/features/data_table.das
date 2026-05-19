@@ -27,6 +27,15 @@ var private GRID_ROW_NAME : table<int; NarrativeState>
 var private GRID_ROW_QTY : table<int; NarrativeState>
 var private GRID_ROW_PRICE : table<int; NarrativeState>
 
+// Module-scope inventory rows — hoisted out of update() so the three
+// dynamic arrays allocate once at module init instead of leaking a fresh
+// allocation every frame (local `var array<T>` in a hot path doesn't
+// finalize on scope exit).
+let private GRID_NAMES <- ["Widget", "Sprocket", "Gizmo", "Doohickey", "Thingamajig",
+                           "Whatsit", "Doodad", "Gadget"]
+let private GRID_QTY <- [12, 4, 7, 33, 1, 9, 22, 5]
+let private GRID_PRICE <- [1.50, 9.99, 4.25, 0.75, 19.00, 3.10, 2.80, 6.45]
+
 [export]
 def init() {
     harness_init("data_table — boost v2 table rail", 640, 420)
@@ -55,21 +64,16 @@ def update() {
             table_setup_scroll_freeze(1, 1)
             table_headers_row()
 
-            let names <- ["Widget", "Sprocket", "Gizmo", "Doohickey", "Thingamajig",
-                          "Whatsit", "Doodad", "Gadget"]
-            let qty <- [12, 4, 7, 33, 1, 9, 22, 5]
-            let price <- [1.50, 9.99, 4.25, 0.75, 19.00, 3.10, 2.80, 6.45]
-
-            for (i in range(length(names))) {
+            for (i in range(length(GRID_NAMES))) {
                 table_next_row()
                 if (table_set_column_index(0)) {
-                    text(GRID_ROW_NAME[i], (text = "{names[i]}"))
+                    text(GRID_ROW_NAME[i], (text = "{GRID_NAMES[i]}"))
                 }
                 if (table_next_column()) {
-                    text(GRID_ROW_QTY[i], (text = "{qty[i]}"))
+                    text(GRID_ROW_QTY[i], (text = "{GRID_QTY[i]}"))
                 }
                 if (table_next_column()) {
-                    text(GRID_ROW_PRICE[i], (text = "${price[i]}"))
+                    text(GRID_ROW_PRICE[i], (text = "${GRID_PRICE[i]}"))
                 }
             }
         }

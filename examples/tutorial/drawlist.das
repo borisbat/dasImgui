@@ -66,7 +66,7 @@ def update() {
     SetNextWindowSize(ImVec2(700.0f, 700.0f), ImGuiCond.Always)
     window(DRAW_WIN, (text = "drawlist — rail tour", closable = false,
                       flags = ImGuiWindowFlags.None)) {
-        text(DRAW_INTRO, (text = "The three scope wrappers + eight primitives."))
+        text(DRAW_INTRO, (text = "Three scope wrappers + shape primitives (8 originals + v2 extras)."))
         separator()
 
         let origin = GetCursorScreenPos()

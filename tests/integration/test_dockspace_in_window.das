@@ -26,7 +26,10 @@ def test_dockspace_in_window_captures_dock_id(t : T?) {
         var ds_snap = wait_for_widget(d, "HOST/DS", 15.0f)
         t |> success(ds_snap != null, "HOST/DS dockspace registers")
         if (ds_snap == null) return
-        let dock_id_0 = uint(find_widget(ds_snap, "HOST/DS")?["payload"]?["dock_id"] ?? 0u)
+        let ds_widget = find_widget(ds_snap, "HOST/DS")
+        t |> equal(string(ds_widget?["kind"] ?? ""), "dockspace_in_window",
+                   "HOST/DS registers as kind=dockspace_in_window (not bare dockspace)")
+        let dock_id_0 = uint(ds_widget?["payload"]?["dock_id"] ?? 0u)
         t |> success(dock_id_0 != 0u,
                      "DS.dock_id captured on first render (got 0x{dock_id_0})")
         // Wait a few frames; dock_id must stay stable.

@@ -28,7 +28,7 @@ def main {
         }
 
         post_command(app, "imgui_narrate", JV((
-            text = "Three scope wrappers + eight primitives — the drawlist rail.",
+            text = "Three scope wrappers + shape primitives (8 originals + v2 extras) — the drawlist rail.",
             target = T_WIN,
             frames = 180
         )))

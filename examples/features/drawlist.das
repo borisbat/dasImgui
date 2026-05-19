@@ -4,13 +4,17 @@ require imgui/imgui_harness
 
 // =============================================================================
 // FEATURE: drawlist — window/foreground/background drawlist rail.
-//          INSIDE window(DRAW_WIN, ...): `with_window_drawlist` exercises all
-//          8 primitives (line/rect/rect_filled/circle/circle_filled/triangle/
-//          triangle_filled/text) nested under DRAW_WIN/.
+//          INSIDE window(DRAW_WIN, ...): `with_window_drawlist` exercises
+//          the full shape set — 8 originals (line / rect / rect_filled /
+//          circle / circle_filled / triangle / triangle_filled / text)
+//          plus 8 v2 extras (rect_filled_multi_color / ellipse /
+//          ellipse_filled / ngon / ngon_filled / polyline / bezier_cubic /
+//          bezier_quadratic) nested under DRAW_WIN/.
 //          OUTSIDE the window block: `with_foreground_drawlist` +
 //          `with_background_drawlist` each call `add_rect_filled` at the
 //          viewport level — those path keys have no container prefix.
-// SHOWS:   3 scope wrappers + 8 primitives; nested-vs-unnested telemetry.
+// SHOWS:   3 scope wrappers + 16 shape primitives (originals + v2 extras);
+//          nested-vs-unnested telemetry.
 // STANDALONE: daslang.exe modules/dasImgui/examples/features/drawlist.das
 // HEADLESS:   daslang.exe modules/dasImgui/examples/features/drawlist.das -- --headless --headless-frames=60
 // =============================================================================

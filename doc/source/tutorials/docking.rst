@@ -7,10 +7,12 @@ Docking
 ImGui's native docking lets the user grab a window's tab and drop it into a
 side pane, the bottom pane, or even pop it out to a free-floating window —
 all preserved across runs through ``imgui.ini``. The dasImgui boost layer
-wraps the C++ surface in two macros: ``dockspace`` (the full-viewport
-dockable region) and ``dock_window`` (each dockable panel inside it). A
-small ``DockBuilder`` helper seeds a 3-pane initial layout so first-run
-users see something meaningful before they start dragging tabs around.
+wraps the C++ surface in three macros: ``dockspace`` (the full-viewport
+dockable region), the sibling ``dockspace_in_window`` (an explicit
+``DockSpace`` nested inside a host ``window(HOST, …)``), and
+``dock_window`` (each dockable panel inside either dockspace). A small
+``DockBuilder`` helper seeds an initial layout so first-run users see
+something meaningful before they start dragging tabs around.
 
 Source: ``examples/tutorial/docking.das``.
 
@@ -31,9 +33,9 @@ Requires
 Same backend + boost layer as :ref:`tutorial_layout`, but layout helpers are
 replaced by the docking module:
 
-* ``imgui/imgui_docking_builtin`` — the ``dockspace`` and ``dock_window``
-  macros, plus the ``DockBuilder*`` bindings cherry-picked from ImGui's
-  internal API.
+* ``imgui/imgui_docking_builtin`` — the ``dockspace``,
+  ``dockspace_in_window``, and ``dock_window`` macros, plus the
+  ``DockBuilder*`` bindings cherry-picked from ImGui's internal API.
 
 The flag that lights it up
 ==========================
