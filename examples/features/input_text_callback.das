@@ -29,6 +29,10 @@ def private completion_cb(var data : ImGuiInputTextCallbackData) : int {
             data |> DeleteChars(0, data.BufTextLen)
             data |> InsertChars(0, matches[0])
         }
+        // Local arrays don't finalize on scope exit; without an explicit
+        // delete each TAB-completion leaks the candidate buffer. Matches
+        // app_console.das's completion callback pattern.
+        delete matches
     }
     return 0
 }

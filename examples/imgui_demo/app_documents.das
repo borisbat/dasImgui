@@ -84,17 +84,17 @@ def private pack_color(c : float4) : uint {
 def private display_contents(idx : int) {
     var doc & = unsafe(DOCS[idx])
     text(DOCS_TITLE, (text = "Document \"{doc.name}\""))
-        with_style((ImGuiCol.Text, pack_color(doc.color))) {
-            text_wrapped(DOCS_LOREM,
-                         (text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."))
-        }
-        if (button(DOCS_MODIFY_BTN[idx], (text = "Modify", size = float2(100.0f, 0.0f)))) {
-            doc.dirty = true
-        }
-        same_line()
-        if (button(DOCS_SAVE_BTN[idx], (text = "Save", size = float2(100.0f, 0.0f)))) {
-            doc.dirty = false
-        }
+    with_style((ImGuiCol.Text, pack_color(doc.color))) {
+        text_wrapped(DOCS_LOREM,
+                     (text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."))
+    }
+    if (button(DOCS_MODIFY_BTN[idx], (text = "Modify", size = float2(100.0f, 0.0f)))) {
+        doc.dirty = true
+    }
+    same_line()
+    if (button(DOCS_SAVE_BTN[idx], (text = "Save", size = float2(100.0f, 0.0f)))) {
+        doc.dirty = false
+    }
     edit_color_edit4(safe_addr(doc.color), (id = "doc_color", text = "color",
                                             flags = ImGuiColorEditFlags.None))
 }
@@ -290,17 +290,25 @@ def public ShowExampleAppDocuments() : bool {
                                  : ImGuiTabItemFlags.None)
                 tab_item(DOCS_TAB[i], (text = doc.name, closable = true,
                                        flags = tab_flags)) {
-                    // Cancel close attempt when dirty: requeue + reopen.
-                    let tab_open = DOCS_TAB[i].open
-                    if (!tab_open && doc.dirty) {
-                        DOCS_TAB[i].open = true
-                        doc.open = true
-                        doc.want_close = true
-                    } elif (!tab_open) {
-                        doc.open = false
-                    }
                     display_context_menu(i)
                     display_contents(i)
+                }
+                // Tab close handling MUST live outside the tab_item body —
+                // ImGui flips p_open=false when the user X-clicks the tab
+                // header even on INACTIVE tabs whose body never runs. The
+                // prior version inside the body silently swallowed inactive-
+                // tab close attempts because the frame-top reseed flipped
+                // .open back to true before the next frame's body could
+                // observe the false value.
+                if (!DOCS_TAB[i].open) {
+                    if (doc.dirty) {
+                        // Cancel close attempt: requeue + reopen for the
+                        // confirmation popup.
+                        DOCS_TAB[i].open = true
+                        doc.want_close = true
+                    } else {
+                        doc.open = false
+                    }
                 }
             }
         }

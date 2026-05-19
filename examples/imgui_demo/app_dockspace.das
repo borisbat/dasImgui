@@ -62,10 +62,20 @@ def private current_dockspace_flags() : ImGuiDockNodeFlags {
     return unsafe(reinterpret<ImGuiDockNodeFlags>(bits))
 }
 
+def private current_host_flags() : ImGuiWindowFlags {
+    // PassthruCentralNode only works when the host window itself is
+    // background-less; without NoBackground the host fill covers the
+    // central node and the pass-through visual is suppressed.
+    var bits = int(ImGuiWindowFlags.MenuBar | ImGuiWindowFlags.NoDocking)
+    if (DS_FLAG_PASSTHRU_CENTRAL) {
+        bits |= int(ImGuiWindowFlags.NoBackground)
+    }
+    return unsafe(reinterpret<ImGuiWindowFlags>(bits))
+}
+
 def private render_ds_window() {
     window(DS_WIN, (text = "DockSpace Demo", closable = true,
-                    flags = ImGuiWindowFlags.MenuBar |
-                            ImGuiWindowFlags.NoDocking)) {
+                    flags = current_host_flags())) {
         menu_bar(DS_MENU) {
             menu(DS_OPTIONS_MENU, (text = "Options", enabled = true)) {
                 edit_checkbox(safe_addr(DS_PADDING),

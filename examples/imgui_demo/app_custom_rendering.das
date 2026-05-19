@@ -296,32 +296,32 @@ def private show_canvas_tab() {
     }
 
     let drag_delta = GetMouseDragDelta(ImGuiMouseButton.Right, -1.0f)
-    // Gate the entire context-menu rail behind CR_CANVAS_OPT_CTX.
-    // popup_context_item installs its own RMB handler, so it must NOT
-    // run when the toggle is off — gating only open_popup_on_item_click
-    // would leave the menu opening on right-click anyway.
-    if (CR_CANVAS_OPT_CTX) {
-        if (drag_delta.x == 0.0f && drag_delta.y == 0.0f) {
-            open_popup_on_item_click("context", ImGuiPopupFlags.MouseButtonRight)
-        }
-        popup_context_item(CR_CV_CTX_MENU,
-                           (str_id = "context", flags = ImGuiPopupFlags.MouseButtonRight)) {
-            if (CR_CANVAS_ADDING_LINE) {
-                let n = length(CR_CANVAS_POINTS)
-                if (n >= 2) {
-                    CR_CANVAS_POINTS |> resize(n - 2)
-                }
-                CR_CANVAS_ADDING_LINE = false
-            }
+    // Mirrors cpp original: `popup` (BeginPopup) is unconditional, but the
+    // ONLY way the popup opens is the explicit OpenPopupOnItemClick path,
+    // double-gated by CR_CANVAS_OPT_CTX and a no-right-drag guard. Using
+    // popup_context_item here would install its OWN RMB opener that bypasses
+    // both guards (round-1 fix only gated open_popup_on_item_click but kept
+    // the popup_context_item rail, so RMB still opened the menu mid-pan).
+    if (CR_CANVAS_OPT_CTX && drag_delta.x == 0.0f && drag_delta.y == 0.0f) {
+        open_popup_on_item_click("context", ImGuiPopupFlags.MouseButtonRight)
+    }
+    popup(CR_CV_CTX_MENU,
+          (text = "context", flags = ImGuiWindowFlags.None)) {
+        if (CR_CANVAS_ADDING_LINE) {
             let n = length(CR_CANVAS_POINTS)
-            if (menu_item(CR_CV_REMOVE_ONE,
-                          (text = "Remove one", shortcut = "", enabled = n > 0))) {
+            if (n >= 2) {
                 CR_CANVAS_POINTS |> resize(n - 2)
             }
-            if (menu_item(CR_CV_REMOVE_ALL,
-                          (text = "Remove all", shortcut = "", enabled = n > 0))) {
-                CR_CANVAS_POINTS |> clear()
-            }
+            CR_CANVAS_ADDING_LINE = false
+        }
+        let n = length(CR_CANVAS_POINTS)
+        if (menu_item(CR_CV_REMOVE_ONE,
+                      (text = "Remove one", shortcut = "", enabled = n > 0))) {
+            CR_CANVAS_POINTS |> resize(n - 2)
+        }
+        if (menu_item(CR_CV_REMOVE_ALL,
+                      (text = "Remove all", shortcut = "", enabled = n > 0))) {
+            CR_CANVAS_POINTS |> clear()
         }
     }
 
