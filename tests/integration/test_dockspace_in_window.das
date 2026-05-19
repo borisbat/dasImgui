@@ -32,6 +32,7 @@ def test_dockspace_in_window_captures_dock_id(t : T?) {
         // Wait a few frames; dock_id must stay stable.
         await_quiescent(d, 5.0f)
         var snap1 = snapshot(d)
+        t |> success(snap1 != null, "stable-snapshot snap1 available")
         if (snap1 == null) return
         let dock_id_1 = uint(find_widget(snap1, "HOST/DS")?["payload"]?["dock_id"] ?? 0u)
         t |> equal(dock_id_1, dock_id_0,

@@ -117,7 +117,8 @@ incrementally then terminate with one of ``path_stroke`` /
 * ``path_fill_convex(dl, col)`` / ``path_fill_concave(dl, col)`` —
   close + fill (convex is faster; concave handles non-convex polygons).
 * ``path_stroke(dl, col, flags = ImDrawFlags.None, thickness = 1.0f)`` —
-  close + stroke; ``ImDrawFlags.Closed`` joins last vertex to first.
+  stroke the pending path (open by default). Pass
+  ``ImDrawFlags.Closed`` to join the last vertex back to the first.
 
 See :download:`examples/features/drawlist_path.das
 <../../../examples/features/drawlist_path.das>` for a stroked rounded

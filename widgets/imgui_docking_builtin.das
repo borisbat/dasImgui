@@ -67,7 +67,8 @@ struct DockWindowState {
 // dispatcher lambda — keeps the per-target dispatcher install single-call
 // and matches the existing `open_close_finalize` shape in containers_builtin.
 
-def private dockspace_finalize(widget_ident : string; var state : DockSpaceState) {
+def private dockspace_finalize(widget_ident : string; kind : string;
+                               var state : DockSpaceState) {
     let path = container_path_key()
     var entry : WidgetEntry
     unsafe {
@@ -81,7 +82,7 @@ def private dockspace_finalize(widget_ident : string; var state : DockSpaceState
                 }
             }
         }
-        container_finalize(widget_ident, "dockspace", entry, ser, disp)
+        container_finalize(widget_ident, kind, entry, ser, disp)
     }
 }
 
@@ -138,7 +139,7 @@ def dockspace(var state : DockSpaceState; flags : ImGuiDockNodeFlags; blk : bloc
     let id = DockSpaceOverViewport(viewport, int(flags), null)
     state.dock_id = id
     invoke(blk)
-    dockspace_finalize(widget_ident, state)
+    dockspace_finalize(widget_ident, "dockspace", state)
 }
 
 // ===== dockspace_in_window =====
@@ -159,7 +160,7 @@ def dockspace_in_window(var state : DockSpaceState; size : float2;
     DockSpace(id, size, int(flags), null)
     state.dock_id = id
     invoke(blk)
-    dockspace_finalize(widget_ident, state)
+    dockspace_finalize(widget_ident, "dockspace_in_window", state)
 }
 
 // ===== dock_window =====

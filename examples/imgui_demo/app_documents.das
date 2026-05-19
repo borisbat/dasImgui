@@ -26,7 +26,6 @@ require math
 struct MyDocument {
     name : string
     open : bool                 //! visible in the tab bar
-    open_prev : bool            //! copy of open from last frame
     dirty : bool                //! modified flag (drives UnsavedDocument)
     want_close : bool           //! enqueued for close confirmation
     color : float4              //! per-doc text color
@@ -35,7 +34,7 @@ struct MyDocument {
 def new_doc(name : string;
             open : bool = true;
             color : float4 = float4(1.0f, 1.0f, 1.0f, 1.0f)) : MyDocument {
-    return MyDocument(name = name, open = open, open_prev = open,
+    return MyDocument(name = name, open = open,
                       dirty = false, want_close = false, color = color)
 }
 
@@ -194,7 +193,7 @@ def private show_close_confirm() {
     popup_modal(DOCS_CLOSE_MODAL, (text = "Save?", closable = false,
                                    flags = ImGuiWindowFlags.AlwaysAutoResize)) {
         text(DOCS_CLOSE_PROMPT,
-             (text = "Save change to the following items?"))
+             (text = "Save changes to the following items?"))
         let item_height = GetTextLineHeightWithSpacing()
         child(DOCS_CLOSE_LIST,
               (text = "frame", size = float2(-1.0f, 6.25f * item_height),
@@ -243,6 +242,10 @@ def public ShowExampleAppDocuments() : bool {
         seed_docs()
         DOCS_SEEDED = true
     }
+    // X-button closes by setting DOCS_WIN.open=false; the aggregator then
+    // clears its SHOW flag. When the user re-checks the demo checkbox,
+    // re-enter with stale open=false — reset so the window renders again.
+    DOCS_WIN.open = true
     SetNextWindowSize(ImVec2(640.0f, 480.0f), ImGuiCond.FirstUseEver)
     window(DOCS_WIN, (text = "Example: Documents", closable = true,
                       flags = ImGuiWindowFlags.MenuBar)) {
@@ -250,18 +253,20 @@ def public ShowExampleAppDocuments() : bool {
             file_menu()
         }
 
-        // Debug row: per-doc checkbox to toggle visibility.
+        // Debug row: per-doc checkbox to toggle visibility. The checkbox's
+        // ToggleState.value defaults to false; mirror doc.open into it each
+        // frame so the visible state matches the data, and the click handler
+        // routes the new ToggleState.value back into doc.open.
         for (i in range(length(DOCS))) {
             var doc & = unsafe(DOCS[i])
+            DOCS_OPEN_CHECKBOX[i].value = doc.open
             if (i > 0) {
                 same_line(DOCS_DEBUG_SL[i])
             }
             if (checkbox(DOCS_OPEN_CHECKBOX[i], (text = doc.name))) {
-                if (!DOCS_OPEN_CHECKBOX[i].value) {
-                    doc.open = false
+                doc.open = DOCS_OPEN_CHECKBOX[i].value
+                if (!doc.open) {
                     doc.dirty = false
-                } else {
-                    doc.open = true
                 }
             }
         }
@@ -274,6 +279,12 @@ def public ShowExampleAppDocuments() : bool {
             for (i in range(length(DOCS))) {
                 var doc & = unsafe(DOCS[i])
                 continue if (!doc.open)
+                // DOCS_TAB[i].open backs ImGui's p_open via the closable
+                // tab_item — seed it from doc.open each frame so the tab
+                // can be reopened after a prior X-close (otherwise its
+                // .open stays false from the close and File>Open or the
+                // debug checkbox would only set doc.open, not the tab).
+                DOCS_TAB[i].open = true
                 let tab_flags = (doc.dirty
                                  ? ImGuiTabItemFlags.UnsavedDocument
                                  : ImGuiTabItemFlags.None)

@@ -230,11 +230,10 @@ def public add_polyline(var dl : ImDrawList?; points : array<float2>; col : uint
     //! shape. Pass ``points`` as a ``array<float2>``; the wrapper hands
     //! the underlying pointer to ImGui.
     let n = length(points)
-    if (n >= 2) {
-        unsafe {
-            let ptr = addr(points[0])
-            *dl |> AddPolyline(reinterpret<ImVec2?>(ptr), n, col, flags, thickness)
-        }
+    return if (n < 2)
+    unsafe {
+        let ptr = addr(points[0])
+        *dl |> AddPolyline(reinterpret<ImVec2?>(ptr), n, col, flags, thickness)
     }
     var xs_min = points[0].x
     var ys_min = points[0].y

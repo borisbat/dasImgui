@@ -7,6 +7,7 @@ require imgui public
 require imgui/imgui_widgets_builtin public
 require imgui/imgui_containers_builtin public
 require imgui/imgui_docking_builtin public
+require imgui/imgui_style_builtin public
 require daslib/safe_addr
 
 // Mirrors imgui_demo.cpp:8424-8551 — static void ShowExampleAppDockSpace(bool* p_open).
@@ -61,8 +62,7 @@ def private current_dockspace_flags() : ImGuiDockNodeFlags {
     return unsafe(reinterpret<ImGuiDockNodeFlags>(bits))
 }
 
-def public ShowExampleAppDockSpace() : bool {
-    SetNextWindowSize(ImVec2(720.0f, 480.0f), ImGuiCond.FirstUseEver)
+def private render_ds_window() {
     window(DS_WIN, (text = "DockSpace Demo", closable = true,
                     flags = ImGuiWindowFlags.MenuBar |
                             ImGuiWindowFlags.NoDocking)) {
@@ -104,6 +104,28 @@ def public ShowExampleAppDockSpace() : bool {
                                      flags = ImGuiWindowFlags.None)) {
                 text(DS_PANEL_B_LINE, (text = "Right-click the title for the window menu."))
             }
+        }
+    }
+}
+
+def public ShowExampleAppDockSpace() : bool {
+    // ConfigFlags.DockingEnable is set by the standalone harness; the
+    // imgui_demo aggregator path doesn't, so flip it on at entry. Idempotent.
+    var io & = unsafe(GetIO())
+    io.ConfigFlags |= ImGuiConfigFlags.DockingEnable
+    // X-button closes by flipping DS_WIN.open=false; the aggregator then
+    // clears its SHOW flag and stops calling us. When the user re-checks
+    // the demo checkbox, we're re-entered with the stale open=false — reset
+    // so the window renders again.
+    DS_WIN.open = true
+    SetNextWindowSize(ImVec2(720.0f, 480.0f), ImGuiCond.FirstUseEver)
+    // Match the C++ original: when "Padding" is off, push zero WindowPadding
+    // around the host window's Begin so the dockspace fills edge-to-edge.
+    if (DS_PADDING) {
+        render_ds_window()
+    } else {
+        with_style((ImGuiStyleVar.WindowPadding, float2(0.0f, 0.0f))) {
+            render_ds_window()
         }
     }
     let menu_closed = DS_REQUEST_CLOSE

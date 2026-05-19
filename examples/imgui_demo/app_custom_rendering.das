@@ -296,26 +296,32 @@ def private show_canvas_tab() {
     }
 
     let drag_delta = GetMouseDragDelta(ImGuiMouseButton.Right, -1.0f)
-    if (CR_CANVAS_OPT_CTX && drag_delta.x == 0.0f && drag_delta.y == 0.0f) {
-        open_popup_on_item_click("context", ImGuiPopupFlags.MouseButtonRight)
-    }
-    popup_context_item(CR_CV_CTX_MENU,
-                       (str_id = "context", flags = ImGuiPopupFlags.MouseButtonRight)) {
-        if (CR_CANVAS_ADDING_LINE) {
+    // Gate the entire context-menu rail behind CR_CANVAS_OPT_CTX.
+    // popup_context_item installs its own RMB handler, so it must NOT
+    // run when the toggle is off — gating only open_popup_on_item_click
+    // would leave the menu opening on right-click anyway.
+    if (CR_CANVAS_OPT_CTX) {
+        if (drag_delta.x == 0.0f && drag_delta.y == 0.0f) {
+            open_popup_on_item_click("context", ImGuiPopupFlags.MouseButtonRight)
+        }
+        popup_context_item(CR_CV_CTX_MENU,
+                           (str_id = "context", flags = ImGuiPopupFlags.MouseButtonRight)) {
+            if (CR_CANVAS_ADDING_LINE) {
+                let n = length(CR_CANVAS_POINTS)
+                if (n >= 2) {
+                    CR_CANVAS_POINTS |> resize(n - 2)
+                }
+                CR_CANVAS_ADDING_LINE = false
+            }
             let n = length(CR_CANVAS_POINTS)
-            if (n >= 2) {
+            if (menu_item(CR_CV_REMOVE_ONE,
+                          (text = "Remove one", shortcut = "", enabled = n > 0))) {
                 CR_CANVAS_POINTS |> resize(n - 2)
             }
-            CR_CANVAS_ADDING_LINE = false
-        }
-        let n = length(CR_CANVAS_POINTS)
-        if (menu_item(CR_CV_REMOVE_ONE,
-                      (text = "Remove one", shortcut = "", enabled = n > 0))) {
-            CR_CANVAS_POINTS |> resize(n - 2)
-        }
-        if (menu_item(CR_CV_REMOVE_ALL,
-                      (text = "Remove all", shortcut = "", enabled = n > 0))) {
-            CR_CANVAS_POINTS |> clear()
+            if (menu_item(CR_CV_REMOVE_ALL,
+                          (text = "Remove all", shortcut = "", enabled = n > 0))) {
+                CR_CANVAS_POINTS |> clear()
+            }
         }
     }
 
@@ -414,6 +420,10 @@ def private show_channels_tab() {
 // ===== Entry point =====
 
 def public ShowExampleAppCustomRendering() : bool {
+    // X-button closes by setting CR_WIN.open=false; the aggregator then
+    // clears its SHOW flag. When the user re-checks the demo checkbox,
+    // re-enter with stale open=false — reset so the window renders again.
+    CR_WIN.open = true
     window(CR_WIN, (text = "Example: Custom rendering", closable = true,
                     flags = ImGuiWindowFlags.None)) {
         tab_bar(CR_TABS, (text = "##TabBar", flags = ImGuiTabBarFlags.None)) {

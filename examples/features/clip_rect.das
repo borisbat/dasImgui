@@ -57,6 +57,9 @@ def update() {
                 dl2 |> add_circle_filled(float2(r_x1, r_y0 + 20.0f),
                                          30.0f, blue, 0)
             }
+            // GUARD dummy inside the clip block — proves widget registration
+            // works normally inside with_clip_rect (no scope-leak).
+            dummy(GUARD, (size = float2(r_x1 - r_x0, r_y1 - r_y0)))
         }
 
         dummy(BAND_SLOT, (size = float2(460.0f, 100.0f)))

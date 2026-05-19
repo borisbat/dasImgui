@@ -27,8 +27,12 @@ require imgui/imgui_harness
 
 def setup_default_layout(dock_id : uint) {
     //! 2-panel horizontal split: Files (left 40%) | Output (right 60%).
+    //! SetNodeSize before SplitNode — without it the 40/60 ratio is
+    //! computed from a zero-sized node (matches dock_basic.das order).
     DockBuilderRemoveNode(dock_id)
     DockBuilderAddDockSpaceNode(dock_id, ImGuiDockNodeFlags.None)
+    let vp = GetMainViewport()
+    DockBuilderSetNodeSize(dock_id, ImVec2(vp.Size.x, vp.Size.y))
     var left_id : uint = 0u
     var right_id : uint = 0u
     DockBuilderSplitNode(dock_id, ImGuiDir.Left, 0.40f, left_id, right_id)
