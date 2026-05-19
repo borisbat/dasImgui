@@ -373,11 +373,14 @@ let private TABLES_SORT_TEMPLATE_NAMES <- ["Banana", "Apple", "Cherry",
                                            "Strawberry", "Mango", "Kiwi",
                                            "Orange", "Pineapple", "Blueberry",
                                            "Plum", "Coconut", "Pear", "Apricot"]
-// Per-column user_id codes (mirror cpp MyItemColumnID).
-let private TABLES_SORT_COL_ID       = 0u
-let private TABLES_SORT_COL_NAME     = 1u
-let private TABLES_SORT_COL_ACTION   = 2u
-let private TABLES_SORT_COL_QUANTITY = 3u
+// Per-column user_id codes (mirror cpp MyItemColumnID). Description is
+// new in section 24 Advanced — kept adjacent to the section-23 entries
+// because both sections reuse the same SortItem struct + template names.
+let private TABLES_SORT_COL_ID          = 0u
+let private TABLES_SORT_COL_NAME        = 1u
+let private TABLES_SORT_COL_ACTION      = 2u
+let private TABLES_SORT_COL_QUANTITY    = 3u
+let private TABLES_SORT_COL_DESCRIPTION = 4u
 
 struct private SortItem {
     id       : int
@@ -402,6 +405,80 @@ var private TABLES_SORT_ID_TEXT     : table<int; NarrativeState>
 var private TABLES_SORT_NAME_TEXT   : table<int; NarrativeState>
 var private TABLES_SORT_ACTION_BTN  : table<int; ClickState>
 var private TABLES_SORT_QTY_TEXT    : table<int; NarrativeState>
+
+// ---- Section 24 Advanced state ----
+// Mirrors cpp:5713-6033. Reuses TABLES_SORT_TEMPLATE_NAMES + SortItem
+// struct + TABLES_SORT_COL_* user-id constants from section 23. ITEMS
+// lifecycle is independent (items_count is user-editable, body mutates
+// quantity via Chop/Eat) so the items list lives in its own array.
+
+// Contents-type enum (mirror cpp ContentsType). The Combo at the bottom
+// of the Options/Other sub-tree drives this; the per-row first column
+// switches on it.
+let private TABLES_ADV_CT_TEXT                  = 0
+let private TABLES_ADV_CT_BUTTON                = 1
+let private TABLES_ADV_CT_SMALL_BUTTON          = 2
+let private TABLES_ADV_CT_FILL_BUTTON           = 3
+let private TABLES_ADV_CT_SELECTABLE            = 4
+let private TABLES_ADV_CT_SELECTABLE_SPAN_ROW   = 5
+
+// Table flags (cpp:5724-5729). Defaults: full Resizable/Reorderable/
+// Hideable/Sortable/SortMulti + RowBg/Borders/NoBordersInBody +
+// ScrollX/ScrollY + SizingFixedFit.
+var private TABLES_ADV_FLAGS : int = int(ImGuiTableFlags.Resizable |
+                                         ImGuiTableFlags.Reorderable |
+                                         ImGuiTableFlags.Hideable |
+                                         ImGuiTableFlags.Sortable |
+                                         ImGuiTableFlags.SortMulti |
+                                         ImGuiTableFlags.RowBg |
+                                         ImGuiTableFlags.Borders |
+                                         ImGuiTableFlags.NoBordersInBody |
+                                         ImGuiTableFlags.ScrollX |
+                                         ImGuiTableFlags.ScrollY |
+                                         ImGuiTableFlags.SizingFixedFit)
+// Per-column shared flags (cpp:5730 `columns_base_flags`). Only
+// AngledHeader is editable in the Options/Headers sub-tree; OR'd into
+// every TableSetupColumn call below.
+var private TABLES_ADV_COLUMNS_BASE_FLAGS : int = int(ImGuiTableColumnFlags.None)
+
+var private TABLES_ADV_CONTENTS_TYPE      : int    = 5 // CT_SelectableSpanRow
+var private TABLES_ADV_FREEZE_COLS        : int    = 1
+var private TABLES_ADV_FREEZE_ROWS        : int    = 1
+// items_count default = template_count * 2 = 30 (cpp:5737).
+var private TABLES_ADV_ITEMS_COUNT        : int    = 30
+var private TABLES_ADV_OUTER_SIZE_VALUE   : float2 = float2(0.0f, 0.0f) // seeded in [init] from TextLineHeightWithSpacing * 12
+var private TABLES_ADV_ROW_MIN_HEIGHT     : float  = 0.0f
+var private TABLES_ADV_INNER_WIDTH        : float  = 0.0f
+var private TABLES_ADV_OUTER_SIZE_ENABLED : bool   = true
+var private TABLES_ADV_SHOW_HEADERS       : bool   = true
+var private TABLES_ADV_SHOW_WRAPPED_TEXT  : bool   = false
+// SHOW_DEBUG_DETAILS / SCROLL_CUR / SCROLL_MAX dropped — see post-table
+// comment in show_advanced(). cpp's debug readout reads
+// ImDrawList.CmdBuffer.Size, which the daslang ImVector binding doesn't
+// surface as a readable accessor.
+
+// items + selection. Items are owned per-section (separate lifecycle
+// from TABLES_SORT_ITEMS); selection is an unsorted int array of
+// item.id values (mirrors cpp's ImVector<int> selection).
+var private TABLES_ADV_ITEMS     : array<SortItem>
+var private TABLES_ADV_SELECTION : array<int>
+var private TABLES_ADV_ITEMS_NEED_SORT : bool = false
+
+// Per-row widget state — keyed by SortItem.id so paths track items
+// across re-sorts. We do NOT pre-seed: the row helper auto-inserts on
+// first access. Items_count change (rebuild_adv_items) wipes them so
+// the registry doesn't accumulate stale entries.
+var private TABLES_ADV_ID_TEXT      : table<int; NarrativeState>  // CT_Text
+var private TABLES_ADV_ID_BTN       : table<int; ClickState>      // CT_Button / SmallButton / FillButton
+var private TABLES_ADV_ID_SEL       : table<int; ClickState>      // CT_Selectable[_SpanRow]
+var private TABLES_ADV_NAME_TEXT    : table<int; NarrativeState>
+var private TABLES_ADV_CHOP_BTN     : table<int; ClickState>
+var private TABLES_ADV_EAT_BTN      : table<int; ClickState>
+var private TABLES_ADV_QTY_TEXT     : table<int; NarrativeState>
+var private TABLES_ADV_DESC_TEXT    : table<int; NarrativeState>
+var private TABLES_ADV_HIDDEN_TEXT  : table<int; NarrativeState>
+// Inter-button same_line marker — one per row.
+var private TABLES_ADV_SL_CHOP_EAT  : table<int; EmptyMarkerState>
 
 [init]
 def seed_sort_items() {
@@ -448,6 +525,67 @@ def seed_sizing_policy() {
     TABLES_SIZING_POLICY[3] = int(ImGuiTableFlags.SizingStretchSame)
 }
 
+[init]
+def seed_advanced_outer_size() {
+    // cpp:5738 — `outer_size_value = ImVec2(0.0f, TEXT_BASE_HEIGHT * 12)`.
+    // GetTextLineHeightWithSpacing() requires an active ImGui frame so we
+    // cannot call it at [init] time; use a hardcoded approximation
+    // (line_h ~= 17px at default font) which the user can immediately
+    // adjust via the Other/##OuterSize DragFloat2.
+    TABLES_ADV_OUTER_SIZE_VALUE = float2(0.0f, 17.0f * 12.0f)
+}
+
+// Synchronize TABLES_ADV_ITEMS with TABLES_ADV_ITEMS_COUNT. Called every
+// frame at the top of show_advanced(); mirrors the cpp:5870-5881 resize
+// + per-item re-seed (always overwrites, matching cpp).
+def private rebuild_adv_items() {
+    let want = max(TABLES_ADV_ITEMS_COUNT, 0)
+    if (length(TABLES_ADV_ITEMS) == want) return
+    TABLES_ADV_ITEMS |> resize(want)
+    let template_count = length(TABLES_SORT_TEMPLATE_NAMES)
+    for (n in range(want)) {
+        let template_n = n % template_count
+        TABLES_ADV_ITEMS[n].id = n
+        TABLES_ADV_ITEMS[n].name := TABLES_SORT_TEMPLATE_NAMES[template_n]
+        // cpp:5879 — only templates 3/4 get non-zero defaults.
+        var qty = 0
+        if (template_n == 3) {
+            qty = 10
+        } elif (template_n == 4) {
+            qty = 20
+        }
+        TABLES_ADV_ITEMS[n].quantity = qty
+    }
+}
+
+// Multi-key sort comparator shared with the sort_specs() block-arg below.
+// Mirrors cpp:4024-4061 MyItem::CompareWithSortSpecs — walks specs in
+// order, returns first non-zero delta with asc/desc sign applied; falls
+// back on ID tie-break (qsort is not stable, per Boris's note in the
+// strudel skill — daslang `sort()` is also qsort).
+def private adv_compare(a : SortItem; b : SortItem;
+                        specs : array<TableSortSpec>) : bool {
+    for (spec in specs) {
+        var delta = 0
+        if (spec.column_user_id == TABLES_SORT_COL_ID) {
+            delta = a.id - b.id
+        } elif (spec.column_user_id == TABLES_SORT_COL_NAME) {
+            delta = a.name < b.name ? -1 : (a.name > b.name ? 1 : 0)
+        } elif (spec.column_user_id == TABLES_SORT_COL_QUANTITY) {
+            delta = a.quantity - b.quantity
+        } elif (spec.column_user_id == TABLES_SORT_COL_DESCRIPTION) {
+            // cpp:4048 — Description sorts by Name (description is a
+            // canned literal, no per-item field).
+            delta = a.name < b.name ? -1 : (a.name > b.name ? 1 : 0)
+        }
+        if (delta != 0) {
+            let asc = spec.sort_direction == ImGuiSortDirection.Ascending
+            return asc ? delta < 0 : delta > 0
+        }
+    }
+    return a.id < b.id
+}
+
 def ShowDemoWindowTables() {
     collapsing_header(TABLES_SECTION,
                       (text = "Tables & Columns", closable = false,
@@ -485,6 +623,7 @@ def ShowDemoWindowTables() {
         show_context_menus()
         show_synced_instances()
         show_sorting()
+        show_advanced()
 
         // Reset open_action so the next frame's tree_nodes inherit their
         // sticky open/closed state instead of being forced again.
@@ -2314,5 +2453,459 @@ def private show_sorting() {
                 }
             }
         }
+    }
+}
+
+// =============================================================================
+// Section 24: Advanced — cpp:5713-6033
+//
+// The heaviest demo by far: nearly every table flag, every contents-type
+// option, scrolling debug readout, list-clipper-virtualized data with
+// PushButtonRepeat, ID-keyed widget state, Ctrl+click multi-select, and
+// quantity-edit-triggers-resort interaction. State + helpers above; the
+// helper below mirrors the cpp source linearly.
+//
+// Skipped from cpp:
+// - PushStyleCompact / PopStyleCompact (cosmetic compaction wrapper —
+//   per the established section-wide policy in this file).
+// - All HelpMarker bubbles (per the same policy).
+// =============================================================================
+def private show_advanced() {
+    apply_open_action()
+    tree_node(TABLES_ADV, (text = "Advanced",
+                           flags = ImGuiTreeNodeFlags.None)) {
+        // ---- Options sub-tree (cpp:5746-5864) ----
+        // Per-cell SetNextItemWidth(TEXT_BASE_WIDTH * 28) before each
+        // edit_drag_* call (mimics the cpp PushItemWidth(28 * width)
+        // applied once to all enclosed widgets — boost edit_* widgets
+        // don't honor PushItemWidth uniformly, so per-call SetNextItemWidth
+        // is the safer narrow-impact equivalent).
+        let text_base_width = CalcTextSize("A").x
+        let item_width = text_base_width * 28.0f
+
+        if (tree_node_ex(TABLES_ADV_OPTIONS,
+                         (text = "Options",
+                          flags = ImGuiTreeNodeFlags.DefaultOpen))) {
+            // ---- Features sub-node (cpp:5752-5761) ----
+            if (tree_node_ex(TABLES_ADV_F_NODE,
+                             (text = "Features:",
+                              flags = ImGuiTreeNodeFlags.DefaultOpen))) {
+                edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
+                    (id = "TBL_ADV_F_RESIZABLE", text = "ImGuiTableFlags_Resizable",
+                     flags_value = int(ImGuiTableFlags.Resizable)))
+                edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
+                    (id = "TBL_ADV_F_REORDERABLE", text = "ImGuiTableFlags_Reorderable",
+                     flags_value = int(ImGuiTableFlags.Reorderable)))
+                edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
+                    (id = "TBL_ADV_F_HIDEABLE", text = "ImGuiTableFlags_Hideable",
+                     flags_value = int(ImGuiTableFlags.Hideable)))
+                edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
+                    (id = "TBL_ADV_F_SORTABLE", text = "ImGuiTableFlags_Sortable",
+                     flags_value = int(ImGuiTableFlags.Sortable)))
+                edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
+                    (id = "TBL_ADV_F_NOSAVED", text = "ImGuiTableFlags_NoSavedSettings",
+                     flags_value = int(ImGuiTableFlags.NoSavedSettings)))
+                edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
+                    (id = "TBL_ADV_F_CTXMENU", text = "ImGuiTableFlags_ContextMenuInBody",
+                     flags_value = int(ImGuiTableFlags.ContextMenuInBody)))
+                tree_pop()
+            }
+
+            // ---- Decorations sub-node (cpp:5763-5775) ----
+            if (tree_node_ex(TABLES_ADV_D_NODE,
+                             (text = "Decorations:",
+                              flags = ImGuiTreeNodeFlags.DefaultOpen))) {
+                edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
+                    (id = "TBL_ADV_F_ROWBG", text = "ImGuiTableFlags_RowBg",
+                     flags_value = int(ImGuiTableFlags.RowBg)))
+                edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
+                    (id = "TBL_ADV_F_BORDERSV", text = "ImGuiTableFlags_BordersV",
+                     flags_value = int(ImGuiTableFlags.BordersV)))
+                edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
+                    (id = "TBL_ADV_F_BORDERSOV", text = "ImGuiTableFlags_BordersOuterV",
+                     flags_value = int(ImGuiTableFlags.BordersOuterV)))
+                edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
+                    (id = "TBL_ADV_F_BORDERSIV", text = "ImGuiTableFlags_BordersInnerV",
+                     flags_value = int(ImGuiTableFlags.BordersInnerV)))
+                edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
+                    (id = "TBL_ADV_F_BORDERSH", text = "ImGuiTableFlags_BordersH",
+                     flags_value = int(ImGuiTableFlags.BordersH)))
+                edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
+                    (id = "TBL_ADV_F_BORDERSOH", text = "ImGuiTableFlags_BordersOuterH",
+                     flags_value = int(ImGuiTableFlags.BordersOuterH)))
+                edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
+                    (id = "TBL_ADV_F_BORDERSIH", text = "ImGuiTableFlags_BordersInnerH",
+                     flags_value = int(ImGuiTableFlags.BordersInnerH)))
+                edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
+                    (id = "TBL_ADV_F_NOBORDERSBODY", text = "ImGuiTableFlags_NoBordersInBody",
+                     flags_value = int(ImGuiTableFlags.NoBordersInBody)))
+                edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
+                    (id = "TBL_ADV_F_NOBORDERSBODYUR", text = "ImGuiTableFlags_NoBordersInBodyUntilResize",
+                     flags_value = int(ImGuiTableFlags.NoBordersInBodyUntilResize)))
+                tree_pop()
+            }
+
+            // ---- Sizing sub-node (cpp:5777-5792) ----
+            if (tree_node_ex(TABLES_ADV_S_NODE,
+                             (text = "Sizing:",
+                              flags = ImGuiTreeNodeFlags.DefaultOpen))) {
+                SetNextItemWidth(item_width)
+                edit_table_sizing_flags(safe_addr(TABLES_ADV_FLAGS),
+                                        "tbl_adv_sizing_combo")
+                edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
+                    (id = "TBL_ADV_F_NOHOSTX", text = "ImGuiTableFlags_NoHostExtendX",
+                     flags_value = int(ImGuiTableFlags.NoHostExtendX)))
+                edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
+                    (id = "TBL_ADV_F_NOHOSTY", text = "ImGuiTableFlags_NoHostExtendY",
+                     flags_value = int(ImGuiTableFlags.NoHostExtendY)))
+                edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
+                    (id = "TBL_ADV_F_NOKEEPCV", text = "ImGuiTableFlags_NoKeepColumnsVisible",
+                     flags_value = int(ImGuiTableFlags.NoKeepColumnsVisible)))
+                edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
+                    (id = "TBL_ADV_F_PRECISE", text = "ImGuiTableFlags_PreciseWidths",
+                     flags_value = int(ImGuiTableFlags.PreciseWidths)))
+                edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
+                    (id = "TBL_ADV_F_NOCLIP", text = "ImGuiTableFlags_NoClip",
+                     flags_value = int(ImGuiTableFlags.NoClip)))
+                tree_pop()
+            }
+
+            // ---- Padding sub-node (cpp:5794-5800) ----
+            if (tree_node_ex(TABLES_ADV_P_NODE,
+                             (text = "Padding:",
+                              flags = ImGuiTreeNodeFlags.DefaultOpen))) {
+                edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
+                    (id = "TBL_ADV_F_PADOUTERX", text = "ImGuiTableFlags_PadOuterX",
+                     flags_value = int(ImGuiTableFlags.PadOuterX)))
+                edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
+                    (id = "TBL_ADV_F_NOPADOUTERX", text = "ImGuiTableFlags_NoPadOuterX",
+                     flags_value = int(ImGuiTableFlags.NoPadOuterX)))
+                edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
+                    (id = "TBL_ADV_F_NOPADINNERX", text = "ImGuiTableFlags_NoPadInnerX",
+                     flags_value = int(ImGuiTableFlags.NoPadInnerX)))
+                tree_pop()
+            }
+
+            // ---- Scrolling sub-node (cpp:5802-5813) ----
+            if (tree_node_ex(TABLES_ADV_SC_NODE,
+                             (text = "Scrolling:",
+                              flags = ImGuiTreeNodeFlags.DefaultOpen))) {
+                edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
+                    (id = "TBL_ADV_F_SCROLLX", text = "ImGuiTableFlags_ScrollX",
+                     flags_value = int(ImGuiTableFlags.ScrollX)))
+                same_line(TABLES_ADV_SL_FCOLS)
+                SetNextItemWidth(GetFrameHeight())
+                edit_drag_int(safe_addr(TABLES_ADV_FREEZE_COLS),
+                    (id = "TBL_ADV_FREEZE_COLS", text = "freeze_cols",
+                     speed = 0.2f, v_min = 0, v_max = 9, format = "%d",
+                     flags = ImGuiSliderFlags.NoInput))
+                edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
+                    (id = "TBL_ADV_F_SCROLLY", text = "ImGuiTableFlags_ScrollY",
+                     flags_value = int(ImGuiTableFlags.ScrollY)))
+                same_line(TABLES_ADV_SL_FROWS)
+                SetNextItemWidth(GetFrameHeight())
+                edit_drag_int(safe_addr(TABLES_ADV_FREEZE_ROWS),
+                    (id = "TBL_ADV_FREEZE_ROWS", text = "freeze_rows",
+                     speed = 0.2f, v_min = 0, v_max = 9, format = "%d",
+                     flags = ImGuiSliderFlags.NoInput))
+                tree_pop()
+            }
+
+            // ---- Sorting sub-node (cpp:5815-5822) ----
+            if (tree_node_ex(TABLES_ADV_SO_NODE,
+                             (text = "Sorting:",
+                              flags = ImGuiTreeNodeFlags.DefaultOpen))) {
+                edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
+                    (id = "TBL_ADV_F_SORTMULTI", text = "ImGuiTableFlags_SortMulti",
+                     flags_value = int(ImGuiTableFlags.SortMulti)))
+                edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
+                    (id = "TBL_ADV_F_SORTTRISTATE", text = "ImGuiTableFlags_SortTristate",
+                     flags_value = int(ImGuiTableFlags.SortTristate)))
+                tree_pop()
+            }
+
+            // ---- Headers sub-node (cpp:5824-5831) ----
+            if (tree_node_ex(TABLES_ADV_H_NODE,
+                             (text = "Headers:",
+                              flags = ImGuiTreeNodeFlags.DefaultOpen))) {
+                edit_checkbox(safe_addr(TABLES_ADV_SHOW_HEADERS),
+                              (id = "TBL_ADV_SHOW_HEADERS", text = "show_headers"))
+                edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
+                    (id = "TBL_ADV_F_HHC", text = "ImGuiTableFlags_HighlightHoveredColumn",
+                     flags_value = int(ImGuiTableFlags.HighlightHoveredColumn)))
+                edit_checkbox_flags(safe_addr(TABLES_ADV_COLUMNS_BASE_FLAGS),
+                    (id = "TBL_ADV_CBF_AH", text = "ImGuiTableColumnFlags_AngledHeader",
+                     flags_value = int(ImGuiTableColumnFlags.AngledHeader)))
+                tree_pop()
+            }
+
+            // ---- Other sub-node (cpp:5833-5858) ----
+            if (tree_node_ex(TABLES_ADV_O_NODE,
+                             (text = "Other:",
+                              flags = ImGuiTreeNodeFlags.DefaultOpen))) {
+                edit_checkbox(safe_addr(TABLES_ADV_SHOW_WRAPPED_TEXT),
+                              (id = "TBL_ADV_SHOW_WRAPPED",
+                               text = "show_wrapped_text"))
+                // OuterSize: DragFloat2 paired with the enable checkbox via
+                // SameLine + GetStyle().ItemInnerSpacing.x (cpp:5837-5839).
+                SetNextItemWidth(item_width)
+                edit_drag_float2(safe_addr(TABLES_ADV_OUTER_SIZE_VALUE),
+                                 (id = "TBL_ADV_OUTERSIZE",
+                                  text = "##OuterSize"))
+                same_line(TABLES_ADV_SL_OUTERSIZE,
+                          (offset_from_start_x = 0.0f,
+                           spacing = GetStyle().ItemInnerSpacing.x))
+                edit_checkbox(safe_addr(TABLES_ADV_OUTER_SIZE_ENABLED),
+                              (id = "TBL_ADV_OUTERSIZE_EN", text = "outer_size"))
+
+                // inner_width — only takes effect when ScrollX is on; we
+                // pipe 0.0 to BeginTable otherwise (cpp:5848-5849 +
+                // inner_width_to_use below).
+                SetNextItemWidth(item_width)
+                edit_drag_float(safe_addr(TABLES_ADV_INNER_WIDTH),
+                    (id = "TBL_ADV_INNER_WIDTH",
+                     text = "inner_width (when ScrollX active)",
+                     speed = 1.0f, v_min = 0.0f, v_max = FLT_MAX,
+                     format = "%.3f"))
+
+                SetNextItemWidth(item_width)
+                edit_drag_float(safe_addr(TABLES_ADV_ROW_MIN_HEIGHT),
+                    (id = "TBL_ADV_ROWMINH",
+                     text = "row_min_height",
+                     speed = 1.0f, v_min = 0.0f, v_max = FLT_MAX,
+                     format = "%.3f"))
+
+                SetNextItemWidth(item_width)
+                edit_drag_int(safe_addr(TABLES_ADV_ITEMS_COUNT),
+                    (id = "TBL_ADV_ITEMS_COUNT",
+                     text = "items_count",
+                     speed = 0.1f, v_min = 0, v_max = 9999,
+                     format = "%d"))
+
+                SetNextItemWidth(item_width)
+                var ct_items <- ["Text", "Button", "SmallButton",
+                                 "FillButton", "Selectable",
+                                 "Selectable (span row)"]
+                edit_combo(safe_addr(TABLES_ADV_CONTENTS_TYPE),
+                           (id = "TBL_ADV_CT",
+                            text = "items_type (first column)",
+                            items = ct_items))
+                delete ct_items
+
+                tree_pop()
+            }
+
+            spacing(TABLES_ADV_OPTIONS_SPACING)
+            tree_pop()
+        }
+
+        // ---- Rebuild items if count changed (cpp:5870-5881) ----
+        rebuild_adv_items()
+
+        // ---- BeginTable (cpp:5889-5890) ----
+        let inner_width_to_use = ((TABLES_ADV_FLAGS & int(ImGuiTableFlags.ScrollX)) != 0
+                                  ? TABLES_ADV_INNER_WIDTH
+                                  : 0.0f)
+        let effective_outer_size = (TABLES_ADV_OUTER_SIZE_ENABLED
+                                    ? TABLES_ADV_OUTER_SIZE_VALUE
+                                    : float2(0.0f, 0.0f))
+        data_table(TABLES_ADV_T,
+                   (text = "##table_advanced", columns = 6,
+                    flags = unsafe(reinterpret<ImGuiTableFlags>(TABLES_ADV_FLAGS)),
+                    outer_size = effective_outer_size,
+                    inner_width = inner_width_to_use)) {
+            // ---- Columns (cpp:5895-5901) ----
+            // user_id passes match the sort comparator branches above.
+            // Description picks WidthStretch only when NoHostExtendX is off
+            // (cpp:5899 ternary) — otherwise the table can't grow into the
+            // stretch column. Bitfield-as-int test on TABLES_ADV_FLAGS.
+            let base = unsafe(reinterpret<ImGuiTableColumnFlags>(TABLES_ADV_COLUMNS_BASE_FLAGS))
+            table_setup_column("ID",
+                base | ImGuiTableColumnFlags.DefaultSort |
+                    ImGuiTableColumnFlags.WidthFixed |
+                    ImGuiTableColumnFlags.NoHide,
+                0.0f, TABLES_SORT_COL_ID)
+            table_setup_column("Name",
+                base | ImGuiTableColumnFlags.WidthFixed,
+                0.0f, TABLES_SORT_COL_NAME)
+            table_setup_column("Action",
+                base | ImGuiTableColumnFlags.NoSort |
+                    ImGuiTableColumnFlags.WidthFixed,
+                0.0f, TABLES_SORT_COL_ACTION)
+            table_setup_column("Quantity",
+                base | ImGuiTableColumnFlags.PreferSortDescending,
+                0.0f, TABLES_SORT_COL_QUANTITY)
+            let desc_extra = ((TABLES_ADV_FLAGS & int(ImGuiTableFlags.NoHostExtendX)) != 0
+                              ? ImGuiTableColumnFlags.None
+                              : ImGuiTableColumnFlags.WidthStretch)
+            table_setup_column("Description", base | desc_extra,
+                0.0f, TABLES_SORT_COL_DESCRIPTION)
+            table_setup_column("Hidden",
+                base | ImGuiTableColumnFlags.DefaultHide |
+                    ImGuiTableColumnFlags.NoSort)
+            table_setup_scroll_freeze(TABLES_ADV_FREEZE_COLS,
+                                      TABLES_ADV_FREEZE_ROWS)
+
+            // ---- Sort (cpp:5904-5912) ----
+            sort_specs() $(specs) {
+                TABLES_ADV_ITEMS |> sort() $(a, b) {
+                    return adv_compare(a, b, specs)
+                }
+            }
+            // cpp:5912 — always resets after the dirty pass. The
+            // sort_specs() helper clears the dirty flag on its own when
+            // invoked, so this is purely a local guard for the
+            // quantity-edit-induced re-sort (set below).
+            TABLES_ADV_ITEMS_NEED_SORT = false
+
+            // cpp:5916 — track whether the Quantity column is currently
+            // sorted; if so, Chop/Eat triggers a re-sort on button-release.
+            let sorts_specs_using_quantity = ((table_get_column_flags(3) &
+                ImGuiTableColumnFlags.IsSorted) != ImGuiTableColumnFlags.None)
+
+            // ---- Headers (cpp:5919-5922) ----
+            if (TABLES_ADV_SHOW_HEADERS &&
+                (TABLES_ADV_COLUMNS_BASE_FLAGS & int(ImGuiTableColumnFlags.AngledHeader)) != 0) {
+                table_angled_headers_row()
+            }
+            if (TABLES_ADV_SHOW_HEADERS) {
+                table_headers_row()
+            }
+
+            // ---- Body — PushButtonRepeat + ListClipper (cpp:5926-6011) ----
+            with_button_repeat(true) {
+                list_clipper(length(TABLES_ADV_ITEMS)) $(start, end_) {
+                    for (row_n in range(start, end_)) {
+                        var item & = unsafe(TABLES_ADV_ITEMS[row_n])
+                        let item_id = item.id
+                        let item_is_selected = (find_index(TABLES_ADV_SELECTION,
+                                                           item_id) != -1)
+                        with_id("adv_row_{item_id}") {
+                            table_next_row(ImGuiTableRowFlags.None,
+                                           TABLES_ADV_ROW_MIN_HEIGHT)
+                            // Col 0 (ID): contents-type switch (cpp:5949-5978).
+                            table_set_column_index(0)
+                            // cpp:5951 — sprintf(label, "%04d", item.ID).
+                            // gen2 "{val}" interpolation has no built-in
+                            // width-pad, so we approximate via
+                            // fmt_pad_left("0", 4, "{item_id}") which is
+                            // overkill for the small range; use a plain
+                            // "{item_id}" here — the cpp 4-digit zero-pad
+                            // is purely cosmetic for the demo.
+                            let text_label = "{item_id}"
+                            if (TABLES_ADV_CONTENTS_TYPE == TABLES_ADV_CT_TEXT) {
+                                text(TABLES_ADV_ID_TEXT[item_id],
+                                     (text = text_label))
+                            } elif (TABLES_ADV_CONTENTS_TYPE == TABLES_ADV_CT_BUTTON) {
+                                button(TABLES_ADV_ID_BTN[item_id],
+                                       (text = text_label))
+                            } elif (TABLES_ADV_CONTENTS_TYPE == TABLES_ADV_CT_SMALL_BUTTON) {
+                                small_button(TABLES_ADV_ID_BTN[item_id],
+                                             (text = text_label))
+                            } elif (TABLES_ADV_CONTENTS_TYPE == TABLES_ADV_CT_FILL_BUTTON) {
+                                button(TABLES_ADV_ID_BTN[item_id],
+                                       (text = text_label,
+                                        size = float2(-FLT_MIN, 0.0f)))
+                            } elif (TABLES_ADV_CONTENTS_TYPE == TABLES_ADV_CT_SELECTABLE ||
+                                    TABLES_ADV_CONTENTS_TYPE == TABLES_ADV_CT_SELECTABLE_SPAN_ROW) {
+                                let sel_flags = (TABLES_ADV_CONTENTS_TYPE == TABLES_ADV_CT_SELECTABLE_SPAN_ROW
+                                    ? ImGuiSelectableFlags.SpanAllColumns | ImGuiSelectableFlags.AllowOverlap
+                                    : ImGuiSelectableFlags.None)
+                                if (selectable_label(TABLES_ADV_ID_SEL[item_id],
+                                                     (text = text_label,
+                                                      selected = item_is_selected,
+                                                      flags = sel_flags,
+                                                      size = float2(0.0f, TABLES_ADV_ROW_MIN_HEIGHT)))) {
+                                    // cpp:5965-5976 — Ctrl+click toggles
+                                    // the item in selection; plain click
+                                    // resets to single-selection.
+                                    if (GetIO().KeyCtrl) {
+                                        if (item_is_selected) {
+                                            let idx = find_index(TABLES_ADV_SELECTION,
+                                                                 item_id)
+                                            if (idx != -1) {
+                                                TABLES_ADV_SELECTION |> erase(idx)
+                                            }
+                                        } else {
+                                            TABLES_ADV_SELECTION |> push(item_id)
+                                        }
+                                    } else {
+                                        TABLES_ADV_SELECTION |> clear()
+                                        TABLES_ADV_SELECTION |> push(item_id)
+                                    }
+                                }
+                            }
+
+                            // Col 1 (Name) — cpp:5980-5981.
+                            if (table_set_column_index(1)) {
+                                text(TABLES_ADV_NAME_TEXT[item_id],
+                                     (text = item.name))
+                            }
+
+                            // Col 2 (Action) — Chop/Eat (cpp:5987-5994).
+                            // Re-sort triggers on button-release only
+                            // (IsItemDeactivated) so holding the button
+                            // doesn't churn the table mid-press.
+                            if (table_set_column_index(2)) {
+                                if (small_button(TABLES_ADV_CHOP_BTN[item_id],
+                                                 (text = "Chop"))) {
+                                    item.quantity++
+                                }
+                                if (sorts_specs_using_quantity && IsItemDeactivated()) {
+                                    TABLES_ADV_ITEMS_NEED_SORT = true
+                                }
+                                same_line(TABLES_ADV_SL_CHOP_EAT[item_id])
+                                if (small_button(TABLES_ADV_EAT_BTN[item_id],
+                                                 (text = "Eat"))) {
+                                    item.quantity--
+                                }
+                                if (sorts_specs_using_quantity && IsItemDeactivated()) {
+                                    TABLES_ADV_ITEMS_NEED_SORT = true
+                                }
+                            }
+
+                            // Col 3 (Quantity) — cpp:5996-5997.
+                            if (table_set_column_index(3)) {
+                                let qty = item.quantity
+                                text(TABLES_ADV_QTY_TEXT[item_id],
+                                     (text = "{qty}"))
+                            }
+
+                            // Col 4 (Description) — wrapped or plain text
+                            // depending on the Other/show_wrapped_text
+                            // checkbox (cpp:5999-6003). cpp uses an
+                            // unconditional TableSetColumnIndex(4) here
+                            // (not `if`-guarded); mirror that.
+                            table_set_column_index(4)
+                            if (TABLES_ADV_SHOW_WRAPPED_TEXT) {
+                                text_wrapped(TABLES_ADV_DESC_TEXT[item_id],
+                                             (text = "Lorem ipsum dolor sit amet"))
+                            } else {
+                                text(TABLES_ADV_DESC_TEXT[item_id],
+                                     (text = "Lorem ipsum dolor sit amet"))
+                            }
+
+                            // Col 5 (Hidden) — cpp:6005-6006.
+                            if (table_set_column_index(5)) {
+                                text(TABLES_ADV_HIDDEN_TEXT[item_id],
+                                     (text = "1234"))
+                            }
+                        }
+                    }
+                }
+            }
+
+        }
+
+        // ---- Debug details (cpp:6019-6031) — NOT PORTED ----
+        // cpp here exposes a "Debug details" checkbox that prints
+        // ImDrawList::CmdBuffer.Size deltas (parent vs table draw list)
+        // and a scroll cur/max readout when the table is in its own
+        // child window. The daslang ImVector binding doesn't expose
+        // CmdBuffer.Size as a readable field (handled-type field is
+        // declared but field-of-handled-type accessor is missing —
+        // verified via mcp__daslang__find_symbol and confirmed by a
+        // compile_check). Skipping the entire debug readout (checkbox +
+        // text). Re-add when an ImVector size accessor lands.
     }
 }
