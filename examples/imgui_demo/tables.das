@@ -64,6 +64,43 @@ var private TABLES_BORDERS_CONTENTS : RadioIntState
 var private TABLES_BORDERS_T1_CELL_TEXT : table<int; NarrativeState>
 var private TABLES_BORDERS_T1_CELL_BTN  : table<int; ClickState>
 
+// ---- Section 3 Resizable, stretch state ----
+var private TABLES_RSTRETCH_FLAGS : int = int(ImGuiTableFlags.SizingStretchSame |
+                                              ImGuiTableFlags.Resizable |
+                                              ImGuiTableFlags.BordersOuter |
+                                              ImGuiTableFlags.BordersV |
+                                              ImGuiTableFlags.ContextMenuInBody)
+var private TABLES_RSTRETCH_CELL : table<int; NarrativeState>
+
+// ---- Section 4 Resizable, fixed state ----
+var private TABLES_RFIXED_FLAGS : int = int(ImGuiTableFlags.SizingFixedFit |
+                                            ImGuiTableFlags.Resizable |
+                                            ImGuiTableFlags.BordersOuter |
+                                            ImGuiTableFlags.BordersV |
+                                            ImGuiTableFlags.ContextMenuInBody)
+var private TABLES_RFIXED_CELL : table<int; NarrativeState>
+
+// ---- Section 5 Resizable, mixed state ----
+// Same flag set drives both sub-tables (3-col and 6-col). Per-column
+// WidthFixed/WidthStretch + DefaultHide configured at TableSetupColumn time.
+var private TABLES_RMIXED_FLAGS : int = int(ImGuiTableFlags.SizingFixedFit |
+                                            ImGuiTableFlags.RowBg |
+                                            ImGuiTableFlags.Borders |
+                                            ImGuiTableFlags.Resizable |
+                                            ImGuiTableFlags.Reorderable |
+                                            ImGuiTableFlags.Hideable)
+var private TABLES_RMIXED_T1_CELL : table<int; NarrativeState>
+var private TABLES_RMIXED_T2_CELL : table<int; NarrativeState>
+
+// ---- Section 6 Reorderable, hideable, with headers state ----
+var private TABLES_RHH_FLAGS : int = int(ImGuiTableFlags.Resizable |
+                                         ImGuiTableFlags.Reorderable |
+                                         ImGuiTableFlags.Hideable |
+                                         ImGuiTableFlags.BordersOuter |
+                                         ImGuiTableFlags.BordersV)
+var private TABLES_RHH_T1_CELL : table<int; NarrativeState>
+var private TABLES_RHH_T2_CELL : table<int; NarrativeState>
+
 def ShowDemoWindowTables() {
     collapsing_header(TABLES_SECTION,
                       (text = "Tables & Columns", closable = false,
@@ -80,6 +117,10 @@ def ShowDemoWindowTables() {
 
         show_basic()
         show_borders_background()
+        show_resizable_stretch()
+        show_resizable_fixed()
+        show_resizable_mixed()
+        show_reorderable_hideable_headers()
 
         // Reset open_action so the next frame's tree_nodes inherit their
         // sticky open/closed state instead of being forced again.
@@ -222,6 +263,197 @@ def private show_borders_background() {
                         button(TABLES_BORDERS_T1_CELL_BTN[key],
                                (text = cell_text, size = float2(-1.0f, 0.0f)))
                     }
+                }
+            }
+        }
+    }
+}
+
+// =============================================================================
+// Section 3: Resizable, stretch — cpp:4332-4359
+// =============================================================================
+def private show_resizable_stretch() {
+    apply_open_action()
+    tree_node(TABLES_RSTRETCH, (text = "Resizable, stretch",
+                                flags = ImGuiTreeNodeFlags.None)) {
+        // SizingStretchSame is the default when ScrollX is off; the two
+        // toggles below let you observe the effect of disabling Resizable
+        // or BordersV. _Resizable implicitly enables _BordersInnerV.
+        edit_checkbox_flags(safe_addr(TABLES_RSTRETCH_FLAGS),
+            (id = "TBL_RS_F_RESIZABLE", text = "ImGuiTableFlags_Resizable",
+             flags_value = int(ImGuiTableFlags.Resizable)))
+        edit_checkbox_flags(safe_addr(TABLES_RSTRETCH_FLAGS),
+            (id = "TBL_RS_F_BORDERSV", text = "ImGuiTableFlags_BordersV",
+             flags_value = int(ImGuiTableFlags.BordersV)))
+
+        data_table(TABLES_RSTRETCH_T1, (text = "##rs1", columns = 3,
+                                        flags = unsafe(reinterpret<ImGuiTableFlags>(TABLES_RSTRETCH_FLAGS)),
+                                        outer_size = float2(0.0f, 0.0f),
+                                        inner_width = 0.0f)) {
+            for (row in range(5)) {
+                table_next_row()
+                for (col in range(3)) {
+                    table_set_column_index(col)
+                    text(TABLES_RSTRETCH_CELL[row * 3 + col],
+                         (text = "Hello {col},{row}"))
+                }
+            }
+        }
+    }
+}
+
+// =============================================================================
+// Section 4: Resizable, fixed — cpp:4364-4393
+// =============================================================================
+def private show_resizable_fixed() {
+    apply_open_action()
+    tree_node(TABLES_RFIXED, (text = "Resizable, fixed",
+                              flags = ImGuiTreeNodeFlags.None)) {
+        // SizingFixedFit keeps columns at their initial width regardless of
+        // available space (subject to NoHostExtendX). Double-click a column
+        // border to auto-fit to contents.
+        edit_checkbox_flags(safe_addr(TABLES_RFIXED_FLAGS),
+            (id = "TBL_RF_F_NOHOST", text = "ImGuiTableFlags_NoHostExtendX",
+             flags_value = int(ImGuiTableFlags.NoHostExtendX)))
+
+        data_table(TABLES_RFIXED_T1, (text = "##rf1", columns = 3,
+                                      flags = unsafe(reinterpret<ImGuiTableFlags>(TABLES_RFIXED_FLAGS)),
+                                      outer_size = float2(0.0f, 0.0f),
+                                      inner_width = 0.0f)) {
+            for (row in range(5)) {
+                table_next_row()
+                for (col in range(3)) {
+                    table_set_column_index(col)
+                    text(TABLES_RFIXED_CELL[row * 3 + col],
+                         (text = "Hello {col},{row}"))
+                }
+            }
+        }
+    }
+}
+
+// =============================================================================
+// Section 5: Resizable, mixed — cpp:4398-4443
+// =============================================================================
+def private show_resizable_mixed() {
+    apply_open_action()
+    tree_node(TABLES_RMIXED, (text = "Resizable, mixed",
+                              flags = ImGuiTreeNodeFlags.None)) {
+        // Per-column WidthFixed / WidthStretch policy mix. The 6-col second
+        // table also demonstrates DefaultHide for initial column visibility.
+        let tflags = unsafe(reinterpret<ImGuiTableFlags>(TABLES_RMIXED_FLAGS))
+
+        // Table 1: 3 columns (2 Fixed + 1 Stretch).
+        data_table(TABLES_RMIXED_T1, (text = "##rm1", columns = 3, flags = tflags,
+                                      outer_size = float2(0.0f, 0.0f),
+                                      inner_width = 0.0f)) {
+            table_setup_column("AAA", ImGuiTableColumnFlags.WidthFixed)
+            table_setup_column("BBB", ImGuiTableColumnFlags.WidthFixed)
+            table_setup_column("CCC", ImGuiTableColumnFlags.WidthStretch)
+            table_headers_row()
+            for (row in range(5)) {
+                table_next_row()
+                for (col in range(3)) {
+                    table_set_column_index(col)
+                    let kind = col == 2 ? "Stretch" : "Fixed"
+                    text(TABLES_RMIXED_T1_CELL[row * 3 + col],
+                         (text = "{kind} {col},{row}"))
+                }
+            }
+        }
+
+        // Table 2: 6 columns (3 Fixed including DefaultHide + 3 Stretch
+        // including DefaultHide).
+        data_table(TABLES_RMIXED_T2, (text = "##rm2", columns = 6, flags = tflags,
+                                      outer_size = float2(0.0f, 0.0f),
+                                      inner_width = 0.0f)) {
+            table_setup_column("AAA", ImGuiTableColumnFlags.WidthFixed)
+            table_setup_column("BBB", ImGuiTableColumnFlags.WidthFixed)
+            table_setup_column("CCC", ImGuiTableColumnFlags.WidthFixed | ImGuiTableColumnFlags.DefaultHide)
+            table_setup_column("DDD", ImGuiTableColumnFlags.WidthStretch)
+            table_setup_column("EEE", ImGuiTableColumnFlags.WidthStretch)
+            table_setup_column("FFF", ImGuiTableColumnFlags.WidthStretch | ImGuiTableColumnFlags.DefaultHide)
+            table_headers_row()
+            for (row in range(5)) {
+                table_next_row()
+                for (col in range(6)) {
+                    table_set_column_index(col)
+                    let kind = col >= 3 ? "Stretch" : "Fixed"
+                    text(TABLES_RMIXED_T2_CELL[row * 6 + col],
+                         (text = "{kind} {col},{row}"))
+                }
+            }
+        }
+    }
+}
+
+// =============================================================================
+// Section 6: Reorderable, hideable, with headers — cpp:4448-4503
+// =============================================================================
+def private show_reorderable_hideable_headers() {
+    apply_open_action()
+    tree_node(TABLES_RHH, (text = "Reorderable, hideable, with headers",
+                           flags = ImGuiTreeNodeFlags.None)) {
+        // Click + drag a header to reorder columns; right-click a header for
+        // the visibility context menu.
+        edit_checkbox_flags(safe_addr(TABLES_RHH_FLAGS),
+            (id = "TBL_RHH_F_RESIZABLE", text = "ImGuiTableFlags_Resizable",
+             flags_value = int(ImGuiTableFlags.Resizable)))
+        edit_checkbox_flags(safe_addr(TABLES_RHH_FLAGS),
+            (id = "TBL_RHH_F_REORDERABLE", text = "ImGuiTableFlags_Reorderable",
+             flags_value = int(ImGuiTableFlags.Reorderable)))
+        edit_checkbox_flags(safe_addr(TABLES_RHH_FLAGS),
+            (id = "TBL_RHH_F_HIDEABLE", text = "ImGuiTableFlags_Hideable",
+             flags_value = int(ImGuiTableFlags.Hideable)))
+        edit_checkbox_flags(safe_addr(TABLES_RHH_FLAGS),
+            (id = "TBL_RHH_F_NBINBODY", text = "ImGuiTableFlags_NoBordersInBody",
+             flags_value = int(ImGuiTableFlags.NoBordersInBody)))
+        edit_checkbox_flags(safe_addr(TABLES_RHH_FLAGS),
+            (id = "TBL_RHH_F_NBINBODYUNTILRESIZE",
+             text = "ImGuiTableFlags_NoBordersInBodyUntilResize",
+             flags_value = int(ImGuiTableFlags.NoBordersInBodyUntilResize)))
+        edit_checkbox_flags(safe_addr(TABLES_RHH_FLAGS),
+            (id = "TBL_RHH_F_HIGHLIGHTHOVERED",
+             text = "ImGuiTableFlags_HighlightHoveredColumn",
+             flags_value = int(ImGuiTableFlags.HighlightHoveredColumn)))
+
+        let tflags = unsafe(reinterpret<ImGuiTableFlags>(TABLES_RHH_FLAGS))
+
+        // Table 1: default outer_size (stretches to fill available width).
+        data_table(TABLES_RHH_T1, (text = "##rhh1", columns = 3, flags = tflags,
+                                   outer_size = float2(0.0f, 0.0f),
+                                   inner_width = 0.0f)) {
+            table_setup_column("One")
+            table_setup_column("Two")
+            table_setup_column("Three")
+            table_headers_row()
+            for (row in range(6)) {
+                table_next_row()
+                for (col in range(3)) {
+                    table_set_column_index(col)
+                    text(TABLES_RHH_T1_CELL[row * 3 + col],
+                         (text = "Hello {col},{row}"))
+                }
+            }
+        }
+
+        // Table 2: outer_size.x = 0.0f + SizingFixedFit packs columns tight
+        // (valid only without ScrollX or stretch columns).
+        let tflags2 = unsafe(reinterpret<ImGuiTableFlags>(
+                                 TABLES_RHH_FLAGS | int(ImGuiTableFlags.SizingFixedFit)))
+        data_table(TABLES_RHH_T2, (text = "##rhh2", columns = 3, flags = tflags2,
+                                   outer_size = float2(0.0f, 0.0f),
+                                   inner_width = 0.0f)) {
+            table_setup_column("One")
+            table_setup_column("Two")
+            table_setup_column("Three")
+            table_headers_row()
+            for (row in range(6)) {
+                table_next_row()
+                for (col in range(3)) {
+                    table_set_column_index(col)
+                    text(TABLES_RHH_T2_CELL[row * 3 + col],
+                         (text = "Fixed {col},{row}"))
                 }
             }
         }
