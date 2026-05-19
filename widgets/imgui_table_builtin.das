@@ -11,18 +11,20 @@ require imgui/imgui_boost_runtime public
 require imgui/imgui_boost_v2 public
 require imgui/imgui_containers_builtin public
 
-//! Tables family — `[container] table` + six body-internal cursor wrappers.
+//! Tables family — `[container] data_table` + cursor wrappers + sort-spec capture.
 //!
 //! ImGui's table API splits into chrome that fires once per `BeginTable`
 //! (the column-setup calls) and cursor primitives that step rows/columns
-//! inside the body loop. All seven members live behind proper daslang
+//! inside the body loop. All members live behind proper daslang
 //! wrappers in this module (rather than ALLOWED_IMGUI extensions) so the
-//! consumer surface stays uniform: `table { table_setup_column(...);
+//! consumer surface stays uniform: `data_table { table_setup_column(...);
 //! table_headers_row(); for (...) { table_next_row(); table_set_column_index(0); ... } }`.
 //!
-//! Sort-spec capture, multi-select hand-off, frozen-row indicators, and
-//! custom row-bg callbacks belong to the future `tables.das` port and
-//! extend `TableState` additively at that time.
+//! Sort-spec capture goes through `sort_specs` (block-arg helper that
+//! yields a daslang-friendly `array<TableSortSpec>` and auto-clears the
+//! dirty flag). Multi-select / frozen-row indicators / custom row-bg
+//! callbacks would extend `TableState` additively in future PRs; pinned
+//! ImGui 1.90.6 does not include the MultiSelect API.
 
 [container]
 def data_table(var state : TableState; text : string; columns : int;
@@ -65,6 +67,23 @@ def public table_headers_row() {
     TableHeadersRow()
 }
 
+def public table_header(text : string) {
+    //! `TableHeader(label)` — submit a single custom header cell (instead of
+    //! the default `table_headers_row`). Pair with `table_next_row(Headers)`
+    //! / per-column `table_set_column_index` for full control over header
+    //! contents (e.g. checkbox + label, multi-line text, custom alignment).
+    TableHeader(text)
+}
+
+def public table_angled_headers_row() {
+    //! `TableAngledHeadersRow()` — submit a header row with column labels
+    //! rotated by `ImGuiStyle.TableAngledHeadersAngle` (default 35°). Useful
+    //! when narrow columns can't fit horizontal labels. Set the
+    //! `ImGuiTableColumnFlags.AngledHeader` flag on each column before
+    //! calling.
+    TableAngledHeadersRow()
+}
+
 def public table_next_row(flags : ImGuiTableRowFlags = ImGuiTableRowFlags.None;
                           min_row_height : float = 0.0f) {
     //! `TableNextRow(flags, min_row_height)` — append a new row; pairs with
@@ -82,4 +101,99 @@ def public table_set_column_index(col : int) : bool {
     //! `TableSetColumnIndex(col)` — jump to ``col`` in the current row; returns
     //! true when the column is visible.
     return TableSetColumnIndex(col)
+}
+
+def public table_set_bg_color(target : ImGuiTableBgTarget; color : uint;
+                              column_n : int = -1) {
+    //! `TableSetBgColor(target, color, column_n)` — paint a row/cell
+    //! background. ``target`` picks the layer (``RowBg0`` / ``RowBg1`` /
+    //! ``CellBg``); ``color`` is `pack_color`-packed; ``column_n = -1``
+    //! means the current column under ``CellBg``. Call after the row's
+    //! `table_next_row` (and the relevant `table_set_column_index` for
+    //! ``CellBg``).
+    TableSetBgColor(target, color, column_n)
+}
+
+def public table_get_column_count() : int {
+    //! `TableGetColumnCount()` — column count of the current table.
+    return TableGetColumnCount()
+}
+
+def public table_get_column_index() : int {
+    //! `TableGetColumnIndex()` — 0-based index of the column the cursor is
+    //! currently in.
+    return TableGetColumnIndex()
+}
+
+def public table_get_row_index() : int {
+    //! `TableGetRowIndex()` — 0-based index of the row the cursor is
+    //! currently in.
+    return TableGetRowIndex()
+}
+
+def public table_get_column_name(col : int = -1) : string {
+    //! `TableGetColumnName(column_n)` — label of column ``col`` (the value
+    //! passed to `table_setup_column`); ``-1`` means the current column.
+    return TableGetColumnName(col)
+}
+
+def public table_get_column_flags(col : int = -1) : ImGuiTableColumnFlags {
+    //! `TableGetColumnFlags(column_n)` — current per-column flags, including
+    //! status bits set at runtime (``IsHovered`` / ``IsSorted`` / ``IsEnabled``
+    //! / ``IsVisible``); ``-1`` means the current column. Mask with
+    //! ``ImGuiTableColumnFlags.StatusMask_`` to read just the status bits.
+    return TableGetColumnFlags(col)
+}
+
+struct public TableSortSpec {
+    //! Daslang-friendly mirror of one `ImGuiTableColumnSortSpecs` entry,
+    //! yielded by `sort_specs` inside a `data_table` body.
+    column_index   : int                //!< 0-based index of the column being sorted on (matches the order of `table_setup_column` calls).
+    column_user_id : uint               //!< The ``user_id`` you passed to `table_setup_column` for this column (or 0 if you didn't).
+    sort_order     : int                //!< Sort precedence: 0 = primary, 1 = secondary, ... Under `ImGuiTableFlags.SortMulti` multiple entries appear with increasing ``sort_order``.
+    sort_direction : ImGuiSortDirection //!< `Ascending` / `Descending` / `None`.
+}
+
+def public sort_specs(blk : block<(specs : array<TableSortSpec>) : void>) : bool {
+    //! Capture the current table's sort specs when ImGui reports them dirty,
+    //! convert each `ImGuiTableColumnSortSpecs` entry into a daslang-friendly
+    //! `TableSortSpec`, and yield the array to ``blk``. Auto-clears the
+    //! dirty flag on return.
+    //!
+    //! Call inside a `data_table` body, BEFORE emitting rows. Header-row
+    //! placement is flexible — sort state is finalized by the input
+    //! event-queue drain at frame start, so calling before or after
+    //! `table_headers_row()` reads the same specs (cpp imgui_demo
+    //! ``ShowDemoWindowTablesAdvanced`` calls before headers). Pass
+    //! `ImGuiTableFlags.Sortable` (and optionally
+    //! `ImGuiTableFlags.SortMulti` for multi-column sort, or
+    //! `ImGuiTableFlags.SortTristate` to allow no-sort state) on the table.
+    //!
+    //! Returns true iff ``blk`` was invoked (specs non-null AND
+    //! ``SpecsDirty``). The ``specs`` array may be EMPTY — under
+    //! `ImGuiTableFlags.SortTristate` clearing the last sorted column
+    //! produces a dirty event with ``SpecsCount == 0``, signalling
+    //! "user reset to default order"; treat that as a real event so the
+    //! caller can restore its original sequence. When the return is false,
+    //! reuse the most recent sort order — ImGui keeps headers visually
+    //! in sync without re-firing dirty until the user re-clicks.
+    var p = TableGetSortSpecs()
+    if (p == null || !p.SpecsDirty) return false
+    let n = p.SpecsCount
+    var arr : array<TableSortSpec>
+    if (n > 0) {
+        arr |> reserve(n)
+        for (i in range(n)) {
+            let s = GetSortSpec(p, i)
+            arr |> push(TableSortSpec(
+                column_index = int(s.ColumnIndex),
+                column_user_id = uint(s.ColumnUserID),
+                sort_order = int(s.SortOrder),
+                sort_direction = GetColumnSortDirection(s)))
+        }
+    }
+    invoke(blk, arr)
+    delete arr
+    unsafe { p.SpecsDirty = false; }
+    return true
 }

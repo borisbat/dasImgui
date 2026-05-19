@@ -42,9 +42,10 @@ require imgui/imgui_visual_aids
 //   }
 //
 // `TableState` echoes per-call config (columns / flags / outer_size /
-// inner_width). Sort-spec capture, multi-select hand-off, frozen-row
-// indicators belong to a future `tables.das` port and extend the state
-// additively.
+// inner_width). `sort_specs()` (block helper) yields the per-frame sort
+// spec list — see the Sortable tables section below. Multi-select
+// hand-off and custom row-bg callbacks would extend the state
+// additively if added later.
 //
 // STANDALONE: daslang.exe modules/dasImgui/examples/tutorial/data_table.das
 // LIVE:       daslang-live modules/dasImgui/examples/tutorial/data_table.das
@@ -58,6 +59,13 @@ struct private Row {
 
 var private ROWS : array<Row>
 
+// Stable column identifiers passed to table_setup_column(.., user_id=...).
+// The sort comparator dispatches on user_id (not column_index) so the
+// sort stays correct when the user reorders columns via drag.
+let private COL_NAME = 0x0001u
+let private COL_KIND = 0x0002u
+let private COL_VAL  = 0x0003u
+
 [init]
 def seed_rows() {
     ROWS <- [
@@ -68,6 +76,47 @@ def seed_rows() {
         Row(name = "epsilon", kind = "int", value = "-7"),
         Row(name = "zeta", kind = "float", value = "0.001")
     ]
+}
+
+def private compare_rows(spec : TableSortSpec; a : Row; b : Row) : int {
+    // Returns -1 / 0 / 1 for a-vs-b along the column the spec names.
+    var ord = 0
+    if (spec.column_user_id == COL_NAME) {
+        if (a.name < b.name) {
+            ord = -1
+        } elif (a.name > b.name) {
+            ord = 1
+        }
+    } elif (spec.column_user_id == COL_KIND) {
+        if (a.kind < b.kind) {
+            ord = -1
+        } elif (a.kind > b.kind) {
+            ord = 1
+        }
+    } elif (spec.column_user_id == COL_VAL) {
+        if (a.value < b.value) {
+            ord = -1
+        } elif (a.value > b.value) {
+            ord = 1
+        }
+    }
+    if (spec.sort_direction == ImGuiSortDirection.Descending) {
+        ord = -ord
+    }
+    return ord
+}
+
+def private sort_rows(specs : array<TableSortSpec>) {
+    // Multi-key comparator: walk specs in priority order; return on the
+    // first one that disambiguates a vs b. Final tiebreak on name keeps
+    // the order total.
+    ROWS |> sort() $(a, b) {
+        for (s in specs) {
+            let ord = compare_rows(s, a, b)
+            if (ord != 0) return ord < 0
+        }
+        return a.name < b.name
+    }
 }
 
 var DT_NAME : table<int; NarrativeState>
@@ -96,21 +145,30 @@ def update() {
     SetNextWindowSize(ImVec2(640.0f, 380.0f), ImGuiCond.FirstUseEver)
     window(DT_WIN, (text = "data_table", closable = false,
                     flags = ImGuiWindowFlags.None)) {
-        text(DT_HEADER, (text = "Three columns over six rows — frozen header."))
+        text(DT_HEADER, (text = "Three columns, six rows, frozen header. Click headers to sort; Shift+click for multi-column."))
 
-        let tflags = (int(ImGuiTableFlags.BordersOuter) |
-                      int(ImGuiTableFlags.RowBg) |
-                      int(ImGuiTableFlags.Resizable) |
-                      int(ImGuiTableFlags.ScrollY))
+        let tflags = int(ImGuiTableFlags.BordersOuter |
+                         ImGuiTableFlags.RowBg |
+                         ImGuiTableFlags.Resizable |
+                         ImGuiTableFlags.Reorderable |
+                         ImGuiTableFlags.Hideable |
+                         ImGuiTableFlags.Sortable |
+                         ImGuiTableFlags.SortMulti |
+                         ImGuiTableFlags.ScrollY)
         data_table(DT_TABLE, (text = "##rows", columns = 3,
                               flags = unsafe(reinterpret<ImGuiTableFlags>(tflags)),
                               outer_size = float2(0.0f, 0.0f),
                               inner_width = 0.0f)) {
             table_setup_scroll_freeze(0, 1)
-            table_setup_column("Name")
-            table_setup_column("Type")
-            table_setup_column("Value")
+            table_setup_column("Name",  ImGuiTableColumnFlags.DefaultSort, 0.0f, COL_NAME)
+            table_setup_column("Type",  ImGuiTableColumnFlags.None,        0.0f, COL_KIND)
+            table_setup_column("Value", ImGuiTableColumnFlags.None,        0.0f, COL_VAL)
             table_headers_row()
+
+            sort_specs() $(specs) {
+                sort_rows(specs)
+            }
+
             for (i in range(length(ROWS))) {
                 table_next_row()
                 table_set_column_index(0)

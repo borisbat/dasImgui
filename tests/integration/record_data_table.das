@@ -80,5 +80,26 @@ def main {
         )))
         move_to(app, p_val5)
         sleep(3500u)
+
+        // ---- Stage 5: sort_specs — point at the Name column ----
+        // Recorder only moves the cursor; no synthesized header click. The
+        // narration describes the API rather than demonstrating an actual
+        // sort interaction.
+        post_command(app, "imgui_narrate", JV((
+            text = "sort_specs() captures column user_ids when ImGui reports SpecsDirty (try clicking a header live).",
+            target = T_NAME0,
+            frames = 180
+        )))
+        move_to(app, p_name0)
+        sleep(3500u)
+
+        // ---- Stage 6: SortMulti — point at a secondary column ----
+        post_command(app, "imgui_narrate", JV((
+            text = "SortMulti lets Shift+click append a secondary sort key — try it live.",
+            target = T_KIND2,
+            frames = 180
+        )))
+        move_to(app, p_kind2)
+        sleep(3500u)
     }
 }

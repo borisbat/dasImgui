@@ -59,9 +59,9 @@ var WIDGETS_DISABLE_ALL = false
 // `CheckboxFlags` (now `edit_checkbox_flags`) binds an `int?` form, so the
 // base-flags state is stored as `int` and converted back to
 // `ImGuiTreeNodeFlags` at the TreeNodeEx call site.
-var WIDGETS_TREE_BASE_FLAGS = (int(ImGuiTreeNodeFlags.OpenOnArrow) |
-                               int(ImGuiTreeNodeFlags.OpenOnDoubleClick) |
-                               int(ImGuiTreeNodeFlags.SpanAvailWidth))
+var WIDGETS_TREE_BASE_FLAGS = int(ImGuiTreeNodeFlags.OpenOnArrow |
+                                  ImGuiTreeNodeFlags.OpenOnDoubleClick |
+                                  ImGuiTreeNodeFlags.SpanAvailWidth)
 var WIDGETS_TREE_SELECTION_MASK = 1 << 2
 
 // ----- Basic/SliderAngle external-pointer -----
@@ -168,7 +168,7 @@ def private BasicSection() {
         align_text_to_frame_padding(WIDGETS_BASIC_ATFP)
         text("Hold to repeat:")
         same_line(WIDGETS_SL_4)
-        let spacing = unsafe(GetStyle()).ItemInnerSpacing.x
+        let spacing = GetStyle().ItemInnerSpacing.x
         with_button_repeat(true) {
             if (arrow_button(WIDGETS_BASIC_ARROW_L, (text = "##left", dir = ImGuiDir.Left))) {
                 WIDGETS_BASIC_ARROW_COUNTER--
@@ -429,13 +429,13 @@ def private TooltipsSection() {
                           flags = ImGuiHoveredFlags.DelayNone))
 
         button(WIDGETS_TIP_DELAY_SHORT, (text = "DelayShort"))
-        let delay_short = unsafe(GetStyle()).HoverDelayShort
+        let delay_short = GetStyle().HoverDelayShort
         set_item_tooltip(WIDGETS_TIP_DELAY_SHORT_TT,
                          (text = "I am a tooltip with a short delay ({delay_short} sec).",
                           flags = ImGuiHoveredFlags.DelayShort | ImGuiHoveredFlags.NoSharedDelay))
 
         button(WIDGETS_TIP_DELAY_LONG, (text = "DelayLong"))
-        let delay_long = unsafe(GetStyle()).HoverDelayNormal
+        let delay_long = GetStyle().HoverDelayNormal
         set_item_tooltip(WIDGETS_TIP_DELAY_LONG_TT,
                          (text = "I am a tooltip with a long delay ({delay_long} sec).",
                           flags = ImGuiHoveredFlags.DelayNormal | ImGuiHoveredFlags.NoSharedDelay))
@@ -609,8 +609,8 @@ def private TreeNodesSection() {
                         }
                     } else {
                         // Leaves: Leaf + NoTreePushOnOpen — no TreePop is paired.
-                        node_flags |= (int(ImGuiTreeNodeFlags.Leaf) |
-                                       int(ImGuiTreeNodeFlags.NoTreePushOnOpen))
+                        node_flags |= int(ImGuiTreeNodeFlags.Leaf |
+                                          ImGuiTreeNodeFlags.NoTreePushOnOpen)
                         tree_node_ex(WIDGETS_TREE_LOOP_LEAF[i],
                             (text = "Selectable Leaf {i}",
                              flags = unsafe(reinterpret<ImGuiTreeNodeFlags>(node_flags))))
@@ -628,7 +628,7 @@ def private TreeNodesSection() {
                 }
             }
             if (node_clicked != -1) {
-                if (unsafe(GetIO()).KeyCtrl) {
+                if (GetIO().KeyCtrl) {
                     WIDGETS_TREE_SELECTION_MASK ^= (1 << node_clicked)
                 } else {
                     WIDGETS_TREE_SELECTION_MASK = (1 << node_clicked)
@@ -785,9 +785,9 @@ def private ImagesSection() {
             "storage to pass pointers or identifier to your own texture data. " +
             "Hover the texture for a zoomed view!"))
 
-        let my_tex_id = unsafe(*io.Fonts).TexID
-        let my_tex_w = float(unsafe(*io.Fonts).TexWidth)
-        let my_tex_h = float(unsafe(*io.Fonts).TexHeight)
+        let my_tex_id = io.Fonts.TexID
+        let my_tex_w = float(io.Fonts.TexWidth)
+        let my_tex_h = float(io.Fonts.TexHeight)
 
         checkbox(WIDGETS_IMAGES_USE_TINT, (text = "Use Text Color for Tint"))
         text("{int(my_tex_w)}x{int(my_tex_h)}")
