@@ -186,13 +186,13 @@ For "how do I X?" / "why does Y behave this way?" questions about dasImgui patte
 
 ## Followup-tracked gaps
 
-Files still under `_allow_imgui_legacy = true` (pre-final-delivery checklist):
+**Final-delivery gate: ACHIEVED as of PR-D (2026-05-19).**
 
-- `examples/imgui_demo/tables.das` — stub at master tip; full port in flight as PR-D (cpp:4154-6044, ~1900 cpp lines, 24 sub-sections). Other 17 `examples/imgui_demo/*.das` files are sweep-clean since PR-A1/A2/B2/C (PRs #40/#48/#50/#51 — merged through 2026-05-19).
+All `examples/imgui_demo/*.das` files are opt-out-free: `git grep _allow_imgui_legacy examples/imgui_demo/` returns nothing. Every `app_*.das` carries a real port. The 24-section `tables.das` port landed in PR-D (cpp:4154-6044, 2911 das lines across 8 commits).
 
 Two example files keep ALIVE opt-outs that are intentional, not gaps:
 
 - `examples/tutorial/custom_widgets.das` — teaches building widgets from primitives; uses raw imgui by design.
 - `examples/features/widget_no_ident.das` — exercises the STYLE001-rejected `text((text=...))` form for didactic value.
 
-Final-delivery gate: `git grep _allow_imgui_legacy examples/imgui_demo/` returns nothing AND every `app_*.das` stub has a real port. Currently the only `examples/imgui_demo/` file remaining is `tables.das`; the four `app_*.das` stubs (`app_custom_rendering`/`app_dockspace`/`app_documents`/`app_small`) all carry real ports as of PR #51.
+Section 24 Advanced's cpp Debug-details readout (cpp:6019-6031, `ImDrawList.CmdBuffer.Size + scroll cur/max`) is the one cpp construct deliberately skipped — `ImVector\`ImDrawCmd` has no `Size` accessor exposed in the daslang binding. The checkbox + readout are dropped; re-add when an `ImVector` size binding lands. Documented inline in `tables.das show_advanced()`.
