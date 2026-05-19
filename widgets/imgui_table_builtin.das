@@ -160,30 +160,37 @@ def public sort_specs(blk : block<(specs : array<TableSortSpec>) : void>) : bool
     //! `TableSortSpec`, and yield the array to ``blk``. Auto-clears the
     //! dirty flag on return.
     //!
-    //! Call inside a `data_table` body, after `table_headers_row()`, BEFORE
-    //! emitting rows. Pass `ImGuiTableFlags.Sortable` (and optionally
-    //! `ImGuiTableFlags.SortMulti` for multi-column sort) on the table.
+    //! Call inside a `data_table` body, BEFORE emitting rows. Header-row
+    //! placement is flexible — sort state is finalized by the input
+    //! event-queue drain at frame start, so calling before or after
+    //! `table_headers_row()` reads the same specs (cpp imgui_demo
+    //! ``ShowDemoWindowTablesAdvanced`` calls before headers). Pass
+    //! `ImGuiTableFlags.Sortable` (and optionally
+    //! `ImGuiTableFlags.SortMulti` for multi-column sort, or
+    //! `ImGuiTableFlags.SortTristate` to allow no-sort state) on the table.
     //!
     //! Returns true iff ``blk`` was invoked (specs non-null AND
-    //! ``SpecsDirty`` AND ``SpecsCount > 0``). When false, the caller should
-    //! reuse the most recent sort order — ImGui keeps headers visually in
-    //! sync without re-firing dirty until the user re-clicks.
+    //! ``SpecsDirty``). The ``specs`` array may be EMPTY — under
+    //! `ImGuiTableFlags.SortTristate` clearing the last sorted column
+    //! produces a dirty event with ``SpecsCount == 0``, signalling
+    //! "user reset to default order"; treat that as a real event so the
+    //! caller can restore its original sequence. When the return is false,
+    //! reuse the most recent sort order — ImGui keeps headers visually
+    //! in sync without re-firing dirty until the user re-clicks.
     var p = TableGetSortSpecs()
     if (p == null || !p.SpecsDirty) return false
     let n = p.SpecsCount
-    if (n == 0) {
-        unsafe { p.SpecsDirty = false; }
-        return false
-    }
     var arr : array<TableSortSpec>
-    arr |> reserve(n)
-    for (i in range(n)) {
-        let s = GetSortSpec(p, i)
-        arr |> push(TableSortSpec(
-            column_index = int(s.ColumnIndex),
-            column_user_id = uint(s.ColumnUserID),
-            sort_order = int(s.SortOrder),
-            sort_direction = GetColumnSortDirection(s)))
+    if (n > 0) {
+        arr |> reserve(n)
+        for (i in range(n)) {
+            let s = GetSortSpec(p, i)
+            arr |> push(TableSortSpec(
+                column_index = int(s.ColumnIndex),
+                column_user_id = uint(s.ColumnUserID),
+                sort_order = int(s.SortOrder),
+                sort_direction = GetColumnSortDirection(s)))
+        }
     }
     invoke(blk, arr)
     delete arr

@@ -1796,12 +1796,13 @@ def private show_row_height() {
             let cell_padding_y = GetStyle().CellPadding.y
             for (row in range(8)) {
                 if (row % 3 == 2) {
+                    let row_pad_y = 20.0f
                     with_style((ImGuiStyleVar.CellPadding,
-                                float2(cell_padding_x, 20.0f))) {
+                                float2(cell_padding_x, row_pad_y))) {
                         table_next_row(ImGuiTableRowFlags.None)
                         table_next_column()
                         text(TABLES_RH3_CELL[row],
-                             (text = "CellPadding.y = {cell_padding_y}"))
+                             (text = "CellPadding.y = {row_pad_y}"))
                     }
                 } else {
                     table_next_row(ImGuiTableRowFlags.None)
