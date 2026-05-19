@@ -46,7 +46,8 @@ namespace das {
     DAS_MOD_API void InsertChars(ImGuiInputTextCallbackData & data, int pos, const char* text );
     DAS_MOD_API void SetNextWindowSizeConstraints(vec4f snwscc, const ImVec2& size_min, const ImVec2& size_max, Context * context, LineInfoArg * at );
     DAS_MOD_API void SetNextWindowSizeConstraintsNoCallback(const ImVec2& size_min, const ImVec2& size_max);
-    DAS_MOD_API ImGuiSortDirection_ SortDirection ( const ImGuiTableColumnSortSpecs & specs );
+    DAS_MOD_API ImGuiSortDirection_ GetColumnSortDirection ( const ImGuiTableColumnSortSpecs * specs );
+    DAS_MOD_API const ImGuiTableColumnSortSpecs * GetSortSpec ( ImGuiTableSortSpecs * specs, int idx );
     DAS_MOD_API ImVec2 CalcTextSize(const char* text,bool hide_text_after_double_hash, float wrap_width);
     DAS_MOD_API bool Combo ( vec4f cg, const char * label, int * current_item, int items_count, int popup_max_height_in_items, Context * ctx, LineInfoArg * at );
     DAS_MOD_API void PlotLines ( vec4f igpg, const char* label, int values_count, int values_offset, const char* overlay_text,

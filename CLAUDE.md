@@ -195,4 +195,7 @@ Two example files keep ALIVE opt-outs that are intentional, not gaps:
 - `examples/tutorial/custom_widgets.das` — teaches building widgets from primitives; uses raw imgui by design.
 - `examples/features/widget_no_ident.das` — exercises the STYLE001-rejected `text((text=...))` form for didactic value.
 
-Section 24 Advanced's cpp Debug-details readout (cpp:6019-6031, `ImDrawList.CmdBuffer.Size + scroll cur/max`) is the one cpp construct deliberately skipped — `ImVector\`ImDrawCmd` has no `Size` accessor exposed in the daslang binding. The checkbox + readout are dropped; re-add when an `ImVector` size binding lands. Documented inline in `tables.das show_advanced()`.
+Two cpp constructs are deliberately partial in the port:
+
+- **Section 21 sub 2** (per-column manual-open popups, cpp:5560-5582) — falls back to the default per-column context menu auto-emitted by `table_headers_row` plus a hovered-column readout text. The cpp pattern wants a stateless `popup_window(str_id, flags)` wrapper to bracket raw `BeginPopup`/`EndPopup` while the caller drives `OpenPopup`/`CloseCurrentPopup` elsewhere; that wrapper doesn't exist yet (existing `popup_context_item` is trigger-bound, stateful `popup(IDENT)` requires per-IDENT state which doesn't map to the cpp's shared-string ID pattern). Documented inline in `tables.das show_context_menus()`. Backlogged for a small follow-up PR (~100-150 das lines including the new-component triad).
+- **Section 24 Advanced's cpp Debug-details readout** (cpp:6019-6031, `ImDrawList.CmdBuffer.Size + scroll cur/max`) — `ImVector\`ImDrawCmd` has no `Size` accessor exposed in the daslang binding. The checkbox + readout are dropped; re-add when an `ImVector` size binding lands. Documented inline in `tables.das show_advanced()`.

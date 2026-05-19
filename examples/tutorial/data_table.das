@@ -44,8 +44,8 @@ require imgui/imgui_visual_aids
 // `TableState` echoes per-call config (columns / flags / outer_size /
 // inner_width). `sort_specs()` (block helper) yields the per-frame sort
 // spec list — see the Sortable tables section below. Multi-select
-// hand-off and custom row-bg callbacks extend the state additively in
-// the upcoming `tables.das` port.
+// hand-off and custom row-bg callbacks would extend the state
+// additively if added later.
 //
 // STANDALONE: daslang.exe modules/dasImgui/examples/tutorial/data_table.das
 // LIVE:       daslang-live modules/dasImgui/examples/tutorial/data_table.das
