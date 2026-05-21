@@ -69,7 +69,9 @@ def main {
         sleep(RESULT_MS)
 
         // Re-snapshot to find the freshly-opened popup body widget bboxes.
-        var snap2 = wait_for_render(app,
+        // wait_for_widget gates on path EXISTENCE (vs wait_for_render's
+        // `?? true` which silently passes when the indexed-path is absent).
+        var snap2 = wait_for_widget(app,
             "MAIN_WIN/via_button/BTN_POPUP/PICK_APPLE", 5.0f)
         if (snap2 == null) {
             panic("BTN_POPUP body never rendered — click didn't open the popup?")
@@ -107,7 +109,7 @@ def main {
         post_command(app, "imgui_mouse_play", JV((events = rclick_events)))
         sleep(RESULT_MS)
 
-        var snap3 = wait_for_render(app,
+        var snap3 = wait_for_widget(app,
             "MAIN_WIN/via_region/REG_POPUP/PICK_BANANA", 5.0f)
         if (snap3 == null) {
             panic("REG_POPUP body never rendered — right-click didn't open the popup?")

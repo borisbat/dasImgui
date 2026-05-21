@@ -29,6 +29,7 @@ def init() {
 [export]
 def update() {
     if (!harness_begin_frame()) return
+    harness_apply_synth_io()
     harness_new_frame()
 
     SetNextWindowSize(ImVec2(580.0, 420.0), ImGuiCond.Always)
