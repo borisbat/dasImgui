@@ -528,6 +528,15 @@ struct PopupContextWindowState {
     @optional _placeholder : bool             //! unused; keeps the struct non-empty for [container] auto-emit
 }
 
+struct PopupWindowState {
+    //! Backs `popup_window`. Stateless `BeginPopup`/`EndPopup` wrapper for
+    //! the manual-trigger pattern — caller drives `open_popup(str_id, flags)`
+    //! themselves (typically on hover + mouse-release), then `popup_window`
+    //! brackets the body when ImGui reports the popup as open. ImGui owns
+    //! the open/close lifecycle by `str_id`, so no pending flags here.
+    @optional _placeholder : bool             //! unused; keeps the struct non-empty for [container] auto-emit
+}
+
 struct TextFilterState {
     //! Backs `text_filter`. Holds the bound C++ `ImGuiTextFilter` value
     //! inline — zero-init is safe (empty `InputBuf`, empty `Filters`
@@ -1125,7 +1134,7 @@ def private with_await(input : JsonValue?; payload : auto(P)) : JsonValue? {
 def private extract_string_field(obj : JsonValue?; name : string) : string {
     let v = obj?[name]
     if (v == null || !(v.value is _string)) return ""
-    return string(v.value as _string)
+    return v.value as _string
 }
 
 def private widget_meta_jv(path_key : string; meta : WidgetMeta) : JsonValue? {

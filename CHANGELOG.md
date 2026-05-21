@@ -4,6 +4,53 @@
 
 ### Added
 
+- `popup_window(IDENT, str_id, flags) $blk` — stateless `[container]`
+  for the manual-trigger BeginPopup/EndPopup pattern. Caller drives
+  `open_popup(str_id, flags)` from any custom predicate (hover-region +
+  right-click, key press, …); the wrapper brackets the body while ImGui
+  reports the popup open. Closes the cpp ``imgui_demo.cpp`` Tables
+  "Context menus" section 2 partial-port deferred in PR-D (per-column
+  ``"MyPopup"`` shared-str_id pattern keyed by ``PushID(column)``). The
+  ``[container]`` macro injects ``widget_prelude → PushID(widget_ident)``
+  before the body — but the caller's ``OpenPopup`` ran one ID-stack
+  level higher, so ``BeginPopup`` hashed under a deeper stack and the
+  popup never visibly opened. Fix: ``popup_window`` peels its own
+  ``widget_ident`` PushID off just around ``BeginPopup`` (PopID before,
+  PushID after), so BeginPopup's hash matches the caller's OpenPopup.
+- `tests/integration/test_popup_window.das` — smoke + click-opens-popup
+  pair. Verifies both ``BTN_POPUP`` / ``REG_POPUP`` register under their
+  ``with_id`` scopes and that ``imgui_click`` on the trigger button
+  surfaces ``MAIN_WIN/via_button/BTN_POPUP/PICK_APPLE`` in the next
+  snapshot.
+- `examples/features/popup_window.das` — feature demo of the
+  manual-trigger popup pattern with two scopes sharing the same
+  ``"fruit_picker"`` str_id (button-click trigger + hover-region
+  right-click trigger).
+- `examples/tutorial/popup_window.das` + `doc/source/tutorials/popup_window.rst`
+  — tutorial pairing with one-shell recorded
+  ``doc/source/_static/tutorials/popup_window.apng`` driven by
+  ``tests/integration/record_popup_window.das``.
+
+### Changed
+
+- `examples/imgui_demo/tables.das` — Section 21 "Context menus" sub 2
+  per-column popup loop restored to full cpp shape (3 real columns +
+  trailing-unused-space column), driven by the new ``popup_window``
+  surface plus the existing
+  ``IsMouseReleased(ImGuiMouseButton.Right) && !IsAnyItemHovered()``
+  hover predicate. Replaces the simplified "track hovered column,
+  no popup" fallback documented inline in the prior PR-D port.
+
+### Fixed
+
+- Two pre-existing lint hits surfaced while linting the modified files:
+  ``examples/imgui_demo/tables.das:1114`` LINT010 dead-store of
+  ``current`` (declare-then-unsafe-assign), and
+  ``widgets/imgui_boost_runtime.das:1137`` PERF020 redundant
+  ``string(...)`` cast on an already-string variant arm.
+
+
+
 - `imgui/imgui_harness` — canonical wrapper module for examples/tests. Hides
   GLFW/OpenGL backend boilerplate behind five helpers (`harness_init`,
   `harness_begin_frame`, `harness_new_frame`, `harness_end_frame`,

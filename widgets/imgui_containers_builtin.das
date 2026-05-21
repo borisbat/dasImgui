@@ -342,6 +342,38 @@ def popup_context_window(var state : PopupContextWindowState; str_id : string;
 }
 
 [container]
+def popup_window(var state : PopupWindowState; str_id : string;
+                 flags : ImGuiWindowFlags; blk : block) {
+    //! `BeginPopup(str_id, flags)` / `EndPopup()` — stateless manual-trigger
+    //! pairing. Unlike `popup_context_item`/`popup_context_window` (which
+    //! attach an auto-trigger to a preceding item or the enclosing window),
+    //! `popup_window` does NOT open itself. Caller drives opening via
+    //! `open_popup(str_id, flags)` — typically on a hover + mouse-release
+    //! check, or any other custom predicate. Body runs only while ImGui
+    //! reports the popup as open under `str_id`.
+    //!
+    //! When the same `str_id` is reused under different `PushID` scopes
+    //! (e.g. one logical popup per loop iteration with shared text), each
+    //! scope keeps its own open state — see `examples/features/popup_window.das`.
+    //!
+    //! IDENT-vs-str_id ID stacking: the boost ``[container]`` prelude
+    //! pushes ``widget_ident`` onto ImGui's ID stack before the body runs,
+    //! but ``OpenPopup(str_id)`` was called by the caller OUTSIDE that
+    //! push. To keep BeginPopup's hash matching the caller's OpenPopup
+    //! hash, ``popup_window`` peels ``widget_ident`` off the ID stack just
+    //! around ``BeginPopup``/``EndPopup`` — the body still renders under
+    //! the pushed IDENT so child widgets remain disambiguated.
+    PopID()
+    let im_open = BeginPopup(str_id, flags)
+    PushID(widget_ident)
+    if (im_open) {
+        invoke(blk)
+        EndPopup()
+    }
+    stateless_finalize(widget_ident, "popup_window", state)
+}
+
+[container]
 def popup_modal(var state : PopupState; text : string; closable : bool;
                 flags : ImGuiWindowFlags; blk : block) {
     //! `BeginPopupModal(name, p_open, flags)` / `EndPopup()`. Same lifecycle
