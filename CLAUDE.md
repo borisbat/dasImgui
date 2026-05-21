@@ -166,9 +166,19 @@ Sphinx-based tutorial site. CI gates `-W` (warnings-as-errors) BUT pre-runs `uti
 
 Tutorial pages live in `doc/source/tutorials/*.rst` and reference APNGs from `doc/source/_static/tutorials/*.apng`. Each tutorial appears in `doc/source/tutorials/index.rst`'s toctree.
 
+## Tutorial APNG storage — orphan `assets` branch (READ BEFORE BUILDING DOCS LOCALLY)
+
+**`doc/source/_static/tutorials/*.apng` is `.gitignore`d on every source branch.** The binaries (~770 MB current, multi-GB historical if tracked) live on a force-amend-pushed orphan branch called `assets` so source-branch history doesn't accumulate hundreds of MB per re-record sweep.
+
+**Fresh clone before docs build:** run `tests/integration/fetch_tutorial_apngs.ps1` (or `.sh`) — pulls `origin/assets` into the gitignored tutorial dir. Otherwise sphinx's `.. image:: _static/tutorials/X.apng` directives 404. CI's `docs.yml` does this automatically before `daspkg install`.
+
+**Re-record workflow:** `rerecord_all.ps1` → eyeball-review APNGs locally → `publish_apngs_to_assets.ps1` (force-amend-pushes onto `origin/assets`, keeping that branch at one commit). GitHub GCs the prior blobs in ~2 weeks.
+
+Full mechanics + script flags: `skills/recording.md` "APNG storage" section.
+
 ## Recording
 
-See `skills/recording.md` for the full recipe — pacing constants, two-shell workflow, menu-header coord workaround, screenshot/ffmpeg verification methodology.
+See `skills/recording.md` for the full recipe — pacing constants, two-shell workflow, menu-header coord workaround, screenshot/ffmpeg verification methodology, APNG storage on the orphan `assets` branch.
 
 ## Workflow
 
