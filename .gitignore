@@ -34,6 +34,13 @@ src/imgui_vulkan_headers.h.json.log
 # Handmade material lives in doc/source/stdlib/handmade/ + sec_*.rst + index.rst
 # + external_types.rst + tutorials/ and IS tracked.
 doc/source/stdlib/generated/
+
+# Tutorial APNGs live on the orphan `assets` branch (force-amend-pushed on
+# each re-record sweep) so the source-repo history doesn't accumulate
+# hundreds of MB per refresh. Sphinx fetches them via
+# `tests/integration/fetch_tutorial_apngs.ps1` (or .sh) before each docs
+# build; locally the directory exists but the .apng files are ignored.
+doc/source/_static/tutorials/*.apng
 doc/source/__pycache__/
 doc/build_html/
 

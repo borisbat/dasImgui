@@ -8,6 +8,13 @@
 # scale) typically need it. Per-driver runtime = its with_recording_app
 # max_seconds + ~3s host boot/drain.
 #
+# After re-recording, the new APNGs land in doc/source/_static/tutorials/ which
+# is .gitignored on source branches (binaries live on the orphan `assets`
+# branch). Workflow:
+#   1. rerecord_all.ps1            -- this script; produces new APNGs locally
+#   2. eyeball-review the APNGs
+#   3. publish_apngs_to_assets.ps1 -- force-amend-pushes them onto origin/assets
+#
 # Run:
 #   pwsh modules/dasImgui/tests/integration/rerecord_all.ps1 -DaslangExe D:/Work/daScript/bin/Release/daslang.exe
 #
