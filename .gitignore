@@ -12,6 +12,7 @@ imgui.ini
 libhv.*.log
 example/**/_*.png
 example/_aot_generated/
+build_msvc/
 # Visual-aids ad-hoc smoke screenshots dropped at repo root by the screenshot live_command
 tour_*.png
 decay_*.png

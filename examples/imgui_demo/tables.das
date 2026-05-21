@@ -363,6 +363,10 @@ var private TABLES_CM2_DOT_CLOSE : table<int; ClickState>
 var private TABLES_CM2_HOVERED_TEXT : NarrativeState
 // "MyPopup" string-id stateless popup variables — 4 columns (3 + 1 trailing-unused).
 var private TABLES_CM2_HOVERED_COLUMN : int = -1
+// Per-column popup_window state — shared str_id "MyPopup", disambiguated by with_id(column).
+var private TABLES_CM2_COL_POPUP : table<int; PopupWindowState>
+var private TABLES_CM2_COL_TEXT  : table<int; NarrativeState>
+var private TABLES_CM2_COL_CLOSE : table<int; ClickState>
 
 // ---- Section 22 Synced instances state ----
 var private TABLES_SYNCED_FLAGS : int = int(ImGuiTableFlags.Resizable |
@@ -1107,7 +1111,7 @@ def private edit_table_sizing_flags(var p_flags : int? implicit; id : string) {
                              int(ImGuiTableFlags.SizingFixedSame),
                              int(ImGuiTableFlags.SizingStretchProp),
                              int(ImGuiTableFlags.SizingStretchSame))
-    var current = 0
+    var current : int
     unsafe { current = *p_flags & policy_mask; }
     var idx = 0
     for (n in range(5)) {
@@ -2302,28 +2306,36 @@ def private show_context_menus() {
                 }
             }
 
-            // Per-column right-click popup. cpp iterates COLUMNS_COUNT + 1
-            // including the trailing unused space. The popup ID is a
-            // string-id ("MyPopup") shared across all per-column triggers —
-            // only one column is hovered at a time so they never overlap.
-            // PushID(column) keeps the popup's per-column ID disjoint.
-            // Status: simplified to track-hovered-column-only in das; the
-            // cpp manual `IsMouseReleased(1)` + `OpenPopup("MyPopup")` +
-            // `BeginPopup("MyPopup")` pattern doesn't lift to the boost
-            // surface without a stateless `popup_window` wrapper that we
-            // don't have. Falls back to the default per-column context
-            // menu (provided by table_headers_row above) plus a
-            // hovered-column readout below.
+            // Per-column right-click popup — cpp iterates COLUMNS_COUNT + 1
+            // (3 real columns + 1 trailing-unused space). All iterations
+            // share the str_id "MyPopup"; with_id(column) scopes ImGui's
+            // popup-id stack so each column owns its own open state.
+            // Trigger: hover-tracking + IsMouseReleased(Right) + !IsAnyItemHovered.
             var hovered = -1
-            for (column in range(column_count)) {
-                // cpp iterates COLUMNS_COUNT + 1 to special-case the
-                // trailing unused-space column; the das port simplified
-                // that away, so cap the loop at column_count —
-                // table_get_column_flags(column_count) asserts on a
-                // 3-column table (valid indices: -1 or 0..N-1).
-                if ((int(table_get_column_flags(column)) &
-                     int(ImGuiTableColumnFlags.IsHovered)) != 0) {
-                    hovered = column
+            for (column in range(column_count + 1)) {
+                with_id("cm2_col_{column}") {
+                    if ((int(table_get_column_flags(column)) &
+                         int(ImGuiTableColumnFlags.IsHovered)) != 0) {
+                        hovered = column
+                    }
+                    if (hovered == column && !IsAnyItemHovered() &&
+                        IsMouseReleased(ImGuiMouseButton.Right)) {
+                        open_popup("MyPopup")
+                    }
+                    popup_window(TABLES_CM2_COL_POPUP[column],
+                                 (str_id = "MyPopup",
+                                  flags = ImGuiWindowFlags.None)) {
+                        if (column == column_count) {
+                            text(TABLES_CM2_COL_TEXT[column],
+                                 (text = "This is a custom popup for unused space after the last column."))
+                        } else {
+                            text(TABLES_CM2_COL_TEXT[column],
+                                 (text = "This is a custom popup for Column {column}"))
+                        }
+                        if (button(TABLES_CM2_COL_CLOSE[column], (text = "Close"))) {
+                            close_current_popup()
+                        }
+                    }
                 }
             }
             TABLES_CM2_HOVERED_COLUMN = hovered
