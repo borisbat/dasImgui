@@ -269,23 +269,48 @@ def private paint_trail {
     }
 }
 
-def private fits_viewport(c : float2; box_size : float2; viewport : float2;
-                          edge_margin : float; shadow : float2; hud_zone_h : float) : bool {
-    let max_x = viewport.x - edge_margin - box_size.x - shadow.x
-    let max_y = viewport.y - edge_margin - box_size.y - shadow.y - hud_zone_h
-    return (c.x >= edge_margin && c.x <= max_x
-         && c.y >= edge_margin && c.y <= max_y)
-}
-
-def private overlaps_any(c : float2; box_size : float2; bboxes : array<float4>) : bool {
-    // Box-on-box overlap test: candidate (c, c+box_size) vs each bbox (x0,y0,x1,y1).
-    // Touching edges count as non-overlapping (>= / <=, not > / <).
+def private rect_intersects(c : float2; box_size : float2; b : float4) : bool {
+    //! Half-open box-on-box: touching edges count as non-overlapping.
     let bx1 = c.x + box_size.x
     let by1 = c.y + box_size.y
-    for (b in bboxes) {
-        return true if (!(bx1 <= b.x || c.x >= b.z || by1 <= b.y || c.y >= b.w))
+    return !(bx1 <= b.x || c.x >= b.z || by1 <= b.y || c.y >= b.w)
+}
+
+def private clamp_anchor(c : float2; box_size : float2; viewport : float2;
+                         edge_margin : float; shadow : float2; hud_zone_h : float) : float2 {
+    // Slide a candidate's top-left into [edge_margin, viewport - edge_margin -
+    // box - shadow], with the bottom edge pulled up by hud_zone_h when the
+    // key-HUD is visible.
+    var r = c
+    let max_x = viewport.x - edge_margin - box_size.x - shadow.x
+    let max_y = viewport.y - edge_margin - box_size.y - shadow.y - hud_zone_h
+    if (r.x > max_x) {
+        r.x = max_x
     }
-    return false
+    if (r.x < edge_margin) {
+        r.x = edge_margin
+    }
+    if (r.y > max_y) {
+        r.y = max_y
+    }
+    if (r.y < edge_margin) {
+        r.y = edge_margin
+    }
+    return r
+}
+
+def private score_anchor(c : float2; box_size : float2;
+                         target_bbox : float4; other_bboxes : array<float4>) : int {
+    // +1 per sibling bbox the banner overlaps, +1000 if the banner overlaps the
+    // target itself (the connector-loses-meaning penalty).
+    var s = 0
+    if (rect_intersects(c, box_size, target_bbox)) {
+        s += 1000
+    }
+    for (b in other_bboxes) {
+        s++ if (rect_intersects(c, box_size, b))
+    }
+    return s
 }
 
 def public compute_narrate_anchor(
@@ -299,50 +324,53 @@ def public compute_narrate_anchor(
                                   hud_zone_h   : float;
                                   other_bboxes : array<float4>
                                   ) : float2 {
-    //! Pick a post-it anchor (top-left corner) that fits the viewport without
-    //! overlapping the target widget OR any other registered widget. Tries
-    //! right → left → below → above of the target; falls back to a
-    //! viewport-clamped right placement if nothing fits cleanly (e.g. text
-    //! wider than the viewport, or every neighbor blocks).
+    //! Pick a post-it anchor (top-left corner) by scoring 4 viewport-clamped
+    //! candidates (right/left/below/above). ``score_anchor`` adds 1 per sibling
+    //! bbox the banner overlaps and 1000 if the banner overlaps the target —
+    //! lowest-score candidate wins, ties broken by iteration order (right >
+    //! left > below > above). If the banner is larger than the viewport's
+    //! placement region even when clamped, returns a bottom-left safety
+    //! anchor — only fires when the caller passed text that genuinely cannot
+    //! fit.
     return float2(edge_margin, edge_margin) if (!has_target)
+
+    let max_w = viewport.x - 2.0f * edge_margin - shadow.x
+    let max_h = viewport.y - 2.0f * edge_margin - shadow.y - hud_zone_h
+    let failsafe = float2(edge_margin,
+                          viewport.y - edge_margin - box_size.y - shadow.y - hud_zone_h)
+    return failsafe if (box_size.x > max_w || box_size.y > max_h)
+
     let bb = widget_bbox
     let cx = (bb.x + bb.z) * 0.5f
+    let c_right = clamp_anchor(float2(bb.z + gap, bb.y),
+                               box_size, viewport, edge_margin, shadow, hud_zone_h)
+    let c_left  = clamp_anchor(float2(bb.x - gap - box_size.x, bb.y),
+                               box_size, viewport, edge_margin, shadow, hud_zone_h)
+    let c_below = clamp_anchor(float2(cx - box_size.x * 0.5f, bb.w + gap),
+                               box_size, viewport, edge_margin, shadow, hud_zone_h)
+    let c_above = clamp_anchor(float2(cx - box_size.x * 0.5f, bb.y - gap - box_size.y),
+                               box_size, viewport, edge_margin, shadow, hud_zone_h)
+    let s_right = score_anchor(c_right, box_size, widget_bbox, other_bboxes)
+    let s_left  = score_anchor(c_left,  box_size, widget_bbox, other_bboxes)
+    let s_below = score_anchor(c_below, box_size, widget_bbox, other_bboxes)
+    let s_above = score_anchor(c_above, box_size, widget_bbox, other_bboxes)
 
-    // 1. Right of widget
-    var c = float2(bb.z + gap, bb.y)
-    if (fits_viewport(c, box_size, viewport, edge_margin, shadow, hud_zone_h)
-        && !overlaps_any(c, box_size, other_bboxes)) return c
-    // 2. Left of widget
-    c = float2(bb.x - gap - box_size.x, bb.y)
-    if (fits_viewport(c, box_size, viewport, edge_margin, shadow, hud_zone_h)
-        && !overlaps_any(c, box_size, other_bboxes)) return c
-    // 3. Below widget (horizontally centered)
-    c = float2(cx - box_size.x * 0.5f, bb.w + gap)
-    if (fits_viewport(c, box_size, viewport, edge_margin, shadow, hud_zone_h)
-        && !overlaps_any(c, box_size, other_bboxes)) return c
-    // 4. Above widget (horizontally centered)
-    c = float2(cx - box_size.x * 0.5f, bb.y - gap - box_size.y)
-    if (fits_viewport(c, box_size, viewport, edge_margin, shadow, hud_zone_h)
-        && !overlaps_any(c, box_size, other_bboxes)) return c
-    // Fallback: keep right placement and clamp into viewport. Only fires when
-    // no candidate fits — typically text wider than viewport, or a widget
-    // that covers most of the screen.
-    var fb = float2(bb.z + gap, bb.y)
-    let max_x = viewport.x - edge_margin - box_size.x - shadow.x
-    let max_y = viewport.y - edge_margin - box_size.y - shadow.y - hud_zone_h
-    if (fb.x > max_x) {
-        fb.x = max_x
+    // Tiebreak by iteration order: right > left > below > above.
+    var best_anchor = c_right
+    var best_score = s_right
+    if (s_left < best_score) {
+        best_score = s_left
+        best_anchor = c_left
     }
-    if (fb.x < edge_margin) {
-        fb.x = edge_margin
+    if (s_below < best_score) {
+        best_score = s_below
+        best_anchor = c_below
     }
-    if (fb.y > max_y) {
-        fb.y = max_y
+    if (s_above < best_score) {
+        best_score = s_above
+        best_anchor = c_above
     }
-    if (fb.y < edge_margin) {
-        fb.y = edge_margin
-    }
-    return fb
+    return best_anchor
 }
 
 def public compute_connector_start(
@@ -350,15 +378,27 @@ def public compute_connector_start(
                                    box_size      : float2;
                                    widget_center : float2
                                    ) : float2 {
-    //! Midpoint of the post-it edge closest to the widget center. Used to
-    //! anchor the connector line from the right edge when the post-it sits
-    //! to the left of the widget, etc.
-    let cx = anchor.x + box_size.x * 0.5f
-    let cy = anchor.y + box_size.y * 0.5f
-    let dx = widget_center.x - cx
-    let dy = widget_center.y - cy
-    if (abs(dx) > abs(dy)) return dx > 0.0f ? float2(anchor.x + box_size.x, cy) : float2(anchor.x, cy)
-    return dy > 0.0f ? float2(cx, anchor.y + box_size.y) : float2(cx, anchor.y)
+    //! Closest point on the post-it's boundary to ``widget_center``. Coincides
+    //! with the corresponding edge midpoint when ``widget_center`` is directly
+    //! outside one side of the post-it; for offset/corner cases (post-it
+    //! viewport-clamped sideways relative to the target), the line walks to
+    //! the nearest corner so the arrow points naturally at the target.
+    let rect_min = anchor
+    let rect_max = float2(anchor.x + box_size.x, anchor.y + box_size.y)
+    return float2(clamp(widget_center.x, rect_min.x, rect_max.x),
+                  clamp(widget_center.y, rect_min.y, rect_max.y))
+}
+
+def public compute_connector_end(
+                                 target_bbox   : float4;
+                                 banner_center : float2
+                                 ) : float2 {
+    //! Mirror of ``compute_connector_start`` on the target side: closest
+    //! point on the target's bbox boundary to ``banner_center``. Same
+    //! clamp-onto-rect trick — terminates the line on the target's edge (or
+    //! corner, in offset cases) instead of inside it.
+    return float2(clamp(banner_center.x, target_bbox.x, target_bbox.z),
+                  clamp(banner_center.y, target_bbox.y, target_bbox.w))
 }
 
 def private narrate_hud_zone_h : float {
@@ -411,16 +451,23 @@ def private paint_narrates {
                                             other_bboxes)
         delete other_bboxes
         let box_end = float2(anchor.x + box_size.x, anchor.y + box_size.y)
+        // Connector drawn first so the post-it covers any incidental crossing.
+        // Endpoints are on the OUTSIDE edges of banner + target — the line stays
+        // outside both rects, preventing the strike-through that crossing into
+        // the target's center would produce on its label text.
+        if (have_target) {
+            let banner_center = float2(anchor.x + box_size.x * 0.5f,
+                                       anchor.y + box_size.y * 0.5f)
+            let conn_start = compute_connector_start(anchor, box_size, widget_center)
+            let conn_end = compute_connector_end(widget_bbox, banner_center)
+            *dl |> AddLine(conn_start, conn_end, narrate_border_color, narrate_connector_thickness)
+        }
         // Drop shadow first so the post-it sits on top of it.
         *dl |> AddRectFilled(anchor + narrate_shadow_offset, box_end + narrate_shadow_offset,
                              narrate_shadow_color, narrate_corner_radius, ImDrawFlags.None)
         *dl |> AddRectFilled(anchor, box_end, narrate_bg_color, narrate_corner_radius, ImDrawFlags.None)
         *dl |> AddRect(anchor, box_end, narrate_border_color, narrate_corner_radius, ImDrawFlags.None, narrate_border_thickness)
         *dl |> AddText(float2(anchor.x + narrate_pad_x, anchor.y + narrate_pad_y), narrate_fg_color, g_narrates[i].text)
-        if (have_target) {
-            let conn_start = compute_connector_start(anchor, box_size, widget_center)
-            *dl |> AddLine(conn_start, widget_center, narrate_border_color, narrate_connector_thickness)
-        }
         g_narrates[i].remaining_frames--
         if (g_narrates[i].remaining_frames <= 0) {
             g_narrates |> erase(i)
@@ -446,7 +493,7 @@ def private paint_click_flash {
     // Only fire on press, not release; skip if disabled or never clicked.
     let (action, t) = effective_synth_click()
     return if (!click_flash_enabled || t < 0.0 || action != 1)
-    let elapsed = float(get_uptime()) - t
+    let elapsed = get_uptime() - t
     return if (elapsed < 0.0 || elapsed > click_flash_duration_s)
     let alpha_f = (1.0f - elapsed / click_flash_duration_s) * 255.0f
     let radius = click_flash_start_radius + (click_flash_end_radius - click_flash_start_radius) * (elapsed / click_flash_duration_s)
@@ -490,7 +537,7 @@ def private paint_key_hud {
     // 1) Pull new synth events from imgui_live into traces. Codepoint takes
     //    priority: a typed char already includes the visible glyph;
     //    modifier-only keystrokes fall through to the keycode branch.
-    let now = float(get_uptime())
+    let now = get_uptime()
     let cp_t = imgui_live::synth_last_codepoint_t
     let cp   = imgui_live::synth_last_codepoint
     let kc_t = imgui_live::synth_last_keycode_t

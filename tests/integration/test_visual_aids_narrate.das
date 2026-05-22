@@ -94,17 +94,17 @@ def test_anchor_giant_widget_falls_back_to_clamped_right(t : T?) {
 }
 
 [test]
-def test_anchor_hud_zone_pushes_above(t : T?) {
-    //! Case 7: widget near bottom with key_hud reserve active — below candidate
-    //! lands in the HUD zone, so above wins instead.
+def test_anchor_hud_zone_pulls_right_up(t : T?) {
+    //! Case 7: widget near bottom with key_hud reserve active — every candidate
+    //! gets pulled up by the clamp; right-of-widget at the clamped y has no
+    //! target overlap (it sits above-right of the target) and wins by tiebreak.
     let bb = float4(500.0f, 580.0f, 700.0f, 620.0f)
     let hud_h = 110.0f
     let no_others : array<float4>
     let a = compute_narrate_anchor(true, bb, BOX_SMALL, VIEW_HD, MARGIN, GAP, SHADOW, hud_h, no_others)
-    let cx = (500.0f + 700.0f) * 0.5f
-    let expected_x = cx - BOX_SMALL.x * 0.5f                // = 500
-    let expected_y = 580.0f - GAP - BOX_SMALL.y             // = 524
-    t |> success(near2(a, float2(expected_x, expected_y)), "case 7 above: HUD zone blocks below")
+    let expected_x = 700.0f + GAP                                                                 // = 716
+    let expected_y = VIEW_HD.y - MARGIN - BOX_SMALL.y - SHADOW.y - hud_h                          // = 558
+    t |> success(near2(a, float2(expected_x, expected_y)), "case 7: HUD-zone clamp pulls right candidate up, no target overlap → wins")
 }
 
 [test]
