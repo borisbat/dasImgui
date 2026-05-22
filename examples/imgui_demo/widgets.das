@@ -18,9 +18,16 @@ require math
 // =============================================================================
 // Mirrors imgui_demo.cpp:651-2835 — static void ShowDemoWindowWidgets().
 //
-// Phase 2a Step 3 slice: Basic, Tooltips, Tree Nodes, Collapsing Headers,
-// Bullets, Text, Images (cpp:651-1276). Sub-sections after Images remain
-// stubbed and land in follow-up commits.
+// Ported subsections:
+//   Basic, Tooltips, Tree Nodes, Collapsing Headers, Bullets, Text, Images
+//   (cpp:651-1276) + Tier-A quick-win subsections:
+//   Combo (1279), List boxes (1347), Plotting (1898), Progress Bars (1961),
+//   Range Widgets (2217), Multi-component (2352), Vertical Sliders (2385),
+//   Disable block (2808), Text Filter (2816).
+//
+// Remaining stubs (Tier B/C/D): Selectables (7 trees), Text Input (6),
+// Tabs (3), Drag and Drop (4), Color/Picker, Drag/Slider Flags, Data Types,
+// Querying Item/Window Status.
 //
 // Boost-surface conventions for this port (masterplan §"Static-state pattern"):
 //   - Value-owning widgets — checkbox / radio_button_int / slider_* / drag_* /
@@ -98,6 +105,51 @@ var private WIDGETS_BASIC_LB_ROW : table<int; ClickState>
 var private WIDGETS_TREE_LOOP_NODE : table<int; TreeNodeState>
 var private WIDGETS_TREE_LOOP_LEAF : table<int; TreeNodeState>
 
+// ----- Tier-A subsection state -----
+// Combo: shared item list (cpp:1304) + ComboFlags via edit_checkbox_flags.
+let private WIDGETS_COMBO_ITEMS : array<string> <- ["AAAA", "BBBB", "CCCC", "DDDD",
+                                                    "EEEE", "FFFF", "GGGG", "HHHH",
+                                                    "IIII", "JJJJ", "KKKK", "LLLLLLL",
+                                                    "MMMM", "OOOOOOO"]
+var private WIDGETS_COMBO_FLAGS = int(ImGuiComboFlags.None)
+var private WIDGETS_COMBO_LB_ROW : table<int; ClickState>
+
+// List Boxes: separate per-box row tables because every Selectable inside a
+// container needs its own state global (path key disambiguation).
+var private WIDGETS_LB_ROW1 : table<int; ClickState>
+var private WIDGETS_LB_ROW2 : table<int; ClickState>
+
+// Text Filter: per-line bullet idents (cpp:2828, 8 entries — kept generic).
+var private WIDGETS_TF_LINE : table<int; NarrativeState>
+
+// Plotting: animated values buffer (cpp:1912) + cosine-phase scratch.
+var private WIDGETS_PLOT_VALUES : array<float>
+var private WIDGETS_PLOT_VALUES_OFFSET = 0
+var private WIDGETS_PLOT_REFRESH_TIME = 0.0lf
+var private WIDGETS_PLOT_PHASE = 0.0f
+let private WIDGETS_PLOT_FRAMETIMES : array<float> <- [0.6f, 0.1f, 1.0f, 0.5f,
+                                                       0.92f, 0.1f, 0.2f]
+
+// Progress Bars: animation state (cpp:1964); fraction wraps in [-0.1, 1.1].
+var private WIDGETS_PROGRESS = 0.0f
+var private WIDGETS_PROGRESS_DIR = 1.0f
+
+// Vertical Sliders: three groups of state (cpp:2390 / 2394 / 2414).
+//   *_INT_PTR / *_VALUES{,_2} are caller-owned data fed to edit_vslider_*;
+//   *_SET{1,2,3} are per-iteration same_line markers (indexed); *_GROUP is
+//   the per-column BeginGroup container; *_TIP{1,2} are per-iter tooltip
+//   widgets (one fires per frame when an item is active/hovered).
+var private WIDGETS_VS_INT_PTR = 0
+var private WIDGETS_VS_VALUES : array<float> <- [0.0f, 0.60f, 0.35f, 0.9f,
+                                                 0.70f, 0.20f, 0.0f]
+var private WIDGETS_VS_VALUES2 : array<float> <- [0.20f, 0.80f, 0.40f, 0.25f]
+var private WIDGETS_VS_SET1 : table<int; EmptyMarkerState>
+var private WIDGETS_VS_SET2 : table<int; EmptyMarkerState>
+var private WIDGETS_VS_SET3 : table<int; EmptyMarkerState>
+var private WIDGETS_VS_GROUP : table<int; GroupState>
+var private WIDGETS_VS_TIP1 : table<int; NarrativeState>
+var private WIDGETS_VS_TIP2 : table<int; NarrativeState>
+
 
 // =============================================================================
 // Helpers
@@ -118,7 +170,20 @@ def ShowDemoWindowWidgets() {
                 BulletsSection()
                 TextSection()
                 ImagesSection()
+                ComboSection()
+                ListBoxesSection()
+                PlottingSection()
+                ProgressBarsSection()
+                RangeWidgetsSection()
+                MultiComponentSection()
+                VerticalSlidersSection()
             }
+            // "Disable block" exposes the WIDGETS_DISABLE_ALL checkbox itself;
+            // it would be hidden by its own gate inside with_disabled, so it
+            // sits OUTSIDE the with_disabled scope (matches cpp:2807 placement
+            // after the with_disabled-equivalent block).
+            DisableBlockSection()
+            TextFilterSection()
     }
 }
 
@@ -858,5 +923,582 @@ def private ImageBtnAt(i : int; tex_id : void?; tex_w, tex_h : float) {
         (text = "", user_texture_id = tex_id, size = size,
          uv0 = uv0, uv1 = uv1, bg_col = bg_col, tint_col = btn_tint))) {
         WIDGETS_IMAGES_PRESSED_COUNT++
+    }
+}
+
+
+// =============================================================================
+// Combo — cpp:1279-1344
+// =============================================================================
+
+def private ComboSection() {
+    tree_node(WIDGETS_COMBO_SECTION,
+        (text = "Combo", flags = ImGuiTreeNodeFlags.None)) {
+
+        text("Combo Boxes are also called \"Dropdown\" in other systems.")
+
+        edit_checkbox_flags(safe_addr(WIDGETS_COMBO_FLAGS),
+            (id = "WIDGETS_COMBO_F_POPUP_LEFT",
+             text = "ImGuiComboFlags_PopupAlignLeft",
+             flags_value = int(ImGuiComboFlags.PopupAlignLeft)))
+        same_line(WIDGETS_COMBO_SL_1)
+        text_disabled("(?)")
+        item_tooltip(WIDGETS_COMBO_HM_LEFT) {
+            with_text_wrap_pos(GetFontSize() * 35.0f) {
+                text_unformatted("Only makes a difference if the popup is larger than the combo.")
+            }
+        }
+
+        // NoArrowButton / NoPreview / WidthFitPreview are mutually exclusive
+        // pairs; clearing the incompatible flag matches cpp:1287-1291.
+        if (edit_checkbox_flags(safe_addr(WIDGETS_COMBO_FLAGS),
+            (id = "WIDGETS_COMBO_F_NO_ARROW",
+             text = "ImGuiComboFlags_NoArrowButton",
+             flags_value = int(ImGuiComboFlags.NoArrowButton)))) {
+            WIDGETS_COMBO_FLAGS &= ~int(ImGuiComboFlags.NoPreview)
+        }
+        if (edit_checkbox_flags(safe_addr(WIDGETS_COMBO_FLAGS),
+            (id = "WIDGETS_COMBO_F_NO_PREVIEW",
+             text = "ImGuiComboFlags_NoPreview",
+             flags_value = int(ImGuiComboFlags.NoPreview)))) {
+            WIDGETS_COMBO_FLAGS &= ~int(ImGuiComboFlags.NoArrowButton |
+                                        ImGuiComboFlags.WidthFitPreview)
+        }
+        if (edit_checkbox_flags(safe_addr(WIDGETS_COMBO_FLAGS),
+            (id = "WIDGETS_COMBO_F_WIDTH_FIT",
+             text = "ImGuiComboFlags_WidthFitPreview",
+             flags_value = int(ImGuiComboFlags.WidthFitPreview)))) {
+            WIDGETS_COMBO_FLAGS &= ~int(ImGuiComboFlags.NoPreview)
+        }
+
+        // Height presets — clearing the rest of HeightMask_ matches cpp:1295-1299.
+        let HEIGHT_MASK = int(ImGuiComboFlags.HeightMask_)
+        if (edit_checkbox_flags(safe_addr(WIDGETS_COMBO_FLAGS),
+            (id = "WIDGETS_COMBO_F_HEIGHT_S",
+             text = "ImGuiComboFlags_HeightSmall",
+             flags_value = int(ImGuiComboFlags.HeightSmall)))) {
+            WIDGETS_COMBO_FLAGS &= ~(HEIGHT_MASK & ~int(ImGuiComboFlags.HeightSmall))
+        }
+        if (edit_checkbox_flags(safe_addr(WIDGETS_COMBO_FLAGS),
+            (id = "WIDGETS_COMBO_F_HEIGHT_R",
+             text = "ImGuiComboFlags_HeightRegular",
+             flags_value = int(ImGuiComboFlags.HeightRegular)))) {
+            WIDGETS_COMBO_FLAGS &= ~(HEIGHT_MASK & ~int(ImGuiComboFlags.HeightRegular))
+        }
+        if (edit_checkbox_flags(safe_addr(WIDGETS_COMBO_FLAGS),
+            (id = "WIDGETS_COMBO_F_HEIGHT_L",
+             text = "ImGuiComboFlags_HeightLargest",
+             flags_value = int(ImGuiComboFlags.HeightLargest)))) {
+            WIDGETS_COMBO_FLAGS &= ~(HEIGHT_MASK & ~int(ImGuiComboFlags.HeightLargest))
+        }
+
+        // combo 1 — BeginCombo + manual Selectable loop via combo_select.
+        // Preview value reads from WIDGETS_COMBO_C1.value (index into shared items).
+        let combo_flags = unsafe(reinterpret<ImGuiComboFlags>(WIDGETS_COMBO_FLAGS))
+        let preview_idx = WIDGETS_COMBO_C1.value
+        let preview = ((preview_idx >= 0 && preview_idx < length(WIDGETS_COMBO_ITEMS))
+            ? WIDGETS_COMBO_ITEMS[preview_idx] : "")
+        combo_select(WIDGETS_COMBO_C1,
+            (text = "combo 1", preview_value = preview, flags = combo_flags)) {
+            for (n in range(length(WIDGETS_COMBO_ITEMS))) {
+                let is_selected = (WIDGETS_COMBO_C1.value == n)
+                if (selectable_label(WIDGETS_COMBO_LB_ROW[n],
+                                     WIDGETS_COMBO_ITEMS[n], is_selected)) {
+                    WIDGETS_COMBO_C1.value = n
+                }
+                if (is_selected) {
+                    SetItemDefaultFocus()
+                }
+            }
+        }
+
+        spacing(WIDGETS_COMBO_SPACING)
+        separator_text(WIDGETS_COMBO_SEP, "One-liner variants")
+        text_disabled("(?)")
+        item_tooltip(WIDGETS_COMBO_HM_ONELINE) {
+            with_text_wrap_pos(GetFontSize() * 35.0f) {
+                text_unformatted("Flags above don't apply to this section.")
+            }
+        }
+
+        // combo 2 — one-liner; cpp packs into "aaaa\0bbbb\0..."; boost combo
+        // takes array<string> and packs the same null-separated buffer internally.
+        combo(WIDGETS_COMBO_C2,
+            (text = "combo 2 (one-liner)",
+             items <- ["aaaa", "bbbb", "cccc", "dddd", "eeee"]))
+
+        // combo 3 — array form sharing the full 14-item list. cpp starts at
+        // -1 so no preview shows initially; daslang state defaults to 0, so we
+        // skip the negative-start trick (visual difference is minor).
+        combo(WIDGETS_COMBO_C3,
+            (text = "combo 3 (array)", items <- WIDGETS_COMBO_ITEMS))
+
+        // combo 4 — getter form. The thunk indexes into the shared items list.
+        combo_getter(WIDGETS_COMBO_C4,
+            (text = "combo 4 (function)",
+             items_count = length(WIDGETS_COMBO_ITEMS),
+             getter = @(idx : int; var result : string&) : bool {
+                if (idx >= 0 && idx < length(WIDGETS_COMBO_ITEMS)) {
+                    result = WIDGETS_COMBO_ITEMS[idx]
+                    return true
+                }
+                return false
+             }))
+    }
+}
+
+
+// =============================================================================
+// List boxes — cpp:1347-1393
+// =============================================================================
+
+def private ListBoxesSection() {
+    tree_node(WIDGETS_LB_SECTION,
+        (text = "List boxes", flags = ImGuiTreeNodeFlags.None)) {
+
+        // Two list_box instances SHARE one selection state (cpp:1358) — both
+        // read/write WIDGETS_LB_SHARED.value. The (-1, 0) default-size form
+        // wraps the items list snugly; the second box overrides size to take
+        // full content width and 5 rows tall.
+        list_box(WIDGETS_LB_SHARED,
+            (text = "listbox 1", size = float2(0.0f, 0.0f))) {
+            for (n in range(length(WIDGETS_COMBO_ITEMS))) {
+                let is_selected = (WIDGETS_LB_SHARED.value == n)
+                if (selectable_label(WIDGETS_LB_ROW1[n],
+                                     WIDGETS_COMBO_ITEMS[n], is_selected)) {
+                    WIDGETS_LB_SHARED.value = n
+                }
+                if (is_selected) {
+                    SetItemDefaultFocus()
+                }
+            }
+        }
+        same_line(WIDGETS_LB_SL_HINT)
+        text_disabled("(?)")
+        item_tooltip(WIDGETS_LB_HM_SHARE) {
+            with_text_wrap_pos(GetFontSize() * 35.0f) {
+                text_unformatted("Here we are sharing selection state between both boxes.")
+            }
+        }
+
+        text("Full-width:")
+        let full_h = 5.0f * GetTextLineHeightWithSpacing()
+        list_box(WIDGETS_LB_FULL,
+            (text = "##listbox 2", size = float2(-1.0f, full_h))) {
+            for (n in range(length(WIDGETS_COMBO_ITEMS))) {
+                let is_selected = (WIDGETS_LB_SHARED.value == n)
+                if (selectable_label(WIDGETS_LB_ROW2[n],
+                                     WIDGETS_COMBO_ITEMS[n], is_selected)) {
+                    WIDGETS_LB_SHARED.value = n
+                }
+                if (is_selected) {
+                    SetItemDefaultFocus()
+                }
+            }
+        }
+    }
+}
+
+
+// =============================================================================
+// Plotting — cpp:1898-1958
+// =============================================================================
+
+def private PlottingSection() {
+    tree_node(WIDGETS_PLOT_SECTION,
+        (text = "Plotting", flags = ImGuiTreeNodeFlags.None)) {
+
+        checkbox(WIDGETS_PLOT_ANIMATE, (text = "Animate", init = true))
+
+        // Frame-times array (7 values) — plot as lines AND histogram.
+        plot_lines(WIDGETS_PLOT_FRAMETIMES_LINES,
+            (text = "Frame Times", values <- WIDGETS_PLOT_FRAMETIMES))
+        plot_histogram(WIDGETS_PLOT_FRAMETIMES_HIST,
+            (text = "Histogram", values <- WIDGETS_PLOT_FRAMETIMES,
+             scale_min = 0.0f, scale_max = 1.0f,
+             graph_size = float2(0.0f, 80.0f)))
+
+        // 90-sample rolling cosine buffer animated at fixed 60 Hz to decouple
+        // from the recorder/host frame rate (cpp:1912-1924).
+        if (length(WIDGETS_PLOT_VALUES) != 90) {
+            WIDGETS_PLOT_VALUES |> resize(90)
+        }
+        let now = GetTime()
+        if (!WIDGETS_PLOT_ANIMATE.value || WIDGETS_PLOT_REFRESH_TIME == 0.0lf) {
+            WIDGETS_PLOT_REFRESH_TIME = now
+        }
+        while (WIDGETS_PLOT_REFRESH_TIME < now) {
+            WIDGETS_PLOT_VALUES[WIDGETS_PLOT_VALUES_OFFSET] = cos(WIDGETS_PLOT_PHASE)
+            WIDGETS_PLOT_VALUES_OFFSET = (WIDGETS_PLOT_VALUES_OFFSET + 1) % 90
+            WIDGETS_PLOT_PHASE += 0.10f * float(WIDGETS_PLOT_VALUES_OFFSET)
+            WIDGETS_PLOT_REFRESH_TIME += 1.0lf / 60.0lf
+        }
+
+        // Average overlay — cpp:1929-1935.
+        var average = 0.0f
+        for (v in WIDGETS_PLOT_VALUES) {
+            average += v
+        }
+        average /= float(length(WIDGETS_PLOT_VALUES))
+        plot_lines(WIDGETS_PLOT_LINES,
+            (text = "Lines", values <- WIDGETS_PLOT_VALUES,
+             scale_min = -1.0f, scale_max = 1.0f,
+             graph_size = float2(0.0f, 80.0f)))
+        // plot_lines binding takes the array as-is — no values_offset rotation
+        // arg (the cpp passes the offset to skip the head; our boost wrapper
+        // currently always starts at index 0). Behaviorally the wave still
+        // animates correctly; only the "rolling head" alignment differs.
+        text("avg {average}")
+
+        // Sin / Saw lambda-driven plots via *_getter (cpp:1941-1954).
+        separator_text(WIDGETS_PLOT_SEP_FUNC, "Functions")
+        with_item_width(GetFontSize() * 8.0f) {
+            combo(WIDGETS_PLOT_FUNC, (text = "func", items <- ["Sin", "Saw"]))
+        }
+        same_line(WIDGETS_PLOT_SL_FUNC)
+        slider_int(WIDGETS_PLOT_SAMPLE_COUNT,
+            (text = "Sample count", init = 70, bounds = (1, 400)))
+
+        let is_sin = (WIDGETS_PLOT_FUNC.value == 0)
+        let count = WIDGETS_PLOT_SAMPLE_COUNT.value
+        plot_lines_getter(WIDGETS_PLOT_LINES_FN,
+            (text = "Lines", values_count = count,
+             getter = @(idx : int) : float => is_sin
+                ? sin(float(idx) * 0.1f)
+                : (((idx & 1) != 0) ? 1.0f : -1.0f),
+             overlay_text = "",
+             scale_min = -1.0f, scale_max = 1.0f,
+             graph_size = float2(0.0f, 80.0f)))
+        plot_histogram_getter(WIDGETS_PLOT_HIST_FN,
+            (text = "Histogram", values_count = count,
+             getter = @(idx : int) : float => is_sin
+                ? sin(float(idx) * 0.1f)
+                : (((idx & 1) != 0) ? 1.0f : -1.0f),
+             overlay_text = "",
+             scale_min = -1.0f, scale_max = 1.0f,
+             graph_size = float2(0.0f, 80.0f)))
+        separator(WIDGETS_PLOT_SEP)
+    }
+}
+
+
+// =============================================================================
+// Progress Bars — cpp:1961-1987
+// =============================================================================
+
+def private ProgressBarsSection() {
+    tree_node(WIDGETS_PB_SECTION,
+        (text = "Progress Bars", flags = ImGuiTreeNodeFlags.None)) {
+
+        // Ping-pong progress in [-0.1, 1.1] driven by frame delta-time.
+        let io & = unsafe(GetIO())
+        WIDGETS_PROGRESS += WIDGETS_PROGRESS_DIR * 0.4f * io.DeltaTime
+        if (WIDGETS_PROGRESS >= 1.1f) {
+            WIDGETS_PROGRESS = 1.1f
+            WIDGETS_PROGRESS_DIR *= -1.0f
+        }
+        if (WIDGETS_PROGRESS <= -0.1f) {
+            WIDGETS_PROGRESS = -0.1f
+            WIDGETS_PROGRESS_DIR *= -1.0f
+        }
+
+        progress_bar(WIDGETS_PB_DEFAULT,
+            (fraction = WIDGETS_PROGRESS, size = float2(0.0f, 0.0f)))
+        same_line((offset_from_start_x = 0.0f,
+                   spacing = GetStyle().ItemInnerSpacing.x))
+        text("Progress Bar")
+
+        let saturated = clamp(WIDGETS_PROGRESS, 0.0f, 1.0f)
+        let units = int(saturated * 1753.0f)
+        progress_bar(WIDGETS_PB_OVERLAY,
+            (fraction = WIDGETS_PROGRESS, size = float2(0.0f, 0.0f),
+             overlay = "{units}/1753"))
+
+        // Negative fraction renders an indeterminate animation. -GetTime()
+        // pumps a continuously-decreasing value so ImGui advances its phase.
+        progress_bar(WIDGETS_PB_INDETERMINATE,
+            (fraction = -1.0f * float(GetTime()),
+             size = float2(0.0f, 0.0f),
+             overlay = "Searching.."))
+        same_line((offset_from_start_x = 0.0f,
+                   spacing = GetStyle().ItemInnerSpacing.x))
+        text("Indeterminate")
+    }
+}
+
+
+// =============================================================================
+// Range Widgets — cpp:2217-2225
+// =============================================================================
+
+def private RangeWidgetsSection() {
+    tree_node(WIDGETS_RANGE_SECTION,
+        (text = "Range Widgets", flags = ImGuiTreeNodeFlags.None)) {
+
+        drag_float_range2(WIDGETS_RANGE_F,
+            (text = "range float",
+             init = float2(10.0f, 90.0f),
+             bounds = (0.0f, 100.0f),
+             speed = 0.25f,
+             format = "%.1f %%",
+             flags = ImGuiSliderFlags.AlwaysClamp))
+        // Format-per-handle: cpp passes "Min: %.1f %%" / "Max: %.1f %%" but our
+        // boost binding takes a single shared format string. Functional shape
+        // (clamped range, draggable handles) matches; the per-handle label
+        // prefix is a binding gap, not a behavior gap.
+        drag_int_range2(WIDGETS_RANGE_I,
+            (text = "range int",
+             init = int2(100, 1000),
+             bounds = (0, 1000),
+             speed = 5.0f,
+             format = "%d units"))
+        drag_int_range2(WIDGETS_RANGE_I_NB,
+            (text = "range int (no bounds)",
+             init = int2(100, 1000),
+             bounds = (0, 0),
+             speed = 5.0f,
+             format = "%d units"))
+    }
+}
+
+
+// =============================================================================
+// Multi-component Widgets — cpp:2352-2382
+// =============================================================================
+//
+// cpp uses a single shared `vec4f[4]` / `vec4i[4]` for all 18 widgets; our
+// boost rail auto-emits independent state per widget. Each widget shows the
+// daslang form of its cpp counterpart, but values do not propagate between
+// widgets (semantic deviation noted; cleaner than `safe_addr` arithmetic on
+// a global). Initial values seeded with the cpp tuples for visual parity.
+
+def private MultiComponentSection() {
+    tree_node(WIDGETS_MC_SECTION,
+        (text = "Multi-component Widgets", flags = ImGuiTreeNodeFlags.None)) {
+
+        separator_text(WIDGETS_MC_SEP_2, "2-wide")
+        input_float2(WIDGETS_MC_IF2, (text = "input float2",
+                                      init = float2(0.10f, 0.20f)))
+        drag_float2(WIDGETS_MC_DF2, (text = "drag float2",
+                                     init = float2(0.10f, 0.20f),
+                                     bounds = (0.0f, 1.0f), speed = 0.01f))
+        slider_float2(WIDGETS_MC_SF2, (text = "slider float2",
+                                       init = float2(0.10f, 0.20f),
+                                       bounds = (0.0f, 1.0f)))
+        input_int2(WIDGETS_MC_II2, (text = "input int2",
+                                    init = int2(1, 5)))
+        drag_int2(WIDGETS_MC_DI2, (text = "drag int2",
+                                   init = int2(1, 5),
+                                   bounds = (0, 255), speed = 1.0f))
+        slider_int2(WIDGETS_MC_SI2, (text = "slider int2",
+                                     init = int2(1, 5),
+                                     bounds = (0, 255)))
+
+        separator_text(WIDGETS_MC_SEP_3, "3-wide")
+        input_float3(WIDGETS_MC_IF3, (text = "input float3",
+                                      init = float3(0.10f, 0.20f, 0.30f)))
+        drag_float3(WIDGETS_MC_DF3, (text = "drag float3",
+                                     init = float3(0.10f, 0.20f, 0.30f),
+                                     bounds = (0.0f, 1.0f), speed = 0.01f))
+        slider_float3(WIDGETS_MC_SF3, (text = "slider float3",
+                                       init = float3(0.10f, 0.20f, 0.30f),
+                                       bounds = (0.0f, 1.0f)))
+        input_int3(WIDGETS_MC_II3, (text = "input int3",
+                                    init = int3(1, 5, 100)))
+        drag_int3(WIDGETS_MC_DI3, (text = "drag int3",
+                                   init = int3(1, 5, 100),
+                                   bounds = (0, 255), speed = 1.0f))
+        slider_int3(WIDGETS_MC_SI3, (text = "slider int3",
+                                     init = int3(1, 5, 100),
+                                     bounds = (0, 255)))
+
+        separator_text(WIDGETS_MC_SEP_4, "4-wide")
+        input_float4(WIDGETS_MC_IF4, (text = "input float4",
+                                      init = float4(0.10f, 0.20f, 0.30f, 0.44f)))
+        drag_float4(WIDGETS_MC_DF4, (text = "drag float4",
+                                     init = float4(0.10f, 0.20f, 0.30f, 0.44f),
+                                     bounds = (0.0f, 1.0f), speed = 0.01f))
+        slider_float4(WIDGETS_MC_SF4, (text = "slider float4",
+                                       init = float4(0.10f, 0.20f, 0.30f, 0.44f),
+                                       bounds = (0.0f, 1.0f)))
+        input_int4(WIDGETS_MC_II4, (text = "input int4",
+                                    init = int4(1, 5, 100, 255)))
+        drag_int4(WIDGETS_MC_DI4, (text = "drag int4",
+                                   init = int4(1, 5, 100, 255),
+                                   bounds = (0, 255), speed = 1.0f))
+        slider_int4(WIDGETS_MC_SI4, (text = "slider int4",
+                                     init = int4(1, 5, 100, 255),
+                                     bounds = (0, 255)))
+    }
+}
+
+
+// =============================================================================
+// Vertical Sliders — cpp:2385-2447
+// =============================================================================
+
+def private VerticalSlidersSection() {
+    tree_node(WIDGETS_VS_SECTION,
+        (text = "Vertical Sliders", flags = ImGuiTreeNodeFlags.None)) {
+
+        let spacing_px = 4.0f
+        with_style((ImGuiStyleVar.ItemSpacing, float2(spacing_px, spacing_px))) {
+            // Single VSliderInt + a row of 7 colored VSliderFloats sharing
+            // WIDGETS_VS_VALUES (cpp:2390-2410). edit_vslider_* binds to the
+            // caller-owned slot so each row stays "live" data, like cpp's
+            // shared `values[]`. `with_id` carves the per-iteration ID scope.
+            edit_vslider_int(safe_addr(WIDGETS_VS_INT_PTR),
+                (id = "WIDGETS_VS_INT", text = "##int",
+                 size = float2(18.0f, 160.0f), v_min = 0, v_max = 5))
+            same_line(WIDGETS_VS_SL_AFTER_INT)
+
+            with_id("set1") {
+                for (i in range(7)) {
+                    if (i > 0) {
+                        same_line(WIDGETS_VS_SET1[i])
+                    }
+                    with_id("i_{i}") {
+                        let hue = float(i) / 7.0f
+                        with_style((ImGuiCol.FrameBg,        HSV(hue, 0.5f, 0.5f)),
+                                   (ImGuiCol.FrameBgHovered, HSV(hue, 0.6f, 0.5f)),
+                                   (ImGuiCol.FrameBgActive,  HSV(hue, 0.7f, 0.5f)),
+                                   (ImGuiCol.SliderGrab,     HSV(hue, 0.9f, 0.9f))) {
+                            VSlider1At(i)
+                        }
+                    }
+                }
+            }
+            same_line(WIDGETS_VS_SL_SET1_END)
+
+            // 4×3 grid of small vertical sliders (cpp:2414-2430). Each column
+            // shares one float (values2[nx]) across 3 rows.
+            with_id("set2") {
+                let rows = 3
+                let row_h = (160.0f - float(rows - 1) * spacing_px) / float(rows)
+                let small_size = float2(18.0f, row_h)
+                for (nx in range(4)) {
+                    if (nx > 0) {
+                        same_line(WIDGETS_VS_SET2[nx])
+                    }
+                    group(WIDGETS_VS_GROUP[nx]) {
+                        with_id("col_{nx}") {
+                            for (ny in range(rows)) {
+                                with_id("row_{ny}") {
+                                    VSlider2At(nx, small_size)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            same_line(WIDGETS_VS_SL_SET2_END)
+
+            // Row of 4 fat-grab sliders reusing WIDGETS_VS_VALUES[0..3]
+            // (cpp:2434-2444). GrabMinSize style var scoped per slider.
+            with_id("set3") {
+                for (i in range(4)) {
+                    if (i > 0) {
+                        same_line(WIDGETS_VS_SET3[i])
+                    }
+                    with_id("i_{i}") {
+                        with_style((ImGuiStyleVar.GrabMinSize, 40.0f)) {
+                            VSlider3At(i)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Per-iteration VSliderFloat helpers — wrapped so `with_style` can scope a
+// single statement cleanly. All three bind to slices of the shared arrays
+// via edit_vslider_float; tooltip-on-active mirrors cpp:2405-2406 (2425-26).
+def private VSlider1At(i : int) {
+    edit_vslider_float(unsafe(addr(WIDGETS_VS_VALUES[i])),
+        (id = "WIDGETS_VS_SLIDER1", text = "##v",
+         size = float2(18.0f, 160.0f),
+         v_min = 0.0f, v_max = 1.0f, format = ""))
+    if (IsItemActive() || IsItemHovered()) {
+        set_tooltip(WIDGETS_VS_TIP1[i], "{WIDGETS_VS_VALUES[i]}")
+    }
+}
+
+def private VSlider2At(nx : int; size : float2) {
+    edit_vslider_float(unsafe(addr(WIDGETS_VS_VALUES2[nx])),
+        (id = "WIDGETS_VS_SLIDER2", text = "##v",
+         size = size, v_min = 0.0f, v_max = 1.0f, format = ""))
+    if (IsItemActive() || IsItemHovered()) {
+        set_tooltip(WIDGETS_VS_TIP2[nx], "{WIDGETS_VS_VALUES2[nx]}")
+    }
+}
+
+def private VSlider3At(i : int) {
+    edit_vslider_float(unsafe(addr(WIDGETS_VS_VALUES[i])),
+        (id = "WIDGETS_VS_SLIDER3", text = "##v",
+         size = float2(40.0f, 160.0f),
+         v_min = 0.0f, v_max = 1.0f, format = "%.2f\nsec"))
+}
+
+
+// =============================================================================
+// Disable block — cpp:2807-2813
+// =============================================================================
+//
+// The checkbox toggles WIDGETS_DISABLE_ALL, the same plain var that gates
+// `with_disabled` around the rest of the Widgets sections. Lives OUTSIDE
+// with_disabled so it stays interactive even when everything else is
+// disabled (matches cpp's EndDisabled-before-TreeNode placement).
+
+def private DisableBlockSection() {
+    tree_node(WIDGETS_DIS_SECTION,
+        (text = "Disable block", flags = ImGuiTreeNodeFlags.None)) {
+
+        edit_checkbox(safe_addr(WIDGETS_DISABLE_ALL),
+            (id = "WIDGETS_DIS_CB", text = "Disable entire section above"))
+        same_line(WIDGETS_DIS_SL)
+        text_disabled("(?)")
+        item_tooltip(WIDGETS_DIS_HM) {
+            with_text_wrap_pos(GetFontSize() * 35.0f) {
+                text_unformatted("Demonstrate using BeginDisabled()/EndDisabled() across this section.")
+            }
+        }
+    }
+}
+
+
+// =============================================================================
+// Text Filter — cpp:2816-2832
+// =============================================================================
+
+def private TextFilterSection() {
+    tree_node(WIDGETS_TF_SECTION,
+        (text = "Text Filter", flags = ImGuiTreeNodeFlags.None)) {
+
+        text_disabled("(?)")
+        item_tooltip(WIDGETS_TF_HM) {
+            with_text_wrap_pos(GetFontSize() * 35.0f) {
+                text_unformatted("Not a widget per-se, but ImGuiTextFilter is a helper to perform simple filtering on text strings.")
+            }
+        }
+
+        text_unformatted((text = "Filter usage:\n" +
+            "  \"\"         display all lines\n" +
+            "  \"xxx\"      display lines containing \"xxx\"\n" +
+            "  \"xxx,yyy\"  display lines containing \"xxx\" or \"yyy\"\n" +
+            "  \"-xxx\"     hide lines containing \"xxx\""))
+
+        text_filter(WIDGETS_TF_FILTER,
+            (text = "Filter (\"incl,-excl\") (\"error\")"))
+
+        // Bullet each line that survives the filter. Lines are hard-coded
+        // per cpp:2828 — the boost wrapper reads passes_filter(state, line).
+        let lines <- ["aaa1.c", "bbb1.c", "ccc1.c", "aaa2.cpp",
+                      "bbb2.cpp", "ccc2.cpp", "abc.h", "hello, world"]
+        for (i in range(length(lines))) {
+            if (passes_filter(WIDGETS_TF_FILTER, lines[i])) {
+                bullet_text(WIDGETS_TF_LINE[i], (text = lines[i]))
+            }
+        }
     }
 }
