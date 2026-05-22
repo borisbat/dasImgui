@@ -28,9 +28,9 @@ require math
 //   + Tier-B: Selectables (1396), Text Input (1558), Tabs (1752), Drag and Drop
 //   (2450).
 //   + Tier-C: Drag/Slider Flags (2183), Querying Item Status (2594),
-//     Querying Window Status (2706).
+//     Querying Window Status (2706), Color/Picker (1990).
 //
-// Remaining stubs (Tier C/D): Color/Picker, Data Types.
+// Remaining stubs (Tier D): Data Types.
 //
 // Boost-surface conventions for this port (masterplan §"Static-state pattern"):
 //   - Value-owning widgets — checkbox / radio_button_int / slider_* / drag_* /
@@ -246,6 +246,28 @@ var private WIDGETS_DD_TIP_BTN : table<int; ClickState>
 var private WIDGETS_DD_TIP_TGT : table<int; DragDropTargetState>
 var private WIDGETS_DD_TIP_NO : table<int; NarrativeState>
 
+// Color/Picker Widgets (cpp:1990) — one shared float4 `color` viewed both as
+// RGBA (ColorEdit4 / ColorPicker4 / ColorButton) and as RGB-only (ColorEdit3 /
+// ColorPicker3 via `unsafe(reinterpret<float3?>)` — mirrors cpp's `(float*)&color`
+// trick so a single ImVec4 backs all displays). The 32-swatch palette is lazy-
+// built on first frame via `hsv_to_rgb` (h scanned across [0,1)); each swatch
+// is its own ColorButton (drag source by default) + drag_drop_target (accepts
+// dropped COL3F/COL4F payloads from any other ColorButton).
+var private WIDGETS_CP_COLOR : float4 = float4(114.0f / 255.0f, 144.0f / 255.0f, 154.0f / 255.0f, 200.0f / 255.0f)
+var private WIDGETS_CP_BACKUP : float4 = float4(0.0f, 0.0f, 0.0f, 0.0f)
+var private WIDGETS_CP_REF_COLOR_V : float4 = float4(1.0f, 0.0f, 1.0f, 0.5f)
+var private WIDGETS_CP_COLOR_HSV : float4 = float4(0.23f, 1.0f, 1.0f, 1.0f)
+var private WIDGETS_CP_PALETTE : array<float4>
+var private WIDGETS_CP_PALETTE_INIT = false
+var private WIDGETS_CP_PALETTE_BTN : table<int; ClickState>
+var private WIDGETS_CP_PALETTE_TGT : table<int; DragDropTargetState>
+var private WIDGETS_CP_PALETTE_SL : table<int; EmptyMarkerState>
+let private WIDGETS_CP_DISPLAY_ITEMS : array<string> <- ["Auto/Current",
+                                                          "None",
+                                                          "RGB Only",
+                                                          "HSV Only",
+                                                          "Hex Only"]
+
 // Drag/Slider Flags (cpp:2183) — one int holding the ImGuiSliderFlags bitset
 // (driven by 4 edit_checkbox_flags), shared by all 5 drag + 2 slider widgets
 // via the `flags = ...` argument. Underlying drag_f / slider_f / drag_i /
@@ -320,6 +342,7 @@ def ShowDemoWindowWidgets() {
                 MultiComponentSection()
                 VerticalSlidersSection()
                 DragDropSection()
+                ColorPickerSection()
                 DragSliderFlagsSection()
                 QueryingItemStatusSection()
                 QueryingWindowStatusSection()
@@ -2438,6 +2461,335 @@ def private DragDropTooltipSection() {
                 }
             }
         }
+    }
+}
+
+
+// =============================================================================
+// Color/Picker Widgets — cpp:1990-2180
+// =============================================================================
+
+def private ColorPickerSection() {
+    // One-shot palette init via hsv_to_rgb (cpp:2034-2046). Each swatch is a
+    // distinct float4 stored in WIDGETS_CP_PALETTE; drag-drop accept memcpys
+    // 3 or 4 floats from the payload, so alpha is preserved when the source
+    // dropped a COL3F.
+    if (!WIDGETS_CP_PALETTE_INIT) {
+        WIDGETS_CP_PALETTE |> reserve(32)
+        for (n in range(32)) {
+            let rgb = hsv_to_rgb(float(n) / 31.0f, 0.8f, 0.8f)
+            WIDGETS_CP_PALETTE |> push(float4(rgb.x, rgb.y, rgb.z, 1.0f))
+        }
+        WIDGETS_CP_PALETTE_INIT = true
+    }
+
+    tree_node(WIDGETS_CP_SECTION,
+        (text = "Color/Picker Widgets", flags = ImGuiTreeNodeFlags.None)) {
+        // ===== Options =====
+        separator_text(WIDGETS_CP_SEP_OPTIONS, (text = "Options"))
+        checkbox(WIDGETS_CP_ALPHA_PV, (text = "With Alpha Preview", init = true))
+        checkbox(WIDGETS_CP_ALPHA_HALF, (text = "With Half Alpha Preview"))
+        checkbox(WIDGETS_CP_DRAG_DROP, (text = "With Drag and Drop", init = true))
+        checkbox(WIDGETS_CP_OPTS_MENU, (text = "With Options Menu", init = true))
+        same_line(WIDGETS_CP_SL_OPTS)
+        text_disabled(WIDGETS_CP_OPTS_HELP, (text = "(?)"))
+        set_item_tooltip(WIDGETS_CP_OPTS_TIP,
+            (text = "Right-click on the individual color widget to show options."))
+        checkbox(WIDGETS_CP_HDR, (text = "With HDR"))
+        same_line(WIDGETS_CP_SL_HDR)
+        text_disabled(WIDGETS_CP_HDR_HELP, (text = "(?)"))
+        set_item_tooltip(WIDGETS_CP_HDR_TIP,
+            (text = "Currently all this does is to lift the 0..1 limits on dragging widgets."))
+
+        // Synthesize misc_flags from 5 toggles. Mirrors cpp:2005 — the half-
+        // alpha preview supersedes the standard one when both are set.
+        // ImGui flag types are int-based enums (not daslang bitfields), so we
+        // build the bitset as int and reinterpret at the use site (same
+        // pattern as WIDGETS_DSF_FLAGS in the Drag/Slider Flags section).
+        var mf_int = 0
+        if (WIDGETS_CP_HDR.value) {
+            mf_int |= int(ImGuiColorEditFlags.HDR)
+        }
+        if (!WIDGETS_CP_DRAG_DROP.value) {
+            mf_int |= int(ImGuiColorEditFlags.NoDragDrop)
+        }
+        if (!WIDGETS_CP_OPTS_MENU.value) {
+            mf_int |= int(ImGuiColorEditFlags.NoOptions)
+        }
+        if (WIDGETS_CP_ALPHA_HALF.value) {
+            mf_int |= int(ImGuiColorEditFlags.AlphaPreviewHalf)
+        } elif (WIDGETS_CP_ALPHA_PV.value) {
+            mf_int |= int(ImGuiColorEditFlags.AlphaPreview)
+        }
+        let misc_flags = unsafe(reinterpret<ImGuiColorEditFlags>(mf_int))
+
+        // ===== Inline color editor =====
+        separator_text(WIDGETS_CP_SEP_INLINE, (text = "Inline color editor"))
+        text(WIDGETS_CP_T1, (text = "Color widget:"))
+        same_line(WIDGETS_CP_SL_T1)
+        text_disabled(WIDGETS_CP_T1_HELP, (text = "(?)"))
+        set_item_tooltip(WIDGETS_CP_T1_TIP,
+            (text = "Click on the color square to open a color picker.\n" +
+                    "CTRL+click on individual component to input value."))
+        edit_color_edit3(unsafe(reinterpret<float3?>(safe_addr(WIDGETS_CP_COLOR))),
+            (id = "WIDGETS_CP_E3_1", text = "MyColor##1", flags = misc_flags))
+
+        text(WIDGETS_CP_T2, (text = "Color widget HSV with Alpha:"))
+        edit_color_edit4(safe_addr(WIDGETS_CP_COLOR),
+            (id = "WIDGETS_CP_E4_2", text = "MyColor##2",
+             flags = misc_flags | ImGuiColorEditFlags.DisplayHSV))
+
+        text(WIDGETS_CP_T2F, (text = "Color widget with Float Display:"))
+        edit_color_edit4(safe_addr(WIDGETS_CP_COLOR),
+            (id = "WIDGETS_CP_E4_2F", text = "MyColor##2f",
+             flags = misc_flags | ImGuiColorEditFlags.Float))
+
+        text(WIDGETS_CP_T3, (text = "Color button with Picker:"))
+        same_line(WIDGETS_CP_SL_T3)
+        text_disabled(WIDGETS_CP_T3_HELP, (text = "(?)"))
+        set_item_tooltip(WIDGETS_CP_T3_TIP,
+            (text = "With the ImGuiColorEditFlags_NoInputs flag you can hide all the slider/text inputs.\n" +
+                    "With the ImGuiColorEditFlags_NoLabel flag you can pass a non-empty label which will only " +
+                    "be used for the tooltip and picker popup."))
+        edit_color_edit4(safe_addr(WIDGETS_CP_COLOR),
+            (id = "WIDGETS_CP_E4_3", text = "MyColor##3",
+             flags = misc_flags | ImGuiColorEditFlags.NoInputs | ImGuiColorEditFlags.NoLabel))
+
+        // ===== Color button with custom Picker popup =====
+        text(WIDGETS_CP_T3B, (text = "Color button with Custom Picker Popup:"))
+        var should_open = color_button(WIDGETS_CP_OPEN_BTN,
+            (desc_id = "MyColor##3b",
+             col = WIDGETS_CP_COLOR,
+             size = float2(0.0f, 0.0f),
+             flags = misc_flags))
+        same_line(WIDGETS_CP_SL_OPEN,
+            (offset_from_start_x = 0.0f, spacing = GetStyle().ItemInnerSpacing.x))
+        if (button(WIDGETS_CP_PALETTE_OPEN, (text = "Palette"))) {
+            should_open = true
+        }
+        if (should_open) {
+            open_popup("mypicker")
+            WIDGETS_CP_BACKUP = WIDGETS_CP_COLOR
+        }
+
+        popup_window(WIDGETS_CP_PICKER_POPUP,
+            (str_id = "mypicker", flags = ImGuiWindowFlags.None)) {
+            text(WIDGETS_CP_PICKER_T1,
+                (text = "MY CUSTOM COLOR PICKER WITH AN AMAZING PALETTE!"))
+            separator(WIDGETS_CP_PICKER_SEP1)
+            edit_color_picker4(safe_addr(WIDGETS_CP_COLOR),
+                (id = "WIDGETS_CP_PICKER_MAIN", text = "##picker",
+                 flags = misc_flags | ImGuiColorEditFlags.NoSidePreview
+                                    | ImGuiColorEditFlags.NoSmallPreview))
+            same_line(WIDGETS_CP_SL_PICKER)
+            group(WIDGETS_CP_PICKER_GROUP) {
+                text(WIDGETS_CP_PICKER_CT, (text = "Current"))
+                color_button(WIDGETS_CP_PICKER_CUR,
+                    (desc_id = "##current",
+                     col = WIDGETS_CP_COLOR,
+                     size = float2(60.0f, 40.0f),
+                     flags = ImGuiColorEditFlags.NoPicker | ImGuiColorEditFlags.AlphaPreviewHalf))
+                text(WIDGETS_CP_PICKER_PT, (text = "Previous"))
+                if (color_button(WIDGETS_CP_PICKER_PREV,
+                        (desc_id = "##previous",
+                         col = WIDGETS_CP_BACKUP,
+                         size = float2(60.0f, 40.0f),
+                         flags = ImGuiColorEditFlags.NoPicker | ImGuiColorEditFlags.AlphaPreviewHalf))) {
+                    WIDGETS_CP_COLOR = WIDGETS_CP_BACKUP
+                }
+                separator(WIDGETS_CP_PICKER_SEP2)
+                text(WIDGETS_CP_PICKER_PALT, (text = "Palette"))
+                for (n in range(length(WIDGETS_CP_PALETTE))) {
+                    with_id("cp_palette_{n}") {
+                        if ((n % 8) != 0) {
+                            same_line(WIDGETS_CP_PALETTE_SL[n],
+                                (offset_from_start_x = 0.0f,
+                                 spacing = GetStyle().ItemSpacing.y))
+                        }
+                        let palette_flags = (ImGuiColorEditFlags.NoAlpha
+                                             | ImGuiColorEditFlags.NoPicker
+                                             | ImGuiColorEditFlags.NoTooltip)
+                        if (color_button(WIDGETS_CP_PALETTE_BTN[n],
+                                (desc_id = "##palette",
+                                 col = WIDGETS_CP_PALETTE[n],
+                                 size = float2(20.0f, 20.0f),
+                                 flags = palette_flags))) {
+                            // Preserve current alpha when picking a palette
+                            // swatch (cpp:2080).
+                            WIDGETS_CP_COLOR = float4(
+                                WIDGETS_CP_PALETTE[n].x,
+                                WIDGETS_CP_PALETTE[n].y,
+                                WIDGETS_CP_PALETTE[n].z,
+                                WIDGETS_CP_COLOR.w)
+                        }
+                        // ColorButton is built-in drag source for COL3F/COL4F
+                        // payloads; the target overwrites the swatch in place.
+                        drag_drop_target(WIDGETS_CP_PALETTE_TGT[n]) {
+                            let p3 = AcceptDragDropPayload("_COL3F",
+                                                           ImGuiDragDropFlags.None)
+                            if (p3 != null) {
+                                unsafe {
+                                    let ptr = reinterpret<float? const>(p3.Data)
+                                    WIDGETS_CP_PALETTE[n].x = ptr[0]
+                                    WIDGETS_CP_PALETTE[n].y = ptr[1]
+                                    WIDGETS_CP_PALETTE[n].z = ptr[2]
+                                }
+                            }
+                            let p4 = AcceptDragDropPayload("_COL4F",
+                                                           ImGuiDragDropFlags.None)
+                            if (p4 != null) {
+                                unsafe {
+                                    let ptr = reinterpret<float? const>(p4.Data)
+                                    WIDGETS_CP_PALETTE[n] = float4(ptr[0], ptr[1],
+                                                                    ptr[2], ptr[3])
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // ===== Color button only =====
+        text(WIDGETS_CP_T3C, (text = "Color button only:"))
+        checkbox(WIDGETS_CP_NO_BORDER, (text = "ImGuiColorEditFlags_NoBorder"))
+        var cb_int = mf_int
+        if (WIDGETS_CP_NO_BORDER.value) {
+            cb_int |= int(ImGuiColorEditFlags.NoBorder)
+        }
+        let cb_flags = unsafe(reinterpret<ImGuiColorEditFlags>(cb_int))
+        color_button(WIDGETS_CP_SIMPLE_BTN,
+            (desc_id = "MyColor##3c",
+             col = WIDGETS_CP_COLOR,
+             size = float2(80.0f, 80.0f),
+             flags = cb_flags))
+
+        // ===== Color picker explorer =====
+        separator_text(WIDGETS_CP_SEP_PICKER, (text = "Color picker"))
+        checkbox(WIDGETS_CP_ALPHA, (text = "With Alpha", init = true))
+        checkbox(WIDGETS_CP_ALPHA_BAR, (text = "With Alpha Bar", init = true))
+        checkbox(WIDGETS_CP_SIDE_PV, (text = "With Side Preview", init = true))
+        if (WIDGETS_CP_SIDE_PV.value) {
+            same_line(WIDGETS_CP_SL_SIDE)
+            checkbox(WIDGETS_CP_REF_COL, (text = "With Ref Color"))
+            if (WIDGETS_CP_REF_COL.value) {
+                same_line(WIDGETS_CP_SL_REF)
+                edit_color_edit4(safe_addr(WIDGETS_CP_REF_COLOR_V),
+                    (id = "WIDGETS_CP_REF_COLOR_E4", text = "##RefColor",
+                     flags = ImGuiColorEditFlags.NoInputs | misc_flags))
+            }
+        }
+        combo(WIDGETS_CP_DISPLAY_MODE,
+            (text = "Display Mode", init = 0,
+             items <- WIDGETS_CP_DISPLAY_ITEMS))
+        same_line(WIDGETS_CP_SL_DM1)
+        text_disabled(WIDGETS_CP_DM_HELP, (text = "(?)"))
+        set_item_tooltip(WIDGETS_CP_DM_TIP,
+            (text = "ColorEdit defaults to displaying RGB inputs if you don't specify a display mode, " +
+                    "but the user can change it with a right-click on those inputs.\n\n" +
+                    "ColorPicker defaults to displaying RGB+HSV+Hex if you don't specify a display mode.\n\n" +
+                    "You can change the defaults using SetColorEditOptions()."))
+        same_line(WIDGETS_CP_SL_DM2)
+        text_disabled(WIDGETS_CP_PM_HELP, (text = "(?)"))
+        set_item_tooltip(WIDGETS_CP_PM_TIP,
+            (text = "When not specified explicitly (Auto/Current mode), user can right-click the picker to change mode."))
+
+        // Compose picker_flags from explorer state + misc_flags. `picker_mode`
+        // is vestigial in cpp (declared static but never UI-mutated), so we
+        // drop it and rely on the auto picker shape.
+        var pf_int = mf_int
+        if (!WIDGETS_CP_ALPHA.value) {
+            pf_int |= int(ImGuiColorEditFlags.NoAlpha)
+        }
+        if (WIDGETS_CP_ALPHA_BAR.value) {
+            pf_int |= int(ImGuiColorEditFlags.AlphaBar)
+        }
+        if (!WIDGETS_CP_SIDE_PV.value) {
+            pf_int |= int(ImGuiColorEditFlags.NoSidePreview)
+        }
+        let dm = WIDGETS_CP_DISPLAY_MODE.value
+        if (dm == 1) {
+            pf_int |= int(ImGuiColorEditFlags.NoInputs)
+        }
+        if (dm == 2) {
+            pf_int |= int(ImGuiColorEditFlags.DisplayRGB)
+        }
+        if (dm == 3) {
+            pf_int |= int(ImGuiColorEditFlags.DisplayHSV)
+        }
+        if (dm == 4) {
+            pf_int |= int(ImGuiColorEditFlags.DisplayHex)
+        }
+        let picker_flags = unsafe(reinterpret<ImGuiColorEditFlags>(pf_int))
+        edit_color_picker4(safe_addr(WIDGETS_CP_COLOR),
+            (id = "WIDGETS_CP_PICKER_4", text = "MyColor##4",
+             flags = picker_flags,
+             ref_col = WIDGETS_CP_REF_COLOR_V,
+             has_ref_col = WIDGETS_CP_REF_COL.value))
+
+        text(WIDGETS_CP_T_DEF, (text = "Set defaults in code:"))
+        same_line(WIDGETS_CP_SL_DEF)
+        text_disabled(WIDGETS_CP_DEF_HELP, (text = "(?)"))
+        set_item_tooltip(WIDGETS_CP_DEF_TIP,
+            (text = "SetColorEditOptions() is designed to allow you to set boot-time default.\n" +
+                    "We don't have Push/Pop functions because you can force options on a per-widget basis if needed, " +
+                    "and the user can change non-forced ones with the options menu.\nWe don't have a getter to avoid " +
+                    "encouraging you to persistently save values that aren't forward-compatible."))
+        if (button(WIDGETS_CP_DEF_BTN1, (text = "Default: Uint8 + HSV + Hue Bar"))) {
+            SetColorEditOptions(ImGuiColorEditFlags.Uint8
+                              | ImGuiColorEditFlags.DisplayHSV
+                              | ImGuiColorEditFlags.PickerHueBar)
+        }
+        if (button(WIDGETS_CP_DEF_BTN2, (text = "Default: Float + HDR + Hue Wheel"))) {
+            SetColorEditOptions(ImGuiColorEditFlags.Float
+                              | ImGuiColorEditFlags.HDR
+                              | ImGuiColorEditFlags.PickerHueWheel)
+        }
+
+        // Always display a small version of both picker types side-by-side.
+        text(WIDGETS_CP_T_BOTH, (text = "Both types:"))
+        let w = (GetContentRegionAvail().x - GetStyle().ItemSpacing.y) * 0.40f
+        SetNextItemWidth(w)
+        edit_color_picker3(unsafe(reinterpret<float3?>(safe_addr(WIDGETS_CP_COLOR))),
+            (id = "WIDGETS_CP_BOTH_BAR", text = "##MyColor##5",
+             flags = ImGuiColorEditFlags.PickerHueBar
+                   | ImGuiColorEditFlags.NoSidePreview
+                   | ImGuiColorEditFlags.NoInputs
+                   | ImGuiColorEditFlags.NoAlpha))
+        same_line(WIDGETS_CP_SL_BOTH)
+        SetNextItemWidth(w)
+        edit_color_picker3(unsafe(reinterpret<float3?>(safe_addr(WIDGETS_CP_COLOR))),
+            (id = "WIDGETS_CP_BOTH_WHEEL", text = "##MyColor##6",
+             flags = ImGuiColorEditFlags.PickerHueWheel
+                   | ImGuiColorEditFlags.NoSidePreview
+                   | ImGuiColorEditFlags.NoInputs
+                   | ImGuiColorEditFlags.NoAlpha))
+
+        // ===== HSV encoded colors =====
+        spacing(WIDGETS_CP_SP_HSV)
+        text(WIDGETS_CP_T_HSV1, (text = "HSV encoded colors"))
+        same_line(WIDGETS_CP_SL_HSV1)
+        text_disabled(WIDGETS_CP_HSV_HELP, (text = "(?)"))
+        set_item_tooltip(WIDGETS_CP_HSV_TIP,
+            (text = "By default, colors are given to ColorEdit and ColorPicker in RGB, " +
+                    "but ImGuiColorEditFlags_InputHSV allows you to store colors as HSV " +
+                    "and pass them to ColorEdit and ColorPicker as HSV. This comes with the " +
+                    "added benefit that you can manipulate hue values with the picker even " +
+                    "when saturation or value are zero."))
+        text(WIDGETS_CP_T_HSV2, (text = "Color widget with InputHSV:"))
+        edit_color_edit4(safe_addr(WIDGETS_CP_COLOR_HSV),
+            (id = "WIDGETS_CP_HSV_RGB", text = "HSV shown as RGB##1",
+             flags = ImGuiColorEditFlags.DisplayRGB
+                   | ImGuiColorEditFlags.InputHSV
+                   | ImGuiColorEditFlags.Float))
+        edit_color_edit4(safe_addr(WIDGETS_CP_COLOR_HSV),
+            (id = "WIDGETS_CP_HSV_HSV", text = "HSV shown as HSV##1",
+             flags = ImGuiColorEditFlags.DisplayHSV
+                   | ImGuiColorEditFlags.InputHSV
+                   | ImGuiColorEditFlags.Float))
+        edit_drag_float4(safe_addr(WIDGETS_CP_COLOR_HSV),
+            (id = "WIDGETS_CP_HSV_DRAG4", text = "Raw HSV values",
+             speed = 0.01f, v_min = 0.0f, v_max = 1.0f))
     }
 }
 

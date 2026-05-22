@@ -79,6 +79,7 @@ let private ALLOWED_IMGUI : table<string> <- {
     "SetNextWindowBgAlpha", "SetNextWindowViewport",
     "SetNextItemWidth", "SetNextItemOpen", "SetNextItemAllowOverlap",
     "SetNextWindowContentWidth",
+    "SetColorEditOptions",
     "SetKeyboardFocusHere", "SetItemDefaultFocus", "SetScrollHereX", "SetScrollHereY",
     "SetScrollX", "SetScrollY", "SetScrollFromPosX", "SetScrollFromPosY",
     "GetScrollX", "GetScrollY",
