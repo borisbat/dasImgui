@@ -120,13 +120,17 @@ def private text_value_finalize(widget_ident : string; kind : string; var state 
     register_focusable(widget_ident)
 }
 
-def private edit_finalize(widget_ident : string; kind : string; var ptr : auto(TT)? implicit) {
+def edit_finalize(widget_ident : string; kind : string; var ptr : auto(TT)? implicit) {
     // External-pointer finalize: serializer captures the raw pointer and
     // dereferences at snapshot time (snapshot reads `*ptr` live), dispatcher
     // writes through `*ptr` on `set`. Caller owns the pointee — pass
     // `safe_addr(local)` or `unsafe(addr(struct.field))` and accept lifetime
     // responsibility. Generic on `TT` so the same body covers every scalar
     // and vector type (`bool`/`int`/`float`/`float2`/etc.) via from_JV.
+    //
+    // Module-public (was `def private`) so `[edit_container]` rails living
+    // in imgui_containers_builtin.das (`edit_tab_item`, future `edit_window`
+    // etc.) can call edit_finalize without re-implementing the body.
     var entry : WidgetEntry
     unsafe {
         var p = ptr
@@ -141,6 +145,44 @@ def private edit_finalize(widget_ident : string; kind : string; var ptr : auto(T
         widget_finalize(widget_ident, kind, entry, ser, disp)
     }
     register_focusable(widget_ident)
+}
+
+def edit_container_open_close_finalize(widget_ident : string; kind : string;
+                                       var ptr : bool? implicit;
+                                       bbox : float4 = float4(0.0f, 0.0f, 0.0f, 0.0f)) {
+    // [edit_container] finalize for bool-typed open/close pointers. The
+    // container macro pushed `widget_ident` onto the container path BEFORE
+    // the body, so use container_path_key() (NOT widget_path_key, which
+    // would re-append and double the segment).
+    //
+    // Dispatcher handles three actions:
+    //   "set"   — generic JV write-through (mirrors edit_finalize)
+    //   "open"  — *ptr = true   (imgui_open semantic for X-button-style flags)
+    //   "close" — *ptr = false  (imgui_close)
+    // The bool specialization keeps the rail honest: a non-bool external
+    // pointer (e.g. edit_progress_bar with float?) has no meaning for
+    // open/close, so it shouldn't get the same helper.
+    //
+    // Optional `bbox` is captured by the caller (current_item_bbox after
+    // BeginTabItem / similar) and registered as the header click target.
+    var entry : WidgetEntry
+    entry.bbox = bbox
+    unsafe {
+        var p = ptr
+        let ser <- @ capture(= p) () : JsonValue ? {
+            return JV((value = *p))
+        }
+        let disp <- @ capture(= p) (action : string; payload : JsonValue ?) {
+            if (action == "set") {
+                *p = from_JV(payload?["value"], type<bool>, false)
+            } elif (action == "open") {
+                *p = true
+            } elif (action == "close") {
+                *p = false
+            }
+        }
+        container_finalize(widget_ident, kind, entry, ser, disp)
+    }
 }
 
 // ===== Triggers (click family) =====
@@ -159,6 +201,28 @@ def button(var state : ClickState; text : string;
         state.click_count++
     }
     click_finalize(widget_ident, "button", state)
+    return clicked
+}
+
+[widget]
+def tab_item_button(var state : ClickState; text : string;
+                    flags : ImGuiTabItemFlags = ImGuiTabItemFlags.None) : bool {
+    //! `TabItemButton(label, flags)` — a button styled as a tab. No content
+    //! pane (unlike `tab_item`); use for Leading-/Trailing-anchored controls
+    //! (e.g. "+" to add tabs, "?" to open a help popup). Click semantics
+    //! mirror `button`: returns true on click; `state.click_count`
+    //! accumulates. Must be called INSIDE a `tab_bar` body.
+    let im_clicked = TabItemButton(text, flags)
+    var clicked = im_clicked
+    if (state.pending_click) {
+        state.pending_click = false
+        clicked = true
+    }
+    state.clicked = clicked
+    if (clicked) {
+        state.click_count++
+    }
+    click_finalize(widget_ident, "tab_item_button", state)
     return clicked
 }
 

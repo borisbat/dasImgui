@@ -639,7 +639,6 @@ class WidgetCallMacro : AstCallMacro {
         let moduleName = string(mod.name)
         let bareNameLit = bareName
         let kindLit = kind_name
-        let is_container_lit = is_container
         // Emit the wrapper helper once per (kind, IDENT). find_unique_function
         // probes the user module before add_function fires; re-running visit()
         // for the same wrapper (e.g. a second call site) is a no-op.
@@ -664,13 +663,10 @@ class WidgetCallMacro : AstCallMacro {
             bodyStmts |> push <| qmacro_expr(${
                 let bare = "{$v(bareNameLit)}[{k}]"
             })
-            // Containers push their per-key path component so leaves see
-            // self in g_container_path; pop runs at body's end via finalList.
-            if (is_container_lit) {
-                bodyStmts |> push <| qmacro_expr(${
-                    imgui_boost_runtime::container_path_push(bare)
-                })
-            }
+            // Do NOT push to container_path here even for containers — the
+            // called [container]'s own macro-injected `container_path_push
+            // (widget_ident)` does that with the same `bare` value. A wrapper
+            // push would double-nest the path (`.../DYN_TAB[0]/DYN_TAB[0]`).
             // path = container-aware key (matches what widget_finalize computes)
             bodyStmts |> push <| qmacro_expr(${
                 let path = imgui_boost_runtime::widget_path_key(bare)
@@ -696,34 +692,16 @@ class WidgetCallMacro : AstCallMacro {
                     }
                 }
             })
-            // Final call. For containers the path pop runs after the inner
-            // body via the trailing statement (no early-return).
+            // Final call. The called [container]'s own finally block pops
+            // its container_path_push, so no wrapper-side pop is needed.
             if (retType.baseType == Type.tVoid) {
                 bodyStmts |> push <| qmacro_expr(${
                     $c(kindLit)($a(callArgs))
                 })
-                if (is_container_lit) {
-                    bodyStmts |> push <| qmacro_expr(${
-                        imgui_boost_runtime::container_path_pop()
-                    })
-                }
             } else {
-                if (is_container_lit) {
-                    // Bind result, pop path, return.
-                    bodyStmts |> push <| qmacro_expr(${
-                        let _indexed_result = $c(kindLit)($a(callArgs))
-                    })
-                    bodyStmts |> push <| qmacro_expr(${
-                        imgui_boost_runtime::container_path_pop()
-                    })
-                    bodyStmts |> push <| qmacro_expr(${
-                        return _indexed_result
-                    })
-                } else {
-                    bodyStmts |> push <| qmacro_expr(${
-                        return $c(kindLit)($a(callArgs))
-                    })
-                }
+                bodyStmts |> push <| qmacro_expr(${
+                    return $c(kindLit)($a(callArgs))
+                })
             }
             var fn = qmacro_function(wrapperName) $(k : $t(keyType); $a(wrapperArgs)) : $t(retType) {
                 $b(bodyStmts)
@@ -770,18 +748,33 @@ class EditWidgetFunctionMacro : AstFunctionAnnotation {
     //! ``[edit_widget]`` annotation — registers an external-pointer widget. First parameter is the user-owned pointer (``T?``); macro injects ``widget_ident : string`` at index 1 and installs a call_macro that requires an explicit ``id="..."`` literal at the call site.
     def override apply(var func : FunctionPtr; var group : ModuleGroup;
                        args : AnnotationArgumentList; var errors : das_string) : bool {
-        return apply_edit_widget(func, errors)
+        return apply_edit_widget_or_container(func, errors, false)
     }
 }
 
-def private apply_edit_widget(var func : FunctionPtr; var errors : das_string) : bool {
+[function_macro(name = "edit_container")]
+class EditContainerFunctionMacro : AstFunctionAnnotation {
+    //! ``[edit_container]`` annotation — block-arg sibling of ``[edit_widget]``. First parameter is the user-owned pointer (``T?``); last parameter must be ``blk : block``. Macro injects ``widget_ident : string`` at index 1 and wraps the body with ``container_path_push``/``pop`` so leaves rendered inside ``invoke(blk)`` nest under the container's path key. Same ``id="..."`` literal requirement as ``[edit_widget]``.
+    def override apply(var func : FunctionPtr; var group : ModuleGroup;
+                       args : AnnotationArgumentList; var errors : das_string) : bool {
+        if (empty(func.arguments) || func.arguments[length(func.arguments) - 1]._type == null
+            || func.arguments[length(func.arguments) - 1]._type.baseType != Type.tBlock) {
+            errors := "[edit_container] requires the last parameter to be `blk : block`"
+            return false
+        }
+        return apply_edit_widget_or_container(func, errors, true)
+    }
+}
+
+def private apply_edit_widget_or_container(var func : FunctionPtr; var errors : das_string;
+                                           is_container : bool) : bool {
     if (empty(func.arguments)) {
-        errors := "[edit_widget] requires at least one parameter (ptr)"
+        errors := "[edit_widget]/[edit_container] requires at least one parameter (ptr)"
         return false
     }
     let ptrArg = func.arguments[0]
     if (ptrArg._type == null || ptrArg._type.baseType != Type.tPointer) {
-        errors := "[edit_widget] first parameter must be a pointer (e.g. `float?`, `int?`, `bool?`)"
+        errors := "[edit_widget]/[edit_container] first parameter must be a pointer (e.g. `float?`, `int?`, `bool?`)"
         return false
     }
     let kind = string(func.name)
@@ -794,17 +787,24 @@ def private apply_edit_widget(var func : FunctionPtr; var errors : das_string) :
         _type <- new TypeDecl(baseType = Type.tString, at = func.at))
     widthIdentVar.flags.generated = true
     func.arguments |> emplace(widthIdentVar, 1)
-    // Wrap the body: prepend widget_prelude(widget_ident) so PushID +
-    // pending-focus apply uniformly. PopID is emitted by widget_finalize
-    // at the bottom of edit_finalize.
+    // Wrap the body: prepend widget_prelude(widget_ident). For containers
+    // also push the container path before the user body runs (so leaves
+    // emitted inside `invoke(blk)` nest under our ident); matching pop
+    // lives in body.finalList so it always runs on normal return.
     var fblk = new ExprBlock(at = func.body.at)
     fblk.list |> push(qmacro(widget_prelude($i("widget_ident"))))
+    if (is_container) {
+        fblk.list |> push(qmacro(container_path_push($i("widget_ident"))))
+    }
     let oldBody = func.body as ExprBlock
     for (el in oldBody.list) {
         fblk.list |> push(clone_expression(el))
     }
     for (ef in oldBody.finalList) {
         fblk.finalList |> push(clone_expression(ef))
+    }
+    if (is_container) {
+        fblk.finalList |> push(qmacro(container_path_pop()))
     }
     func.body = fblk
     var inst = new EditExternalCallMacro(
