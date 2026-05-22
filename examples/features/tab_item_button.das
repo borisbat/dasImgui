@@ -61,9 +61,16 @@ def update() {
             }
 
             // Submit current tab list; drop entries the X button closed.
+            // `table[k]` auto-insert is zero-init — TabItemState's `open : bool
+            // = true` default initializer doesn't fire. Explicitly construct
+            // each fresh row so `open` starts true (else frame 1 sees open=false
+            // and we erase every seed tab on first pass).
             var n = 0
             while (n < length(ACTIVE_TABS)) {
                 let tab_id = ACTIVE_TABS[n]
+                if (!key_exists(DYN_TAB, tab_id)) {
+                    DYN_TAB[tab_id] = TabItemState(open = true)
+                }
                 tab_item(DYN_TAB[tab_id],
                     (text = "{tab_id:04}", closable = true,
                      flags = ImGuiTabItemFlags.None)) {

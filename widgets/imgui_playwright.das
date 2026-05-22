@@ -121,8 +121,22 @@ def private daslang_live_exe() : string {
     return path_join(dir, bin)
 }
 
+def private dasimgui_module_root() : string {
+    //! dasImgui's module root resolved via `daslib/module_path`'s 3-tier walk.
+    //! `get_this_module_dir()` returns the directory hosting this `.das` source
+    //! (i.e. `<root>/widgets/`); one `dir_name` up gives the module root.
+    //! Works in both layouts: CI's `<das_root>/modules/dasImgui/...` and the
+    //! local-fix layout `D:/DASPKG/dasImgui/...` with no `modules/dasImgui`
+    //! junction in `<das_root>`.
+    return dir_name(get_this_module_dir())
+}
+
 def private resolve_feature_path(path : string) : string {
     if (is_absolute(path)) return path
+    // Strip the `modules/dasImgui/` prefix and resolve under the runtime
+    // module root so tests find feature files regardless of layout.
+    let prefix = "modules/dasImgui/"
+    if (path |> starts_with(prefix)) return path_join(dasimgui_module_root(), slice(path, length(prefix)))
     return path_join(get_das_root(), path)
 }
 
@@ -539,7 +553,11 @@ def public with_imgui_app_opt(feature_path : string;
     //! into the spawn so the harness's headless arm fires inside the subprocess.
     let exe = daslang_live_exe()
     let app_path = resolve_feature_path(feature_path)
-    var argv <- [exe, app_path]
+    // -load_module points the spawned daslang-live at the dasImgui module so
+    // the feature's `require imgui/...` chain resolves regardless of layout.
+    // In CI dasImgui is in the standard module search path so this is a
+    // harmless duplicate; locally it's load-bearing.
+    var argv <- [exe, "-load_module", dasimgui_module_root(), app_path]
     if (playwright_wants_headless()) {
         argv |> push("--")
         argv |> push("--headless")

@@ -40,7 +40,7 @@ def test_tab_item_button_smoke(t : T?) {
 
         // Gate 2: initial seed — 3 tabs (IDs 0/1/2). Indexed-form widget_ident
         // is `IDENT[k]` (see imgui_boost.das `emit_indexed_call`), so the path
-        // segment is `DYN_TAB[N]`, NOT the rendered "{tab_id:04}" label.
+        // segment is `DYN_TAB[N]`, not the rendered "{tab_id:04}" label.
         t |> success(widget_exists(snap0, "MAIN_WIN/BAR/DYN_TAB[0]"),
                      "seed tab DYN_TAB[0] renders")
         t |> success(widget_exists(snap0, "MAIN_WIN/BAR/DYN_TAB[2]"),

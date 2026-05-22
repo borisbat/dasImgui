@@ -639,7 +639,6 @@ class WidgetCallMacro : AstCallMacro {
         let moduleName = string(mod.name)
         let bareNameLit = bareName
         let kindLit = kind_name
-        let is_container_lit = is_container
         // Emit the wrapper helper once per (kind, IDENT). find_unique_function
         // probes the user module before add_function fires; re-running visit()
         // for the same wrapper (e.g. a second call site) is a no-op.
@@ -664,13 +663,10 @@ class WidgetCallMacro : AstCallMacro {
             bodyStmts |> push <| qmacro_expr(${
                 let bare = "{$v(bareNameLit)}[{k}]"
             })
-            // Containers push their per-key path component so leaves see
-            // self in g_container_path; pop runs at body's end via finalList.
-            if (is_container_lit) {
-                bodyStmts |> push <| qmacro_expr(${
-                    imgui_boost_runtime::container_path_push(bare)
-                })
-            }
+            // Do NOT push to container_path here even for containers — the
+            // called [container]'s own macro-injected `container_path_push
+            // (widget_ident)` does that with the same `bare` value. A wrapper
+            // push would double-nest the path (`.../DYN_TAB[0]/DYN_TAB[0]`).
             // path = container-aware key (matches what widget_finalize computes)
             bodyStmts |> push <| qmacro_expr(${
                 let path = imgui_boost_runtime::widget_path_key(bare)
@@ -696,34 +692,16 @@ class WidgetCallMacro : AstCallMacro {
                     }
                 }
             })
-            // Final call. For containers the path pop runs after the inner
-            // body via the trailing statement (no early-return).
+            // Final call. The called [container]'s own finally block pops
+            // its container_path_push, so no wrapper-side pop is needed.
             if (retType.baseType == Type.tVoid) {
                 bodyStmts |> push <| qmacro_expr(${
                     $c(kindLit)($a(callArgs))
                 })
-                if (is_container_lit) {
-                    bodyStmts |> push <| qmacro_expr(${
-                        imgui_boost_runtime::container_path_pop()
-                    })
-                }
             } else {
-                if (is_container_lit) {
-                    // Bind result, pop path, return.
-                    bodyStmts |> push <| qmacro_expr(${
-                        let _indexed_result = $c(kindLit)($a(callArgs))
-                    })
-                    bodyStmts |> push <| qmacro_expr(${
-                        imgui_boost_runtime::container_path_pop()
-                    })
-                    bodyStmts |> push <| qmacro_expr(${
-                        return _indexed_result
-                    })
-                } else {
-                    bodyStmts |> push <| qmacro_expr(${
-                        return $c(kindLit)($a(callArgs))
-                    })
-                }
+                bodyStmts |> push <| qmacro_expr(${
+                    return $c(kindLit)($a(callArgs))
+                })
             }
             var fn = qmacro_function(wrapperName) $(k : $t(keyType); $a(wrapperArgs)) : $t(retType) {
                 $b(bodyStmts)
