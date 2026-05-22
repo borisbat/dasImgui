@@ -2225,6 +2225,139 @@ def edit_input_double(var ptr : double? implicit; text : string = "";
     return changed
 }
 
+// ===== Generic scalar rail (edit_drag_scalar / edit_slider_scalar / edit_input_scalar) =====
+//
+// Single wrapper per family covering ImGui's typed void*-routed `DragScalar` /
+// `SliderScalar` / `InputScalar` C entry points. Compile-time dispatch via
+// `typeinfo stripped_typename(T)` maps the daslang scalar type onto the
+// matching `ImGuiDataType` enum value and a sensible default `printf` format.
+//
+// Supported T: int8, uint8, int16, uint16, int (S32), uint (U32), int64,
+// uint64, float, double. Any other instantiation fails at compile time via
+// `concept_assert` so unsupported types surface with a clear error.
+
+def private scalar_data_type(t : type<auto(T)>) : ImGuiDataType {
+    static_if (typeinfo stripped_typename(t) == "int8") {
+        return ImGuiDataType.S8
+    } static_elif (typeinfo stripped_typename(t) == "uint8") {
+        return ImGuiDataType.U8
+    } static_elif (typeinfo stripped_typename(t) == "int16") {
+        return ImGuiDataType.S16
+    } static_elif (typeinfo stripped_typename(t) == "uint16") {
+        return ImGuiDataType.U16
+    } static_elif (typeinfo stripped_typename(t) == "int") {
+        return ImGuiDataType.S32
+    } static_elif (typeinfo stripped_typename(t) == "uint") {
+        return ImGuiDataType.U32
+    } static_elif (typeinfo stripped_typename(t) == "int64") {
+        return ImGuiDataType.S64
+    } static_elif (typeinfo stripped_typename(t) == "uint64") {
+        return ImGuiDataType.U64
+    } static_elif (typeinfo stripped_typename(t) == "float") {
+        return ImGuiDataType.Float
+    } static_elif (typeinfo stripped_typename(t) == "double") {
+        return ImGuiDataType.Double
+    } else {
+        concept_assert(false, "scalar widget: unsupported type — expected int8/uint8/int16/uint16/int/uint/int64/uint64/float/double")
+    }
+}
+
+def private scalar_default_format(t : type<auto(T)>) : string {
+    static_if (typeinfo stripped_typename(t) == "float") {
+        return "%.3f"
+    } static_elif (typeinfo stripped_typename(t) == "double") {
+        return "%.6f"
+    } static_elif (typeinfo stripped_typename(t) == "uint8"
+                || typeinfo stripped_typename(t) == "uint16"
+                || typeinfo stripped_typename(t) == "uint"
+                || typeinfo stripped_typename(t) == "uint64") {
+        return "%u"
+    } else {
+        return "%d"
+    }
+}
+
+[edit_widget]
+def edit_drag_scalar(var ptr : auto(T)? implicit;
+                     text : string = "";
+                     speed : float = 1.0f;
+                     v_min : T = default<T>;
+                     v_max : T = default<T>;
+                     format : string = "";
+                     flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    //! ``DragScalar`` against a caller-owned ``T?`` (any supported scalar
+    //! type). When ``v_min == v_max`` (default) ImGui's no-clamp behavior is
+    //! selected; otherwise both bounds are passed through. Empty ``format``
+    //! falls back to the type-specific default ("%d" / "%u" / "%.3f" / "%.6f").
+    let lbl = empty(text) ? widget_ident : text
+    let fmt = empty(format) ? scalar_default_format(type<T>) : format
+    var lo = v_min
+    var hi = v_max
+    let has_clamp = (v_min != v_max) || (v_min != default<T>)
+    var p : T? = ptr
+    unsafe {
+        let lo_ptr = has_clamp ? reinterpret<void? const>(addr(lo)) : null
+        let hi_ptr = has_clamp ? reinterpret<void? const>(addr(hi)) : null
+        let data_ptr = reinterpret<void?>(p)
+        let changed = DragScalar(lbl, scalar_data_type(type<T>),
+                                 data_ptr, speed, lo_ptr, hi_ptr, fmt, flags)
+        edit_finalize(widget_ident, "edit_drag_scalar", p)
+        return changed
+    }
+}
+
+[edit_widget]
+def edit_slider_scalar(var ptr : auto(T)? implicit;
+                       text : string = "";
+                       v_min : T;
+                       v_max : T;
+                       format : string = "";
+                       flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    //! ``SliderScalar`` against a caller-owned ``T?``. Both bounds are
+    //! required (matches ImGui — no null shortcut). Empty ``format`` falls
+    //! back to the type-specific default.
+    let lbl = empty(text) ? widget_ident : text
+    let fmt = empty(format) ? scalar_default_format(type<T>) : format
+    var lo = v_min
+    var hi = v_max
+    var p : T? = ptr
+    unsafe {
+        let lo_ptr = reinterpret<void? const>(addr(lo))
+        let hi_ptr = reinterpret<void? const>(addr(hi))
+        let data_ptr = reinterpret<void?>(p)
+        let changed = SliderScalar(lbl, scalar_data_type(type<T>),
+                                   data_ptr, lo_ptr, hi_ptr, fmt, flags)
+        edit_finalize(widget_ident, "edit_slider_scalar", p)
+        return changed
+    }
+}
+
+[edit_widget]
+def edit_input_scalar(var ptr : auto(T)? implicit;
+                      text : string = "";
+                      step : T = default<T>;
+                      step_fast : T = default<T>;
+                      format : string = "";
+                      flags : ImGuiInputTextFlags = ImGuiInputTextFlags.None) : bool {
+    //! ``InputScalar`` against a caller-owned ``T?``. ``step == 0`` (default)
+    //! selects ImGui's no-step-button behavior; non-zero ``step`` shows the
+    //! +/- buttons. Empty ``format`` falls back to the type-specific default.
+    let lbl = empty(text) ? widget_ident : text
+    let fmt = empty(format) ? scalar_default_format(type<T>) : format
+    var stp = step
+    var stp_fast = step_fast
+    var p : T? = ptr
+    unsafe {
+        let step_ptr = (step != default<T>) ? reinterpret<void? const>(addr(stp)) : null
+        let step_fast_ptr = (step_fast != default<T>) ? reinterpret<void? const>(addr(stp_fast)) : null
+        let data_ptr = reinterpret<void?>(p)
+        let changed = InputScalar(lbl, scalar_data_type(type<T>),
+                                  data_ptr, step_ptr, step_fast_ptr, fmt, flags)
+        edit_finalize(widget_ident, "edit_input_scalar", p)
+        return changed
+    }
+}
+
 [edit_widget]
 def edit_color_edit3(var ptr : float3? implicit; text : string = "";
                      flags : ImGuiColorEditFlags = ImGuiColorEditFlags.None) : bool {
