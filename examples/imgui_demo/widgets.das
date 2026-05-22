@@ -28,9 +28,9 @@ require math
 //   + Tier-B: Selectables (1396), Text Input (1558), Tabs (1752), Drag and Drop
 //   (2450).
 //   + Tier-C: Drag/Slider Flags (2183), Querying Item Status (2594),
-//     Querying Window Status (2706), Color/Picker (1990).
+//     Querying Window Status (2706), Color/Picker (1990), Data Types (2228).
 //
-// Remaining stubs (Tier D): Data Types.
+// All sub-sections of `ShowDemoWindowWidgets` are now ported. No stubs.
 //
 // Boost-surface conventions for this port (masterplan §"Static-state pattern"):
 //   - Value-owning widgets — checkbox / radio_button_int / slider_* / drag_* /
@@ -246,6 +246,24 @@ var private WIDGETS_DD_TIP_BTN : table<int; ClickState>
 var private WIDGETS_DD_TIP_TGT : table<int; DragDropTargetState>
 var private WIDGETS_DD_TIP_NO : table<int; NarrativeState>
 
+// Data Types (cpp:2228) — one persistent value per scalar type, edited by 50
+// widgets that drive the new `edit_drag_scalar` / `edit_slider_scalar` /
+// `edit_input_scalar` rails (single generic per family, ImGuiDataType picked
+// at compile time from `typeinfo stripped_typename(T)`). cpp uses static
+// locals with init values that exercise sign edges (S8 at 127, U8 at 255, S32
+// at -1, etc); we mirror those so the format-specifier showcase below renders
+// the same way.
+var private WIDGETS_DT_S8 : int8 = int8(127)
+var private WIDGETS_DT_U8 : uint8 = uint8(255)
+var private WIDGETS_DT_S16 : int16 = int16(32767)
+var private WIDGETS_DT_U16 : uint16 = uint16(65535)
+var private WIDGETS_DT_S32 : int = -1
+var private WIDGETS_DT_U32 : uint = 0xffffffffu
+var private WIDGETS_DT_S64 : int64 = -1l
+var private WIDGETS_DT_U64 : uint64 = 0xfffffffffffffffful
+var private WIDGETS_DT_F32 : float = 0.123f
+var private WIDGETS_DT_F64 : double = 90000.01234567890123456789lf
+
 // Color/Picker Widgets (cpp:1990) — one shared float4 `color` viewed both as
 // RGBA (ColorEdit4 / ColorPicker4 / ColorButton) and as RGB-only (ColorEdit3 /
 // ColorPicker3 via `unsafe(reinterpret<float3?>)` — mirrors cpp's `(float*)&color`
@@ -343,6 +361,7 @@ def ShowDemoWindowWidgets() {
                 VerticalSlidersSection()
                 DragDropSection()
                 ColorPickerSection()
+                DataTypesSection()
                 DragSliderFlagsSection()
                 QueryingItemStatusSection()
                 QueryingWindowStatusSection()
@@ -2790,6 +2809,234 @@ def private ColorPickerSection() {
         edit_drag_float4(safe_addr(WIDGETS_CP_COLOR_HSV),
             (id = "WIDGETS_CP_HSV_DRAG4", text = "Raw HSV values",
              speed = 0.01f, v_min = 0.0f, v_max = 1.0f))
+    }
+}
+
+
+// =============================================================================
+// Data Types — cpp:2228-2348
+// =============================================================================
+//
+// Exercises the typed `edit_drag_scalar` / `edit_slider_scalar` /
+// `edit_input_scalar` rails across all 10 supported scalar types (S8/U8/
+// S16/U16/S32/U32/S64/U64/Float/Double). The Drags group toggles between
+// no-clamp and 0..50 via the "Clamp" checkbox (cpp:2279); Sliders pass
+// explicit min/max per row; Inputs toggles step buttons via cpp:2334.
+//
+// cpp passes a `NULL` upper bound for one widget ("drag double" at
+// cpp:2294); the daslang wrapper takes both bounds by value with the
+// convention "v_min == v_max == default → no clamp", so the equivalent is
+// the upper sentinel value below (any value satisfying ``v_min < v_max``
+// — DBL_MAX too eager triggers ImGui drag-speed pathology).
+
+let private WIDGETS_DT_DRAG_DOUBLE_NO_UPPER : double = 1.0e15lf
+
+def private DataTypesSection() {
+    tree_node(WIDGETS_DT_SECTION,
+        (text = "Data Types", flags = ImGuiTreeNodeFlags.None)) {
+        // ===== Drags =====
+        separator_text(WIDGETS_DT_SEP_DRAGS, (text = "Drags"))
+        checkbox(WIDGETS_DT_DRAG_CLAMP, (text = "Clamp integers to 0..50"))
+        same_line(WIDGETS_DT_SL_DC)
+        text_disabled(WIDGETS_DT_DC_HELP, (text = "(?)"))
+        set_item_tooltip(WIDGETS_DT_DC_TIP,
+            (text = "As with every widget in dear imgui, we never modify values unless there is a user interaction.\n" +
+                    "You can override the clamping limits by using CTRL+Click to input a value."))
+        let cl = WIDGETS_DT_DRAG_CLAMP.value
+        let speed = 0.2f
+        edit_drag_scalar(safe_addr(WIDGETS_DT_S8),
+            (id = "WIDGETS_DT_DRAG_S8", text = "drag s8",
+             speed = speed, v_min = int8(0), v_max = cl ? int8(50) : int8(0)))
+        edit_drag_scalar(safe_addr(WIDGETS_DT_U8),
+            (id = "WIDGETS_DT_DRAG_U8", text = "drag u8",
+             speed = speed, v_min = uint8(0), v_max = cl ? uint8(50) : uint8(0), format = "%u ms"))
+        edit_drag_scalar(safe_addr(WIDGETS_DT_S16),
+            (id = "WIDGETS_DT_DRAG_S16", text = "drag s16",
+             speed = speed, v_min = int16(0), v_max = cl ? int16(50) : int16(0)))
+        edit_drag_scalar(safe_addr(WIDGETS_DT_U16),
+            (id = "WIDGETS_DT_DRAG_U16", text = "drag u16",
+             speed = speed, v_min = uint16(0), v_max = cl ? uint16(50) : uint16(0), format = "%u ms"))
+        edit_drag_scalar(safe_addr(WIDGETS_DT_S32),
+            (id = "WIDGETS_DT_DRAG_S32", text = "drag s32",
+             speed = speed, v_min = 0, v_max = cl ? 50 : 0))
+        edit_drag_scalar(safe_addr(WIDGETS_DT_S32),
+            (id = "WIDGETS_DT_DRAG_S32_HEX", text = "drag s32 hex",
+             speed = speed, v_min = 0, v_max = cl ? 50 : 0, format = "0x%08X"))
+        edit_drag_scalar(safe_addr(WIDGETS_DT_U32),
+            (id = "WIDGETS_DT_DRAG_U32", text = "drag u32",
+             speed = speed, v_min = 0u, v_max = cl ? 50u : 0u, format = "%u ms"))
+        edit_drag_scalar(safe_addr(WIDGETS_DT_S64),
+            (id = "WIDGETS_DT_DRAG_S64", text = "drag s64",
+             speed = speed, v_min = 0l, v_max = cl ? 50l : 0l))
+        edit_drag_scalar(safe_addr(WIDGETS_DT_U64),
+            (id = "WIDGETS_DT_DRAG_U64", text = "drag u64",
+             speed = speed, v_min = 0ul, v_max = cl ? 50ul : 0ul))
+        edit_drag_scalar(safe_addr(WIDGETS_DT_F32),
+            (id = "WIDGETS_DT_DRAG_F", text = "drag float",
+             speed = 0.005f, v_min = 0.0f, v_max = 1.0f, format = "%f"))
+        edit_drag_scalar(safe_addr(WIDGETS_DT_F32),
+            (id = "WIDGETS_DT_DRAG_F_LOG", text = "drag float log",
+             speed = 0.005f, v_min = 0.0f, v_max = 1.0f, format = "%f",
+             flags = ImGuiSliderFlags.Logarithmic))
+        // cpp passes NULL upper here; we substitute a large finite sentinel
+        // (see WIDGETS_DT_DRAG_DOUBLE_NO_UPPER above).
+        edit_drag_scalar(safe_addr(WIDGETS_DT_F64),
+            (id = "WIDGETS_DT_DRAG_D", text = "drag double",
+             speed = 0.0005f, v_min = 0.0lf,
+             v_max = WIDGETS_DT_DRAG_DOUBLE_NO_UPPER, format = "%.10f grams"))
+        edit_drag_scalar(safe_addr(WIDGETS_DT_F64),
+            (id = "WIDGETS_DT_DRAG_D_LOG", text = "drag double log",
+             speed = 0.0005f, v_min = 0.0lf, v_max = 1.0lf, format = "0 < %.10f < 1",
+             flags = ImGuiSliderFlags.Logarithmic))
+
+        // ===== Sliders =====
+        separator_text(WIDGETS_DT_SEP_SLIDERS, (text = "Sliders"))
+        edit_slider_scalar(safe_addr(WIDGETS_DT_S8),
+            (id = "WIDGETS_DT_SL_S8_F", text = "slider s8 full",
+             v_min = int8(-128), v_max = int8(127), format = "%d"))
+        edit_slider_scalar(safe_addr(WIDGETS_DT_U8),
+            (id = "WIDGETS_DT_SL_U8_F", text = "slider u8 full",
+             v_min = uint8(0), v_max = uint8(255), format = "%u"))
+        edit_slider_scalar(safe_addr(WIDGETS_DT_S16),
+            (id = "WIDGETS_DT_SL_S16_F", text = "slider s16 full",
+             v_min = int16(-32768), v_max = int16(32767), format = "%d"))
+        edit_slider_scalar(safe_addr(WIDGETS_DT_U16),
+            (id = "WIDGETS_DT_SL_U16_F", text = "slider u16 full",
+             v_min = uint16(0), v_max = uint16(65535), format = "%u"))
+        // SliderScalar's usable range is half the native type max (cpp:2246).
+        let s32_min = INT_MIN / 2
+        let s32_max = INT_MAX / 2
+        let s32_hi_a = (INT_MAX / 2) - 100
+        let s32_hi_b = INT_MAX / 2
+        edit_slider_scalar(safe_addr(WIDGETS_DT_S32),
+            (id = "WIDGETS_DT_SL_S32_L", text = "slider s32 low",
+             v_min = 0, v_max = 50, format = "%d"))
+        edit_slider_scalar(safe_addr(WIDGETS_DT_S32),
+            (id = "WIDGETS_DT_SL_S32_H", text = "slider s32 high",
+             v_min = s32_hi_a, v_max = s32_hi_b, format = "%d"))
+        edit_slider_scalar(safe_addr(WIDGETS_DT_S32),
+            (id = "WIDGETS_DT_SL_S32_F", text = "slider s32 full",
+             v_min = s32_min, v_max = s32_max, format = "%d"))
+        edit_slider_scalar(safe_addr(WIDGETS_DT_S32),
+            (id = "WIDGETS_DT_SL_S32_X", text = "slider s32 hex",
+             v_min = 0, v_max = 50, format = "0x%04X"))
+        let u32_max = UINT_MAX / 2u
+        let u32_hi_a = (UINT_MAX / 2u) - 100u
+        let u32_hi_b = UINT_MAX / 2u
+        edit_slider_scalar(safe_addr(WIDGETS_DT_U32),
+            (id = "WIDGETS_DT_SL_U32_L", text = "slider u32 low",
+             v_min = 0u, v_max = 50u, format = "%u"))
+        edit_slider_scalar(safe_addr(WIDGETS_DT_U32),
+            (id = "WIDGETS_DT_SL_U32_H", text = "slider u32 high",
+             v_min = u32_hi_a, v_max = u32_hi_b, format = "%u"))
+        edit_slider_scalar(safe_addr(WIDGETS_DT_U32),
+            (id = "WIDGETS_DT_SL_U32_F", text = "slider u32 full",
+             v_min = 0u, v_max = u32_max, format = "%u"))
+        let s64_min : int64 = -9223372036854775807l / 2l - 1l
+        let s64_max : int64 = 9223372036854775807l / 2l
+        let s64_hi_a : int64 = s64_max - 100l
+        edit_slider_scalar(safe_addr(WIDGETS_DT_S64),
+            (id = "WIDGETS_DT_SL_S64_L", text = "slider s64 low",
+             v_min = 0l, v_max = 50l, format = "%lld"))
+        edit_slider_scalar(safe_addr(WIDGETS_DT_S64),
+            (id = "WIDGETS_DT_SL_S64_H", text = "slider s64 high",
+             v_min = s64_hi_a, v_max = s64_max, format = "%lld"))
+        edit_slider_scalar(safe_addr(WIDGETS_DT_S64),
+            (id = "WIDGETS_DT_SL_S64_F", text = "slider s64 full",
+             v_min = s64_min, v_max = s64_max, format = "%lld"))
+        let u64_max : uint64 = 0xfffffffffffffffful / 2ul
+        let u64_hi_a : uint64 = u64_max - 100ul
+        edit_slider_scalar(safe_addr(WIDGETS_DT_U64),
+            (id = "WIDGETS_DT_SL_U64_L", text = "slider u64 low",
+             v_min = 0ul, v_max = 50ul, format = "%llu ms"))
+        edit_slider_scalar(safe_addr(WIDGETS_DT_U64),
+            (id = "WIDGETS_DT_SL_U64_H", text = "slider u64 high",
+             v_min = u64_hi_a, v_max = u64_max, format = "%llu ms"))
+        edit_slider_scalar(safe_addr(WIDGETS_DT_U64),
+            (id = "WIDGETS_DT_SL_U64_F", text = "slider u64 full",
+             v_min = 0ul, v_max = u64_max, format = "%llu ms"))
+        edit_slider_scalar(safe_addr(WIDGETS_DT_F32),
+            (id = "WIDGETS_DT_SL_F_L", text = "slider float low",
+             v_min = 0.0f, v_max = 1.0f))
+        edit_slider_scalar(safe_addr(WIDGETS_DT_F32),
+            (id = "WIDGETS_DT_SL_F_L_LOG", text = "slider float low log",
+             v_min = 0.0f, v_max = 1.0f, format = "%.10f",
+             flags = ImGuiSliderFlags.Logarithmic))
+        edit_slider_scalar(safe_addr(WIDGETS_DT_F32),
+            (id = "WIDGETS_DT_SL_F_H", text = "slider float high",
+             v_min = -10000000000.0f, v_max = 10000000000.0f, format = "%e"))
+        edit_slider_scalar(safe_addr(WIDGETS_DT_F64),
+            (id = "WIDGETS_DT_SL_D_L", text = "slider double low",
+             v_min = 0.0lf, v_max = 1.0lf, format = "%.10f grams"))
+        edit_slider_scalar(safe_addr(WIDGETS_DT_F64),
+            (id = "WIDGETS_DT_SL_D_L_LOG", text = "slider double low log",
+             v_min = 0.0lf, v_max = 1.0lf, format = "%.10f",
+             flags = ImGuiSliderFlags.Logarithmic))
+        edit_slider_scalar(safe_addr(WIDGETS_DT_F64),
+            (id = "WIDGETS_DT_SL_D_H", text = "slider double high",
+             v_min = -1000000000000000.0lf, v_max = 1000000000000000.0lf, format = "%e grams"))
+
+        // ===== Sliders (reverse) =====
+        separator_text(WIDGETS_DT_SEP_SREV, (text = "Sliders (reverse)"))
+        edit_slider_scalar(safe_addr(WIDGETS_DT_S8),
+            (id = "WIDGETS_DT_SLR_S8", text = "slider s8 reverse",
+             v_min = int8(127), v_max = int8(-128), format = "%d"))
+        edit_slider_scalar(safe_addr(WIDGETS_DT_U8),
+            (id = "WIDGETS_DT_SLR_U8", text = "slider u8 reverse",
+             v_min = uint8(255), v_max = uint8(0), format = "%u"))
+        edit_slider_scalar(safe_addr(WIDGETS_DT_S32),
+            (id = "WIDGETS_DT_SLR_S32", text = "slider s32 reverse",
+             v_min = 50, v_max = 0, format = "%d"))
+        edit_slider_scalar(safe_addr(WIDGETS_DT_U32),
+            (id = "WIDGETS_DT_SLR_U32", text = "slider u32 reverse",
+             v_min = 50u, v_max = 0u, format = "%u"))
+        edit_slider_scalar(safe_addr(WIDGETS_DT_S64),
+            (id = "WIDGETS_DT_SLR_S64", text = "slider s64 reverse",
+             v_min = 50l, v_max = 0l, format = "%lld"))
+        edit_slider_scalar(safe_addr(WIDGETS_DT_U64),
+            (id = "WIDGETS_DT_SLR_U64", text = "slider u64 reverse",
+             v_min = 50ul, v_max = 0ul, format = "%llu ms"))
+
+        // ===== Inputs =====
+        separator_text(WIDGETS_DT_SEP_INPUTS, (text = "Inputs"))
+        checkbox(WIDGETS_DT_INPUTS_STEP, (text = "Show step buttons", init = true))
+        let st = WIDGETS_DT_INPUTS_STEP.value
+        edit_input_scalar(safe_addr(WIDGETS_DT_S8),
+            (id = "WIDGETS_DT_IN_S8", text = "input s8",
+             step = st ? int8(1) : int8(0), step_fast = int8(0), format = "%d"))
+        edit_input_scalar(safe_addr(WIDGETS_DT_U8),
+            (id = "WIDGETS_DT_IN_U8", text = "input u8",
+             step = st ? uint8(1) : uint8(0), step_fast = uint8(0), format = "%u"))
+        edit_input_scalar(safe_addr(WIDGETS_DT_S16),
+            (id = "WIDGETS_DT_IN_S16", text = "input s16",
+             step = st ? int16(1) : int16(0), step_fast = int16(0), format = "%d"))
+        edit_input_scalar(safe_addr(WIDGETS_DT_U16),
+            (id = "WIDGETS_DT_IN_U16", text = "input u16",
+             step = st ? uint16(1) : uint16(0), step_fast = uint16(0), format = "%u"))
+        edit_input_scalar(safe_addr(WIDGETS_DT_S32),
+            (id = "WIDGETS_DT_IN_S32", text = "input s32",
+             step = st ? 1 : 0, step_fast = 0, format = "%d"))
+        edit_input_scalar(safe_addr(WIDGETS_DT_S32),
+            (id = "WIDGETS_DT_IN_S32_HEX", text = "input s32 hex",
+             step = st ? 1 : 0, step_fast = 0, format = "%04X"))
+        edit_input_scalar(safe_addr(WIDGETS_DT_U32),
+            (id = "WIDGETS_DT_IN_U32", text = "input u32",
+             step = st ? 1u : 0u, step_fast = 0u, format = "%u"))
+        edit_input_scalar(safe_addr(WIDGETS_DT_U32),
+            (id = "WIDGETS_DT_IN_U32_HEX", text = "input u32 hex",
+             step = st ? 1u : 0u, step_fast = 0u, format = "%08X"))
+        edit_input_scalar(safe_addr(WIDGETS_DT_S64),
+            (id = "WIDGETS_DT_IN_S64", text = "input s64",
+             step = st ? 1l : 0l))
+        edit_input_scalar(safe_addr(WIDGETS_DT_U64),
+            (id = "WIDGETS_DT_IN_U64", text = "input u64",
+             step = st ? 1ul : 0ul))
+        edit_input_scalar(safe_addr(WIDGETS_DT_F32),
+            (id = "WIDGETS_DT_IN_F", text = "input float",
+             step = st ? 1.0f : 0.0f))
+        edit_input_scalar(safe_addr(WIDGETS_DT_F64),
+            (id = "WIDGETS_DT_IN_D", text = "input double",
+             step = st ? 1.0lf : 0.0lf))
     }
 }
 
