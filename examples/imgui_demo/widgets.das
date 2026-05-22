@@ -6,6 +6,7 @@ module widgets
 require imgui
 require imgui/imgui_widgets_builtin
 require imgui/imgui_containers_builtin
+require imgui/imgui_table_builtin        // data_table + table_next_row/column
 require imgui/imgui_id_builtin
 require imgui/imgui_layout_builtin       // tree_pop pass-through
 require imgui/imgui_scope_builtin
@@ -23,10 +24,11 @@ require math
 //   (cpp:651-1276) + Tier-A quick-win subsections:
 //   Combo (1279), List boxes (1347), Plotting (1898), Progress Bars (1961),
 //   Range Widgets (2217), Multi-component (2352), Vertical Sliders (2385),
-//   Disable block (2808), Text Filter (2816).
+//   Disable block (2808), Text Filter (2816)
+//   + Tier-B: Selectables (1396), Text Input (1558), Tabs (1752), Drag and Drop
+//   (2450).
 //
-// Remaining stubs (Tier B/C/D): Selectables (7 trees), Text Input (6),
-// Tabs (3), Drag and Drop (4), Color/Picker, Drag/Slider Flags, Data Types,
+// Remaining stubs (Tier C/D): Color/Picker, Drag/Slider Flags, Data Types,
 // Querying Item/Window Status.
 //
 // Boost-surface conventions for this port (masterplan §"Static-state pattern"):
@@ -182,6 +184,67 @@ var private WIDGETS_TABS_LT_ACTIVE : array<int>
 var private WIDGETS_TABS_LT_NEXT_ID = 0
 var private WIDGETS_TABS_LT_DYN : table<int; TabItemState>
 
+// Selectables (cpp:1396) — seven sub-trees. Most sub-trees are caller-owned
+// bool/int selection state + indexed per-row `[widget]` tables; only "Basic"
+// and "Same Line" / "Alignment" use self-toggling `selectable` (ToggleState).
+var private WIDGETS_SEL_BASIC_TOGGLE : table<int; ToggleState>
+var private WIDGETS_SEL_SINGLE_IDX = -1
+var private WIDGETS_SEL_SINGLE_ROW : table<int; ClickState>
+var private WIDGETS_SEL_MULTI_SEL : array<bool> <- [false, false, false, false, false]
+var private WIDGETS_SEL_MULTI_ROW : table<int; ClickState>
+var private WIDGETS_SEL_SL_ITEM : table<int; ToggleState>
+var private WIDGETS_SEL_SL_LINK : table<int; ClickState>
+var private WIDGETS_SEL_SL_SL : table<int; EmptyMarkerState>
+let private WIDGETS_SEL_SL_LABELS : array<string> <- ["main.c", "Hello.cpp", "Hello.h"]
+var private WIDGETS_SEL_COL1_ROW : table<int; ToggleState>
+var private WIDGETS_SEL_COL2_ROW : table<int; ToggleState>
+var private WIDGETS_SEL_COL2_TXT1 : table<int; NarrativeState>
+var private WIDGETS_SEL_COL2_TXT2 : table<int; NarrativeState>
+var private WIDGETS_SEL_GRID_SEL : array<bool> <- [true, false, false, false,
+                                                   false, true, false, false,
+                                                   false, false, true, false,
+                                                   false, false, false, true]
+var private WIDGETS_SEL_GRID_ROW : table<int; ClickState>
+var private WIDGETS_SEL_GRID_SL : table<int; EmptyMarkerState>
+var private WIDGETS_SEL_ALIGN_ROW : table<int; ToggleState>
+var private WIDGETS_SEL_ALIGN_SL : table<int; EmptyMarkerState>
+
+// Text Input (cpp:1558) — six sub-trees.
+//   Multi-line:       module-scope persistent string (the cpp `static char[16K]`
+//                     verbatim) seeded once on first frame.
+//   Filtered:         7 fixed-32-char InputText boxes; the last two use
+//                     CallbackCharFilter via `input_text_callback`.
+//   Password:         3 InputText/InputTextWithHint instances sharing one
+//                     password buffer.
+//   Completion/History/Edit Callbacks: 3 separate callbacks dispatching by
+//                     `data.EventFlag`; Edit counter tallies via a plain int.
+//   Resize:           `input_text_growable` exercises CallbackResize internally.
+//   Misc:             flag-toggle row + a single InputText that respects them.
+let private WIDGETS_TI_MULTILINE_INIT = "/*\n The Pentium F00F bug, shorthand for F0 0F C7 C8,\n the hexadecimal encoding of one offending instruction,\n more formally, the invalid operand with locked CMPXCHG8B\n instruction bug, is a design flaw in the majority of\n Intel Pentium, Pentium MMX, and Pentium OverDrive\n processors (all in the P5 microarchitecture).\n*/\n\nlabel:\n\tlock cmpxchg8b eax\n"
+var private WIDGETS_TI_ML_FLAGS = int(ImGuiInputTextFlags.AllowTabInput)
+var private WIDGETS_TI_EDIT_COUNT = 0
+var private WIDGETS_TI_MISC_FLAGS = int(ImGuiInputTextFlags.EscapeClearsAll)
+
+// Drag and Drop (cpp:2450) — four sub-trees. Mode picker for the copy/swap
+// sub-tree is an exclusive int selection (0=Copy / 1=Move / 2=Swap). NAMES is
+// per-frame mutable (Copy/Move/Swap rewrite slots in place).
+var private WIDGETS_DD_COPY_MODE = 0
+var private WIDGETS_DD_COPY_NAMES : array<string> <- ["Bobby", "Beatrice", "Betty",
+                                                      "Brianna", "Barry", "Bernard",
+                                                      "Bibi", "Blaine", "Bryn"]
+var private WIDGETS_DD_COPY_BTN : table<int; ClickState>
+var private WIDGETS_DD_COPY_SRC : table<int; DragDropSourceState>
+var private WIDGETS_DD_COPY_TGT : table<int; DragDropTargetState>
+var private WIDGETS_DD_COPY_SL : table<int; EmptyMarkerState>
+var private WIDGETS_DD_COPY_PREVIEW : table<int; NarrativeState>
+var private WIDGETS_DD_REORDER_NAMES : array<string> <- ["Item One", "Item Two",
+                                                          "Item Three", "Item Four",
+                                                          "Item Five"]
+var private WIDGETS_DD_REORDER_ROW : table<int; ToggleState>
+var private WIDGETS_DD_TIP_BTN : table<int; ClickState>
+var private WIDGETS_DD_TIP_TGT : table<int; DragDropTargetState>
+var private WIDGETS_DD_TIP_NO : table<int; NarrativeState>
+
 
 // =============================================================================
 // Helpers
@@ -204,12 +267,15 @@ def ShowDemoWindowWidgets() {
                 ImagesSection()
                 ComboSection()
                 ListBoxesSection()
+                SelectablesSection()
+                TextInputSection()
                 TabsSection()
                 PlottingSection()
                 ProgressBarsSection()
                 RangeWidgetsSection()
                 MultiComponentSection()
                 VerticalSlidersSection()
+                DragDropSection()
             }
             // "Disable block" exposes the WIDGETS_DISABLE_ALL checkbox itself;
             // it would be hidden by its own gate inside with_disabled, so it
@@ -1758,5 +1824,572 @@ def private TabsLeadingTrailingSection() {
             }
         }
         separator(WIDGETS_TABS_LT_SEP)
+    }
+}
+
+
+// =============================================================================
+// Selectables — cpp:1396-1553. Seven sub-trees:
+//   Basic                  — 3 self-toggling + 1 double-click-only selectable.
+//   Single Selection       — exclusive index across 5 rows (selectable_label).
+//   Multiple Selection     — Ctrl-click toggles; no-Ctrl resets bool[5].
+//   Same Line              — SetNextItemAllowOverlap + selectable + small_button.
+//   In columns             — 2 data_tables (3 cols, 10 items each);
+//                            second table uses SpanAllColumns + extra cells.
+//   Grid                   — 4x4; click toggles cell + 4 neighbors; "winning"
+//                            (all-selected) state animates SelectableTextAlign.
+//   Alignment              — 3x3; each cell sets its own SelectableTextAlign.
+// =============================================================================
+
+def private SelectablesSection() {
+    tree_node(WIDGETS_SEL_SECTION,
+        (text = "Selectables", flags = ImGuiTreeNodeFlags.None)) {
+        SelectablesBasicSection()
+        SelectablesSingleSection()
+        SelectablesMultiSection()
+        SelectablesSameLineSection()
+        SelectablesInColumnsSection()
+        SelectablesGridSection()
+        SelectablesAlignmentSection()
+    }
+}
+
+def private SelectablesBasicSection() {
+    tree_node(WIDGETS_SEL_BASIC,
+        (text = "Basic", flags = ImGuiTreeNodeFlags.None)) {
+        // Rows 0-2: plain self-toggling selectables. Cpp seeds [1]=true at
+        // module load — daslang ToggleState defaults to false; seed it via
+        // `init = true` so the visual matches first-frame.
+        // Cpp seeds [1]=true at module load — daslang's `[widget]` indexed
+        // form doesn't support `init=` (it's a state-table per-index, not a
+        // single module-scope ident), so [1] starts false and the user
+        // clicks to toggle. Acceptable demo-fidelity loss.
+        selectable(WIDGETS_SEL_BASIC_TOGGLE[0],
+            (text = "1. I am selectable"))
+        selectable(WIDGETS_SEL_BASIC_TOGGLE[1],
+            (text = "2. I am selectable"))
+        selectable(WIDGETS_SEL_BASIC_TOGGLE[2],
+            (text = "3. I am selectable"))
+        // Row 3: `AllowDoubleClick` makes Selectable only return true after a
+        // double-click — the boost-emitted toggle then fires only on the
+        // double-click frame, matching cpp's explicit IsMouseDoubleClicked
+        // guard. No daslang-side extra check needed.
+        selectable(WIDGETS_SEL_BASIC_TOGGLE[3],
+            (text = "4. I am double clickable",
+             flags = ImGuiSelectableFlags.AllowDoubleClick))
+    }
+}
+
+def private SelectablesSingleSection() {
+    tree_node(WIDGETS_SEL_SINGLE,
+        (text = "Selection State: Single Selection",
+         flags = ImGuiTreeNodeFlags.None)) {
+        for (n in range(5)) {
+            if (selectable_label(WIDGETS_SEL_SINGLE_ROW[n],
+                                 "Object {n}", WIDGETS_SEL_SINGLE_IDX == n)) {
+                WIDGETS_SEL_SINGLE_IDX = n
+            }
+        }
+    }
+}
+
+def private SelectablesMultiSection() {
+    tree_node(WIDGETS_SEL_MULTI,
+        (text = "Selection State: Multiple Selection",
+         flags = ImGuiTreeNodeFlags.None)) {
+        // Cpp wraps the multi-select demo with a HelpMarker; dropped because
+        // the binding gap on HelpMarker (which renders TextDisabled + tooltip)
+        // would inflate the port for no functional gain.
+        for (n in range(length(WIDGETS_SEL_MULTI_SEL))) {
+            if (selectable_label(WIDGETS_SEL_MULTI_ROW[n],
+                                 "Object {n}", WIDGETS_SEL_MULTI_SEL[n])) {
+                if (!GetIO().KeyCtrl) {
+                    for (i in range(length(WIDGETS_SEL_MULTI_SEL))) {
+                        WIDGETS_SEL_MULTI_SEL[i] = false
+                    }
+                }
+                WIDGETS_SEL_MULTI_SEL[n] = !WIDGETS_SEL_MULTI_SEL[n]
+            }
+        }
+    }
+}
+
+def private SelectablesSameLineSection() {
+    tree_node(WIDGETS_SEL_SL,
+        (text = "Rendering more items on the same line",
+         flags = ImGuiTreeNodeFlags.None)) {
+        for (n in range(length(WIDGETS_SEL_SL_LABELS))) {
+            SetNextItemAllowOverlap()
+            selectable(WIDGETS_SEL_SL_ITEM[n], (text = WIDGETS_SEL_SL_LABELS[n]))
+            same_line(WIDGETS_SEL_SL_SL[n])
+            small_button(WIDGETS_SEL_SL_LINK[n], (text = "Link {n + 1}"))
+        }
+    }
+}
+
+def private SelectablesInColumnsSection() {
+    tree_node(WIDGETS_SEL_COL,
+        (text = "In columns", flags = ImGuiTreeNodeFlags.None)) {
+        let COL_FLAGS = (ImGuiTableFlags.Resizable |
+                         ImGuiTableFlags.NoSavedSettings |
+                         ImGuiTableFlags.Borders)
+        data_table(WIDGETS_SEL_COL1,
+            (text = "split1", columns = 3, flags = COL_FLAGS,
+             outer_size = float2(0.0f, 0.0f), inner_width = 0.0f)) {
+            for (i in range(10)) {
+                table_next_column()
+                selectable(WIDGETS_SEL_COL1_ROW[i], (text = "Item {i}"))
+            }
+        }
+        spacing(WIDGETS_SEL_COL_SP)
+        data_table(WIDGETS_SEL_COL2,
+            (text = "split2", columns = 3, flags = COL_FLAGS,
+             outer_size = float2(0.0f, 0.0f), inner_width = 0.0f)) {
+            for (i in range(10)) {
+                table_next_row()
+                table_next_column()
+                selectable(WIDGETS_SEL_COL2_ROW[i],
+                    (text = "Item {i}",
+                     flags = ImGuiSelectableFlags.SpanAllColumns))
+                table_next_column()
+                text(WIDGETS_SEL_COL2_TXT1[i], (text = "Some other contents"))
+                table_next_column()
+                text(WIDGETS_SEL_COL2_TXT2[i], (text = "123456"))
+            }
+        }
+    }
+}
+
+def private SelectablesGridSection() {
+    tree_node(WIDGETS_SEL_GRID,
+        (text = "Grid", flags = ImGuiTreeNodeFlags.None)) {
+        // Cpp's "silly fun": when every cell is selected, push a time-animated
+        // SelectableTextAlign so the labels orbit inside their squares. Mirror
+        // by checking the bool[16] for any-false, then gating with_style.
+        var winning = true
+        for (i in range(length(WIDGETS_SEL_GRID_SEL))) {
+            if (!WIDGETS_SEL_GRID_SEL[i]) {
+                winning = false
+                break
+            }
+        }
+        let t = float(GetTime())
+        let align = float2(0.5f + 0.5f * cos(t * 2.0f),
+                           0.5f + 0.5f * sin(t * 3.0f))
+        if (winning) {
+            with_style((ImGuiStyleVar.SelectableTextAlign, align)) {
+                SelectablesGridBody()
+            }
+        } else {
+            SelectablesGridBody()
+        }
+    }
+}
+
+// 4x4 click-toggle-with-neighbors grid body. Extracted so `with_style` can
+// scope a single call without duplicating the for/for nest.
+def private SelectablesGridBody() {
+    for (y in range(4)) {
+        for (x in range(4)) {
+            if (x > 0) {
+                same_line(WIDGETS_SEL_GRID_SL[y * 4 + x])
+            }
+            let idx = y * 4 + x
+            with_id("cell_{idx}") {
+                if (selectable_label(WIDGETS_SEL_GRID_ROW[idx],
+                                     "Sailor", WIDGETS_SEL_GRID_SEL[idx],
+                                     ImGuiSelectableFlags.None,
+                                     float2(50.0f, 50.0f))) {
+                    WIDGETS_SEL_GRID_SEL[idx] = !WIDGETS_SEL_GRID_SEL[idx]
+                    if (x > 0) {
+                        WIDGETS_SEL_GRID_SEL[idx - 1] = !WIDGETS_SEL_GRID_SEL[idx - 1]
+                    }
+                    if (x < 3) {
+                        WIDGETS_SEL_GRID_SEL[idx + 1] = !WIDGETS_SEL_GRID_SEL[idx + 1]
+                    }
+                    if (y > 0) {
+                        WIDGETS_SEL_GRID_SEL[idx - 4] = !WIDGETS_SEL_GRID_SEL[idx - 4]
+                    }
+                    if (y < 3) {
+                        WIDGETS_SEL_GRID_SEL[idx + 4] = !WIDGETS_SEL_GRID_SEL[idx + 4]
+                    }
+                }
+            }
+        }
+    }
+}
+
+def private SelectablesAlignmentSection() {
+    tree_node(WIDGETS_SEL_ALIGN,
+        (text = "Alignment", flags = ImGuiTreeNodeFlags.None)) {
+        // 3x3 grid; per-cell alignment via `with_style`. Cpp pushes a fresh
+        // style var around EACH Selectable — the boost wrapper scopes the
+        // push/pop tightly to the one selectable call.
+        for (y in range(3)) {
+            for (x in range(3)) {
+                let cell = float2(float(x) / 2.0f, float(y) / 2.0f)
+                if (x > 0) {
+                    same_line(WIDGETS_SEL_ALIGN_SL[y * 3 + x])
+                }
+                with_style((ImGuiStyleVar.SelectableTextAlign, cell)) {
+                    selectable(WIDGETS_SEL_ALIGN_ROW[y * 3 + x],
+                        (text = "({cell.x:0.1},{cell.y:0.1})",
+                         flags = ImGuiSelectableFlags.None,
+                         size = float2(80.0f, 80.0f)))
+                }
+            }
+        }
+    }
+}
+
+
+// =============================================================================
+// Text Input — cpp:1558-1748. Six sub-trees:
+//   Multi-line             — flag toggles + InputTextMultiline.
+//   Filtered               — 7 fixed-buffer InputTexts; 2 use CharFilter cb.
+//   Password               — 3 InputText/InputTextWithHint variants over one
+//                            shared password buffer.
+//   Completion/Hist/Edit   — 3 callbacks dispatching on `data.EventFlag`.
+//   Resize                 — `input_text_growable` exercises CallbackResize.
+//   Misc                   — flag-toggle row + a single InputText.
+// =============================================================================
+
+def private TextInputSection() {
+    tree_node(WIDGETS_TI_SECTION,
+        (text = "Text Input", flags = ImGuiTreeNodeFlags.None)) {
+        TextInputMultilineSection()
+        TextInputFilteredSection()
+        TextInputPasswordSection()
+        TextInputCallbacksSection()
+        TextInputResizeSection()
+        TextInputMiscSection()
+    }
+}
+
+def private TextInputMultilineSection() {
+    tree_node(WIDGETS_TI_MULTILINE,
+        (text = "Multi-line Text Input", flags = ImGuiTreeNodeFlags.None)) {
+        // Seed the buffer once — InputTextState wakes up empty; subsequent
+        // frames preserve the user's edits via the state's persistent buffer.
+        if (empty(WIDGETS_TI_ML_BUF.value)) {
+            WIDGETS_TI_ML_BUF.pending_value = WIDGETS_TI_MULTILINE_INIT
+            WIDGETS_TI_ML_BUF.has_pending = true
+        }
+        edit_checkbox_flags(safe_addr(WIDGETS_TI_ML_FLAGS),
+            (id = "WIDGETS_TI_ML_F_READONLY",
+             text = "ImGuiInputTextFlags_ReadOnly",
+             flags_value = int(ImGuiInputTextFlags.ReadOnly)))
+        edit_checkbox_flags(safe_addr(WIDGETS_TI_ML_FLAGS),
+            (id = "WIDGETS_TI_ML_F_TAB",
+             text = "ImGuiInputTextFlags_AllowTabInput",
+             flags_value = int(ImGuiInputTextFlags.AllowTabInput)))
+        edit_checkbox_flags(safe_addr(WIDGETS_TI_ML_FLAGS),
+            (id = "WIDGETS_TI_ML_F_CTRLENTER",
+             text = "ImGuiInputTextFlags_CtrlEnterForNewLine",
+             flags_value = int(ImGuiInputTextFlags.CtrlEnterForNewLine)))
+        let body_h = GetTextLineHeight() * 16.0f
+        input_text_multiline(WIDGETS_TI_ML_BUF,
+            (text = "##source",
+             size = float2(-FLT_MIN, body_h),
+             flags = unsafe(reinterpret<ImGuiInputTextFlags>(WIDGETS_TI_ML_FLAGS))))
+    }
+}
+
+def private TextInputFilteredSection() {
+    tree_node(WIDGETS_TI_FILTERED,
+        (text = "Filtered Text Input", flags = ImGuiTreeNodeFlags.None)) {
+        input_text(WIDGETS_TI_F_DEFAULT, (text = "default"))
+        input_text(WIDGETS_TI_F_DEC,
+            (text = "decimal", flags = ImGuiInputTextFlags.CharsDecimal))
+        input_text(WIDGETS_TI_F_HEX,
+            (text = "hexadecimal",
+             flags = ImGuiInputTextFlags.CharsHexadecimal |
+                     ImGuiInputTextFlags.CharsUppercase))
+        input_text(WIDGETS_TI_F_UPPER,
+            (text = "uppercase", flags = ImGuiInputTextFlags.CharsUppercase))
+        input_text(WIDGETS_TI_F_NOBLANK,
+            (text = "no blank", flags = ImGuiInputTextFlags.CharsNoBlank))
+        // CharFilter callback: lower<->upper swap. `EventChar` is `uint16` —
+        // widen to `int` for the ASCII range comparisons.
+        input_text_callback(WIDGETS_TI_F_CASE, "casing swap",
+            ImGuiInputTextFlags.CallbackCharFilter,
+            @(var data : ImGuiInputTextCallbackData) : int {
+                let c = int(data.EventChar)
+                if (c >= int(0x61) && c <= int(0x7A)) {       // 'a'..'z' -> upper
+                    data.EventChar = uint16(c - int(0x20))
+                } elif (c >= int(0x41) && c <= int(0x5A)) {   // 'A'..'Z' -> lower
+                    data.EventChar = uint16(c + int(0x20))
+                }
+                return 0
+            })
+        // CharFilter callback: pass only chars in "imgui" (i, m, g, u). Returns
+        // 1 to reject any other character.
+        input_text_callback(WIDGETS_TI_F_IMGUI, "\"imgui\"",
+            ImGuiInputTextFlags.CallbackCharFilter,
+            @(var data : ImGuiInputTextCallbackData) : int {
+                let c = int(data.EventChar)
+                if (c == int('i')) return 0
+                if (c == int('m')) return 0
+                if (c == int('g')) return 0
+                if (c == int('u')) return 0
+                return 1
+            })
+    }
+}
+
+def private TextInputPasswordSection() {
+    tree_node(WIDGETS_TI_PASSWORD,
+        (text = "Password Input", flags = ImGuiTreeNodeFlags.None)) {
+        // Cpp seeds the buffer to "password123"; do the same once via
+        // pending_text so subsequent reloads preserve user edits.
+        if (empty(WIDGETS_TI_PWD.value)) {
+            WIDGETS_TI_PWD.pending_value = "password123"
+            WIDGETS_TI_PWD.has_pending = true
+        }
+        input_text(WIDGETS_TI_PWD, (text = "password",
+                                     flags = ImGuiInputTextFlags.Password))
+        input_text_with_hint(WIDGETS_TI_PWD_HINT,
+            (text = "password (w/ hint)", hint = "<password>",
+             flags = ImGuiInputTextFlags.Password))
+        input_text(WIDGETS_TI_PWD_CLEAR, (text = "password (clear)"))
+    }
+}
+
+def private TextInputCallbacksSection() {
+    tree_node(WIDGETS_TI_CALLBACKS,
+        (text = "Completion, History, Edit Callbacks",
+         flags = ImGuiTreeNodeFlags.None)) {
+        // Completion: append ".." at cursor on Tab.
+        input_text_callback(WIDGETS_TI_CB_COMPLETION, "Completion",
+            ImGuiInputTextFlags.CallbackCompletion,
+            @(var data : ImGuiInputTextCallbackData) : int {
+                data |> InsertChars(data.CursorPos, "..")
+                return 0
+            })
+        // History: Up replaces buffer with "Pressed Up!", Down with "Down".
+        input_text_callback(WIDGETS_TI_CB_HISTORY, "History",
+            ImGuiInputTextFlags.CallbackHistory,
+            @(var data : ImGuiInputTextCallbackData) : int {
+                if (data.EventKey == ImGuiKey.UpArrow) {
+                    data |> DeleteChars(0, data.BufTextLen)
+                    data |> InsertChars(0, "Pressed Up!")
+                    data |> SelectAll()
+                } elif (data.EventKey == ImGuiKey.DownArrow) {
+                    data |> DeleteChars(0, data.BufTextLen)
+                    data |> InsertChars(0, "Pressed Down!")
+                    data |> SelectAll()
+                }
+                return 0
+            })
+        // Edit: tally edit count. Cpp also toggles case of buf[0] each edit;
+        // daslang's `data.Buf` reads as `string const` and stripping the
+        // const for a 1-byte write into ImGui's caller-owned buffer doesn't
+        // land cleanly through the current reinterpret rails. Keeping the
+        // count-only behavior — the demo intent (callback fires per edit
+        // and can mutate caller state) is preserved.
+        input_text_callback(WIDGETS_TI_CB_EDIT, "Edit",
+            ImGuiInputTextFlags.CallbackEdit,
+            @(var data : ImGuiInputTextCallbackData) : int {
+                WIDGETS_TI_EDIT_COUNT++
+                return 0
+            })
+        same_line(WIDGETS_TI_CB_EDIT_SL)
+        text(WIDGETS_TI_CB_EDIT_COUNT, (text = "({WIDGETS_TI_EDIT_COUNT})"))
+    }
+}
+
+def private TextInputResizeSection() {
+    tree_node(WIDGETS_TI_RESIZE,
+        (text = "Resize Callback", flags = ImGuiTreeNodeFlags.None)) {
+        // `input_text_growable` wraps `ImGuiInputTextFlags_CallbackResize`
+        // internally and grows `state.buffer` past the initial capacity as
+        // the user types. Cpp demo uses an `ImVector<char>` to similar end —
+        // daslang's rail is single-line; the spirit (dynamic resize through
+        // a CallbackResize-driven buffer) is preserved.
+        input_text_growable(WIDGETS_TI_RESIZE_BUF, (text = "##MyStr"))
+        text(WIDGETS_TI_RESIZE_STATS,
+            (text = "Filled: {!empty(WIDGETS_TI_RESIZE_BUF.value)}"))
+    }
+}
+
+def private TextInputMiscSection() {
+    tree_node(WIDGETS_TI_MISC,
+        (text = "Miscellaneous", flags = ImGuiTreeNodeFlags.None)) {
+        edit_checkbox_flags(safe_addr(WIDGETS_TI_MISC_FLAGS),
+            (id = "WIDGETS_TI_MISC_F_ESC",
+             text = "ImGuiInputTextFlags_EscapeClearsAll",
+             flags_value = int(ImGuiInputTextFlags.EscapeClearsAll)))
+        edit_checkbox_flags(safe_addr(WIDGETS_TI_MISC_FLAGS),
+            (id = "WIDGETS_TI_MISC_F_RO",
+             text = "ImGuiInputTextFlags_ReadOnly",
+             flags_value = int(ImGuiInputTextFlags.ReadOnly)))
+        edit_checkbox_flags(safe_addr(WIDGETS_TI_MISC_FLAGS),
+            (id = "WIDGETS_TI_MISC_F_NOUNDO",
+             text = "ImGuiInputTextFlags_NoUndoRedo",
+             flags_value = int(ImGuiInputTextFlags.NoUndoRedo)))
+        input_text(WIDGETS_TI_MISC_BUF,
+            (text = "Hello",
+             flags = unsafe(reinterpret<ImGuiInputTextFlags>(WIDGETS_TI_MISC_FLAGS))))
+    }
+}
+
+
+// =============================================================================
+// Drag and Drop — cpp:2450-2591. Four sub-trees:
+//   Drag and drop in standard widgets   — ColorEdit3/4 auto-source/target.
+//   Drag and drop to copy/swap items    — 9-button grid with Copy/Move/Swap.
+//   Drag to reorder items (simple)      — 5 Selectables + IsItemActive query;
+//                                          no DnD API involved.
+//   Tooltip at target location          — 2 drop targets + ColorButton source.
+// =============================================================================
+
+def private DragDropSection() {
+    tree_node(WIDGETS_DD_SECTION,
+        (text = "Drag and Drop", flags = ImGuiTreeNodeFlags.None)) {
+        DragDropStandardSection()
+        DragDropCopySwapSection()
+        DragDropReorderSection()
+        DragDropTooltipSection()
+    }
+}
+
+def private DragDropStandardSection() {
+    tree_node(WIDGETS_DD_STD,
+        (text = "Drag and drop in standard widgets",
+         flags = ImGuiTreeNodeFlags.None)) {
+        // ColorEdit3/4 register themselves as DnD sources and targets for the
+        // built-in COLOR_3F / COLOR_4F payload types — no caller wiring needed.
+        color_edit3(WIDGETS_DD_STD_COL1,
+            (text = "color 1", init = float3(1.0f, 0.0f, 0.2f)))
+        color_edit4(WIDGETS_DD_STD_COL2,
+            (text = "color 2", init = float4(0.4f, 0.7f, 0.0f, 0.5f)))
+    }
+}
+
+def private DragDropCopySwapSection() {
+    tree_node(WIDGETS_DD_COPYSWAP,
+        (text = "Drag and drop to copy/swap items",
+         flags = ImGuiTreeNodeFlags.None)) {
+        // Mode picker — exclusive radio group. radio_button_int reports click
+        // events; the caller maintains the selected-index plain var. The
+        // widget's own visual selection state lives in RadioIntState and is
+        // separate from WIDGETS_DD_COPY_MODE (which drives the source preview
+        // text + target apply branch).
+        if (radio_button_int(WIDGETS_DD_COPY_R_COPY,
+                             (text = "Copy", v_button = 0))) {
+            WIDGETS_DD_COPY_MODE = 0
+        }
+        same_line(WIDGETS_DD_COPY_R_SL1)
+        if (radio_button_int(WIDGETS_DD_COPY_R_MOVE,
+                             (text = "Move", v_button = 1))) {
+            WIDGETS_DD_COPY_MODE = 1
+        }
+        same_line(WIDGETS_DD_COPY_R_SL2)
+        if (radio_button_int(WIDGETS_DD_COPY_R_SWAP,
+                             (text = "Swap", v_button = 2))) {
+            WIDGETS_DD_COPY_MODE = 2
+        }
+        // 9 buttons in a 3x3 grid. Each button is BOTH a drag source and a
+        // drag target — payload carries the source index, target applies the
+        // selected mode to the caller-owned names[] in place.
+        for (n in range(length(WIDGETS_DD_COPY_NAMES))) {
+            with_id("dd_copy_{n}") {
+                if ((n % 3) != 0) {
+                    same_line(WIDGETS_DD_COPY_SL[n])
+                }
+                button(WIDGETS_DD_COPY_BTN[n],
+                    (text = WIDGETS_DD_COPY_NAMES[n],
+                     size = float2(60.0f, 60.0f)))
+                drag_drop_source(WIDGETS_DD_COPY_SRC[n],
+                                  (flags = ImGuiDragDropFlags.None)) {
+                    unsafe {
+                        var src_n = n
+                        SetDragDropPayload("DND_DEMO_CELL", addr(src_n),
+                            uint64(typeinfo sizeof(src_n)), ImGuiCond.None)
+                    }
+                    let verb = (WIDGETS_DD_COPY_MODE == 0 ? "Copy"
+                                 : (WIDGETS_DD_COPY_MODE == 1 ? "Move" : "Swap"))
+                    text(WIDGETS_DD_COPY_PREVIEW[n],
+                        (text = "{verb} {WIDGETS_DD_COPY_NAMES[n]}"))
+                }
+                drag_drop_target(WIDGETS_DD_COPY_TGT[n]) {
+                    let payload = AcceptDragDropPayload("DND_DEMO_CELL",
+                                                        ImGuiDragDropFlags.None)
+                    if (payload != null) {
+                        var payload_n = 0
+                        unsafe {
+                            payload_n = (reinterpret<int? const>(payload.Data))[0]
+                        }
+                        if (WIDGETS_DD_COPY_MODE == 0) {
+                            WIDGETS_DD_COPY_NAMES[n] = WIDGETS_DD_COPY_NAMES[payload_n]
+                        } elif (WIDGETS_DD_COPY_MODE == 1) {
+                            WIDGETS_DD_COPY_NAMES[n] = WIDGETS_DD_COPY_NAMES[payload_n]
+                            WIDGETS_DD_COPY_NAMES[payload_n] = ""
+                        } else {
+                            let tmp = WIDGETS_DD_COPY_NAMES[n]
+                            WIDGETS_DD_COPY_NAMES[n] = WIDGETS_DD_COPY_NAMES[payload_n]
+                            WIDGETS_DD_COPY_NAMES[payload_n] = tmp
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+def private DragDropReorderSection() {
+    tree_node(WIDGETS_DD_REORDER,
+        (text = "Drag to reorder items (simple)",
+         flags = ImGuiTreeNodeFlags.None)) {
+        // No DnD API here — cpp uses IsItemActive + GetMouseDragDelta + swap
+        // to reorder neighbors. Selectables are stateless rows; we report a
+        // ToggleState per row only because selectable's first slot needs one.
+        for (n in range(length(WIDGETS_DD_REORDER_NAMES))) {
+            selectable(WIDGETS_DD_REORDER_ROW[n],
+                (text = WIDGETS_DD_REORDER_NAMES[n]))
+            if (IsItemActive() && !IsItemHovered(ImGuiHoveredFlags.None)) {
+                let delta_y = GetMouseDragDelta(ImGuiMouseButton.Left, -1.0f).y
+                let n_next = n + (delta_y < 0.0f ? -1 : 1)
+                if (n_next >= 0 && n_next < length(WIDGETS_DD_REORDER_NAMES)) {
+                    let tmp = WIDGETS_DD_REORDER_NAMES[n]
+                    WIDGETS_DD_REORDER_NAMES[n] = WIDGETS_DD_REORDER_NAMES[n_next]
+                    WIDGETS_DD_REORDER_NAMES[n_next] = tmp
+                    ResetMouseDragDelta(ImGuiMouseButton.Left)
+                }
+            }
+        }
+    }
+}
+
+def private DragDropTooltipSection() {
+    tree_node(WIDGETS_DD_TIP,
+        (text = "Tooltip at target location",
+         flags = ImGuiTreeNodeFlags.None)) {
+        // 2 drop-target buttons + 1 ColorButton drag source.
+        // AcceptBeforeDelivery + AcceptNoPreviewTooltip changes payload arrival
+        // semantics — cpp uses this to take over the cursor + tooltip during
+        // hover. We force NotAllowed + "Cannot drop here!" tooltip on hover.
+        for (n in range(2)) {
+            with_id("dd_tip_{n}") {
+                button(WIDGETS_DD_TIP_BTN[n],
+                    (text = n == 0 ? "drop here##0" : "drop here##1"))
+                drag_drop_target(WIDGETS_DD_TIP_TGT[n]) {
+                    let drop_flags = (ImGuiDragDropFlags.AcceptBeforeDelivery |
+                                      ImGuiDragDropFlags.AcceptNoPreviewTooltip)
+                    let payload = AcceptDragDropPayload("_COL4F", drop_flags)
+                    if (payload != null) {
+                        SetMouseCursor(ImGuiMouseCursor.NotAllowed)
+                        set_tooltip(WIDGETS_DD_TIP_NO[n], (text = "Cannot drop here!"))
+                    }
+                }
+                if (n == 0) {
+                    color_button(WIDGETS_DD_TIP_SRC,
+                        (desc_id = "drag me",
+                         col = float4(1.0f, 0.0f, 0.2f, 1.0f),
+                         size = float2(0.0f, 0.0f),
+                         flags = ImGuiColorEditFlags.None))
+                }
+            }
+        }
     }
 }
