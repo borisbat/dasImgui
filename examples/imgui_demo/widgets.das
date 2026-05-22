@@ -129,10 +129,21 @@ var private WIDGETS_PLOT_REFRESH_TIME = 0.0lf
 var private WIDGETS_PLOT_PHASE = 0.0f
 let private WIDGETS_PLOT_FRAMETIMES : array<float> <- [0.6f, 0.1f, 1.0f, 0.5f,
                                                        0.92f, 0.1f, 0.2f]
+let private WIDGETS_PLOT_FUNC_ITEMS : array<string> <- ["Sin", "Saw"]
 
-// Progress Bars: animation state (cpp:1964); fraction wraps in [-0.1, 1.1].
+// Progress Bars: animation state (cpp:1964); ping-pongs between -0.1 and 1.1.
 var private WIDGETS_PROGRESS = 0.0f
 var private WIDGETS_PROGRESS_DIR = 1.0f
+
+// Combo "one-liner" items (cpp:1332) — hoisted to module-scope to avoid the
+// per-frame heap allocation of the inline form.
+let private WIDGETS_COMBO_ONELINER_ITEMS : array<string> <- ["aaaa", "bbbb",
+                                                             "cccc", "dddd", "eeee"]
+
+// Text Filter lines (cpp:2828) — hoisted to module-scope, same reason.
+let private WIDGETS_TF_LINES : array<string> <- ["aaa1.c", "bbb1.c", "ccc1.c",
+                                                 "aaa2.cpp", "bbb2.cpp", "ccc2.cpp",
+                                                 "abc.h", "hello, world"]
 
 // Vertical Sliders: three groups of state (cpp:2390 / 2394 / 2414).
 //   *_INT_PTR / *_VALUES{,_2} are caller-owned data fed to edit_vslider_*;
@@ -149,6 +160,26 @@ var private WIDGETS_VS_SET3 : table<int; EmptyMarkerState>
 var private WIDGETS_VS_GROUP : table<int; GroupState>
 var private WIDGETS_VS_TIP1 : table<int; NarrativeState>
 var private WIDGETS_VS_TIP2 : table<int; NarrativeState>
+
+// Tabs/Advanced & Close: bit-bag for ImGuiTabBarFlags driven by 6 checkboxes;
+// per-tab state lives in WIDGETS_TABS_ADV_ITEM so the X-button writes the
+// same `open` slot the checkbox row reads/writes via unsafe(addr).
+var private WIDGETS_TABS_ADV_FLAGS = int(ImGuiTabBarFlags.Reorderable)
+var private WIDGETS_TABS_ADV_ITEM : table<int; TabItemState>
+var private WIDGETS_TABS_ADV_TOGGLE : table<int; EmptyMarkerState>
+var private WIDGETS_TABS_ADV_BODY : table<int; NarrativeState>
+let private WIDGETS_TABS_ADV_NAMES : array<string> <- ["Artichoke", "Beetroot",
+                                                       "Celery", "Daikon"]
+
+// Tabs/TabItemButton & Leading/Trailing: dynamic tab list driven by the "+"
+// trailing button. `NEXT_ID == 0` is the seed sentinel — the section function
+// fills 3 initial tabs on first frame (mirrors cpp:1828-1831).
+var private WIDGETS_TABS_LT_FLAGS = int(ImGuiTabBarFlags.AutoSelectNewTabs |
+                                        ImGuiTabBarFlags.Reorderable |
+                                        ImGuiTabBarFlags.FittingPolicyResizeDown)
+var private WIDGETS_TABS_LT_ACTIVE : array<int>
+var private WIDGETS_TABS_LT_NEXT_ID = 0
+var private WIDGETS_TABS_LT_DYN : table<int; TabItemState>
 
 
 // =============================================================================
@@ -172,6 +203,7 @@ def ShowDemoWindowWidgets() {
                 ImagesSection()
                 ComboSection()
                 ListBoxesSection()
+                TabsSection()
                 PlottingSection()
                 ProgressBarsSection()
                 RangeWidgetsSection()
@@ -1023,9 +1055,10 @@ def private ComboSection() {
 
         // combo 2 — one-liner; cpp packs into "aaaa\0bbbb\0..."; boost combo
         // takes array<string> and packs the same null-separated buffer internally.
+        // Module-scope const items avoid per-frame heap-allocation churn.
         combo(WIDGETS_COMBO_C2,
             (text = "combo 2 (one-liner)",
-             items <- ["aaaa", "bbbb", "cccc", "dddd", "eeee"]))
+             items <- WIDGETS_COMBO_ONELINER_ITEMS))
 
         // combo 3 — array form sharing the full 14-item list. cpp starts at
         // -1 so no preview shows initially; daslang state defaults to 0, so we
@@ -1153,7 +1186,8 @@ def private PlottingSection() {
         // Sin / Saw lambda-driven plots via *_getter (cpp:1941-1954).
         separator_text(WIDGETS_PLOT_SEP_FUNC, "Functions")
         with_item_width(GetFontSize() * 8.0f) {
-            combo(WIDGETS_PLOT_FUNC, (text = "func", items <- ["Sin", "Saw"]))
+            combo(WIDGETS_PLOT_FUNC,
+                (text = "func", items <- WIDGETS_PLOT_FUNC_ITEMS))
         }
         same_line(WIDGETS_PLOT_SL_FUNC)
         slider_int(WIDGETS_PLOT_SAMPLE_COUNT,
@@ -1478,7 +1512,7 @@ def private TextFilterSection() {
         text_disabled("(?)")
         item_tooltip(WIDGETS_TF_HM) {
             with_text_wrap_pos(GetFontSize() * 35.0f) {
-                text_unformatted("Not a widget per-se, but ImGuiTextFilter is a helper to perform simple filtering on text strings.")
+                text_unformatted("Not a widget per se, but ImGuiTextFilter is a helper to perform simple filtering on text strings.")
             }
         }
 
@@ -1491,14 +1525,241 @@ def private TextFilterSection() {
         text_filter(WIDGETS_TF_FILTER,
             (text = "Filter (\"incl,-excl\") (\"error\")"))
 
-        // Bullet each line that survives the filter. Lines are hard-coded
-        // per cpp:2828 — the boost wrapper reads passes_filter(state, line).
-        let lines <- ["aaa1.c", "bbb1.c", "ccc1.c", "aaa2.cpp",
-                      "bbb2.cpp", "ccc2.cpp", "abc.h", "hello, world"]
-        for (i in range(length(lines))) {
-            if (passes_filter(WIDGETS_TF_FILTER, lines[i])) {
-                bullet_text(WIDGETS_TF_LINE[i], (text = lines[i]))
+        // Bullet each line that survives the filter. Lines are module-scope
+        // const (WIDGETS_TF_LINES) to avoid the per-frame heap alloc that an
+        // inline `let lines <- [...]` would leak.
+        for (i in range(length(WIDGETS_TF_LINES))) {
+            if (passes_filter(WIDGETS_TF_FILTER, WIDGETS_TF_LINES[i])) {
+                bullet_text(WIDGETS_TF_LINE[i], (text = WIDGETS_TF_LINES[i]))
             }
         }
+    }
+}
+
+
+// =============================================================================
+// Tabs — cpp:1752-1891. Three sub-trees:
+//   Basic                                — 3 static tab_items
+//   Advanced & Close Button              — flag-toggle row + 4 closable tabs
+//                                          with bidirectional checkbox↔tab.open
+//                                          binding (cpp shares `bool opened[4]`)
+//   TabItemButton & Leading/Trailing     — dynamic active_tabs list, "?" help
+//                                          popup, "+" add-tab trigger
+// =============================================================================
+
+def private TabsSection() {
+    tree_node(WIDGETS_TABS_SECTION,
+        (text = "Tabs", flags = ImGuiTreeNodeFlags.None)) {
+        TabsBasicSection()
+        TabsAdvancedSection()
+        TabsLeadingTrailingSection()
+    }
+}
+
+def private TabsBasicSection() {
+    tree_node(WIDGETS_TABS_BASIC,
+        (text = "Basic", flags = ImGuiTreeNodeFlags.None)) {
+        tab_bar(WIDGETS_TABS_B_BAR,
+            (text = "MyTabBar", flags = ImGuiTabBarFlags.None)) {
+            tab_item(WIDGETS_TABS_B_AVOCADO,
+                (text = "Avocado", closable = false,
+                 flags = ImGuiTabItemFlags.None)) {
+                text(WIDGETS_TABS_B_AV_TEXT,
+                    (text = "This is the Avocado tab!\nblah blah blah blah blah"))
+            }
+            tab_item(WIDGETS_TABS_B_BROCCOLI,
+                (text = "Broccoli", closable = false,
+                 flags = ImGuiTabItemFlags.None)) {
+                text(WIDGETS_TABS_B_BR_TEXT,
+                    (text = "This is the Broccoli tab!\nblah blah blah blah blah"))
+            }
+            tab_item(WIDGETS_TABS_B_CUCUMBER,
+                (text = "Cucumber", closable = false,
+                 flags = ImGuiTabItemFlags.None)) {
+                text(WIDGETS_TABS_B_CU_TEXT,
+                    (text = "This is the Cucumber tab!\nblah blah blah blah blah"))
+            }
+        }
+        separator(WIDGETS_TABS_B_SEP)
+    }
+}
+
+def private TabsAdvancedSection() {
+    tree_node(WIDGETS_TABS_ADV,
+        (text = "Advanced & Close Button", flags = ImGuiTreeNodeFlags.None)) {
+        // 4 plain flag-bit toggles.
+        edit_checkbox_flags(safe_addr(WIDGETS_TABS_ADV_FLAGS),
+            (id = "WIDGETS_TABS_ADV_F_REORDER",
+             text = "ImGuiTabBarFlags_Reorderable",
+             flags_value = int(ImGuiTabBarFlags.Reorderable)))
+        edit_checkbox_flags(safe_addr(WIDGETS_TABS_ADV_FLAGS),
+            (id = "WIDGETS_TABS_ADV_F_AUTO",
+             text = "ImGuiTabBarFlags_AutoSelectNewTabs",
+             flags_value = int(ImGuiTabBarFlags.AutoSelectNewTabs)))
+        edit_checkbox_flags(safe_addr(WIDGETS_TABS_ADV_FLAGS),
+            (id = "WIDGETS_TABS_ADV_F_POPUP",
+             text = "ImGuiTabBarFlags_TabListPopupButton",
+             flags_value = int(ImGuiTabBarFlags.TabListPopupButton)))
+        edit_checkbox_flags(safe_addr(WIDGETS_TABS_ADV_FLAGS),
+            (id = "WIDGETS_TABS_ADV_F_NOMID",
+             text = "ImGuiTabBarFlags_NoCloseWithMiddleMouseButton",
+             flags_value = int(ImGuiTabBarFlags.NoCloseWithMiddleMouseButton)))
+        // Fitting-policy bits are mutually exclusive; default to ResizeDown if
+        // none is set (cpp:1790-1791) so the bar never gets a malformed mask.
+        let POLICY_MASK = int(ImGuiTabBarFlags.FittingPolicyMask_)
+        if ((WIDGETS_TABS_ADV_FLAGS & POLICY_MASK) == 0) {
+            WIDGETS_TABS_ADV_FLAGS |= int(ImGuiTabBarFlags.FittingPolicyDefault_)
+        }
+        if (edit_checkbox_flags(safe_addr(WIDGETS_TABS_ADV_FLAGS),
+            (id = "WIDGETS_TABS_ADV_F_FIT_RESIZE",
+             text = "ImGuiTabBarFlags_FittingPolicyResizeDown",
+             flags_value = int(ImGuiTabBarFlags.FittingPolicyResizeDown)))) {
+            WIDGETS_TABS_ADV_FLAGS &= ~(POLICY_MASK ^
+                                        int(ImGuiTabBarFlags.FittingPolicyResizeDown))
+        }
+        if (edit_checkbox_flags(safe_addr(WIDGETS_TABS_ADV_FLAGS),
+            (id = "WIDGETS_TABS_ADV_F_FIT_SCROLL",
+             text = "ImGuiTabBarFlags_FittingPolicyScroll",
+             flags_value = int(ImGuiTabBarFlags.FittingPolicyScroll)))) {
+            WIDGETS_TABS_ADV_FLAGS &= ~(POLICY_MASK ^
+                                        int(ImGuiTabBarFlags.FittingPolicyScroll))
+        }
+
+        // Row of 4 checkboxes — bidir-bound to WIDGETS_TABS_ADV_ITEM[n].open via
+        // unsafe(addr). The X-button on each tab writes the same `open` slot,
+        // so closing a tab unticks the matching row checkbox; ticking re-shows.
+        for (n in range(length(WIDGETS_TABS_ADV_NAMES))) {
+            if (n > 0) {
+                same_line(WIDGETS_TABS_ADV_TOGGLE[n])
+            }
+            // Auto-insert the table slot ahead of addr() so the storage exists
+            // before the pointer is taken (table[k] inserts default on miss).
+            if (!key_exists(WIDGETS_TABS_ADV_ITEM, n)) {
+                WIDGETS_TABS_ADV_ITEM[n] = TabItemState(open = true)
+            }
+            with_id("adv_cb_{n}") {
+                edit_checkbox(unsafe(addr(WIDGETS_TABS_ADV_ITEM[n].open)),
+                    (id = "WIDGETS_TABS_ADV_CB", text = WIDGETS_TABS_ADV_NAMES[n]))
+            }
+        }
+
+        tab_bar(WIDGETS_TABS_ADV_BAR,
+            (text = "MyTabBar",
+             flags = unsafe(reinterpret<ImGuiTabBarFlags>(WIDGETS_TABS_ADV_FLAGS)))) {
+            for (n in range(length(WIDGETS_TABS_ADV_NAMES))) {
+                // Skip BeginTabItem entirely when state.open is false — closable
+                // tab_item already does this internally, but the explicit gate
+                // matches cpp:1810-1811's `if (opened[n] && BeginTabItem(...))`.
+                if (WIDGETS_TABS_ADV_ITEM[n].open) {
+                    tab_item(WIDGETS_TABS_ADV_ITEM[n],
+                        (text = WIDGETS_TABS_ADV_NAMES[n], closable = true,
+                         flags = ImGuiTabItemFlags.None)) {
+                        text(WIDGETS_TABS_ADV_BODY[n],
+                            (text = "This is the {WIDGETS_TABS_ADV_NAMES[n]} tab!"))
+                        // cpp adds an "odd tab" hint for n & 1 — drop the extra
+                        // text widget to keep state-global churn low (the demo
+                        // value of the hint is minimal).
+                    }
+                }
+            }
+        }
+        separator(WIDGETS_TABS_ADV_SEP)
+    }
+}
+
+def private TabsLeadingTrailingSection() {
+    tree_node(WIDGETS_TABS_LT,
+        (text = "TabItemButton & Leading/Trailing flags",
+         flags = ImGuiTreeNodeFlags.None)) {
+
+        // Seed 3 tabs on first frame (cpp:1828-1831). NEXT_ID==0 is the
+        // sentinel; once incremented past 0 the seed never re-fires.
+        if (WIDGETS_TABS_LT_NEXT_ID == 0) {
+            WIDGETS_TABS_LT_ACTIVE |> reserve(3)
+            for (_ in range(3)) {
+                WIDGETS_TABS_LT_ACTIVE |> push(WIDGETS_TABS_LT_NEXT_ID)
+                WIDGETS_TABS_LT_NEXT_ID++
+            }
+        }
+
+        checkbox(WIDGETS_TABS_LT_SHOW_LEAD,
+            (text = "Show Leading TabItemButton()", init = true))
+        checkbox(WIDGETS_TABS_LT_SHOW_TRAIL,
+            (text = "Show Trailing TabItemButton()", init = true))
+
+        edit_checkbox_flags(safe_addr(WIDGETS_TABS_LT_FLAGS),
+            (id = "WIDGETS_TABS_LT_F_POPUP",
+             text = "ImGuiTabBarFlags_TabListPopupButton",
+             flags_value = int(ImGuiTabBarFlags.TabListPopupButton)))
+        let LT_POLICY_MASK = int(ImGuiTabBarFlags.FittingPolicyMask_)
+        if (edit_checkbox_flags(safe_addr(WIDGETS_TABS_LT_FLAGS),
+            (id = "WIDGETS_TABS_LT_F_FIT_RESIZE",
+             text = "ImGuiTabBarFlags_FittingPolicyResizeDown",
+             flags_value = int(ImGuiTabBarFlags.FittingPolicyResizeDown)))) {
+            WIDGETS_TABS_LT_FLAGS &= ~(LT_POLICY_MASK ^
+                                       int(ImGuiTabBarFlags.FittingPolicyResizeDown))
+        }
+        if (edit_checkbox_flags(safe_addr(WIDGETS_TABS_LT_FLAGS),
+            (id = "WIDGETS_TABS_LT_F_FIT_SCROLL",
+             text = "ImGuiTabBarFlags_FittingPolicyScroll",
+             flags_value = int(ImGuiTabBarFlags.FittingPolicyScroll)))) {
+            WIDGETS_TABS_LT_FLAGS &= ~(LT_POLICY_MASK ^
+                                       int(ImGuiTabBarFlags.FittingPolicyScroll))
+        }
+
+        tab_bar(WIDGETS_TABS_LT_BAR,
+            (text = "MyTabBar",
+             flags = unsafe(reinterpret<ImGuiTabBarFlags>(WIDGETS_TABS_LT_FLAGS)))) {
+            // Leading "?" — opens a help popup on click. The popup_window MUST
+            // sit OUTSIDE the if(show_leading) gate (cpp:1855) so the
+            // popup state machine still runs even when the trigger is hidden.
+            if (WIDGETS_TABS_LT_SHOW_LEAD.value) {
+                if (tab_item_button(WIDGETS_TABS_LT_HELP_BTN,
+                    (text = "?",
+                     flags = ImGuiTabItemFlags.Leading |
+                             ImGuiTabItemFlags.NoTooltip))) {
+                    open_popup("MyHelpMenu")
+                }
+            }
+            popup_window(WIDGETS_TABS_LT_HELP_POPUP,
+                (str_id = "MyHelpMenu", flags = ImGuiWindowFlags.None)) {
+                selectable(WIDGETS_TABS_LT_HELP_HELLO, (text = "Hello!"))
+            }
+
+            // Trailing "+" — append a new tab id; AutoSelectNewTabs flag will
+            // focus it on creation.
+            if (WIDGETS_TABS_LT_SHOW_TRAIL.value) {
+                if (tab_item_button(WIDGETS_TABS_LT_ADD_BTN,
+                    (text = "+",
+                     flags = ImGuiTabItemFlags.Trailing |
+                             ImGuiTabItemFlags.NoTooltip))) {
+                    WIDGETS_TABS_LT_ACTIVE |> push(WIDGETS_TABS_LT_NEXT_ID)
+                    WIDGETS_TABS_LT_NEXT_ID++
+                }
+            }
+
+            // Render current tabs; drop entries whose X was clicked. Iterating
+            // backwards lets `erase(n)` shrink the array without skipping.
+            var n = 0
+            while (n < length(WIDGETS_TABS_LT_ACTIVE)) {
+                let tab_id = WIDGETS_TABS_LT_ACTIVE[n]
+                if (!key_exists(WIDGETS_TABS_LT_DYN, tab_id)) {
+                    WIDGETS_TABS_LT_DYN[tab_id] = TabItemState(open = true)
+                }
+                tab_item(WIDGETS_TABS_LT_DYN[tab_id],
+                    (text = "{tab_id:04}", closable = true,
+                     flags = ImGuiTabItemFlags.None)) {
+                    text(WIDGETS_TABS_LT_BODY, (text = "This is tab {tab_id}!"))
+                }
+                if (!WIDGETS_TABS_LT_DYN[tab_id].open) {
+                    WIDGETS_TABS_LT_ACTIVE |> erase(n)
+                    // Leave the table entry — IDs never get reused (NEXT_ID
+                    // monotonically increments), so no key-collision risk.
+                } else {
+                    n++
+                }
+            }
+        }
+        separator(WIDGETS_TABS_LT_SEP)
     }
 }

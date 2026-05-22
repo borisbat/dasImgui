@@ -163,6 +163,28 @@ def button(var state : ClickState; text : string;
 }
 
 [widget]
+def tab_item_button(var state : ClickState; text : string;
+                    flags : ImGuiTabItemFlags = ImGuiTabItemFlags.None) : bool {
+    //! `TabItemButton(label, flags)` — a button styled as a tab. No content
+    //! pane (unlike `tab_item`); use for Leading-/Trailing-anchored controls
+    //! (e.g. "+" to add tabs, "?" to open a help popup). Click semantics
+    //! mirror `button`: returns true on click; `state.click_count`
+    //! accumulates. Must be called INSIDE a `tab_bar` body.
+    let im_clicked = TabItemButton(text, flags)
+    var clicked = im_clicked
+    if (state.pending_click) {
+        state.pending_click = false
+        clicked = true
+    }
+    state.clicked = clicked
+    if (clicked) {
+        state.click_count++
+    }
+    click_finalize(widget_ident, "tab_item_button", state)
+    return clicked
+}
+
+[widget]
 def small_button(var state : ClickState; text : string) : bool {
     let im_clicked = SmallButton(text)
     var clicked = im_clicked
