@@ -43,6 +43,7 @@ let private ALLOWED_IMGUI : table<string> <- {
     "IsItemActivated", "IsItemDeactivated", "IsItemDeactivatedAfterEdit",
     "IsItemToggledOpen", "IsItemVisible", "IsItemEdited",
     "IsAnyItemHovered", "IsAnyItemActive", "IsAnyItemFocused",
+    "IsWindowFocused", "IsWindowHovered",
     // Mouse / keyboard state queries — pure reads, no widget host.
     "GetMousePos", "GetMousePosOnOpeningCurrentPopup", "IsMousePosValid",
     "IsMouseDown", "IsMouseClicked", "IsMouseReleased", "IsMouseDoubleClicked",

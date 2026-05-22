@@ -27,9 +27,10 @@ require math
 //   Disable block (2808), Text Filter (2816)
 //   + Tier-B: Selectables (1396), Text Input (1558), Tabs (1752), Drag and Drop
 //   (2450).
+//   + Tier-C: Drag/Slider Flags (2183), Querying Item Status (2594),
+//     Querying Window Status (2706).
 //
-// Remaining stubs (Tier C/D): Color/Picker, Drag/Slider Flags, Data Types,
-// Querying Item/Window Status.
+// Remaining stubs (Tier C/D): Color/Picker, Data Types.
 //
 // Boost-surface conventions for this port (masterplan §"Static-state pattern"):
 //   - Value-owning widgets — checkbox / radio_button_int / slider_* / drag_* /
@@ -245,6 +246,49 @@ var private WIDGETS_DD_TIP_BTN : table<int; ClickState>
 var private WIDGETS_DD_TIP_TGT : table<int; DragDropTargetState>
 var private WIDGETS_DD_TIP_NO : table<int; NarrativeState>
 
+// Drag/Slider Flags (cpp:2183) — one int holding the ImGuiSliderFlags bitset
+// (driven by 4 edit_checkbox_flags), shared by all 5 drag + 2 slider widgets
+// via the `flags = ...` argument. Underlying drag_f / slider_f / drag_i /
+// slider_i mirror cpp's `static` locals: each widget routes through
+// edit_drag_* / edit_slider_* against a plain `?` ptr so the value is shared
+// across the multiple drag/slider entries that hit the SAME float/int
+// (cpp:2197-2200 — four DragFloat calls all editing one `drag_f`).
+var private WIDGETS_DSF_FLAGS = int(ImGuiSliderFlags.None)
+var private WIDGETS_DSF_DRAG_F = 0.5f
+var private WIDGETS_DSF_DRAG_I = 50
+var private WIDGETS_DSF_SLIDER_F = 0.5f
+var private WIDGETS_DSF_SLIDER_I = 50
+
+// Querying Item Status (cpp:2594) — Combo-driven dispatcher cycling among 16
+// item kinds. The 4 InputText / scalar / color widgets share the same
+// underlying col4f array + str buffer (cpp:2613-2615) via edit_* rails; the
+// 12 self-contained widgets get their own state global per item-type branch
+// so the [widget] macro's "fixed state struct per ident" rule isn't violated.
+var private WIDGETS_QIS_DISABLED = false
+var private WIDGETS_QIS_F1 = 1.0f
+var private WIDGETS_QIS_F1B = 0.5f
+var private WIDGETS_QIS_F3 : float3 = float3(1.0f, 0.5f, 0.0f)
+var private WIDGETS_QIS_COL4F : float4 = float4(1.0f, 0.5f, 0.0f, 1.0f)
+let private WIDGETS_QIS_TYPES : array<string> <- ["Text", "Button", "Button (w/ repeat)",
+                                                  "Checkbox", "SliderFloat", "InputText",
+                                                  "InputTextMultiline", "InputFloat",
+                                                  "InputFloat3", "ColorEdit4", "Selectable",
+                                                  "MenuItem", "TreeNode",
+                                                  "TreeNode (w/ double-click)",
+                                                  "Combo", "ListBox"]
+let private WIDGETS_QIS_FRUITS : array<string> <- ["Apple", "Banana", "Cherry", "Kiwi"]
+// Per-item-type widget states are auto-emitted by the [widget] macro from the
+// IDENT name (singleton state structs need no explicit declaration). Only the
+// ListBox row table needs an explicit declaration — the macro can't infer
+// indexed `IDENT[k]` shapes.
+var private WIDGETS_QIS_LB_ROW : table<int; ToggleState>
+
+// Querying Window Status (cpp:2706) — one outer-child toggle + one
+// title-bar test window (secondary Begin/End). The cpp inner child uses a
+// fixed 50-px tall scroll region; we mirror via the boost `child` rail.
+var private WIDGETS_QWS_EMBED = false
+var private WIDGETS_QWS_TEST = false
+
 
 // =============================================================================
 // Helpers
@@ -276,6 +320,9 @@ def ShowDemoWindowWidgets() {
                 MultiComponentSection()
                 VerticalSlidersSection()
                 DragDropSection()
+                DragSliderFlagsSection()
+                QueryingItemStatusSection()
+                QueryingWindowStatusSection()
             }
             // "Disable block" exposes the WIDGETS_DISABLE_ALL checkbox itself;
             // it would be hidden by its own gate inside with_disabled, so it
@@ -2390,6 +2437,378 @@ def private DragDropTooltipSection() {
                          flags = ImGuiColorEditFlags.None))
                 }
             }
+        }
+    }
+}
+
+
+// =============================================================================
+// Drag/Slider Flags — cpp:2183-2215
+// =============================================================================
+
+def private DragSliderFlagsSection() {
+    tree_node(WIDGETS_DRAG_SLIDER_FLAGS,
+        (text = "Drag/Slider Flags", flags = ImGuiTreeNodeFlags.None)) {
+        // 4 flag-bit toggles against a shared int holding the ImGuiSliderFlags
+        // bitset. HelpMarker tooltips dropped per the same precedent as the
+        // multi-select sub-tree (cpp:1518) — the flag names themselves are
+        // documentation.
+        edit_checkbox_flags(safe_addr(WIDGETS_DSF_FLAGS),
+            (id = "WIDGETS_DSF_F_CLAMP",
+             text = "ImGuiSliderFlags_AlwaysClamp",
+             flags_value = int(ImGuiSliderFlags.AlwaysClamp)))
+        edit_checkbox_flags(safe_addr(WIDGETS_DSF_FLAGS),
+            (id = "WIDGETS_DSF_F_LOG",
+             text = "ImGuiSliderFlags_Logarithmic",
+             flags_value = int(ImGuiSliderFlags.Logarithmic)))
+        edit_checkbox_flags(safe_addr(WIDGETS_DSF_FLAGS),
+            (id = "WIDGETS_DSF_F_NORTF",
+             text = "ImGuiSliderFlags_NoRoundToFormat",
+             flags_value = int(ImGuiSliderFlags.NoRoundToFormat)))
+        edit_checkbox_flags(safe_addr(WIDGETS_DSF_FLAGS),
+            (id = "WIDGETS_DSF_F_NOINPUT",
+             text = "ImGuiSliderFlags_NoInput",
+             flags_value = int(ImGuiSliderFlags.NoInput)))
+
+        // All 4 DragFloat widgets share WIDGETS_DSF_DRAG_F (mirrors cpp's
+        // single `static float drag_f`). The 5th drags the int. flags-bitset
+        // is widened back from the int holder via reinterpret (same pattern as
+        // TabsAdvancedSection).
+        let flags = unsafe(reinterpret<ImGuiSliderFlags>(WIDGETS_DSF_FLAGS))
+        text("Underlying float value: {WIDGETS_DSF_DRAG_F}")
+        edit_drag_float(safe_addr(WIDGETS_DSF_DRAG_F),
+            (id = "WIDGETS_DSF_DRAG_F_01", text = "DragFloat (0 -> 1)",
+             speed = 0.005f, v_min = 0.0f, v_max = 1.0f,
+             format = "%.3f", flags = flags))
+        edit_drag_float(safe_addr(WIDGETS_DSF_DRAG_F),
+            (id = "WIDGETS_DSF_DRAG_F_0INF", text = "DragFloat (0 -> +inf)",
+             speed = 0.005f, v_min = 0.0f, v_max = FLT_MAX,
+             format = "%.3f", flags = flags))
+        edit_drag_float(safe_addr(WIDGETS_DSF_DRAG_F),
+            (id = "WIDGETS_DSF_DRAG_F_NINF1", text = "DragFloat (-inf -> 1)",
+             speed = 0.005f, v_min = -FLT_MAX, v_max = 1.0f,
+             format = "%.3f", flags = flags))
+        edit_drag_float(safe_addr(WIDGETS_DSF_DRAG_F),
+            (id = "WIDGETS_DSF_DRAG_F_BOTH", text = "DragFloat (-inf -> +inf)",
+             speed = 0.005f, v_min = -FLT_MAX, v_max = FLT_MAX,
+             format = "%.3f", flags = flags))
+        edit_drag_int(safe_addr(WIDGETS_DSF_DRAG_I),
+            (id = "WIDGETS_DSF_DRAG_I_100", text = "DragInt (0 -> 100)",
+             speed = 0.5f, v_min = 0, v_max = 100,
+             format = "%d", flags = flags))
+
+        text("Underlying float value: {WIDGETS_DSF_SLIDER_F}")
+        edit_slider_float(safe_addr(WIDGETS_DSF_SLIDER_F),
+            (id = "WIDGETS_DSF_SLIDER_F_01", text = "SliderFloat (0 -> 1)",
+             v_min = 0.0f, v_max = 1.0f,
+             format = "%.3f", flags = flags))
+        edit_slider_int(safe_addr(WIDGETS_DSF_SLIDER_I),
+            (id = "WIDGETS_DSF_SLIDER_I_100", text = "SliderInt (0 -> 100)",
+             v_min = 0, v_max = 100,
+             format = "%d", flags = flags))
+    }
+}
+
+
+// =============================================================================
+// Querying Item Status — cpp:2594-2702
+// =============================================================================
+
+def private QueryingItemStatusSection() {
+    tree_node(WIDGETS_QIS_SECTION,
+        (text = "Querying Item Status (Edited/Active/Hovered etc.)",
+         flags = ImGuiTreeNodeFlags.None)) {
+
+        // Item-type picker (16 entries). cpp seeds item_type = 4 (SliderFloat)
+        // on first frame — mirror via `init = 4`.
+        combo(WIDGETS_QIS_TYPE_PICK,
+            (text = "Item Type", init = 4, items <- WIDGETS_QIS_TYPES))
+        edit_checkbox(safe_addr(WIDGETS_QIS_DISABLED),
+            (id = "WIDGETS_QIS_DIS_CB", text = "Item Disabled"))
+
+        let item_type = WIDGETS_QIS_TYPE_PICK.value
+        var ret = false
+
+        with_disabled(WIDGETS_QIS_DISABLED) {
+            // 16-way dispatcher. Each branch renders ONE widget per frame, so
+            // each per-type state global only sees one render per frame and
+            // check_unique_render is satisfied.
+            if (item_type == 0) {
+                text("ITEM: Text")
+            } elif (item_type == 1) {
+                ret = button(WIDGETS_QIS_BTN, (text = "ITEM: Button"))
+            } elif (item_type == 2) {
+                with_button_repeat(true) {
+                    ret = button(WIDGETS_QIS_BTN_REPEAT, (text = "ITEM: Button"))
+                }
+            } elif (item_type == 3) {
+                ret = checkbox(WIDGETS_QIS_CHK, (text = "ITEM: Checkbox"))
+            } elif (item_type == 4) {
+                ret = edit_slider_float(safe_addr(WIDGETS_QIS_F1B),
+                    (id = "WIDGETS_QIS_SLF", text = "ITEM: SliderFloat",
+                     v_min = 0.0f, v_max = 1.0f))
+            } elif (item_type == 5) {
+                ret = input_text(WIDGETS_QIS_INPUT_TXT, (text = "ITEM: InputText"))
+            } elif (item_type == 6) {
+                ret = input_text_multiline(WIDGETS_QIS_INPUT_TXT_M,
+                    (text = "ITEM: InputTextMultiline"))
+            } elif (item_type == 7) {
+                ret = edit_input_float(safe_addr(WIDGETS_QIS_F1),
+                    (id = "WIDGETS_QIS_INF", text = "ITEM: InputFloat",
+                     step = 1.0f))
+            } elif (item_type == 8) {
+                ret = edit_input_float3(safe_addr(WIDGETS_QIS_F3),
+                    (id = "WIDGETS_QIS_INF3", text = "ITEM: InputFloat3"))
+            } elif (item_type == 9) {
+                ret = edit_color_edit4(safe_addr(WIDGETS_QIS_COL4F),
+                    (id = "WIDGETS_QIS_CE4", text = "ITEM: ColorEdit4"))
+            } elif (item_type == 10) {
+                ret = selectable(WIDGETS_QIS_SEL, (text = "ITEM: Selectable"))
+            } elif (item_type == 11) {
+                ret = menu_item(WIDGETS_QIS_MENU, (text = "ITEM: MenuItem"))
+            } elif (item_type == 12) {
+                // tree_node_ex (leaf form) — returns the open bool. cpp uses
+                // TreeNode + matching TreePop only when open; tree_node_ex
+                // (leaf) is the same shape without manual TreePop.
+                ret = tree_node_ex(WIDGETS_QIS_TREE_LEAF,
+                    (text = "ITEM: TreeNode",
+                     flags = ImGuiTreeNodeFlags.NoTreePushOnOpen))
+            } elif (item_type == 13) {
+                ret = tree_node_ex(WIDGETS_QIS_TREE_LEAF_DBL,
+                    (text = "ITEM: TreeNode w/ ImGuiTreeNodeFlags_OpenOnDoubleClick",
+                     flags = ImGuiTreeNodeFlags.OpenOnDoubleClick |
+                             ImGuiTreeNodeFlags.NoTreePushOnOpen))
+            } elif (item_type == 14) {
+                ret = combo(WIDGETS_QIS_COMBO_FRUIT,
+                    (text = "ITEM: Combo", init = 1, items <- WIDGETS_QIS_FRUITS))
+            } elif (item_type == 15) {
+                // ListBox container — emit the 4 fruit rows as selectables;
+                // cpp uses the one-liner ListBox(items, count) which was
+                // retired (see comment at cpp:494). Selection int is mirrored
+                // via per-row toggle states.
+                list_box(WIDGETS_QIS_LB,
+                    (text = "ITEM: ListBox", size = float2(0.0f, 0.0f))) {
+                    for (i in range(length(WIDGETS_QIS_FRUITS))) {
+                        if (selectable(WIDGETS_QIS_LB_ROW[i],
+                                (text = WIDGETS_QIS_FRUITS[i]))) {
+                            ret = true
+                        }
+                    }
+                }
+            }
+
+            // Hovered-flag flavors must be captured immediately after the
+            // item is submitted; the BulletText below would itself become the
+            // last item and clobber IsItem* readouts.
+            let h_none = IsItemHovered() ? 1 : 0
+            let h_stat = IsItemHovered(ImGuiHoveredFlags.Stationary) ? 1 : 0
+            let h_short = IsItemHovered(ImGuiHoveredFlags.DelayShort) ? 1 : 0
+            let h_norm = IsItemHovered(ImGuiHoveredFlags.DelayNormal) ? 1 : 0
+            let h_tip = IsItemHovered(ImGuiHoveredFlags.ForTooltip) ? 1 : 0
+
+            // Single-call BulletText with multi-line payload — matches the
+            // cpp shape (one bullet, 25 readout lines after).
+            let r = ret ? 1 : 0
+            let foc = IsItemFocused() ? 1 : 0
+            let hov = IsItemHovered() ? 1 : 0
+            let hov_bp = IsItemHovered(ImGuiHoveredFlags.AllowWhenBlockedByPopup) ? 1 : 0
+            let hov_ba = IsItemHovered(ImGuiHoveredFlags.AllowWhenBlockedByActiveItem) ? 1 : 0
+            let hov_oi = IsItemHovered(ImGuiHoveredFlags.AllowWhenOverlappedByItem) ? 1 : 0
+            let hov_ow = IsItemHovered(ImGuiHoveredFlags.AllowWhenOverlappedByWindow) ? 1 : 0
+            let hov_dis = IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled) ? 1 : 0
+            let hov_ro = IsItemHovered(ImGuiHoveredFlags.RectOnly) ? 1 : 0
+            let act = IsItemActive() ? 1 : 0
+            let ed = IsItemEdited() ? 1 : 0
+            let actd = IsItemActivated() ? 1 : 0
+            let deact = IsItemDeactivated() ? 1 : 0
+            let deact_e = IsItemDeactivatedAfterEdit() ? 1 : 0
+            let vis = IsItemVisible() ? 1 : 0
+            let clk = IsItemClicked() ? 1 : 0
+            let togg = IsItemToggledOpen() ? 1 : 0
+            let rmin = GetItemRectMin()
+            let rmax = GetItemRectMax()
+            let rsize = GetItemRectSize()
+            bullet_text(WIDGETS_QIS_BL1,
+                (text = "Return value = {r}\n" +
+                        "IsItemFocused() = {foc}\n" +
+                        "IsItemHovered() = {hov}\n" +
+                        "IsItemHovered(_AllowWhenBlockedByPopup) = {hov_bp}\n" +
+                        "IsItemHovered(_AllowWhenBlockedByActiveItem) = {hov_ba}\n" +
+                        "IsItemHovered(_AllowWhenOverlappedByItem) = {hov_oi}\n" +
+                        "IsItemHovered(_AllowWhenOverlappedByWindow) = {hov_ow}\n" +
+                        "IsItemHovered(_AllowWhenDisabled) = {hov_dis}\n" +
+                        "IsItemHovered(_RectOnly) = {hov_ro}\n" +
+                        "IsItemActive() = {act}\n" +
+                        "IsItemEdited() = {ed}\n" +
+                        "IsItemActivated() = {actd}\n" +
+                        "IsItemDeactivated() = {deact}\n" +
+                        "IsItemDeactivatedAfterEdit() = {deact_e}\n" +
+                        "IsItemVisible() = {vis}\n" +
+                        "IsItemClicked() = {clk}\n" +
+                        "IsItemToggledOpen() = {togg}\n" +
+                        "GetItemRectMin() = ({rmin.x}, {rmin.y})\n" +
+                        "GetItemRectMax() = ({rmax.x}, {rmax.y})\n" +
+                        "GetItemRectSize() = ({rsize.x}, {rsize.y})"))
+            bullet_text(WIDGETS_QIS_BL2,
+                (text = "with Hovering Delay or Stationary test:\n" +
+                        "IsItemHovered() = = {h_none}\n" +
+                        "IsItemHovered(_Stationary) = {h_stat}\n" +
+                        "IsItemHovered(_DelayShort) = {h_short}\n" +
+                        "IsItemHovered(_DelayNormal) = {h_norm}\n" +
+                        "IsItemHovered(_Tooltip) = {h_tip}"))
+        }
+
+        // Bottom tab-out box (ReadOnly) so the user can tab off the test
+        // widget and observe _Deactivated transitions on the line above.
+        input_text(WIDGETS_QIS_UNUSED,
+            (text = "unused", flags = ImGuiInputTextFlags.ReadOnly))
+    }
+}
+
+
+// =============================================================================
+// Querying Window Status — cpp:2706-2800
+// =============================================================================
+
+def private QueryingWindowStatusSection() {
+    tree_node(WIDGETS_QWS_SECTION,
+        (text = "Querying Window Status (Focused/Hovered etc.)",
+         flags = ImGuiTreeNodeFlags.None)) {
+
+        edit_checkbox(safe_addr(WIDGETS_QWS_EMBED),
+            (id = "WIDGETS_QWS_EMBED_CB",
+             text = "Embed everything inside a child window for testing _RootWindow flag."))
+
+        // Optional outer-child wrapping — exercises _RootWindow / _ChildWindows
+        // distinction on the readouts below. cpp uses ImGuiChildFlags_Border
+        // (renamed Borders in newer imgui).
+        if (WIDGETS_QWS_EMBED) {
+            child(WIDGETS_QWS_OUTER_CHILD,
+                (text = "outer_child",
+                 size = float2(0.0f, GetFontSize() * 20.0f),
+                 child_flags = ImGuiChildFlags.Border,
+                 window_flags = ImGuiWindowFlags.None)) {
+                QueryingWindowStatusBody()
+            }
+        } else {
+            QueryingWindowStatusBody()
+        }
+    }
+}
+
+def private QueryingWindowStatusBody() {
+    let f_none = IsWindowFocused() ? 1 : 0
+    let f_cw = IsWindowFocused(ImGuiFocusedFlags.ChildWindows) ? 1 : 0
+    let f_cw_np = IsWindowFocused(ImGuiFocusedFlags.ChildWindows |
+                                   ImGuiFocusedFlags.NoPopupHierarchy) ? 1 : 0
+    let f_cw_dk = IsWindowFocused(ImGuiFocusedFlags.ChildWindows |
+                                   ImGuiFocusedFlags.DockHierarchy) ? 1 : 0
+    let f_cw_rw = IsWindowFocused(ImGuiFocusedFlags.ChildWindows |
+                                   ImGuiFocusedFlags.RootWindow) ? 1 : 0
+    let f_cw_rw_np = IsWindowFocused(ImGuiFocusedFlags.ChildWindows |
+                                      ImGuiFocusedFlags.RootWindow |
+                                      ImGuiFocusedFlags.NoPopupHierarchy) ? 1 : 0
+    let f_cw_rw_dk = IsWindowFocused(ImGuiFocusedFlags.ChildWindows |
+                                      ImGuiFocusedFlags.RootWindow |
+                                      ImGuiFocusedFlags.DockHierarchy) ? 1 : 0
+    let f_rw = IsWindowFocused(ImGuiFocusedFlags.RootWindow) ? 1 : 0
+    let f_rw_np = IsWindowFocused(ImGuiFocusedFlags.RootWindow |
+                                   ImGuiFocusedFlags.NoPopupHierarchy) ? 1 : 0
+    let f_rw_dk = IsWindowFocused(ImGuiFocusedFlags.RootWindow |
+                                   ImGuiFocusedFlags.DockHierarchy) ? 1 : 0
+    let f_any = IsWindowFocused(ImGuiFocusedFlags.AnyWindow) ? 1 : 0
+    bullet_text(WIDGETS_QWS_BL_FOC,
+        (text = "IsWindowFocused() = {f_none}\n" +
+                "IsWindowFocused(_ChildWindows) = {f_cw}\n" +
+                "IsWindowFocused(_ChildWindows|_NoPopupHierarchy) = {f_cw_np}\n" +
+                "IsWindowFocused(_ChildWindows|_DockHierarchy) = {f_cw_dk}\n" +
+                "IsWindowFocused(_ChildWindows|_RootWindow) = {f_cw_rw}\n" +
+                "IsWindowFocused(_ChildWindows|_RootWindow|_NoPopupHierarchy) = {f_cw_rw_np}\n" +
+                "IsWindowFocused(_ChildWindows|_RootWindow|_DockHierarchy) = {f_cw_rw_dk}\n" +
+                "IsWindowFocused(_RootWindow) = {f_rw}\n" +
+                "IsWindowFocused(_RootWindow|_NoPopupHierarchy) = {f_rw_np}\n" +
+                "IsWindowFocused(_RootWindow|_DockHierarchy) = {f_rw_dk}\n" +
+                "IsWindowFocused(_AnyWindow) = {f_any}"))
+
+    let h_none = IsWindowHovered() ? 1 : 0
+    let h_bp = IsWindowHovered(ImGuiHoveredFlags.AllowWhenBlockedByPopup) ? 1 : 0
+    let h_ba = IsWindowHovered(ImGuiHoveredFlags.AllowWhenBlockedByActiveItem) ? 1 : 0
+    let h_cw = IsWindowHovered(ImGuiHoveredFlags.ChildWindows) ? 1 : 0
+    let h_cw_np = IsWindowHovered(ImGuiHoveredFlags.ChildWindows |
+                                   ImGuiHoveredFlags.NoPopupHierarchy) ? 1 : 0
+    let h_cw_dk = IsWindowHovered(ImGuiHoveredFlags.ChildWindows |
+                                   ImGuiHoveredFlags.DockHierarchy) ? 1 : 0
+    let h_cw_rw = IsWindowHovered(ImGuiHoveredFlags.ChildWindows |
+                                   ImGuiHoveredFlags.RootWindow) ? 1 : 0
+    let h_cw_rw_np = IsWindowHovered(ImGuiHoveredFlags.ChildWindows |
+                                      ImGuiHoveredFlags.RootWindow |
+                                      ImGuiHoveredFlags.NoPopupHierarchy) ? 1 : 0
+    let h_cw_rw_dk = IsWindowHovered(ImGuiHoveredFlags.ChildWindows |
+                                      ImGuiHoveredFlags.RootWindow |
+                                      ImGuiHoveredFlags.DockHierarchy) ? 1 : 0
+    let h_rw = IsWindowHovered(ImGuiHoveredFlags.RootWindow) ? 1 : 0
+    let h_rw_np = IsWindowHovered(ImGuiHoveredFlags.RootWindow |
+                                   ImGuiHoveredFlags.NoPopupHierarchy) ? 1 : 0
+    let h_rw_dk = IsWindowHovered(ImGuiHoveredFlags.RootWindow |
+                                   ImGuiHoveredFlags.DockHierarchy) ? 1 : 0
+    let h_cw_bp = IsWindowHovered(ImGuiHoveredFlags.ChildWindows |
+                                   ImGuiHoveredFlags.AllowWhenBlockedByPopup) ? 1 : 0
+    let h_any = IsWindowHovered(ImGuiHoveredFlags.AnyWindow) ? 1 : 0
+    let h_stat = IsWindowHovered(ImGuiHoveredFlags.Stationary) ? 1 : 0
+    bullet_text(WIDGETS_QWS_BL_HOV,
+        (text = "IsWindowHovered() = {h_none}\n" +
+                "IsWindowHovered(_AllowWhenBlockedByPopup) = {h_bp}\n" +
+                "IsWindowHovered(_AllowWhenBlockedByActiveItem) = {h_ba}\n" +
+                "IsWindowHovered(_ChildWindows) = {h_cw}\n" +
+                "IsWindowHovered(_ChildWindows|_NoPopupHierarchy) = {h_cw_np}\n" +
+                "IsWindowHovered(_ChildWindows|_DockHierarchy) = {h_cw_dk}\n" +
+                "IsWindowHovered(_ChildWindows|_RootWindow) = {h_cw_rw}\n" +
+                "IsWindowHovered(_ChildWindows|_RootWindow|_NoPopupHierarchy) = {h_cw_rw_np}\n" +
+                "IsWindowHovered(_ChildWindows|_RootWindow|_DockHierarchy) = {h_cw_rw_dk}\n" +
+                "IsWindowHovered(_RootWindow) = {h_rw}\n" +
+                "IsWindowHovered(_RootWindow|_NoPopupHierarchy) = {h_rw_np}\n" +
+                "IsWindowHovered(_RootWindow|_DockHierarchy) = {h_rw_dk}\n" +
+                "IsWindowHovered(_ChildWindows|_AllowWhenBlockedByPopup) = {h_cw_bp}\n" +
+                "IsWindowHovered(_AnyWindow) = {h_any}\n" +
+                "IsWindowHovered(_Stationary) = {h_stat}"))
+
+    // Inner 50-px child purely to give IsWindowHovered(_ChildWindows) a real
+    // child to find.
+    child(WIDGETS_QWS_INNER_CHILD,
+        (text = "child", size = float2(0.0f, 50.0f),
+         child_flags = ImGuiChildFlags.Border,
+         window_flags = ImGuiWindowFlags.None)) {
+        text("This is another child window for testing the _ChildWindows flag.")
+    }
+
+    // Secondary closable window: title-bar IsItemHovered/IsItemActive readout
+    // (cpp:2780). Its X-button writes WIDGETS_QWS_TEST through the closable
+    // bool exposed by the `window` rail.
+    edit_checkbox(safe_addr(WIDGETS_QWS_TEST),
+        (id = "WIDGETS_QWS_TEST_CB",
+         text = "Hovered/Active tests after Begin() for title bar testing"))
+    if (WIDGETS_QWS_TEST) {
+        window(WIDGETS_QWS_TEST_WIN,
+            (text = "Title bar Hovered/Active tests",
+             closable = true, flags = ImGuiWindowFlags.None)) {
+            popup_context_item(WIDGETS_QWS_TEST_CTX,
+                (str_id = "WIDGETS_QWS_TEST_CTX",
+                 flags = ImGuiPopupFlags.MouseButtonRight)) {
+                if (menu_item(WIDGETS_QWS_TEST_CLOSE_MI, (text = "Close"))) {
+                    WIDGETS_QWS_TEST = false
+                }
+            }
+            let ti_hov = IsItemHovered() ? 1 : 0
+            let ti_act = IsItemActive() ? 1 : 0
+            text(WIDGETS_QWS_TEST_READOUT,
+                (text = "IsItemHovered() after begin = {ti_hov} (== is title bar hovered)\n" +
+                        "IsItemActive() after begin = {ti_act} (== is window being clicked/moved)"))
+        }
+        // Mirror the closable bool back so the X button's effect propagates
+        // to our toggle. WindowState.open is false after X.
+        if (!WIDGETS_QWS_TEST_WIN.open) {
+            WIDGETS_QWS_TEST = false
+            WIDGETS_QWS_TEST_WIN.open = true
         }
     }
 }
