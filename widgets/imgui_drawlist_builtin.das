@@ -163,6 +163,23 @@ def public add_text(var dl : ImDrawList?; pos : float2; col : uint; text : strin
                       float4(pos.x, pos.y, pos.x + sz.x, pos.y + sz.y))
 }
 
+[drawlist_prim]
+def public add_text_clipped(var dl : ImDrawList?; pos : float2; col : uint;
+                            text : string; clip_rect : float4) {
+    //! Render ``text`` at ``pos`` with a per-call CPU-side clip rect — only
+    //! glyphs intersecting ``clip_rect = (xmin, ymin, xmax, ymax)`` are
+    //! rasterized. Uses the current font/size; no drawlist clip-stack push,
+    //! no PushClipRect mutation. Equivalent to ``ImDrawList::AddText(font,
+    //! size, pos, col, text, NULL, 0.0f, &clip_rect)``.
+    var cr = clip_rect
+    unsafe {
+        *dl |> AddText(GetFont(), GetFontSize(), pos, col, text, 0.0f, addr(cr))
+    }
+    let sz = CalcTextSize(text)
+    drawlist_register(widget_ident, "add_text_clipped",
+                      float4(pos.x, pos.y, pos.x + sz.x, pos.y + sz.y))
+}
+
 // ===== Extra shape primitives =====
 
 [drawlist_prim]
@@ -373,3 +390,19 @@ def public channels_merge(var dl : ImDrawList?) {
 
 // (with_clip_rect lives in imgui_scope_builtin.das — the scope rail —
 // since it gates ImGui widgets as well as drawlist primitives.)
+
+// ===== Per-drawlist clip-rect scope =====
+
+def public with_drawlist_clip_rect(var dl : ImDrawList?; clip_rect_min : float2;
+                                   clip_rect_max : float2;
+                                   intersect_with_current : bool;
+                                   blk : block) {
+    //! Run ``blk`` with ``dl->PushClipRect(min, max, intersect)`` applied to
+    //! THIS drawlist's clip stack; matching ``dl->PopClipRect()`` on return.
+    //! Scope only affects subsequent primitives on ``dl`` — ImGui hit-testing
+    //! and other drawlists are unaffected. For the ImGui-wide variant (affects
+    //! widget hit-testing too) use ``with_clip_rect`` in ``imgui_scope_builtin``.
+    *dl |> PushClipRect(clip_rect_min, clip_rect_max, intersect_with_current)
+    invoke(blk)
+    *dl |> PopClipRect()
+}

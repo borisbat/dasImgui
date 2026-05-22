@@ -8,13 +8,27 @@ require imgui/imgui_widgets_builtin
 require imgui/imgui_containers_builtin
 require imgui/imgui_scope_builtin
 require imgui/imgui_id_builtin
+require imgui/imgui_layout_builtin       // group + same_line for Circle Tess samples
+require imgui/imgui_drawlist_builtin     // add_circle / with_window_drawlist for samples
+require daslib/safe_addr                  // window-scoped font scale edit_drag_float
 require daslib/enum_trait
+require math                              // max / floor for Circle Tess preview
 
 // Indexed widget tables for the per-ImGuiCol loop in the Colors tab.
 // `[widget]` macros don't auto-emit table globals — indexed forms require
 // the table declared at module scope.
 var private STYLE_COLOR_SAMELINE : table<int; EmptyMarkerState>
 var private STYLE_COLOR_NAME : table<int; NarrativeState>
+
+// Per-window post-baking font scale (cpp:6883 — static float window_scale).
+// Edited by the Fonts tab DragFloat; pushed via SetWindowFontScale per frame.
+var STYLE_WINDOW_SCALE = 1.0f
+
+// Circle Tessellation tooltip samples — 8 BeginGroup'd preview blocks shown
+// while the user is dragging Circle Tessellation Max Error (cpp:6919-6945).
+var private STYLE_CIRCLE_GROUP : table<int; GroupState>
+var private STYLE_CIRCLE_SL : table<int; EmptyMarkerState>
+var private STYLE_CIRCLE_TEXT : table<int; NarrativeState>
 
 // Mirrors imgui_demo.cpp:6680-6962 — void ImGui::ShowStyleEditor(ImGuiStyle* ref).
 //
@@ -26,18 +40,13 @@ var private STYLE_COLOR_NAME : table<int; NarrativeState>
 //     local-var-only and rejects struct-field-via-reference lvalues, so we
 //     use `unsafe(addr(style.X))` to take the address of each field.
 //   - Skipped vs C++ (each cited at the relevant location below):
-//       - SliderFloat2 / SliderAngle on style.<float2 fields> (need
-//         reinterpret + bounce-buffer; pending Phase 3)
 //       - CheckboxFlags TreeNodeEx block for HoverFlagsForTooltipMouse/Nav
-//         (enum-typed flags need a bounce-buffer; pending Phase 3)
+//         (enum-typed flags need a bounce-buffer; pending follow-up)
 //       - "Save Ref" / "Revert Ref" buttons (ref-style param is null in this
 //         demo; the buttons are a no-op without it)
 //       - Colors tab: Export-to-clipboard + Filter + alpha-flags radios
 //         (cpp:6798-6831; needs ImGuiTextFilter binding + bounce-buffer)
-//       - Fonts tab: ShowFontAtlas + window-scoped font-scale slider
-//         (cpp:6872 + 6885; debug helper + private window state)
-//       - Rendering tab: Circle Tessellation preview tooltip
-//         (cpp:6909-6947; uses private _CalcCircleAutoSegmentCount API)
+//       - Fonts tab: ShowFontAtlas (cpp:6872; debug helper)
 def ShowStyleEditor() {
     var style & = unsafe(GetStyle())
 
@@ -62,9 +71,26 @@ def ShowStyleEditor() {
             tab_item(STYLE_TAB_SIZES, (text = "Sizes", closable = false,
                                        flags = ImGuiTabItemFlags.None)) {
                 separator_text("Main")
-                // SliderFloat2 calls on WindowPadding/FramePadding/ItemSpacing/
-                // ItemInnerSpacing/TouchExtraPadding skipped pending Phase 3.
-                // See imgui_demo.cpp:6729-6733.
+                edit_slider_float2(unsafe(addr(style.WindowPadding)),
+                                   (id = "STYLE_WINDOW_PADDING",
+                                    text = "WindowPadding",
+                                    v_min = 0.0f, v_max = 20.0f, format = "%.0f"))
+                edit_slider_float2(unsafe(addr(style.FramePadding)),
+                                   (id = "STYLE_FRAME_PADDING",
+                                    text = "FramePadding",
+                                    v_min = 0.0f, v_max = 20.0f, format = "%.0f"))
+                edit_slider_float2(unsafe(addr(style.ItemSpacing)),
+                                   (id = "STYLE_ITEM_SPACING",
+                                    text = "ItemSpacing",
+                                    v_min = 0.0f, v_max = 20.0f, format = "%.0f"))
+                edit_slider_float2(unsafe(addr(style.ItemInnerSpacing)),
+                                   (id = "STYLE_ITEM_INNER_SPACING",
+                                    text = "ItemInnerSpacing",
+                                    v_min = 0.0f, v_max = 20.0f, format = "%.0f"))
+                edit_slider_float2(unsafe(addr(style.TouchExtraPadding)),
+                                   (id = "STYLE_TOUCH_EXTRA_PADDING",
+                                    text = "TouchExtraPadding",
+                                    v_min = 0.0f, v_max = 10.0f, format = "%.0f"))
                 edit_slider_float(unsafe(addr(style.IndentSpacing)),
                                   (id = "STYLE_INDENT_SPACING",
                                    text = "IndentSpacing",
@@ -178,7 +204,19 @@ def ShowStyleEditor() {
             tab_item(STYLE_TAB_FONTS, (text = "Fonts", closable = false,
                                        flags = ImGuiTabItemFlags.None)) {
                 // ShowFontAtlas (cpp:6872) skipped — debug helper.
-                // Window-scoped font scale (cpp:6885) skipped — needs window state.
+                // Window-scoped font scale — per-window-only post-baking scale.
+                // SetWindowFontScale on the current window when the value
+                // changes. cpp warns this is the wrong way to scale for sharpness
+                // (the right answer is reload font at the target size + rebuild
+                // atlas); kept here for parity.
+                if (edit_drag_float(safe_addr(STYLE_WINDOW_SCALE),
+                                    (id = "STYLE_WINDOW_SCALE",
+                                     text = "window scale",
+                                     speed = 0.005f,
+                                     v_min = 0.3f, v_max = 2.0f, format = "%.2f",
+                                     flags = ImGuiSliderFlags.AlwaysClamp))) {
+                    SetWindowFontScale(STYLE_WINDOW_SCALE)
+                }
                 var io & = unsafe(GetIO())
                 edit_drag_float(unsafe(addr(io.FontGlobalScale)),
                                 (id = "STYLE_FONT_GLOBAL_SCALE",
@@ -207,13 +245,47 @@ def ShowStyleEditor() {
                 if (style.CurveTessellationTol < 0.10f) {
                     style.CurveTessellationTol = 0.10f
                 }
-                // Circle Tessellation preview tooltip (cpp:6909-6947) skipped.
                 edit_drag_float(unsafe(addr(style.CircleTessellationMaxError)),
                                 (id = "STYLE_CIRCLE_TESS_MAX_ERROR",
                                  text = "Circle Tessellation Max Error",
                                  speed = 0.005f, v_min = 0.10f, v_max = 5.0f,
                                  format = "%.2f",
                                  flags = ImGuiSliderFlags.AlwaysClamp))
+                // While the user is dragging Max Error, preview the
+                // auto-segment count at 8 radii from 5..70 (cpp:6911-6947).
+                let show_samples = IsItemActive()
+                if (show_samples) {
+                    SetNextWindowPos(GetCursorScreenPos())
+                    tooltip(STYLE_CIRCLE_TESS_TOOLTIP) {
+                        text_unformatted("(R = radius, N = number of segments)")
+                        spacing()
+                        let min_widget_width = CalcTextSize("N: MMM\nR: MMM").x
+                        let RAD_MIN = 5.0f
+                        let RAD_MAX = 70.0f
+                        with_window_drawlist() $(var dl) {
+                            for (n in range(8)) {
+                                let rad = (RAD_MIN +
+                                           (RAD_MAX - RAD_MIN) * float(n) / 7.0f)
+                                let seg_count = *dl |> _CalcCircleAutoSegmentCount(rad)
+                                group(STYLE_CIRCLE_GROUP[n]) {
+                                    text(STYLE_CIRCLE_TEXT[n],
+                                         (text = "R: {fmt(":.0f", rad)}\nN: {seg_count}"))
+                                    let canvas_width = max(min_widget_width,
+                                                           rad * 2.0f)
+                                    let offset_x = floor(canvas_width * 0.5f)
+                                    let offset_y = floor(RAD_MAX)
+                                    let p1 = GetCursorScreenPos()
+                                    dl |> add_circle(
+                                        float2(p1.x + offset_x, p1.y + offset_y),
+                                        rad, GetColorU32(ImGuiCol.Text))
+                                    dummy((size = float2(canvas_width,
+                                                         RAD_MAX * 2.0f)))
+                                }
+                                same_line(STYLE_CIRCLE_SL[n])
+                            }
+                        }
+                    }
+                }
                 edit_drag_float(unsafe(addr(style.Alpha)),
                                 (id = "STYLE_ALPHA",
                                  text = "Global Alpha",

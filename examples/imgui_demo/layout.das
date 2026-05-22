@@ -11,6 +11,8 @@ require imgui/imgui_scope_builtin
 require imgui/imgui_layout_builtin
 require imgui/imgui_style_builtin
 require imgui/imgui_table_builtin
+require imgui/imgui_drawlist_builtin   // Text Clipping canvases / HSZ ECS rects
+require imgui/imgui_colors              // IM_COL32_WHITE + rgba()
 require daslib/safe_addr
 require app_main_menu
 require math
@@ -100,6 +102,10 @@ var LAYOUT_CLIP_OFFSET = float2(30.0f, 30.0f)
 
 // ----- Overlap Mode -----
 var LAYOUT_OVERLAP_ENABLE = true
+
+// ----- Groups section: PlotHistogram input -----
+// cpp:3170 — const float values[5] = { 0.5f, 0.20f, 0.80f, 0.60f, 0.25f };
+let private LAYOUT_GROUPS_HIST_VALUES <- [0.5f, 0.2f, 0.8f, 0.6f, 0.25f]
 
 // ----- Indexed widget tables -----
 // Per-loop-index state globals. [widget] indexed form requires the backing
@@ -605,10 +611,9 @@ def private GroupsSection() {
 
             // Capture the group size and create widgets using the same size.
             let size = GetItemRectSize()
-            // C++ uses PlotHistogram_FloatPtr with a 5-value array; the boost
-            // PlotHistogram rail wants a lambda getter. TODO Phase 3: bridge
-            // float-array → lambda or expose the FloatPtr overload directly.
-            dummy((size = size))
+            plot_histogram(LAYOUT_GROUPS_HIST, "##values",
+                           LAYOUT_GROUPS_HIST_VALUES,
+                           0.0f, 1.0f, size)
 
             let half_sz = float2((size.x - GetStyle().ItemSpacing.x) * 0.5f,
                                  size.y)
@@ -1029,7 +1034,17 @@ def private HorizontalContentsSizeDemo() {
                 SetNextItemWidth(100.0f)
                 edit_drag_float(safe_addr(LAYOUT_HSZ_CONTENTS_SIZE_X),
                     (id = "LAYOUT_HSZ_CSX", text = "##csx", speed = 1.0f))
-                // The DrawList rect markers are skipped (no boost path).
+                // Two 10x10 white markers at the left/right edge of the
+                // explicit content rect — visualizes the content-size span.
+                let p = GetCursorScreenPos()
+                with_window_drawlist() $(var dl) {
+                    dl |> add_rect_filled(p, float2(p.x + 10.0f, p.y + 10.0f),
+                                          IM_COL32_WHITE)
+                    dl |> add_rect_filled(
+                        float2(p.x + LAYOUT_HSZ_CONTENTS_SIZE_X - 10.0f, p.y),
+                        float2(p.x + LAYOUT_HSZ_CONTENTS_SIZE_X, p.y + 10.0f),
+                        IM_COL32_WHITE)
+                }
                 dummy((size = float2(0.0f, 10.0f)))
             }
         }
@@ -1138,12 +1153,12 @@ def private TextClippingSection() {
             }
         }
 
-        // The C++ demo paints three custom InvisibleButton canvases and renders
-        // text into each with different clipping strategies — PushClipRect /
-        // draw_list->PushClipRect / draw_list->AddText with a clip_rect param.
-        // The PR-B1 drawlist rail doesn't carry the per-region clip-rect
-        // overrides the C++ branch uses (PushClipRect-then-AddText). The
-        // canvases render as drag-only invisible buttons. TODO Phase 3.
+        // Three InvisibleButton canvases — each renders the same text with a
+        // different clipping strategy. Match cpp:3617-3658:
+        //   n=0 — ImGui::PushClipRect      (affects hit-testing + drawlist)
+        //   n=1 — draw_list->PushClipRect  (drawlist clip stack only)
+        //   n=2 — draw_list->AddText(...clip_rect) (per-call rasterization clip)
+        let text_str = "Line 1 hello\nLine 2 clip me!"
         for (n in range(3)) {
             if (n > 0) same_line(LAYOUT_LOOP_SL_CLIP[n])
             with_id("clip_{n}") {
@@ -1153,6 +1168,31 @@ def private TextClippingSection() {
                     IsMouseDragging(ImGuiMouseButton.Left, -1.0f)) {
                     LAYOUT_CLIP_OFFSET.x += GetIO().MouseDelta.x
                     LAYOUT_CLIP_OFFSET.y += GetIO().MouseDelta.y
+                }
+                if (IsItemVisible()) {
+                    let p0 = GetItemRectMin()
+                    let p1 = GetItemRectMax()
+                    let text_pos = float2(p0.x + LAYOUT_CLIP_OFFSET.x,
+                                          p0.y + LAYOUT_CLIP_OFFSET.y)
+                    let bg = rgba(90u, 90u, 120u, 255u)
+                    with_window_drawlist() $(var dl) {
+                        if (n == 0) {
+                            with_clip_rect(p0, p1, true) {
+                                dl |> add_rect_filled(p0, p1, bg)
+                                dl |> add_text(text_pos, IM_COL32_WHITE, text_str)
+                            }
+                        } elif (n == 1) {
+                            dl |> with_drawlist_clip_rect(p0, p1, true) {
+                                dl |> add_rect_filled(p0, p1, bg)
+                                dl |> add_text(text_pos, IM_COL32_WHITE, text_str)
+                            }
+                        } else {
+                            let clip_rect = float4(p0.x, p0.y, p1.x, p1.y)
+                            dl |> add_rect_filled(p0, p1, bg)
+                            dl |> add_text_clipped(text_pos, IM_COL32_WHITE,
+                                                    text_str, clip_rect)
+                        }
+                    }
                 }
             }
         }

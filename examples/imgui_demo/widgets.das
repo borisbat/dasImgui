@@ -60,9 +60,10 @@ require math
 // =============================================================================
 
 // ----- App-state plain vars (NOT widget state) -----
-// The "Disable block" subsection (cpp:2807, not yet ported) flips this; for
-// now it stays false. Keeping it as a plain var avoids needing a checkbox
-// state global that's read but not edited within this slice.
+// Flipped by the "Disable block" subsection's WIDGETS_DIS_CB checkbox
+// (cpp:2807); read by upstream sections that wrap their contents in
+// with_disabled(WIDGETS_DISABLE_ALL) to gate input. Stays a plain var
+// (not [widget] state) because the *read* side doesn't need telemetry.
 var WIDGETS_DISABLE_ALL = false
 
 // ----- Tree Nodes/Advanced — external-pointer state -----

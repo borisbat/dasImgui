@@ -53,6 +53,10 @@ let private ALLOWED_IMGUI : table<string> <- {
     "SetNextFrameWantCaptureMouse", "SetNextFrameWantCaptureKeyboard",
     "IsKeyDown", "IsKeyPressed", "IsKeyReleased",
     "GetKeyName", "GetTime", "GetFrameCount",
+    // Drawlist internal query — host-agnostic, used by the style editor's
+    // Circle Tessellation preview tooltip to label each sample with its
+    // auto-segment count.
+    "_CalcCircleAutoSegmentCount",
     // Cursor / layout queries (read-only)
     "GetCursorPos", "GetCursorPosX", "GetCursorPosY",
     "GetCursorScreenPos", "GetCursorStartPos",
@@ -80,6 +84,7 @@ let private ALLOWED_IMGUI : table<string> <- {
     "SetNextItemWidth", "SetNextItemOpen", "SetNextItemAllowOverlap",
     "SetNextWindowContentWidth",
     "SetColorEditOptions",
+    "SetWindowFontScale",
     "SetKeyboardFocusHere", "SetItemDefaultFocus", "SetScrollHereX", "SetScrollHereY",
     "SetScrollX", "SetScrollY", "SetScrollFromPosX", "SetScrollFromPosY",
     "GetScrollX", "GetScrollY",
