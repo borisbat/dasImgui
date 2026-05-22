@@ -770,18 +770,33 @@ class EditWidgetFunctionMacro : AstFunctionAnnotation {
     //! ``[edit_widget]`` annotation — registers an external-pointer widget. First parameter is the user-owned pointer (``T?``); macro injects ``widget_ident : string`` at index 1 and installs a call_macro that requires an explicit ``id="..."`` literal at the call site.
     def override apply(var func : FunctionPtr; var group : ModuleGroup;
                        args : AnnotationArgumentList; var errors : das_string) : bool {
-        return apply_edit_widget(func, errors)
+        return apply_edit_widget_or_container(func, errors, false)
     }
 }
 
-def private apply_edit_widget(var func : FunctionPtr; var errors : das_string) : bool {
+[function_macro(name = "edit_container")]
+class EditContainerFunctionMacro : AstFunctionAnnotation {
+    //! ``[edit_container]`` annotation — block-arg sibling of ``[edit_widget]``. First parameter is the user-owned pointer (``T?``); last parameter must be ``blk : block``. Macro injects ``widget_ident : string`` at index 1 and wraps the body with ``container_path_push``/``pop`` so leaves rendered inside ``invoke(blk)`` nest under the container's path key. Same ``id="..."`` literal requirement as ``[edit_widget]``.
+    def override apply(var func : FunctionPtr; var group : ModuleGroup;
+                       args : AnnotationArgumentList; var errors : das_string) : bool {
+        if (empty(func.arguments) || func.arguments[length(func.arguments) - 1]._type == null
+            || func.arguments[length(func.arguments) - 1]._type.baseType != Type.tBlock) {
+            errors := "[edit_container] requires the last parameter to be `blk : block`"
+            return false
+        }
+        return apply_edit_widget_or_container(func, errors, true)
+    }
+}
+
+def private apply_edit_widget_or_container(var func : FunctionPtr; var errors : das_string;
+                                           is_container : bool) : bool {
     if (empty(func.arguments)) {
-        errors := "[edit_widget] requires at least one parameter (ptr)"
+        errors := "[edit_widget]/[edit_container] requires at least one parameter (ptr)"
         return false
     }
     let ptrArg = func.arguments[0]
     if (ptrArg._type == null || ptrArg._type.baseType != Type.tPointer) {
-        errors := "[edit_widget] first parameter must be a pointer (e.g. `float?`, `int?`, `bool?`)"
+        errors := "[edit_widget]/[edit_container] first parameter must be a pointer (e.g. `float?`, `int?`, `bool?`)"
         return false
     }
     let kind = string(func.name)
@@ -794,17 +809,24 @@ def private apply_edit_widget(var func : FunctionPtr; var errors : das_string) :
         _type <- new TypeDecl(baseType = Type.tString, at = func.at))
     widthIdentVar.flags.generated = true
     func.arguments |> emplace(widthIdentVar, 1)
-    // Wrap the body: prepend widget_prelude(widget_ident) so PushID +
-    // pending-focus apply uniformly. PopID is emitted by widget_finalize
-    // at the bottom of edit_finalize.
+    // Wrap the body: prepend widget_prelude(widget_ident). For containers
+    // also push the container path before the user body runs (so leaves
+    // emitted inside `invoke(blk)` nest under our ident); matching pop
+    // lives in body.finalList so it always runs on normal return.
     var fblk = new ExprBlock(at = func.body.at)
     fblk.list |> push(qmacro(widget_prelude($i("widget_ident"))))
+    if (is_container) {
+        fblk.list |> push(qmacro(container_path_push($i("widget_ident"))))
+    }
     let oldBody = func.body as ExprBlock
     for (el in oldBody.list) {
         fblk.list |> push(clone_expression(el))
     }
     for (ef in oldBody.finalList) {
         fblk.finalList |> push(clone_expression(ef))
+    }
+    if (is_container) {
+        fblk.finalList |> push(qmacro(container_path_pop()))
     }
     func.body = fblk
     var inst = new EditExternalCallMacro(

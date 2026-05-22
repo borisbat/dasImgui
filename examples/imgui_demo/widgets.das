@@ -162,10 +162,11 @@ var private WIDGETS_VS_TIP1 : table<int; NarrativeState>
 var private WIDGETS_VS_TIP2 : table<int; NarrativeState>
 
 // Tabs/Advanced & Close: bit-bag for ImGuiTabBarFlags driven by 6 checkboxes;
-// per-tab state lives in WIDGETS_TABS_ADV_ITEM so the X-button writes the
-// same `open` slot the checkbox row reads/writes via unsafe(addr).
+// caller-owned WIDGETS_TABS_ADV_OPENED bool[] threaded through BOTH the
+// checkbox row AND the tab X-button via edit_checkbox / edit_tab_item.
+// Mirrors cpp's `bool opened[4]` shared between the two UI surfaces.
 var private WIDGETS_TABS_ADV_FLAGS = int(ImGuiTabBarFlags.Reorderable)
-var private WIDGETS_TABS_ADV_ITEM : table<int; TabItemState>
+var private WIDGETS_TABS_ADV_OPENED : array<bool> <- [true, true, true, true]
 var private WIDGETS_TABS_ADV_TOGGLE : table<int; EmptyMarkerState>
 var private WIDGETS_TABS_ADV_BODY : table<int; NarrativeState>
 let private WIDGETS_TABS_ADV_NAMES : array<string> <- ["Artichoke", "Beetroot",
@@ -1625,20 +1626,15 @@ def private TabsAdvancedSection() {
                                         int(ImGuiTabBarFlags.FittingPolicyScroll))
         }
 
-        // Row of 4 checkboxes — bidir-bound to WIDGETS_TABS_ADV_ITEM[n].open via
-        // unsafe(addr). The X-button on each tab writes the same `open` slot,
-        // so closing a tab unticks the matching row checkbox; ticking re-shows.
+        // Checkbox row drives WIDGETS_TABS_ADV_OPENED[n]; the matching
+        // edit_tab_item X-button writes the same slot. Two UI surfaces, one
+        // caller-owned bool[] — direct port of cpp's `bool opened[4]`.
         for (n in range(length(WIDGETS_TABS_ADV_NAMES))) {
             if (n > 0) {
                 same_line(WIDGETS_TABS_ADV_TOGGLE[n])
             }
-            // Auto-insert the table slot ahead of addr() so the storage exists
-            // before the pointer is taken (table[k] inserts default on miss).
-            if (!key_exists(WIDGETS_TABS_ADV_ITEM, n)) {
-                WIDGETS_TABS_ADV_ITEM[n] = TabItemState(open = true)
-            }
             with_id("adv_cb_{n}") {
-                edit_checkbox(unsafe(addr(WIDGETS_TABS_ADV_ITEM[n].open)),
+                edit_checkbox(unsafe(addr(WIDGETS_TABS_ADV_OPENED[n])),
                     (id = "WIDGETS_TABS_ADV_CB", text = WIDGETS_TABS_ADV_NAMES[n]))
             }
         }
@@ -1647,18 +1643,15 @@ def private TabsAdvancedSection() {
             (text = "MyTabBar",
              flags = unsafe(reinterpret<ImGuiTabBarFlags>(WIDGETS_TABS_ADV_FLAGS)))) {
             for (n in range(length(WIDGETS_TABS_ADV_NAMES))) {
-                // Skip BeginTabItem entirely when state.open is false — closable
-                // tab_item already does this internally, but the explicit gate
-                // matches cpp:1810-1811's `if (opened[n] && BeginTabItem(...))`.
-                if (WIDGETS_TABS_ADV_ITEM[n].open) {
-                    tab_item(WIDGETS_TABS_ADV_ITEM[n],
-                        (text = WIDGETS_TABS_ADV_NAMES[n], closable = true,
+                with_id("adv_tab_{n}") {
+                    edit_tab_item(unsafe(addr(WIDGETS_TABS_ADV_OPENED[n])),
+                        (id = "WIDGETS_TABS_ADV_TAB",
+                         text = WIDGETS_TABS_ADV_NAMES[n],
                          flags = ImGuiTabItemFlags.None)) {
                         text(WIDGETS_TABS_ADV_BODY[n],
                             (text = "This is the {WIDGETS_TABS_ADV_NAMES[n]} tab!"))
-                        // cpp adds an "odd tab" hint for n & 1 — drop the extra
-                        // text widget to keep state-global churn low (the demo
-                        // value of the hint is minimal).
+                        // cpp adds an "odd tab" hint for n & 1 — dropped to
+                        // keep the per-iteration widget count low.
                     }
                 }
             }

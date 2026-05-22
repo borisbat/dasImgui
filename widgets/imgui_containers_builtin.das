@@ -9,6 +9,7 @@ module imgui_containers_builtin shared
 require imgui public
 require imgui/imgui_boost_runtime public
 require imgui/imgui_boost_v2 public
+require imgui/imgui_widgets_builtin       // edit_finalize for [edit_container] rails
 require daslib/json public
 require daslib/json_boost
 require math
@@ -523,6 +524,33 @@ def tab_item(var state : TabItemState; text : string; closable : bool;
     } else {
         open_close_finalize(widget_ident, "tab_item", state)
     }
+}
+
+[edit_container]
+def edit_tab_item(var p_open : bool? implicit; text : string;
+                  flags : ImGuiTabItemFlags; blk : block) {
+    //! ``BeginTabItem(label, p_open, flags)`` / ``EndTabItem()`` against a
+    //! caller-owned ``bool?``. External-pointer sibling of :ref:`tab_item
+    //! <function-imgui_containers_builtin_tab_item>`: when ``*p_open == false``
+    //! the tab is skipped entirely (chrome + body); the X close button on the
+    //! header writes ``*p_open = false``. Use when a second UI surface
+    //! (checkbox row, menu toggle, etc.) needs to drive the same visibility
+    //! flag the X button writes — the canonical "shared open state" pattern
+    //! that ``tab_item``'s internal-only ``state.open`` doesn't expose. Same
+    //! ``id="..."`` literal requirement as other ``edit_*`` rails.
+    var header_bbox = float4(0.0f, 0.0f, 0.0f, 0.0f)
+    if (unsafe(*p_open)) {
+        let im_open = BeginTabItem(text, p_open, flags)
+        // Same rationale as `tab_item`: the tab strip header is the IsItem*
+        // target right after BeginTabItem; capture its bbox before the body
+        // pushes inner items.
+        header_bbox = current_item_bbox()
+        if (im_open) {
+            invoke(blk)
+            EndTabItem()
+        }
+    }
+    edit_container_open_close_finalize(widget_ident, "edit_tab_item", p_open, header_bbox)
 }
 
 // ===== Tooltip family =====
