@@ -1685,6 +1685,9 @@ def private TabsLeadingTrailingSection() {
              text = "ImGuiTabBarFlags_TabListPopupButton",
              flags_value = int(ImGuiTabBarFlags.TabListPopupButton)))
         let LT_POLICY_MASK = int(ImGuiTabBarFlags.FittingPolicyMask_)
+        if ((WIDGETS_TABS_LT_FLAGS & LT_POLICY_MASK) == 0) {
+            WIDGETS_TABS_LT_FLAGS |= int(ImGuiTabBarFlags.FittingPolicyDefault_)
+        }
         if (edit_checkbox_flags(safe_addr(WIDGETS_TABS_LT_FLAGS),
             (id = "WIDGETS_TABS_LT_F_FIT_RESIZE",
              text = "ImGuiTabBarFlags_FittingPolicyResizeDown",
@@ -1731,8 +1734,9 @@ def private TabsLeadingTrailingSection() {
                 }
             }
 
-            // Render current tabs; drop entries whose X was clicked. Iterating
-            // backwards lets `erase(n)` shrink the array without skipping.
+            // Render current tabs; drop entries whose X was clicked. Forward
+            // iteration with `erase(n)` shrinks the array; skip the `n++` so
+            // the shifted element at index n gets visited next.
             var n = 0
             while (n < length(WIDGETS_TABS_LT_ACTIVE)) {
                 let tab_id = WIDGETS_TABS_LT_ACTIVE[n]

@@ -38,11 +38,13 @@ def test_tab_item_button_smoke(t : T?) {
         t |> equal(add_entry?["kind"] ?? "", "tab_item_button",
                    "ADD_TAB.kind == 'tab_item_button'")
 
-        // Gate 2: initial seed — 3 tabs (IDs 0/1/2).
-        t |> success(widget_exists(snap0, "MAIN_WIN/BAR/0000"),
-                     "seed tab 0000 renders")
-        t |> success(widget_exists(snap0, "MAIN_WIN/BAR/0002"),
-                     "seed tab 0002 renders")
+        // Gate 2: initial seed — 3 tabs (IDs 0/1/2). Indexed-form widget_ident
+        // is `IDENT[k]` (see imgui_boost.das `emit_indexed_call`), so the path
+        // segment is `DYN_TAB[N]`, NOT the rendered "{tab_id:04}" label.
+        t |> success(widget_exists(snap0, "MAIN_WIN/BAR/DYN_TAB[0]"),
+                     "seed tab DYN_TAB[0] renders")
+        t |> success(widget_exists(snap0, "MAIN_WIN/BAR/DYN_TAB[2]"),
+                     "seed tab DYN_TAB[2] renders")
 
         // Gate 3: click ADD_TAB → click_count grows + new tab 0003 appears.
         let click_resp = click(d, "MAIN_WIN/BAR/ADD_TAB")
@@ -50,10 +52,10 @@ def test_tab_item_button_smoke(t : T?) {
                    "imgui_click on ADD_TAB returns ok")
 
         let grew = wait_until(d, 300) $(var s) {
-            return widget_exists(s, "MAIN_WIN/BAR/0003")
+            return widget_exists(s, "MAIN_WIN/BAR/DYN_TAB[3]")
         }
         t |> success(grew != null,
-                     "clicking ADD_TAB grows the tab list (0003 renders)")
+                     "clicking ADD_TAB grows the tab list (DYN_TAB[3] renders)")
         var snap_after = snapshot(d)
         let add_after = find_widget(snap_after, "MAIN_WIN/BAR/ADD_TAB")
         t |> success((add_after?["payload"]?["click_count"] ?? 0) >= 1,

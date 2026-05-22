@@ -130,7 +130,7 @@ def edit_finalize(widget_ident : string; kind : string; var ptr : auto(TT)? impl
     //
     // Module-public (was `def private`) so `[edit_container]` rails living
     // in imgui_containers_builtin.das (`edit_tab_item`, future `edit_window`
-    // etc.) can call edit_container_finalize without re-implementing the body.
+    // etc.) can call edit_finalize without re-implementing the body.
     var entry : WidgetEntry
     unsafe {
         var p = ptr
