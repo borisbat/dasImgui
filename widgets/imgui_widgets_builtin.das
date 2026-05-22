@@ -1829,6 +1829,32 @@ def edit_slider_int(var ptr : int? implicit; text : string = "";
 }
 
 [edit_widget]
+def edit_vslider_float(var ptr : float? implicit; text : string = "";
+                       size : float2 = float2(40.0f, 200.0f);
+                       v_min : float = 0.0f; v_max : float = 1.0f;
+                       format : string = "%.3f";
+                       flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    //! ``VSliderFloat`` against a caller-owned ``float?``. Vertical slider sibling of ``edit_slider_float`` — ``size`` is per-call (typical ~40×200).
+    let lbl = empty(text) ? widget_ident : text
+    let changed = VSliderFloat(lbl, size, ptr, v_min, v_max, format, flags)
+    edit_finalize(widget_ident, "edit_vslider_float", ptr)
+    return changed
+}
+
+[edit_widget]
+def edit_vslider_int(var ptr : int? implicit; text : string = "";
+                     size : float2 = float2(40.0f, 200.0f);
+                     v_min : int = 0; v_max : int = 100;
+                     format : string = "%d";
+                     flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
+    //! ``VSliderInt`` against a caller-owned ``int?``. Vertical slider sibling of ``edit_slider_int``.
+    let lbl = empty(text) ? widget_ident : text
+    let changed = VSliderInt(lbl, size, ptr, v_min, v_max, format, flags)
+    edit_finalize(widget_ident, "edit_vslider_int", ptr)
+    return changed
+}
+
+[edit_widget]
 def edit_drag_float(var ptr : float? implicit; text : string = "";
                     speed : float = 1.0f;
                     v_min : float = 0.0f; v_max : float = 0.0f;
