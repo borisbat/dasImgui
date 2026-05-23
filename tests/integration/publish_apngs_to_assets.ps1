@@ -84,7 +84,14 @@ Remove-Item -Force (Join-Path $dstTutorialDir "*.apng") -ErrorAction SilentlyCon
 Copy-Item -Force "$srcTutorialDir\*.apng" -Destination $dstTutorialDir
 
 # Amend the root commit so history stays at one commit.
+# Both `add` and `commit --amend` failures are silent under
+# Invoke-NativeIgnoringStderr -- check $LASTEXITCODE explicitly so we
+# don't force-push a stale/unchanged tip with a misleading "OK" message.
 Invoke-NativeIgnoringStderr git -C $worktreePath add doc/source/_static/tutorials/
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "FAIL: git add doc/source/_static/tutorials/ failed (exit $LASTEXITCODE)" -ForegroundColor Red
+    exit 1
+}
 $pending = git -C $worktreePath diff --cached --name-only
 if (-not $pending) {
     Write-Host "[publish_apngs_to_assets] no APNG changes vs $Remote/assets -- nothing to push"
@@ -94,6 +101,11 @@ if (-not $pending) {
     exit 0
 }
 Invoke-NativeIgnoringStderr git -C $worktreePath commit --amend --no-edit | Out-Null
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "FAIL: git commit --amend failed (exit $LASTEXITCODE)" -ForegroundColor Red
+    Write-Host "      common cause: user.name/email not configured." -ForegroundColor Yellow
+    exit 1
+}
 
 if ($DryRun) {
     Write-Host "[publish_apngs_to_assets] -DryRun: would force-push assets-publish -> $Remote/assets"

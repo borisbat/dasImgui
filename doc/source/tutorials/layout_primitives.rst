@@ -12,8 +12,13 @@ Four boost rails move the cursor *without* rendering anything visible:
   ``ImGui::SameLine``).
 * ``spacing(IDENT)`` — insert one line of vertical gap.
 * ``new_line(IDENT)`` — advance one full text-line of vertical space.
-* ``dummy(IDENT, (size = float2(x, y)))`` — reserve arbitrary cursor
-  space without rendering.
+* ``dummy((size = float2(x, y)))`` — reserve arbitrary cursor space
+  without rendering.
+
+All four accept the ``[widget]``-style optional IDENT; the tutorial
+shows IDENTs on ``same_line`` / ``spacing`` / ``new_line`` (useful when
+playwright tests assert their snapshot entries) and the anonymous
+``dummy`` form (cursor reservation that no test targets).
 
 All four share ``EmptyMarkerState`` — the payload is ``{}``, but the
 snapshot still records that the marker *fired*, so playwright tests can

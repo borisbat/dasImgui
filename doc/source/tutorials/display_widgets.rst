@@ -50,12 +50,15 @@ from ``imgui/imgui_widgets_builtin``). No extra modules.
 progress_bar
 ============
 
-``ProgressBarState`` mirrors the call-site ``fraction`` (clamped to
-``[0, 1]``; pass a negative value for indeterminate animation) so the
-snapshot's payload always matches the visible bar. ``size`` is the
-ImGui ``ImVec2``: ``-1.0f`` for the X component fills available width;
-explicit pixels for fixed width. ``overlay`` is the centered label drawn
-on top of the bar — leave empty for the auto-formatted percentage.
+``ProgressBarState`` mirrors the call-site values verbatim. ``fraction``
+holds the **raw** call-site value (no clamp at the state level); ImGui
+clamps to ``[0, 1]`` for the rendered bar, but the snapshot payload
+reflects whatever the caller passed — so out-of-range inputs surface in
+the snapshot for assertion. Pass a negative value for indeterminate
+animation. ``size`` is the ImGui ``ImVec2``: ``-1.0f`` for the X
+component fills available width; explicit pixels for fixed width.
+``overlay`` is the centered label drawn on top of the bar — leave empty
+for the auto-formatted percentage.
 
 image
 =====
