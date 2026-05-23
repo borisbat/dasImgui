@@ -14,6 +14,7 @@ require imgui/imgui_table_builtin
 require imgui/imgui_drawlist_builtin   // Text Clipping canvases / HSZ ECS rects
 require imgui/imgui_colors              // IM_COL32_WHITE + rgba()
 require daslib/safe_addr
+require daslib/enum_trait
 require app_main_menu
 require math
 
@@ -53,9 +54,9 @@ var LAYOUT_CHILD_DISABLE_MOUSE_WHEEL = false
 var LAYOUT_CHILD_DISABLE_MENU = false
 var LAYOUT_CHILD_OFFSET_X = 0
 var LAYOUT_CHILD_OVERRIDE_BG = true
-var LAYOUT_CHILD_FLAGS = int(ImGuiChildFlags.Border |
-                             ImGuiChildFlags.ResizeX |
-                             ImGuiChildFlags.ResizeY)
+var LAYOUT_CHILD_FLAGS = (ImGuiChildFlags.Border |
+                          ImGuiChildFlags.ResizeX |
+                          ImGuiChildFlags.ResizeY)
 
 // ----- Widgets Width -----
 var LAYOUT_WW_FLOAT = 0.0f
@@ -238,11 +239,11 @@ def private ChildWindowsSection() {
                 "to auto-fit to vertical contents."))
         }
         with_style((ImGuiCol.ChildBg, GetStyleColorVec4(ImGuiCol.FrameBg))) {
-            let flags3 = int(ImGuiChildFlags.Border | ImGuiChildFlags.ResizeY)
+            let flags3 = ImGuiChildFlags.Border | ImGuiChildFlags.ResizeY
             child(LAYOUT_CHILD_RESIZABLE,
                   (text = "ResizableChild",
                    size = float2(-FLT_MIN, GetTextLineHeightWithSpacing() * 8.0f),
-                   child_flags = unsafe(reinterpret<ImGuiChildFlags>(flags3)),
+                   child_flags = flags3,
                    window_flags = ImGuiWindowFlags.None)) {
                 for (n in range(10)) {
                     text("Line {fmt_4d(n)}")
@@ -264,11 +265,11 @@ def private ChildWindowsSection() {
             ImVec2(0.0f, GetTextLineHeightWithSpacing() * 1.0f),
             ImVec2(FLT_MAX,
                    GetTextLineHeightWithSpacing() * float(LAYOUT_CHILD_MAX_LINES)))
-        let flags4 = int(ImGuiChildFlags.Border | ImGuiChildFlags.AutoResizeY)
+        let flags4 = ImGuiChildFlags.Border | ImGuiChildFlags.AutoResizeY
         child(LAYOUT_CHILD_CONSTRAINED,
               (text = "ConstrainedChild",
                size = float2(-FLT_MIN, 0.0f),
-               child_flags = unsafe(reinterpret<ImGuiChildFlags>(flags4)),
+               child_flags = flags4,
                window_flags = ImGuiWindowFlags.None)) {
             for (n in range(LAYOUT_CHILD_DRAW_LINES)) {
                 text("Line {fmt_4d(n)}")
@@ -285,19 +286,19 @@ def private ChildWindowsSection() {
             (id = "LAYOUT_CHILD_OVERRIDE_BG", text = "Override ChildBg color"))
         edit_checkbox_flags(safe_addr(LAYOUT_CHILD_FLAGS),
             (id = "LAYOUT_CHILD_F_BORDER", text = "ImGuiChildFlags_Border",
-             flags_value = int(ImGuiChildFlags.Border)))
+             flags_value = ImGuiChildFlags.Border))
         edit_checkbox_flags(safe_addr(LAYOUT_CHILD_FLAGS),
             (id = "LAYOUT_CHILD_F_AUWP", text = "ImGuiChildFlags_AlwaysUseWindowPadding",
-             flags_value = int(ImGuiChildFlags.AlwaysUseWindowPadding)))
+             flags_value = ImGuiChildFlags.AlwaysUseWindowPadding))
         edit_checkbox_flags(safe_addr(LAYOUT_CHILD_FLAGS),
             (id = "LAYOUT_CHILD_F_RX", text = "ImGuiChildFlags_ResizeX",
-             flags_value = int(ImGuiChildFlags.ResizeX)))
+             flags_value = ImGuiChildFlags.ResizeX))
         edit_checkbox_flags(safe_addr(LAYOUT_CHILD_FLAGS),
             (id = "LAYOUT_CHILD_F_RY", text = "ImGuiChildFlags_ResizeY",
-             flags_value = int(ImGuiChildFlags.ResizeY)))
+             flags_value = ImGuiChildFlags.ResizeY))
         edit_checkbox_flags(safe_addr(LAYOUT_CHILD_FLAGS),
             (id = "LAYOUT_CHILD_F_FS", text = "ImGuiChildFlags_FrameStyle",
-             flags_value = int(ImGuiChildFlags.FrameStyle)))
+             flags_value = ImGuiChildFlags.FrameStyle))
         same_line()
         text("(?)")
         item_tooltip(LAYOUT_CHILD_HM3) {
@@ -307,7 +308,7 @@ def private ChildWindowsSection() {
                     "ChildBg, ChildRounding, ChildBorderSize, WindowPadding."))
             }
         }
-        if ((LAYOUT_CHILD_FLAGS & int(ImGuiChildFlags.FrameStyle)) != 0) {
+        if (bool(LAYOUT_CHILD_FLAGS & ImGuiChildFlags.FrameStyle)) {
             LAYOUT_CHILD_OVERRIDE_BG = false
         }
         SetCursorPosX(GetCursorPosX() + float(LAYOUT_CHILD_OFFSET_X))
@@ -317,7 +318,7 @@ def private ChildWindowsSection() {
             with_style((ImGuiCol.ChildBg, 0x64_00_00_FFu)) {
                 child(LAYOUT_CHILD_RED,
                       (text = "Red", size = float2(200.0f, 100.0f),
-                       child_flags = unsafe(reinterpret<ImGuiChildFlags>(LAYOUT_CHILD_FLAGS)),
+                       child_flags = LAYOUT_CHILD_FLAGS,
                        window_flags = ImGuiWindowFlags.None)) {
                     for (n in range(50)) {
                         text("Some test {n}")
@@ -327,7 +328,7 @@ def private ChildWindowsSection() {
         } else {
             child(LAYOUT_CHILD_RED,
                   (text = "Red", size = float2(200.0f, 100.0f),
-                   child_flags = unsafe(reinterpret<ImGuiChildFlags>(LAYOUT_CHILD_FLAGS)),
+                   child_flags = LAYOUT_CHILD_FLAGS,
                    window_flags = ImGuiWindowFlags.None)) {
                 for (n in range(50)) {
                     text("Some test {n}")

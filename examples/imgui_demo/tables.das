@@ -68,57 +68,56 @@ var private TABLES_BASIC_T2_CELL : table<int; NarrativeState>
 var private TABLES_BASIC_T3_CELL : table<int; NarrativeState>
 
 // ---- Section 2 Borders, background state ----
-var private TABLES_BORDERS_FLAGS    : int  = int(ImGuiTableFlags.Borders |
-                                                 ImGuiTableFlags.RowBg)
+var private TABLES_BORDERS_FLAGS = ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg
 var private TABLES_BORDERS_CONTENTS : RadioIntState
 var private TABLES_BORDERS_T1_CELL_TEXT : table<int; NarrativeState>
 var private TABLES_BORDERS_T1_CELL_BTN  : table<int; ClickState>
 
 // ---- Section 3 Resizable, stretch state ----
-var private TABLES_RSTRETCH_FLAGS : int = int(ImGuiTableFlags.SizingStretchSame |
-                                              ImGuiTableFlags.Resizable |
-                                              ImGuiTableFlags.BordersOuter |
-                                              ImGuiTableFlags.BordersV |
-                                              ImGuiTableFlags.ContextMenuInBody)
+var private TABLES_RSTRETCH_FLAGS = (ImGuiTableFlags.SizingStretchSame |
+                                     ImGuiTableFlags.Resizable |
+                                     ImGuiTableFlags.BordersOuter |
+                                     ImGuiTableFlags.BordersV |
+                                     ImGuiTableFlags.ContextMenuInBody)
 var private TABLES_RSTRETCH_CELL : table<int; NarrativeState>
 
 // ---- Section 4 Resizable, fixed state ----
-var private TABLES_RFIXED_FLAGS : int = int(ImGuiTableFlags.SizingFixedFit |
-                                            ImGuiTableFlags.Resizable |
-                                            ImGuiTableFlags.BordersOuter |
-                                            ImGuiTableFlags.BordersV |
-                                            ImGuiTableFlags.ContextMenuInBody)
+var private TABLES_RFIXED_FLAGS = (ImGuiTableFlags.SizingFixedFit |
+                                   ImGuiTableFlags.Resizable |
+                                   ImGuiTableFlags.BordersOuter |
+                                   ImGuiTableFlags.BordersV |
+                                   ImGuiTableFlags.ContextMenuInBody)
 var private TABLES_RFIXED_CELL : table<int; NarrativeState>
 
 // ---- Section 5 Resizable, mixed state ----
 // Same flag set drives both sub-tables (3-col and 6-col). Per-column
 // WidthFixed/WidthStretch + DefaultHide configured at TableSetupColumn time.
-var private TABLES_RMIXED_FLAGS : int = int(ImGuiTableFlags.SizingFixedFit |
-                                            ImGuiTableFlags.RowBg |
-                                            ImGuiTableFlags.Borders |
-                                            ImGuiTableFlags.Resizable |
-                                            ImGuiTableFlags.Reorderable |
-                                            ImGuiTableFlags.Hideable)
+var private TABLES_RMIXED_FLAGS = (ImGuiTableFlags.SizingFixedFit |
+                                   ImGuiTableFlags.RowBg |
+                                   ImGuiTableFlags.Borders |
+                                   ImGuiTableFlags.Resizable |
+                                   ImGuiTableFlags.Reorderable |
+                                   ImGuiTableFlags.Hideable)
 var private TABLES_RMIXED_T1_CELL : table<int; NarrativeState>
 var private TABLES_RMIXED_T2_CELL : table<int; NarrativeState>
 
 // ---- Section 6 Reorderable, hideable, with headers state ----
-var private TABLES_RHH_FLAGS : int = int(ImGuiTableFlags.Resizable |
-                                         ImGuiTableFlags.Reorderable |
-                                         ImGuiTableFlags.Hideable |
-                                         ImGuiTableFlags.BordersOuter |
-                                         ImGuiTableFlags.BordersV)
+var private TABLES_RHH_FLAGS = (ImGuiTableFlags.Resizable |
+                                ImGuiTableFlags.Reorderable |
+                                ImGuiTableFlags.Hideable |
+                                ImGuiTableFlags.BordersOuter |
+                                ImGuiTableFlags.BordersV)
 var private TABLES_RHH_T1_CELL : table<int; NarrativeState>
 var private TABLES_RHH_T2_CELL : table<int; NarrativeState>
 
 // ---- Section 7 Padding state ----
 // Two sub-tables: table_padding (flag toggles + Avail/FillButton cells)
 // and table_padding_2 (CellPadding style-var + InputText grid).
-var private TABLES_PAD1_FLAGS : int = int(ImGuiTableFlags.BordersV)
+var private TABLES_PAD1_FLAGS = ImGuiTableFlags.BordersV
 var private TABLES_PAD1_AVAIL : table<int; NarrativeState>  // row 0 cells: "Avail %.2f"
 var private TABLES_PAD1_BTN   : table<int; ClickState>      // rows 1-4 cells: FillButton "Hello c,r"
 
-var private TABLES_PAD2_FLAGS        : int    = int(ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg)
+var private TABLES_PAD2_FLAGS = ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg
 var private TABLES_PAD2_CELL_PADDING : float2 = float2(0.0f, 0.0f)
 // 15 InputText cells; the boost (text=..., init=...) named-tuple form
 // seeds the buffer to "edit me" on first call (matches cpp's static init).
@@ -129,12 +128,11 @@ var private TABLES_PAD2_CELL_IT      : table<int; InputTextState>
 // policy. The cpp helper EditTableSizingFlags is ported as
 // `def private edit_table_sizing_flags` below; it splices the policy bits
 // in/out of an int-typed flag word.
-var private TABLES_SIZING_FLAGS1 : int = int(ImGuiTableFlags.Resizable |
-                                             ImGuiTableFlags.NoHostExtendX)
+var private TABLES_SIZING_FLAGS1 = ImGuiTableFlags.Resizable | ImGuiTableFlags.NoHostExtendX
 // Policy-per-row state: 4 outer iterations, each owns one flag word
 // (initialized via [init] to the 4 cpp defaults) plus two 3-col x 3-row
 // inner tables of NarrativeState cells.
-var private TABLES_SIZING_POLICY      : table<int; int>
+var private TABLES_SIZING_POLICY      : table<int; ImGuiTableFlags>
 var private TABLES_SIZING_T1          : table<int; TableState>      // 4 data_tables
 var private TABLES_SIZING_T2          : table<int; TableState>      // 4 data_tables
 var private TABLES_SIZING_T1_CELL     : table<int; NarrativeState>  // key = table_n*9 + row*3 + col
@@ -149,10 +147,10 @@ let private TABLES_SIZING_CT_BUTTON        = 3
 let private TABLES_SIZING_CT_FILL_BUTTON   = 4
 let private TABLES_SIZING_CT_INPUT_TEXT    = 5
 
-var private TABLES_SIZING_ADV_FLAGS : int = int(ImGuiTableFlags.ScrollY |
-                                                ImGuiTableFlags.Borders |
-                                                ImGuiTableFlags.RowBg |
-                                                ImGuiTableFlags.Resizable)
+var private TABLES_SIZING_ADV_FLAGS = (ImGuiTableFlags.ScrollY |
+                                       ImGuiTableFlags.Borders |
+                                       ImGuiTableFlags.RowBg |
+                                       ImGuiTableFlags.Resizable)
 var private TABLES_SIZING_ADV_CT       : int = 0
 var private TABLES_SIZING_ADV_COLUMNS  : int = 3
 // Per-CT-type cell maps so widget registry paths stay disjoint when the
@@ -162,46 +160,44 @@ var private TABLES_SIZING_ADV_BTN     : table<int; ClickState>
 var private TABLES_SIZING_ADV_IT      : table<int; InputTextState>
 
 // ---- Section 9 Vertical scrolling state ----
-var private TABLES_VSCROLL_FLAGS : int = int(ImGuiTableFlags.ScrollY |
-                                             ImGuiTableFlags.RowBg |
-                                             ImGuiTableFlags.BordersOuter |
-                                             ImGuiTableFlags.BordersV |
-                                             ImGuiTableFlags.Resizable |
-                                             ImGuiTableFlags.Reorderable |
-                                             ImGuiTableFlags.Hideable)
+var private TABLES_VSCROLL_FLAGS = (ImGuiTableFlags.ScrollY |
+                                    ImGuiTableFlags.RowBg |
+                                    ImGuiTableFlags.BordersOuter |
+                                    ImGuiTableFlags.BordersV |
+                                    ImGuiTableFlags.Resizable |
+                                    ImGuiTableFlags.Reorderable |
+                                    ImGuiTableFlags.Hideable)
 var private TABLES_VSCROLL_CELL : table<int; NarrativeState>  // key = row*3 + col, 1000 rows
 
 // ---- Section 10 Horizontal scrolling state ----
-var private TABLES_HSCROLL_FLAGS : int = int(ImGuiTableFlags.ScrollX |
-                                             ImGuiTableFlags.ScrollY |
-                                             ImGuiTableFlags.RowBg |
-                                             ImGuiTableFlags.BordersOuter |
-                                             ImGuiTableFlags.BordersV |
-                                             ImGuiTableFlags.Resizable |
-                                             ImGuiTableFlags.Reorderable |
-                                             ImGuiTableFlags.Hideable)
+var private TABLES_HSCROLL_FLAGS = (ImGuiTableFlags.ScrollX |
+                                    ImGuiTableFlags.ScrollY |
+                                    ImGuiTableFlags.RowBg |
+                                    ImGuiTableFlags.BordersOuter |
+                                    ImGuiTableFlags.BordersV |
+                                    ImGuiTableFlags.Resizable |
+                                    ImGuiTableFlags.Reorderable |
+                                    ImGuiTableFlags.Hideable)
 var private TABLES_HSCROLL_FREEZE_COLS : int = 1
 var private TABLES_HSCROLL_FREEZE_ROWS : int = 1
 var private TABLES_HSCROLL_CELL : table<int; NarrativeState>  // 20 rows x 7 cols
 
 // Second sub-table (Stretch + ScrollX).
-var private TABLES_HSCROLL2_FLAGS : int = int(ImGuiTableFlags.SizingStretchSame |
-                                              ImGuiTableFlags.ScrollX |
-                                              ImGuiTableFlags.ScrollY |
-                                              ImGuiTableFlags.BordersOuter |
-                                              ImGuiTableFlags.RowBg |
-                                              ImGuiTableFlags.ContextMenuInBody)
+var private TABLES_HSCROLL2_FLAGS = (ImGuiTableFlags.SizingStretchSame |
+                                     ImGuiTableFlags.ScrollX |
+                                     ImGuiTableFlags.ScrollY |
+                                     ImGuiTableFlags.BordersOuter |
+                                     ImGuiTableFlags.RowBg |
+                                     ImGuiTableFlags.ContextMenuInBody)
 var private TABLES_HSCROLL2_INNER_WIDTH : float = 1000.0f
 var private TABLES_HSCROLL2_CELL : table<int; NarrativeState>  // 20*7 cells
 
 // ---- Section 11 Columns flags state ----
-// Per-column input flags (DefaultSort / None / DefaultHide) — int-backed
-// so edit_checkbox_flags can edit them; reinterpreted to
-// ImGuiTableColumnFlags at TableSetupColumn time.
-var private TABLES_COLFLAGS_INPUT     : table<int; int>     // 3 columns
+// Per-column input flags (DefaultSort / None / DefaultHide).
+var private TABLES_COLFLAGS_INPUT     : table<int; ImGuiTableColumnFlags>  // 3 columns
 // Output flags read from TableGetColumnFlags per frame; displayed in the
 // first sub-table via a disabled set of CheckboxFlags.
-var private TABLES_COLFLAGS_OUTPUT    : table<int; int>     // 3 columns
+var private TABLES_COLFLAGS_OUTPUT    : table<int; ImGuiTableColumnFlags>  // 3 columns
 var private TABLES_COLFLAGS_BODY_CELL : table<int; NarrativeState>  // 8*3 cells in body table
 
 // Per-column widget state for the setup-table's label cells: 1 label per
@@ -213,11 +209,10 @@ var private TABLES_COLFLAGS_OUTFLAG_LABEL : table<int; NarrativeState>
 
 // ---- Section 12 Columns widths state ----
 // Sub-table 1: default-width via TableSetupColumn (cpp:4938-4967).
-var private TABLES_CW1_FLAGS : int = int(ImGuiTableFlags.Borders |
-                                         ImGuiTableFlags.NoBordersInBodyUntilResize)
+var private TABLES_CW1_FLAGS = ImGuiTableFlags.Borders | ImGuiTableFlags.NoBordersInBodyUntilResize
 var private TABLES_CW1_CELL : table<int; NarrativeState>  // 4*3 cells
 // Sub-table 2: explicit-width via TableSetupColumn (cpp:4969-5000).
-var private TABLES_CW2_FLAGS : int = int(ImGuiTableFlags.None)
+var private TABLES_CW2_FLAGS = ImGuiTableFlags.None
 var private TABLES_CW2_CELL : table<int; NarrativeState>  // 5*4 cells
 
 // ---- Section 13 Nested tables state ----
@@ -237,12 +232,12 @@ var private TABLES_RH3_CELL : table<int; NarrativeState>  // 8 cells
 
 // ---- Section 15 Outer size state ----
 // Sub 1: NoHostExtendX/Y toggles + sliding "Hello!" SameLine target.
-var private TABLES_OS1_FLAGS : int = int(ImGuiTableFlags.Borders |
-                                         ImGuiTableFlags.Resizable |
-                                         ImGuiTableFlags.ContextMenuInBody |
-                                         ImGuiTableFlags.RowBg |
-                                         ImGuiTableFlags.SizingFixedFit |
-                                         ImGuiTableFlags.NoHostExtendX)
+var private TABLES_OS1_FLAGS = (ImGuiTableFlags.Borders |
+                                ImGuiTableFlags.Resizable |
+                                ImGuiTableFlags.ContextMenuInBody |
+                                ImGuiTableFlags.RowBg |
+                                ImGuiTableFlags.SizingFixedFit |
+                                ImGuiTableFlags.NoHostExtendX)
 var private TABLES_OS1_CELL : table<int; NarrativeState>  // 10*3 cells
 // Sub 2 + 3: two explicit-size tables side-by-side.
 var private TABLES_OS2_CELL : table<int; NarrativeState>  // 5*3 cells
@@ -250,19 +245,19 @@ var private TABLES_OS3_CELL : table<int; NarrativeState>  // 3*3 cells
 
 // ---- Section 16 Background color state ----
 // 3 mode selectors + 5*6 cell text. Each selector is an int-backed Combo.
-var private TABLES_BG_FLAGS         : int = int(ImGuiTableFlags.RowBg)
+var private TABLES_BG_FLAGS = ImGuiTableFlags.RowBg
 var private TABLES_BG_ROW_BG_TYPE   : int = 1
 var private TABLES_BG_ROW_BG_TARGET : int = 1
 var private TABLES_BG_CELL_BG_TYPE  : int = 1
 var private TABLES_BG_CELL : table<int; NarrativeState>  // 5*6 cells, "row+col" charpairs
 
 // ---- Section 17 Tree view state ----
-var private TABLES_TREE_FLAGS    : int = int(ImGuiTableFlags.BordersV |
-                                             ImGuiTableFlags.BordersOuterH |
-                                             ImGuiTableFlags.Resizable |
-                                             ImGuiTableFlags.RowBg |
-                                             ImGuiTableFlags.NoBordersInBody)
-var private TABLES_TREE_NODE_FLAGS : int = int(ImGuiTreeNodeFlags.SpanAllColumns)
+var private TABLES_TREE_FLAGS = (ImGuiTableFlags.BordersV |
+                                 ImGuiTableFlags.BordersOuterH |
+                                 ImGuiTableFlags.Resizable |
+                                 ImGuiTableFlags.RowBg |
+                                 ImGuiTableFlags.NoBordersInBody)
+var private TABLES_TREE_NODE_FLAGS = ImGuiTreeNodeFlags.SpanAllColumns
 // Per-node widget state — there are 9 cpp nodes (idx 0..8). Each node has
 // 1 TreeNode + 2 trailing-column texts. Keyed by node index.
 var private TABLES_TREE_NODE       : table<int; TreeNodeState>
@@ -327,17 +322,17 @@ let private TABLES_AH_COLUMN_NAMES <- ["Track", "cabasa", "ride", "smash",
                                        "snare-c", "clap", "rim", "kick"]
 let private TABLES_AH_COLUMNS_COUNT = 14
 let private TABLES_AH_ROWS_COUNT    = 12
-var private TABLES_AH_TABLE_FLAGS : int = int(ImGuiTableFlags.SizingFixedFit |
-                                              ImGuiTableFlags.ScrollX |
-                                              ImGuiTableFlags.ScrollY |
-                                              ImGuiTableFlags.BordersOuter |
-                                              ImGuiTableFlags.BordersInnerH |
-                                              ImGuiTableFlags.Hideable |
-                                              ImGuiTableFlags.Resizable |
-                                              ImGuiTableFlags.Reorderable |
-                                              ImGuiTableFlags.HighlightHoveredColumn)
-var private TABLES_AH_COLUMN_FLAGS : int = int(ImGuiTableColumnFlags.AngledHeader |
-                                               ImGuiTableColumnFlags.WidthFixed)
+var private TABLES_AH_TABLE_FLAGS = (ImGuiTableFlags.SizingFixedFit |
+                                     ImGuiTableFlags.ScrollX |
+                                     ImGuiTableFlags.ScrollY |
+                                     ImGuiTableFlags.BordersOuter |
+                                     ImGuiTableFlags.BordersInnerH |
+                                     ImGuiTableFlags.Hideable |
+                                     ImGuiTableFlags.Resizable |
+                                     ImGuiTableFlags.Reorderable |
+                                     ImGuiTableFlags.HighlightHoveredColumn)
+var private TABLES_AH_COLUMN_FLAGS = (ImGuiTableColumnFlags.AngledHeader |
+                                      ImGuiTableColumnFlags.WidthFixed)
 var private TABLES_AH_FROZEN_COLS  : int = 1
 var private TABLES_AH_FROZEN_ROWS  : int = 2
 var private TABLES_AH_BOOLS  : table<int; bool>             // 14*12 cells
@@ -347,11 +342,11 @@ var private TABLES_AH_TRACK_ATFP  : table<int; EmptyMarkerState> // 12 align mar
 
 // ---- Section 21 Context menus state ----
 // Sub 1: flag toggle + 3*4 cells (default context menus only).
-var private TABLES_CM1_FLAGS : int = int(ImGuiTableFlags.Resizable |
-                                         ImGuiTableFlags.Reorderable |
-                                         ImGuiTableFlags.Hideable |
-                                         ImGuiTableFlags.Borders |
-                                         ImGuiTableFlags.ContextMenuInBody)
+var private TABLES_CM1_FLAGS = (ImGuiTableFlags.Resizable |
+                                ImGuiTableFlags.Reorderable |
+                                ImGuiTableFlags.Hideable |
+                                ImGuiTableFlags.Borders |
+                                ImGuiTableFlags.ContextMenuInBody)
 var private TABLES_CM1_CELL : table<int; NarrativeState>  // 4*3 cells
 // Sub 2: per-cell ".." popup + per-column body popup.
 var private TABLES_CM2_CELL_TEXT : table<int; NarrativeState> // 4*3 cells
@@ -369,12 +364,12 @@ var private TABLES_CM2_COL_TEXT  : table<int; NarrativeState>
 var private TABLES_CM2_COL_CLOSE : table<int; ClickState>
 
 // ---- Section 22 Synced instances state ----
-var private TABLES_SYNCED_FLAGS : int = int(ImGuiTableFlags.Resizable |
-                                            ImGuiTableFlags.Reorderable |
-                                            ImGuiTableFlags.Hideable |
-                                            ImGuiTableFlags.Borders |
-                                            ImGuiTableFlags.SizingFixedFit |
-                                            ImGuiTableFlags.NoSavedSettings)
+var private TABLES_SYNCED_FLAGS = (ImGuiTableFlags.Resizable |
+                                   ImGuiTableFlags.Reorderable |
+                                   ImGuiTableFlags.Hideable |
+                                   ImGuiTableFlags.Borders |
+                                   ImGuiTableFlags.SizingFixedFit |
+                                   ImGuiTableFlags.NoSavedSettings)
 // Per-iter CollapsingHeader state (3 iters).
 var private TABLES_SYNCED_HEADER : table<int; CollapsingHeaderState>
 // Per-iter cell text — different cell counts per iter (9 vs 27 vs 9).
@@ -401,16 +396,16 @@ struct private SortItem {
     quantity : int
 }
 var private TABLES_SORT_ITEMS : array<SortItem>
-var private TABLES_SORT_FLAGS : int = int(ImGuiTableFlags.Resizable |
-                                          ImGuiTableFlags.Reorderable |
-                                          ImGuiTableFlags.Hideable |
-                                          ImGuiTableFlags.Sortable |
-                                          ImGuiTableFlags.SortMulti |
-                                          ImGuiTableFlags.RowBg |
-                                          ImGuiTableFlags.BordersOuter |
-                                          ImGuiTableFlags.BordersV |
-                                          ImGuiTableFlags.NoBordersInBody |
-                                          ImGuiTableFlags.ScrollY)
+var private TABLES_SORT_FLAGS = (ImGuiTableFlags.Resizable |
+                                 ImGuiTableFlags.Reorderable |
+                                 ImGuiTableFlags.Hideable |
+                                 ImGuiTableFlags.Sortable |
+                                 ImGuiTableFlags.SortMulti |
+                                 ImGuiTableFlags.RowBg |
+                                 ImGuiTableFlags.BordersOuter |
+                                 ImGuiTableFlags.BordersV |
+                                 ImGuiTableFlags.NoBordersInBody |
+                                 ImGuiTableFlags.ScrollY)
 // Per-row state: 4 cells per row (ID/Name/Action/Quantity) — keyed by
 // SortItem.id (stable across re-orderings) so widget paths track the row
 // even after sort.
@@ -438,21 +433,21 @@ let private TABLES_ADV_CT_SELECTABLE_SPAN_ROW   = 5
 // Table flags (cpp:5724-5729). Defaults: full Resizable/Reorderable/
 // Hideable/Sortable/SortMulti + RowBg/Borders/NoBordersInBody +
 // ScrollX/ScrollY + SizingFixedFit.
-var private TABLES_ADV_FLAGS : int = int(ImGuiTableFlags.Resizable |
-                                         ImGuiTableFlags.Reorderable |
-                                         ImGuiTableFlags.Hideable |
-                                         ImGuiTableFlags.Sortable |
-                                         ImGuiTableFlags.SortMulti |
-                                         ImGuiTableFlags.RowBg |
-                                         ImGuiTableFlags.Borders |
-                                         ImGuiTableFlags.NoBordersInBody |
-                                         ImGuiTableFlags.ScrollX |
-                                         ImGuiTableFlags.ScrollY |
-                                         ImGuiTableFlags.SizingFixedFit)
+var private TABLES_ADV_FLAGS = (ImGuiTableFlags.Resizable |
+                                ImGuiTableFlags.Reorderable |
+                                ImGuiTableFlags.Hideable |
+                                ImGuiTableFlags.Sortable |
+                                ImGuiTableFlags.SortMulti |
+                                ImGuiTableFlags.RowBg |
+                                ImGuiTableFlags.Borders |
+                                ImGuiTableFlags.NoBordersInBody |
+                                ImGuiTableFlags.ScrollX |
+                                ImGuiTableFlags.ScrollY |
+                                ImGuiTableFlags.SizingFixedFit)
 // Per-column shared flags (cpp:5730 `columns_base_flags`). Only
 // AngledHeader is editable in the Options/Headers sub-tree; OR'd into
 // every TableSetupColumn call below.
-var private TABLES_ADV_COLUMNS_BASE_FLAGS : int = int(ImGuiTableColumnFlags.None)
+var private TABLES_ADV_COLUMNS_BASE_FLAGS = ImGuiTableColumnFlags.None
 
 var private TABLES_ADV_CONTENTS_TYPE      : int    = 5 // CT_SelectableSpanRow
 var private TABLES_ADV_FREEZE_COLS        : int    = 1
@@ -517,9 +512,9 @@ def seed_sort_items() {
 [init]
 def seed_columns_flags() {
     // cpp:4868 — `column_flags[3] = { DefaultSort, None, DefaultHide }`.
-    TABLES_COLFLAGS_INPUT[0] = int(ImGuiTableColumnFlags.DefaultSort)
-    TABLES_COLFLAGS_INPUT[1] = int(ImGuiTableColumnFlags.None)
-    TABLES_COLFLAGS_INPUT[2] = int(ImGuiTableColumnFlags.DefaultHide)
+    TABLES_COLFLAGS_INPUT[0] = ImGuiTableColumnFlags.DefaultSort
+    TABLES_COLFLAGS_INPUT[1] = ImGuiTableColumnFlags.None
+    TABLES_COLFLAGS_INPUT[2] = ImGuiTableColumnFlags.DefaultHide
 }
 
 [init]
@@ -539,10 +534,10 @@ def seed_sizing_policy() {
     // Mirrors `static ImGuiTableFlags sizing_policy_flags[4]` in cpp:4626.
     // Per-iteration table_n is the index into this map; the body OR's the
     // chosen policy with TABLES_SIZING_FLAGS1 before BeginTable.
-    TABLES_SIZING_POLICY[0] = int(ImGuiTableFlags.SizingFixedFit)
-    TABLES_SIZING_POLICY[1] = int(ImGuiTableFlags.SizingFixedSame)
-    TABLES_SIZING_POLICY[2] = int(ImGuiTableFlags.SizingStretchProp)
-    TABLES_SIZING_POLICY[3] = int(ImGuiTableFlags.SizingStretchSame)
+    TABLES_SIZING_POLICY[0] = ImGuiTableFlags.SizingFixedFit
+    TABLES_SIZING_POLICY[1] = ImGuiTableFlags.SizingFixedSame
+    TABLES_SIZING_POLICY[2] = ImGuiTableFlags.SizingStretchProp
+    TABLES_SIZING_POLICY[3] = ImGuiTableFlags.SizingStretchSame
 }
 
 [init]
@@ -714,39 +709,39 @@ def private show_borders_background() {
         // BordersV split into Outer + Inner sub-toggles).
         edit_checkbox_flags(safe_addr(TABLES_BORDERS_FLAGS),
             (id = "TBL_B_F_ROWBG", text = "ImGuiTableFlags_RowBg",
-             flags_value = int(ImGuiTableFlags.RowBg)))
+             flags_value = ImGuiTableFlags.RowBg))
         edit_checkbox_flags(safe_addr(TABLES_BORDERS_FLAGS),
             (id = "TBL_B_F_BORDERS", text = "ImGuiTableFlags_Borders",
-             flags_value = int(ImGuiTableFlags.Borders)))
+             flags_value = ImGuiTableFlags.Borders))
         with_indent(0.0f) {
             edit_checkbox_flags(safe_addr(TABLES_BORDERS_FLAGS),
                 (id = "TBL_B_F_BORDERSH", text = "ImGuiTableFlags_BordersH",
-                 flags_value = int(ImGuiTableFlags.BordersH)))
+                 flags_value = ImGuiTableFlags.BordersH))
             with_indent(0.0f) {
                 edit_checkbox_flags(safe_addr(TABLES_BORDERS_FLAGS),
                     (id = "TBL_B_F_BORDERSOH", text = "ImGuiTableFlags_BordersOuterH",
-                     flags_value = int(ImGuiTableFlags.BordersOuterH)))
+                     flags_value = ImGuiTableFlags.BordersOuterH))
                 edit_checkbox_flags(safe_addr(TABLES_BORDERS_FLAGS),
                     (id = "TBL_B_F_BORDERSIH", text = "ImGuiTableFlags_BordersInnerH",
-                     flags_value = int(ImGuiTableFlags.BordersInnerH)))
+                     flags_value = ImGuiTableFlags.BordersInnerH))
             }
             edit_checkbox_flags(safe_addr(TABLES_BORDERS_FLAGS),
                 (id = "TBL_B_F_BORDERSV", text = "ImGuiTableFlags_BordersV",
-                 flags_value = int(ImGuiTableFlags.BordersV)))
+                 flags_value = ImGuiTableFlags.BordersV))
             with_indent(0.0f) {
                 edit_checkbox_flags(safe_addr(TABLES_BORDERS_FLAGS),
                     (id = "TBL_B_F_BORDERSOV", text = "ImGuiTableFlags_BordersOuterV",
-                     flags_value = int(ImGuiTableFlags.BordersOuterV)))
+                     flags_value = ImGuiTableFlags.BordersOuterV))
                 edit_checkbox_flags(safe_addr(TABLES_BORDERS_FLAGS),
                     (id = "TBL_B_F_BORDERSIV", text = "ImGuiTableFlags_BordersInnerV",
-                     flags_value = int(ImGuiTableFlags.BordersInnerV)))
+                     flags_value = ImGuiTableFlags.BordersInnerV))
             }
             edit_checkbox_flags(safe_addr(TABLES_BORDERS_FLAGS),
                 (id = "TBL_B_F_BORDERSO", text = "ImGuiTableFlags_BordersOuter",
-                 flags_value = int(ImGuiTableFlags.BordersOuter)))
+                 flags_value = ImGuiTableFlags.BordersOuter))
             edit_checkbox_flags(safe_addr(TABLES_BORDERS_FLAGS),
                 (id = "TBL_B_F_BORDERSI", text = "ImGuiTableFlags_BordersInner",
-                 flags_value = int(ImGuiTableFlags.BordersInner)))
+                 flags_value = ImGuiTableFlags.BordersInner))
         }
 
         // Contents-type radio (Text vs FillButton) + display-headers checkbox.
@@ -761,11 +756,11 @@ def private show_borders_background() {
 
         edit_checkbox_flags(safe_addr(TABLES_BORDERS_FLAGS),
             (id = "TBL_B_F_NBINBODY", text = "ImGuiTableFlags_NoBordersInBody",
-             flags_value = int(ImGuiTableFlags.NoBordersInBody)))
+             flags_value = ImGuiTableFlags.NoBordersInBody))
 
         // 3x5 grid driven by the runtime flag set + contents-type selection.
         data_table(TABLES_BORDERS_T1, (text = "##bt1", columns = 3,
-                                       flags = unsafe(reinterpret<ImGuiTableFlags>(TABLES_BORDERS_FLAGS)),
+                                       flags = TABLES_BORDERS_FLAGS,
                                        outer_size = float2(0.0f, 0.0f),
                                        inner_width = 0.0f)) {
             if (TABLES_BORDERS_DH_CHECK.value) {
@@ -804,13 +799,13 @@ def private show_resizable_stretch() {
         // or BordersV. _Resizable implicitly enables _BordersInnerV.
         edit_checkbox_flags(safe_addr(TABLES_RSTRETCH_FLAGS),
             (id = "TBL_RS_F_RESIZABLE", text = "ImGuiTableFlags_Resizable",
-             flags_value = int(ImGuiTableFlags.Resizable)))
+             flags_value = ImGuiTableFlags.Resizable))
         edit_checkbox_flags(safe_addr(TABLES_RSTRETCH_FLAGS),
             (id = "TBL_RS_F_BORDERSV", text = "ImGuiTableFlags_BordersV",
-             flags_value = int(ImGuiTableFlags.BordersV)))
+             flags_value = ImGuiTableFlags.BordersV))
 
         data_table(TABLES_RSTRETCH_T1, (text = "##rs1", columns = 3,
-                                        flags = unsafe(reinterpret<ImGuiTableFlags>(TABLES_RSTRETCH_FLAGS)),
+                                        flags = TABLES_RSTRETCH_FLAGS,
                                         outer_size = float2(0.0f, 0.0f),
                                         inner_width = 0.0f)) {
             for (row in range(5)) {
@@ -837,10 +832,10 @@ def private show_resizable_fixed() {
         // border to auto-fit to contents.
         edit_checkbox_flags(safe_addr(TABLES_RFIXED_FLAGS),
             (id = "TBL_RF_F_NOHOST", text = "ImGuiTableFlags_NoHostExtendX",
-             flags_value = int(ImGuiTableFlags.NoHostExtendX)))
+             flags_value = ImGuiTableFlags.NoHostExtendX))
 
         data_table(TABLES_RFIXED_T1, (text = "##rf1", columns = 3,
-                                      flags = unsafe(reinterpret<ImGuiTableFlags>(TABLES_RFIXED_FLAGS)),
+                                      flags = TABLES_RFIXED_FLAGS,
                                       outer_size = float2(0.0f, 0.0f),
                                       inner_width = 0.0f)) {
             for (row in range(5)) {
@@ -864,7 +859,7 @@ def private show_resizable_mixed() {
                               flags = ImGuiTreeNodeFlags.None)) {
         // Per-column WidthFixed / WidthStretch policy mix. The 6-col second
         // table also demonstrates DefaultHide for initial column visibility.
-        let tflags = unsafe(reinterpret<ImGuiTableFlags>(TABLES_RMIXED_FLAGS))
+        let tflags = TABLES_RMIXED_FLAGS
 
         // Table 1: 3 columns (2 Fixed + 1 Stretch).
         data_table(TABLES_RMIXED_T1, (text = "##rm1", columns = 3, flags = tflags,
@@ -921,26 +916,26 @@ def private show_reorderable_hideable_headers() {
         // the visibility context menu.
         edit_checkbox_flags(safe_addr(TABLES_RHH_FLAGS),
             (id = "TBL_RHH_F_RESIZABLE", text = "ImGuiTableFlags_Resizable",
-             flags_value = int(ImGuiTableFlags.Resizable)))
+             flags_value = ImGuiTableFlags.Resizable))
         edit_checkbox_flags(safe_addr(TABLES_RHH_FLAGS),
             (id = "TBL_RHH_F_REORDERABLE", text = "ImGuiTableFlags_Reorderable",
-             flags_value = int(ImGuiTableFlags.Reorderable)))
+             flags_value = ImGuiTableFlags.Reorderable))
         edit_checkbox_flags(safe_addr(TABLES_RHH_FLAGS),
             (id = "TBL_RHH_F_HIDEABLE", text = "ImGuiTableFlags_Hideable",
-             flags_value = int(ImGuiTableFlags.Hideable)))
+             flags_value = ImGuiTableFlags.Hideable))
         edit_checkbox_flags(safe_addr(TABLES_RHH_FLAGS),
             (id = "TBL_RHH_F_NBINBODY", text = "ImGuiTableFlags_NoBordersInBody",
-             flags_value = int(ImGuiTableFlags.NoBordersInBody)))
+             flags_value = ImGuiTableFlags.NoBordersInBody))
         edit_checkbox_flags(safe_addr(TABLES_RHH_FLAGS),
             (id = "TBL_RHH_F_NBINBODYUNTILRESIZE",
              text = "ImGuiTableFlags_NoBordersInBodyUntilResize",
-             flags_value = int(ImGuiTableFlags.NoBordersInBodyUntilResize)))
+             flags_value = ImGuiTableFlags.NoBordersInBodyUntilResize))
         edit_checkbox_flags(safe_addr(TABLES_RHH_FLAGS),
             (id = "TBL_RHH_F_HIGHLIGHTHOVERED",
              text = "ImGuiTableFlags_HighlightHoveredColumn",
-             flags_value = int(ImGuiTableFlags.HighlightHoveredColumn)))
+             flags_value = ImGuiTableFlags.HighlightHoveredColumn))
 
-        let tflags = unsafe(reinterpret<ImGuiTableFlags>(TABLES_RHH_FLAGS))
+        let tflags = TABLES_RHH_FLAGS
 
         // Table 1: default outer_size (stretches to fill available width).
         data_table(TABLES_RHH_T1, (text = "##rhh1", columns = 3, flags = tflags,
@@ -962,8 +957,7 @@ def private show_reorderable_hideable_headers() {
 
         // Table 2: outer_size.x = 0.0f + SizingFixedFit packs columns tight
         // (valid only without ScrollX or stretch columns).
-        let tflags2 = unsafe(reinterpret<ImGuiTableFlags>(
-                                 TABLES_RHH_FLAGS | int(ImGuiTableFlags.SizingFixedFit)))
+        let tflags2 = TABLES_RHH_FLAGS | ImGuiTableFlags.SizingFixedFit
         data_table(TABLES_RHH_T2, (text = "##rhh2", columns = 3, flags = tflags2,
                                    outer_size = float2(0.0f, 0.0f),
                                    inner_width = 0.0f)) {
@@ -1007,23 +1001,23 @@ def private show_padding() {
         // available-width effect of each toggle is visible at a glance.
         edit_checkbox_flags(safe_addr(TABLES_PAD1_FLAGS),
             (id = "TBL_P1_F_PAD_OUT_X", text = "ImGuiTableFlags_PadOuterX",
-             flags_value = int(ImGuiTableFlags.PadOuterX)))
+             flags_value = ImGuiTableFlags.PadOuterX))
         edit_checkbox_flags(safe_addr(TABLES_PAD1_FLAGS),
             (id = "TBL_P1_F_NOPAD_OUT_X", text = "ImGuiTableFlags_NoPadOuterX",
-             flags_value = int(ImGuiTableFlags.NoPadOuterX)))
+             flags_value = ImGuiTableFlags.NoPadOuterX))
         edit_checkbox_flags(safe_addr(TABLES_PAD1_FLAGS),
             (id = "TBL_P1_F_NOPAD_IN_X", text = "ImGuiTableFlags_NoPadInnerX",
-             flags_value = int(ImGuiTableFlags.NoPadInnerX)))
+             flags_value = ImGuiTableFlags.NoPadInnerX))
         edit_checkbox_flags(safe_addr(TABLES_PAD1_FLAGS),
             (id = "TBL_P1_F_BORDERS_OV", text = "ImGuiTableFlags_BordersOuterV",
-             flags_value = int(ImGuiTableFlags.BordersOuterV)))
+             flags_value = ImGuiTableFlags.BordersOuterV))
         edit_checkbox_flags(safe_addr(TABLES_PAD1_FLAGS),
             (id = "TBL_P1_F_BORDERS_IV", text = "ImGuiTableFlags_BordersInnerV",
-             flags_value = int(ImGuiTableFlags.BordersInnerV)))
+             flags_value = ImGuiTableFlags.BordersInnerV))
         checkbox(TABLES_PAD1_SHOW_HEADERS, (text = "show_headers", init = false))
 
         data_table(TABLES_PAD1_T, (text = "##pad1", columns = 3,
-                                   flags = unsafe(reinterpret<ImGuiTableFlags>(TABLES_PAD1_FLAGS)),
+                                   flags = TABLES_PAD1_FLAGS,
                                    outer_size = float2(0.0f, 0.0f),
                                    inner_width = 0.0f)) {
             if (TABLES_PAD1_SHOW_HEADERS.value) {
@@ -1056,25 +1050,25 @@ def private show_padding() {
         // InputText frame so the cell padding is visually unambiguous.
         edit_checkbox_flags(safe_addr(TABLES_PAD2_FLAGS),
             (id = "TBL_P2_F_BORDERS", text = "ImGuiTableFlags_Borders",
-             flags_value = int(ImGuiTableFlags.Borders)))
+             flags_value = ImGuiTableFlags.Borders))
         edit_checkbox_flags(safe_addr(TABLES_PAD2_FLAGS),
             (id = "TBL_P2_F_BORDERSH", text = "ImGuiTableFlags_BordersH",
-             flags_value = int(ImGuiTableFlags.BordersH)))
+             flags_value = ImGuiTableFlags.BordersH))
         edit_checkbox_flags(safe_addr(TABLES_PAD2_FLAGS),
             (id = "TBL_P2_F_BORDERSV", text = "ImGuiTableFlags_BordersV",
-             flags_value = int(ImGuiTableFlags.BordersV)))
+             flags_value = ImGuiTableFlags.BordersV))
         edit_checkbox_flags(safe_addr(TABLES_PAD2_FLAGS),
             (id = "TBL_P2_F_BORDERS_IN", text = "ImGuiTableFlags_BordersInner",
-             flags_value = int(ImGuiTableFlags.BordersInner)))
+             flags_value = ImGuiTableFlags.BordersInner))
         edit_checkbox_flags(safe_addr(TABLES_PAD2_FLAGS),
             (id = "TBL_P2_F_BORDERS_OUT", text = "ImGuiTableFlags_BordersOuter",
-             flags_value = int(ImGuiTableFlags.BordersOuter)))
+             flags_value = ImGuiTableFlags.BordersOuter))
         edit_checkbox_flags(safe_addr(TABLES_PAD2_FLAGS),
             (id = "TBL_P2_F_ROWBG", text = "ImGuiTableFlags_RowBg",
-             flags_value = int(ImGuiTableFlags.RowBg)))
+             flags_value = ImGuiTableFlags.RowBg))
         edit_checkbox_flags(safe_addr(TABLES_PAD2_FLAGS),
             (id = "TBL_P2_F_RESIZABLE", text = "ImGuiTableFlags_Resizable",
-             flags_value = int(ImGuiTableFlags.Resizable)))
+             flags_value = ImGuiTableFlags.Resizable))
         checkbox(TABLES_PAD2_SHOW_FRAMEBG, (text = "show_widget_frame_bg", init = true))
         edit_slider_float2(safe_addr(TABLES_PAD2_CELL_PADDING),
             (id = "TBL_P2_CELL_PAD", text = "CellPadding",
@@ -1082,7 +1076,7 @@ def private show_padding() {
 
         with_style((ImGuiStyleVar.CellPadding, TABLES_PAD2_CELL_PADDING)) {
             data_table(TABLES_PAD2_T, (text = "##pad2", columns = 3,
-                                       flags = unsafe(reinterpret<ImGuiTableFlags>(TABLES_PAD2_FLAGS)),
+                                       flags = TABLES_PAD2_FLAGS,
                                        outer_size = float2(0.0f, 0.0f),
                                        inner_width = 0.0f)) {
                 if (!TABLES_PAD2_SHOW_FRAMEBG.value) {
@@ -1104,14 +1098,14 @@ def private show_padding() {
 // def. Strips the four `SizingFixed*`/`SizingStretch*` policy bits out of
 // the input flags, lets the user pick one via a Combo, and ORs it back in.
 // Pure-bits manipulation — no widget IDENT needed beyond the Combo state.
-def private edit_table_sizing_flags(var p_flags : int? implicit; id : string) {
-    let policy_mask = int(ImGuiTableFlags.SizingMask_)
-    let values = fixed_array(int(ImGuiTableFlags.None),
-                             int(ImGuiTableFlags.SizingFixedFit),
-                             int(ImGuiTableFlags.SizingFixedSame),
-                             int(ImGuiTableFlags.SizingStretchProp),
-                             int(ImGuiTableFlags.SizingStretchSame))
-    var current : int
+def private edit_table_sizing_flags(var p_flags : ImGuiTableFlags? implicit; id : string) {
+    let policy_mask = ImGuiTableFlags.SizingMask_
+    let values = fixed_array(ImGuiTableFlags.None,
+                             ImGuiTableFlags.SizingFixedFit,
+                             ImGuiTableFlags.SizingFixedSame,
+                             ImGuiTableFlags.SizingStretchProp,
+                             ImGuiTableFlags.SizingStretchSame)
+    var current : ImGuiTableFlags
     unsafe { current = *p_flags & policy_mask; }
     var idx = 0
     for (n in range(5)) {
@@ -1147,10 +1141,10 @@ def private show_sizing_policies() {
         // Shared flag toggles applied on top of each per-row policy.
         edit_checkbox_flags(safe_addr(TABLES_SIZING_FLAGS1),
             (id = "TBL_SZ_F_RESIZABLE", text = "ImGuiTableFlags_Resizable",
-             flags_value = int(ImGuiTableFlags.Resizable)))
+             flags_value = ImGuiTableFlags.Resizable))
         edit_checkbox_flags(safe_addr(TABLES_SIZING_FLAGS1),
             (id = "TBL_SZ_F_NOHOST", text = "ImGuiTableFlags_NoHostExtendX",
-             flags_value = int(ImGuiTableFlags.NoHostExtendX)))
+             flags_value = ImGuiTableFlags.NoHostExtendX))
 
         // Four mini-tables, one per sizing policy. Equal-width + uneven-
         // width content side-by-side so the policy effect is visually
@@ -1163,8 +1157,7 @@ def private show_sizing_policies() {
                 edit_table_sizing_flags(unsafe(addr(TABLES_SIZING_POLICY[table_n])),
                                         "sizing_{table_n}")
 
-                let combined = unsafe(reinterpret<ImGuiTableFlags>(
-                    TABLES_SIZING_POLICY[table_n] | TABLES_SIZING_FLAGS1))
+                let combined = TABLES_SIZING_POLICY[table_n] | TABLES_SIZING_FLAGS1
 
                 // Table 1: equal-width content ("Oh dear" x 3 across 3 cols).
                 data_table(TABLES_SIZING_T1[table_n],
@@ -1225,30 +1218,29 @@ def private show_sizing_policies() {
             edit_checkbox_flags(safe_addr(TABLES_SIZING_ADV_FLAGS),
                 (id = "TBL_SZ_ADV_F_RESIZABLE",
                  text = "ImGuiTableFlags_Resizable",
-                 flags_value = int(ImGuiTableFlags.Resizable)))
+                 flags_value = ImGuiTableFlags.Resizable))
             edit_checkbox_flags(safe_addr(TABLES_SIZING_ADV_FLAGS),
                 (id = "TBL_SZ_ADV_F_PRECISE",
                  text = "ImGuiTableFlags_PreciseWidths",
-                 flags_value = int(ImGuiTableFlags.PreciseWidths)))
+                 flags_value = ImGuiTableFlags.PreciseWidths))
             edit_checkbox_flags(safe_addr(TABLES_SIZING_ADV_FLAGS),
                 (id = "TBL_SZ_ADV_F_SCROLLX",
                  text = "ImGuiTableFlags_ScrollX",
-                 flags_value = int(ImGuiTableFlags.ScrollX)))
+                 flags_value = ImGuiTableFlags.ScrollX))
             edit_checkbox_flags(safe_addr(TABLES_SIZING_ADV_FLAGS),
                 (id = "TBL_SZ_ADV_F_SCROLLY",
                  text = "ImGuiTableFlags_ScrollY",
-                 flags_value = int(ImGuiTableFlags.ScrollY)))
+                 flags_value = ImGuiTableFlags.ScrollY))
             edit_checkbox_flags(safe_addr(TABLES_SIZING_ADV_FLAGS),
                 (id = "TBL_SZ_ADV_F_NOCLIP",
                  text = "ImGuiTableFlags_NoClip",
-                 flags_value = int(ImGuiTableFlags.NoClip)))
+                 flags_value = ImGuiTableFlags.NoClip))
 
             let col_count = max(TABLES_SIZING_ADV_COLUMNS, 1)
             let line_height = GetTextLineHeightWithSpacing()
             data_table(TABLES_SIZING_ADV_T,
                        (text = "##sz_adv", columns = col_count,
-                        flags = unsafe(reinterpret<ImGuiTableFlags>(
-                                           TABLES_SIZING_ADV_FLAGS)),
+                        flags = TABLES_SIZING_ADV_FLAGS,
                         outer_size = float2(0.0f, line_height * 7.0f),
                         inner_width = 0.0f)) {
                 for (cell in range(10 * col_count)) {
@@ -1292,7 +1284,7 @@ def private show_vertical_scrolling() {
         // ScrollY toggle.
         edit_checkbox_flags(safe_addr(TABLES_VSCROLL_FLAGS),
             (id = "TBL_VS_F_SCROLLY", text = "ImGuiTableFlags_ScrollY",
-             flags_value = int(ImGuiTableFlags.ScrollY)))
+             flags_value = ImGuiTableFlags.ScrollY))
 
         // Outer size MUST be specified when ScrollX/ScrollY is on, or the
         // table fills the host like a child window.
@@ -1300,7 +1292,7 @@ def private show_vertical_scrolling() {
         let outer_size = float2(0.0f, line_height * 8.0f)
         data_table(TABLES_VSCROLL_T,
                    (text = "##table_scrolly", columns = 3,
-                    flags = unsafe(reinterpret<ImGuiTableFlags>(TABLES_VSCROLL_FLAGS)),
+                    flags = TABLES_VSCROLL_FLAGS,
                     outer_size = outer_size,
                     inner_width = 0.0f)) {
             table_setup_scroll_freeze(0, 1) // pin the header row
@@ -1335,13 +1327,13 @@ def private show_horizontal_scrolling() {
                                flags = ImGuiTreeNodeFlags.None)) {
         edit_checkbox_flags(safe_addr(TABLES_HSCROLL_FLAGS),
             (id = "TBL_HS_F_RESIZABLE", text = "ImGuiTableFlags_Resizable",
-             flags_value = int(ImGuiTableFlags.Resizable)))
+             flags_value = ImGuiTableFlags.Resizable))
         edit_checkbox_flags(safe_addr(TABLES_HSCROLL_FLAGS),
             (id = "TBL_HS_F_SCROLLX", text = "ImGuiTableFlags_ScrollX",
-             flags_value = int(ImGuiTableFlags.ScrollX)))
+             flags_value = ImGuiTableFlags.ScrollX))
         edit_checkbox_flags(safe_addr(TABLES_HSCROLL_FLAGS),
             (id = "TBL_HS_F_SCROLLY", text = "ImGuiTableFlags_ScrollY",
-             flags_value = int(ImGuiTableFlags.ScrollY)))
+             flags_value = ImGuiTableFlags.ScrollY))
 
         SetNextItemWidth(GetFrameHeight())
         edit_drag_int(safe_addr(TABLES_HSCROLL_FREEZE_COLS),
@@ -1358,7 +1350,7 @@ def private show_horizontal_scrolling() {
         let outer_size = float2(0.0f, line_height * 8.0f)
         data_table(TABLES_HSCROLL_T1,
                    (text = "##table_scrollx", columns = 7,
-                    flags = unsafe(reinterpret<ImGuiTableFlags>(TABLES_HSCROLL_FLAGS)),
+                    flags = TABLES_HSCROLL_FLAGS,
                     outer_size = outer_size,
                     inner_width = 0.0f)) {
             table_setup_scroll_freeze(TABLES_HSCROLL_FREEZE_COLS,
@@ -1396,7 +1388,7 @@ def private show_horizontal_scrolling() {
             with_item_width(GetFontSize() * 30.0f) {
                 edit_checkbox_flags(safe_addr(TABLES_HSCROLL2_FLAGS),
                     (id = "TBL_HS2_F_SCROLLX", text = "ImGuiTableFlags_ScrollX",
-                     flags_value = int(ImGuiTableFlags.ScrollX)))
+                     flags_value = ImGuiTableFlags.ScrollX))
                 edit_drag_float(safe_addr(TABLES_HSCROLL2_INNER_WIDTH),
                     (id = "TBL_HS2_INNER_WIDTH", text = "inner_width",
                      v_speed = 1.0f, v_min = 0.0f, v_max = FLT_MAX,
@@ -1404,7 +1396,7 @@ def private show_horizontal_scrolling() {
             }
             data_table(TABLES_HSCROLL2_T,
                        (text = "##table_hscroll2", columns = 7,
-                        flags = unsafe(reinterpret<ImGuiTableFlags>(TABLES_HSCROLL2_FLAGS)),
+                        flags = TABLES_HSCROLL2_FLAGS,
                         outer_size = outer_size,
                         inner_width = TABLES_HSCROLL2_INNER_WIDTH)) {
                 for (cell in range(20 * 7)) {
@@ -1472,10 +1464,9 @@ def private show_columns_flags() {
                     inner_width = 0.0f)) {
             var has_angled_header = false
             for (column in range(column_count)) {
-                let col_flags = unsafe(reinterpret<ImGuiTableColumnFlags>(
-                                           TABLES_COLFLAGS_INPUT[column]))
+                let col_flags = TABLES_COLFLAGS_INPUT[column]
                 if ((TABLES_COLFLAGS_INPUT[column] &
-                     int(ImGuiTableColumnFlags.AngledHeader)) != 0) {
+                     ImGuiTableColumnFlags.AngledHeader) != ImGuiTableColumnFlags.None) {
                     has_angled_header = true
                 }
                 table_setup_column(column_names[column], col_flags)
@@ -1485,7 +1476,7 @@ def private show_columns_flags() {
             }
             table_headers_row()
             for (column in range(column_count)) {
-                TABLES_COLFLAGS_OUTPUT[column] = int(table_get_column_flags(column))
+                TABLES_COLFLAGS_OUTPUT[column] = table_get_column_flags(column)
             }
             let indent_step = float(int(text_base_width / 2.0f))
             // cpp uses paired `Indent(step)` per row + final
@@ -1519,74 +1510,72 @@ def private show_columns_flags() {
 // per-column instances disjoint without per-column IDENT splicing.
 // Width/sort mutual-exclusion bits reproduce the cpp `if (Checkbox(...))
 // flags &= ~mask` clearing.
-def private edit_column_flags(var p_flags : int? implicit) {
-    let stretch_mask = (int(ImGuiTableColumnFlags.WidthMask_) ^
-                        int(ImGuiTableColumnFlags.WidthStretch))
-    let fixed_mask   = (int(ImGuiTableColumnFlags.WidthMask_) ^
-                        int(ImGuiTableColumnFlags.WidthFixed))
+def private edit_column_flags(var p_flags : ImGuiTableColumnFlags? implicit) {
+    let stretch_mask = ImGuiTableColumnFlags.WidthMask_ ^ ImGuiTableColumnFlags.WidthStretch
+    let fixed_mask   = ImGuiTableColumnFlags.WidthMask_ ^ ImGuiTableColumnFlags.WidthFixed
 
     edit_checkbox_flags(p_flags, (id = "CF_DIS", text = "_Disabled",
-        flags_value = int(ImGuiTableColumnFlags.Disabled)))
+        flags_value = ImGuiTableColumnFlags.Disabled))
     edit_checkbox_flags(p_flags, (id = "CF_DH", text = "_DefaultHide",
-        flags_value = int(ImGuiTableColumnFlags.DefaultHide)))
+        flags_value = ImGuiTableColumnFlags.DefaultHide))
     edit_checkbox_flags(p_flags, (id = "CF_DS", text = "_DefaultSort",
-        flags_value = int(ImGuiTableColumnFlags.DefaultSort)))
+        flags_value = ImGuiTableColumnFlags.DefaultSort))
     if (edit_checkbox_flags(p_flags, (id = "CF_WS", text = "_WidthStretch",
-        flags_value = int(ImGuiTableColumnFlags.WidthStretch)))) {
+        flags_value = ImGuiTableColumnFlags.WidthStretch))) {
         unsafe { *p_flags = *p_flags & ~stretch_mask; }
     }
     if (edit_checkbox_flags(p_flags, (id = "CF_WF", text = "_WidthFixed",
-        flags_value = int(ImGuiTableColumnFlags.WidthFixed)))) {
+        flags_value = ImGuiTableColumnFlags.WidthFixed))) {
         unsafe { *p_flags = *p_flags & ~fixed_mask; }
     }
     edit_checkbox_flags(p_flags, (id = "CF_NR", text = "_NoResize",
-        flags_value = int(ImGuiTableColumnFlags.NoResize)))
+        flags_value = ImGuiTableColumnFlags.NoResize))
     edit_checkbox_flags(p_flags, (id = "CF_NRO", text = "_NoReorder",
-        flags_value = int(ImGuiTableColumnFlags.NoReorder)))
+        flags_value = ImGuiTableColumnFlags.NoReorder))
     edit_checkbox_flags(p_flags, (id = "CF_NH", text = "_NoHide",
-        flags_value = int(ImGuiTableColumnFlags.NoHide)))
+        flags_value = ImGuiTableColumnFlags.NoHide))
     edit_checkbox_flags(p_flags, (id = "CF_NC", text = "_NoClip",
-        flags_value = int(ImGuiTableColumnFlags.NoClip)))
+        flags_value = ImGuiTableColumnFlags.NoClip))
     edit_checkbox_flags(p_flags, (id = "CF_NS", text = "_NoSort",
-        flags_value = int(ImGuiTableColumnFlags.NoSort)))
+        flags_value = ImGuiTableColumnFlags.NoSort))
     edit_checkbox_flags(p_flags, (id = "CF_NSA", text = "_NoSortAscending",
-        flags_value = int(ImGuiTableColumnFlags.NoSortAscending)))
+        flags_value = ImGuiTableColumnFlags.NoSortAscending))
     edit_checkbox_flags(p_flags, (id = "CF_NSD", text = "_NoSortDescending",
-        flags_value = int(ImGuiTableColumnFlags.NoSortDescending)))
+        flags_value = ImGuiTableColumnFlags.NoSortDescending))
     edit_checkbox_flags(p_flags, (id = "CF_NHL", text = "_NoHeaderLabel",
-        flags_value = int(ImGuiTableColumnFlags.NoHeaderLabel)))
+        flags_value = ImGuiTableColumnFlags.NoHeaderLabel))
     edit_checkbox_flags(p_flags, (id = "CF_NHW", text = "_NoHeaderWidth",
-        flags_value = int(ImGuiTableColumnFlags.NoHeaderWidth)))
+        flags_value = ImGuiTableColumnFlags.NoHeaderWidth))
     edit_checkbox_flags(p_flags, (id = "CF_PSA", text = "_PreferSortAscending",
-        flags_value = int(ImGuiTableColumnFlags.PreferSortAscending)))
+        flags_value = ImGuiTableColumnFlags.PreferSortAscending))
     edit_checkbox_flags(p_flags, (id = "CF_PSD", text = "_PreferSortDescending",
-        flags_value = int(ImGuiTableColumnFlags.PreferSortDescending)))
+        flags_value = ImGuiTableColumnFlags.PreferSortDescending))
     edit_checkbox_flags(p_flags, (id = "CF_IE", text = "_IndentEnable",
-        flags_value = int(ImGuiTableColumnFlags.IndentEnable)))
+        flags_value = ImGuiTableColumnFlags.IndentEnable))
     edit_checkbox_flags(p_flags, (id = "CF_ID", text = "_IndentDisable",
-        flags_value = int(ImGuiTableColumnFlags.IndentDisable)))
+        flags_value = ImGuiTableColumnFlags.IndentDisable))
     edit_checkbox_flags(p_flags, (id = "CF_AH", text = "_AngledHeader",
-        flags_value = int(ImGuiTableColumnFlags.AngledHeader)))
+        flags_value = ImGuiTableColumnFlags.AngledHeader))
 }
 
 // show_column_status_flags — read-only display of the status bits ImGui
 // computes per frame (cpp `ShowTableColumnsStatusFlags`, cpp:4146-4152).
 // Always called inside `with_disabled(true)` so the checkboxes paint but
 // don't accept input.
-def private show_column_status_flags(flags : int) {
+def private show_column_status_flags(flags : ImGuiTableColumnFlags) {
     var local = flags
     edit_checkbox_flags(unsafe(addr(local)),
         (id = "CSF_IE", text = "_IsEnabled",
-         flags_value = int(ImGuiTableColumnFlags.IsEnabled)))
+         flags_value = ImGuiTableColumnFlags.IsEnabled))
     edit_checkbox_flags(unsafe(addr(local)),
         (id = "CSF_IV", text = "_IsVisible",
-         flags_value = int(ImGuiTableColumnFlags.IsVisible)))
+         flags_value = ImGuiTableColumnFlags.IsVisible))
     edit_checkbox_flags(unsafe(addr(local)),
         (id = "CSF_IS", text = "_IsSorted",
-         flags_value = int(ImGuiTableColumnFlags.IsSorted)))
+         flags_value = ImGuiTableColumnFlags.IsSorted))
     edit_checkbox_flags(unsafe(addr(local)),
         (id = "CSF_IH", text = "_IsHovered",
-         flags_value = int(ImGuiTableColumnFlags.IsHovered)))
+         flags_value = ImGuiTableColumnFlags.IsHovered))
 }
 
 // =============================================================================
@@ -1599,15 +1588,15 @@ def private show_columns_widths() {
         // ----- Sub-table 1: TableSetupColumn default-width form -----
         edit_checkbox_flags(safe_addr(TABLES_CW1_FLAGS),
             (id = "TBL_CW1_F_RESIZABLE", text = "ImGuiTableFlags_Resizable",
-             flags_value = int(ImGuiTableFlags.Resizable)))
+             flags_value = ImGuiTableFlags.Resizable))
         edit_checkbox_flags(safe_addr(TABLES_CW1_FLAGS),
             (id = "TBL_CW1_F_NBINBODYUNTILRESIZE",
              text = "ImGuiTableFlags_NoBordersInBodyUntilResize",
-             flags_value = int(ImGuiTableFlags.NoBordersInBodyUntilResize)))
+             flags_value = ImGuiTableFlags.NoBordersInBodyUntilResize))
 
         data_table(TABLES_CW1_T,
                    (text = "##cw_table1", columns = 3,
-                    flags = unsafe(reinterpret<ImGuiTableFlags>(TABLES_CW1_FLAGS)),
+                    flags = TABLES_CW1_FLAGS,
                     outer_size = float2(0.0f, 0.0f),
                     inner_width = 0.0f)) {
             // Could alternatively set _SizingFixedFit on the table.
@@ -1634,18 +1623,18 @@ def private show_columns_widths() {
         // ----- Sub-table 2: explicit width per column (TEXT_BASE_WIDTH * N) -----
         edit_checkbox_flags(safe_addr(TABLES_CW2_FLAGS),
             (id = "TBL_CW2_F_NOKEEP", text = "ImGuiTableFlags_NoKeepColumnsVisible",
-             flags_value = int(ImGuiTableFlags.NoKeepColumnsVisible)))
+             flags_value = ImGuiTableFlags.NoKeepColumnsVisible))
         edit_checkbox_flags(safe_addr(TABLES_CW2_FLAGS),
             (id = "TBL_CW2_F_BORDERS_IV", text = "ImGuiTableFlags_BordersInnerV",
-             flags_value = int(ImGuiTableFlags.BordersInnerV)))
+             flags_value = ImGuiTableFlags.BordersInnerV))
         edit_checkbox_flags(safe_addr(TABLES_CW2_FLAGS),
             (id = "TBL_CW2_F_BORDERS_OV", text = "ImGuiTableFlags_BordersOuterV",
-             flags_value = int(ImGuiTableFlags.BordersOuterV)))
+             flags_value = ImGuiTableFlags.BordersOuterV))
 
         let text_base_width = CalcTextSize("A").x
         data_table(TABLES_CW2_T,
                    (text = "##cw_table2", columns = 4,
-                    flags = unsafe(reinterpret<ImGuiTableFlags>(TABLES_CW2_FLAGS)),
+                    flags = TABLES_CW2_FLAGS,
                     outer_size = float2(0.0f, 0.0f),
                     inner_width = 0.0f)) {
             table_setup_column("", ImGuiTableColumnFlags.WidthFixed, 100.0f)
@@ -1830,16 +1819,16 @@ def private show_outer_size() {
 
         edit_checkbox_flags(safe_addr(TABLES_OS1_FLAGS),
             (id = "TBL_OS1_F_NOHOSTX", text = "ImGuiTableFlags_NoHostExtendX",
-             flags_value = int(ImGuiTableFlags.NoHostExtendX)))
+             flags_value = ImGuiTableFlags.NoHostExtendX))
         edit_checkbox_flags(safe_addr(TABLES_OS1_FLAGS),
             (id = "TBL_OS1_F_NOHOSTY", text = "ImGuiTableFlags_NoHostExtendY",
-             flags_value = int(ImGuiTableFlags.NoHostExtendY)))
+             flags_value = ImGuiTableFlags.NoHostExtendY))
 
         let line_height = GetTextLineHeightWithSpacing()
         let outer_size_1 = float2(0.0f, line_height * 5.5f)
         data_table(TABLES_OS1_T,
                    (text = "##os_table1", columns = 3,
-                    flags = unsafe(reinterpret<ImGuiTableFlags>(TABLES_OS1_FLAGS)),
+                    flags = TABLES_OS1_FLAGS,
                     outer_size = outer_size_1,
                     inner_width = 0.0f)) {
             for (row in range(10)) {
@@ -1902,10 +1891,10 @@ def private show_background_color() {
                           flags = ImGuiTreeNodeFlags.None)) {
         edit_checkbox_flags(safe_addr(TABLES_BG_FLAGS),
             (id = "TBL_BG_F_BORDERS", text = "ImGuiTableFlags_Borders",
-             flags_value = int(ImGuiTableFlags.Borders)))
+             flags_value = ImGuiTableFlags.Borders))
         edit_checkbox_flags(safe_addr(TABLES_BG_FLAGS),
             (id = "TBL_BG_F_ROWBG", text = "ImGuiTableFlags_RowBg",
-             flags_value = int(ImGuiTableFlags.RowBg)))
+             flags_value = ImGuiTableFlags.RowBg))
 
         var row_bg_items <- ["None", "Red", "Gradient"]
         edit_combo(safe_addr(TABLES_BG_ROW_BG_TYPE),
@@ -1930,7 +1919,7 @@ def private show_background_color() {
         let col_digits = fixed_array("0", "1", "2", "3", "4")
 
         data_table(TABLES_BG_T, (text = "##bg_table", columns = 5,
-                                 flags = unsafe(reinterpret<ImGuiTableFlags>(TABLES_BG_FLAGS)),
+                                 flags = TABLES_BG_FLAGS,
                                  outer_size = float2(0.0f, 0.0f),
                                  inner_width = 0.0f)) {
             for (row in range(6)) {
@@ -1978,7 +1967,7 @@ def private display_tree_view_node(node_idx : int) {
     table_next_row()
     table_next_column()
     let is_folder = node.child_count > 0
-    let tree_flags = unsafe(reinterpret<ImGuiTreeNodeFlags>(TABLES_TREE_NODE_FLAGS))
+    let tree_flags = TABLES_TREE_NODE_FLAGS
     if (is_folder) {
         let opened = tree_node_ex(TABLES_TREE_NODE[node_idx],
                                   (text = node.name, flags = tree_flags))
@@ -1993,10 +1982,9 @@ def private display_tree_view_node(node_idx : int) {
             tree_pop()
         }
     } else {
-        let leaf_flags = unsafe(reinterpret<ImGuiTreeNodeFlags>(
-            TABLES_TREE_NODE_FLAGS | int(ImGuiTreeNodeFlags.Leaf) |
-            int(ImGuiTreeNodeFlags.Bullet) |
-            int(ImGuiTreeNodeFlags.NoTreePushOnOpen)))
+        let leaf_flags = (TABLES_TREE_NODE_FLAGS | ImGuiTreeNodeFlags.Leaf |
+                          ImGuiTreeNodeFlags.Bullet |
+                          ImGuiTreeNodeFlags.NoTreePushOnOpen)
         tree_node_ex(TABLES_TREE_NODE_LEAF[node_idx],
                      (text = node.name, flags = leaf_flags))
         table_next_column()
@@ -2013,18 +2001,18 @@ def private show_tree_view() {
                             flags = ImGuiTreeNodeFlags.None)) {
         edit_checkbox_flags(safe_addr(TABLES_TREE_NODE_FLAGS),
             (id = "TBL_TREE_F_SPANFW", text = "ImGuiTreeNodeFlags_SpanFullWidth",
-             flags_value = int(ImGuiTreeNodeFlags.SpanFullWidth)))
+             flags_value = ImGuiTreeNodeFlags.SpanFullWidth))
         edit_checkbox_flags(safe_addr(TABLES_TREE_NODE_FLAGS),
             (id = "TBL_TREE_F_SPANTW", text = "ImGuiTreeNodeFlags_SpanTextWidth",
-             flags_value = int(ImGuiTreeNodeFlags.SpanTextWidth)))
+             flags_value = ImGuiTreeNodeFlags.SpanTextWidth))
         edit_checkbox_flags(safe_addr(TABLES_TREE_NODE_FLAGS),
             (id = "TBL_TREE_F_SPANAC", text = "ImGuiTreeNodeFlags_SpanAllColumns",
-             flags_value = int(ImGuiTreeNodeFlags.SpanAllColumns)))
+             flags_value = ImGuiTreeNodeFlags.SpanAllColumns))
 
         let text_base_width = CalcTextSize("A").x
         data_table(TABLES_TREE_T,
                    (text = "##tree_3ways", columns = 3,
-                    flags = unsafe(reinterpret<ImGuiTableFlags>(TABLES_TREE_FLAGS)),
+                    flags = TABLES_TREE_FLAGS,
                     outer_size = float2(0.0f, 0.0f),
                     inner_width = 0.0f)) {
             table_setup_column("Name", ImGuiTableColumnFlags.NoHide)
@@ -2147,19 +2135,19 @@ def private show_angled_headers() {
                           flags = ImGuiTreeNodeFlags.None)) {
         edit_checkbox_flags(safe_addr(TABLES_AH_TABLE_FLAGS),
             (id = "TBL_AH_F_SCROLLX", text = "_ScrollX",
-             flags_value = int(ImGuiTableFlags.ScrollX)))
+             flags_value = ImGuiTableFlags.ScrollX))
         edit_checkbox_flags(safe_addr(TABLES_AH_TABLE_FLAGS),
             (id = "TBL_AH_F_SCROLLY", text = "_ScrollY",
-             flags_value = int(ImGuiTableFlags.ScrollY)))
+             flags_value = ImGuiTableFlags.ScrollY))
         edit_checkbox_flags(safe_addr(TABLES_AH_TABLE_FLAGS),
             (id = "TBL_AH_F_RESIZABLE", text = "_Resizable",
-             flags_value = int(ImGuiTableFlags.Resizable)))
+             flags_value = ImGuiTableFlags.Resizable))
         edit_checkbox_flags(safe_addr(TABLES_AH_TABLE_FLAGS),
             (id = "TBL_AH_F_NBINBODY", text = "_NoBordersInBody",
-             flags_value = int(ImGuiTableFlags.NoBordersInBody)))
+             flags_value = ImGuiTableFlags.NoBordersInBody))
         edit_checkbox_flags(safe_addr(TABLES_AH_TABLE_FLAGS),
             (id = "TBL_AH_F_HIGHLIGHTHC", text = "_HighlightHoveredColumn",
-             flags_value = int(ImGuiTableFlags.HighlightHoveredColumn)))
+             flags_value = ImGuiTableFlags.HighlightHoveredColumn))
 
         SetNextItemWidth(GetFontSize() * 8.0f)
         edit_slider_int(safe_addr(TABLES_AH_FROZEN_COLS),
@@ -2173,7 +2161,7 @@ def private show_angled_headers() {
         edit_checkbox_flags(safe_addr(TABLES_AH_COLUMN_FLAGS),
             (id = "TBL_AH_CF_NOHEADERWIDTH",
              text = "Disable header contributing to column width",
-             flags_value = int(ImGuiTableColumnFlags.NoHeaderWidth)))
+             flags_value = ImGuiTableColumnFlags.NoHeaderWidth))
 
         // Style settings sub-node — TableAngledHeadersAngle slider +
         // TableAngledHeadersTextAlign 2-component slider. Both reach into
@@ -2198,7 +2186,7 @@ def private show_angled_headers() {
         let line_height = GetTextLineHeightWithSpacing()
         data_table(TABLES_AH_T,
                    (text = "##table_angled_headers", columns = TABLES_AH_COLUMNS_COUNT,
-                    flags = unsafe(reinterpret<ImGuiTableFlags>(TABLES_AH_TABLE_FLAGS)),
+                    flags = TABLES_AH_TABLE_FLAGS,
                     outer_size = float2(0.0f, line_height * 12.0f),
                     inner_width = 0.0f)) {
             // Track column (col 0) — no-hide / no-reorder. Remaining
@@ -2206,8 +2194,7 @@ def private show_angled_headers() {
             table_setup_column(TABLES_AH_COLUMN_NAMES[0],
                                ImGuiTableColumnFlags.NoHide |
                                ImGuiTableColumnFlags.NoReorder)
-            let col_flags = unsafe(reinterpret<ImGuiTableColumnFlags>(
-                                       TABLES_AH_COLUMN_FLAGS))
+            let col_flags = TABLES_AH_COLUMN_FLAGS
             for (n in range(1, TABLES_AH_COLUMNS_COUNT)) {
                 table_setup_column(TABLES_AH_COLUMN_NAMES[n], col_flags)
             }
@@ -2249,12 +2236,12 @@ def private show_context_menus() {
         // sort dir, etc.). No custom popup wiring needed.
         edit_checkbox_flags(safe_addr(TABLES_CM1_FLAGS),
             (id = "TBL_CM1_F_CTXINBODY", text = "ImGuiTableFlags_ContextMenuInBody",
-             flags_value = int(ImGuiTableFlags.ContextMenuInBody)))
+             flags_value = ImGuiTableFlags.ContextMenuInBody))
 
         let column_count = 3
         data_table(TABLES_CM1_T,
                    (text = "##table_context_menu", columns = column_count,
-                    flags = unsafe(reinterpret<ImGuiTableFlags>(TABLES_CM1_FLAGS)),
+                    flags = TABLES_CM1_FLAGS,
                     outer_size = float2(0.0f, 0.0f),
                     inner_width = 0.0f)) {
             table_setup_column("One")
@@ -2314,8 +2301,8 @@ def private show_context_menus() {
             var hovered = -1
             for (column in range(column_count + 1)) {
                 with_id("cm2_col_{column}") {
-                    if ((int(table_get_column_flags(column)) &
-                         int(ImGuiTableColumnFlags.IsHovered)) != 0) {
+                    if ((table_get_column_flags(column) &
+                         ImGuiTableColumnFlags.IsHovered) != ImGuiTableColumnFlags.None) {
                         hovered = column
                     }
                     if (hovered == column && !IsAnyItemHovered() &&
@@ -2354,20 +2341,20 @@ def private show_synced_instances() {
                               flags = ImGuiTreeNodeFlags.None)) {
         edit_checkbox_flags(safe_addr(TABLES_SYNCED_FLAGS),
             (id = "TBL_SYNCED_F_RESIZABLE", text = "ImGuiTableFlags_Resizable",
-             flags_value = int(ImGuiTableFlags.Resizable)))
+             flags_value = ImGuiTableFlags.Resizable))
         edit_checkbox_flags(safe_addr(TABLES_SYNCED_FLAGS),
             (id = "TBL_SYNCED_F_SCROLLY", text = "ImGuiTableFlags_ScrollY",
-             flags_value = int(ImGuiTableFlags.ScrollY)))
+             flags_value = ImGuiTableFlags.ScrollY))
         edit_checkbox_flags(safe_addr(TABLES_SYNCED_FLAGS),
             (id = "TBL_SYNCED_F_FIXEDFIT", text = "ImGuiTableFlags_SizingFixedFit",
-             flags_value = int(ImGuiTableFlags.SizingFixedFit)))
+             flags_value = ImGuiTableFlags.SizingFixedFit))
         edit_checkbox_flags(safe_addr(TABLES_SYNCED_FLAGS),
             (id = "TBL_SYNCED_F_HIGHLIGHTHC",
              text = "ImGuiTableFlags_HighlightHoveredColumn",
-             flags_value = int(ImGuiTableFlags.HighlightHoveredColumn)))
+             flags_value = ImGuiTableFlags.HighlightHoveredColumn))
 
         let line_height = GetTextLineHeightWithSpacing()
-        let tflags = unsafe(reinterpret<ImGuiTableFlags>(TABLES_SYNCED_FLAGS))
+        let tflags = TABLES_SYNCED_FLAGS
         // 3 collapsing headers + a shared table id "Table". To match cpp's
         // synced-instances behavior the 3 BeginTable calls must produce
         // the SAME effective ImGui ID — the boost `data_table(IDENT, ...)`
@@ -2410,15 +2397,15 @@ def private show_sorting() {
     tree_node(TABLES_SORT, (text = "Sorting", flags = ImGuiTreeNodeFlags.None)) {
         edit_checkbox_flags(safe_addr(TABLES_SORT_FLAGS),
             (id = "TBL_SORT_F_SORTMULTI", text = "ImGuiTableFlags_SortMulti",
-             flags_value = int(ImGuiTableFlags.SortMulti)))
+             flags_value = ImGuiTableFlags.SortMulti))
         edit_checkbox_flags(safe_addr(TABLES_SORT_FLAGS),
             (id = "TBL_SORT_F_SORTTRISTATE", text = "ImGuiTableFlags_SortTristate",
-             flags_value = int(ImGuiTableFlags.SortTristate)))
+             flags_value = ImGuiTableFlags.SortTristate))
 
         let line_height = GetTextLineHeightWithSpacing()
         data_table(TABLES_SORT_T,
                    (text = "##table_sorting", columns = 4,
-                    flags = unsafe(reinterpret<ImGuiTableFlags>(TABLES_SORT_FLAGS)),
+                    flags = TABLES_SORT_FLAGS,
                     outer_size = float2(0.0f, line_height * 15.0f),
                     inner_width = 0.0f)) {
             // user_id passes per cpp:5675-5678 so the sort comparator can
@@ -2526,22 +2513,22 @@ def private show_advanced() {
                               flags = ImGuiTreeNodeFlags.DefaultOpen))) {
                 edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
                     (id = "TBL_ADV_F_RESIZABLE", text = "ImGuiTableFlags_Resizable",
-                     flags_value = int(ImGuiTableFlags.Resizable)))
+                     flags_value = ImGuiTableFlags.Resizable))
                 edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
                     (id = "TBL_ADV_F_REORDERABLE", text = "ImGuiTableFlags_Reorderable",
-                     flags_value = int(ImGuiTableFlags.Reorderable)))
+                     flags_value = ImGuiTableFlags.Reorderable))
                 edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
                     (id = "TBL_ADV_F_HIDEABLE", text = "ImGuiTableFlags_Hideable",
-                     flags_value = int(ImGuiTableFlags.Hideable)))
+                     flags_value = ImGuiTableFlags.Hideable))
                 edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
                     (id = "TBL_ADV_F_SORTABLE", text = "ImGuiTableFlags_Sortable",
-                     flags_value = int(ImGuiTableFlags.Sortable)))
+                     flags_value = ImGuiTableFlags.Sortable))
                 edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
                     (id = "TBL_ADV_F_NOSAVED", text = "ImGuiTableFlags_NoSavedSettings",
-                     flags_value = int(ImGuiTableFlags.NoSavedSettings)))
+                     flags_value = ImGuiTableFlags.NoSavedSettings))
                 edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
                     (id = "TBL_ADV_F_CTXMENU", text = "ImGuiTableFlags_ContextMenuInBody",
-                     flags_value = int(ImGuiTableFlags.ContextMenuInBody)))
+                     flags_value = ImGuiTableFlags.ContextMenuInBody))
                 tree_pop()
             }
 
@@ -2551,31 +2538,31 @@ def private show_advanced() {
                               flags = ImGuiTreeNodeFlags.DefaultOpen))) {
                 edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
                     (id = "TBL_ADV_F_ROWBG", text = "ImGuiTableFlags_RowBg",
-                     flags_value = int(ImGuiTableFlags.RowBg)))
+                     flags_value = ImGuiTableFlags.RowBg))
                 edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
                     (id = "TBL_ADV_F_BORDERSV", text = "ImGuiTableFlags_BordersV",
-                     flags_value = int(ImGuiTableFlags.BordersV)))
+                     flags_value = ImGuiTableFlags.BordersV))
                 edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
                     (id = "TBL_ADV_F_BORDERSOV", text = "ImGuiTableFlags_BordersOuterV",
-                     flags_value = int(ImGuiTableFlags.BordersOuterV)))
+                     flags_value = ImGuiTableFlags.BordersOuterV))
                 edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
                     (id = "TBL_ADV_F_BORDERSIV", text = "ImGuiTableFlags_BordersInnerV",
-                     flags_value = int(ImGuiTableFlags.BordersInnerV)))
+                     flags_value = ImGuiTableFlags.BordersInnerV))
                 edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
                     (id = "TBL_ADV_F_BORDERSH", text = "ImGuiTableFlags_BordersH",
-                     flags_value = int(ImGuiTableFlags.BordersH)))
+                     flags_value = ImGuiTableFlags.BordersH))
                 edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
                     (id = "TBL_ADV_F_BORDERSOH", text = "ImGuiTableFlags_BordersOuterH",
-                     flags_value = int(ImGuiTableFlags.BordersOuterH)))
+                     flags_value = ImGuiTableFlags.BordersOuterH))
                 edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
                     (id = "TBL_ADV_F_BORDERSIH", text = "ImGuiTableFlags_BordersInnerH",
-                     flags_value = int(ImGuiTableFlags.BordersInnerH)))
+                     flags_value = ImGuiTableFlags.BordersInnerH))
                 edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
                     (id = "TBL_ADV_F_NOBORDERSBODY", text = "ImGuiTableFlags_NoBordersInBody",
-                     flags_value = int(ImGuiTableFlags.NoBordersInBody)))
+                     flags_value = ImGuiTableFlags.NoBordersInBody))
                 edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
                     (id = "TBL_ADV_F_NOBORDERSBODYUR", text = "ImGuiTableFlags_NoBordersInBodyUntilResize",
-                     flags_value = int(ImGuiTableFlags.NoBordersInBodyUntilResize)))
+                     flags_value = ImGuiTableFlags.NoBordersInBodyUntilResize))
                 tree_pop()
             }
 
@@ -2588,19 +2575,19 @@ def private show_advanced() {
                                         "tbl_adv_sizing_combo")
                 edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
                     (id = "TBL_ADV_F_NOHOSTX", text = "ImGuiTableFlags_NoHostExtendX",
-                     flags_value = int(ImGuiTableFlags.NoHostExtendX)))
+                     flags_value = ImGuiTableFlags.NoHostExtendX))
                 edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
                     (id = "TBL_ADV_F_NOHOSTY", text = "ImGuiTableFlags_NoHostExtendY",
-                     flags_value = int(ImGuiTableFlags.NoHostExtendY)))
+                     flags_value = ImGuiTableFlags.NoHostExtendY))
                 edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
                     (id = "TBL_ADV_F_NOKEEPCV", text = "ImGuiTableFlags_NoKeepColumnsVisible",
-                     flags_value = int(ImGuiTableFlags.NoKeepColumnsVisible)))
+                     flags_value = ImGuiTableFlags.NoKeepColumnsVisible))
                 edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
                     (id = "TBL_ADV_F_PRECISE", text = "ImGuiTableFlags_PreciseWidths",
-                     flags_value = int(ImGuiTableFlags.PreciseWidths)))
+                     flags_value = ImGuiTableFlags.PreciseWidths))
                 edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
                     (id = "TBL_ADV_F_NOCLIP", text = "ImGuiTableFlags_NoClip",
-                     flags_value = int(ImGuiTableFlags.NoClip)))
+                     flags_value = ImGuiTableFlags.NoClip))
                 tree_pop()
             }
 
@@ -2610,13 +2597,13 @@ def private show_advanced() {
                               flags = ImGuiTreeNodeFlags.DefaultOpen))) {
                 edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
                     (id = "TBL_ADV_F_PADOUTERX", text = "ImGuiTableFlags_PadOuterX",
-                     flags_value = int(ImGuiTableFlags.PadOuterX)))
+                     flags_value = ImGuiTableFlags.PadOuterX))
                 edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
                     (id = "TBL_ADV_F_NOPADOUTERX", text = "ImGuiTableFlags_NoPadOuterX",
-                     flags_value = int(ImGuiTableFlags.NoPadOuterX)))
+                     flags_value = ImGuiTableFlags.NoPadOuterX))
                 edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
                     (id = "TBL_ADV_F_NOPADINNERX", text = "ImGuiTableFlags_NoPadInnerX",
-                     flags_value = int(ImGuiTableFlags.NoPadInnerX)))
+                     flags_value = ImGuiTableFlags.NoPadInnerX))
                 tree_pop()
             }
 
@@ -2626,7 +2613,7 @@ def private show_advanced() {
                               flags = ImGuiTreeNodeFlags.DefaultOpen))) {
                 edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
                     (id = "TBL_ADV_F_SCROLLX", text = "ImGuiTableFlags_ScrollX",
-                     flags_value = int(ImGuiTableFlags.ScrollX)))
+                     flags_value = ImGuiTableFlags.ScrollX))
                 same_line(TABLES_ADV_SL_FCOLS)
                 SetNextItemWidth(GetFrameHeight())
                 edit_drag_int(safe_addr(TABLES_ADV_FREEZE_COLS),
@@ -2635,7 +2622,7 @@ def private show_advanced() {
                      flags = ImGuiSliderFlags.NoInput))
                 edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
                     (id = "TBL_ADV_F_SCROLLY", text = "ImGuiTableFlags_ScrollY",
-                     flags_value = int(ImGuiTableFlags.ScrollY)))
+                     flags_value = ImGuiTableFlags.ScrollY))
                 same_line(TABLES_ADV_SL_FROWS)
                 SetNextItemWidth(GetFrameHeight())
                 edit_drag_int(safe_addr(TABLES_ADV_FREEZE_ROWS),
@@ -2651,10 +2638,10 @@ def private show_advanced() {
                               flags = ImGuiTreeNodeFlags.DefaultOpen))) {
                 edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
                     (id = "TBL_ADV_F_SORTMULTI", text = "ImGuiTableFlags_SortMulti",
-                     flags_value = int(ImGuiTableFlags.SortMulti)))
+                     flags_value = ImGuiTableFlags.SortMulti))
                 edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
                     (id = "TBL_ADV_F_SORTTRISTATE", text = "ImGuiTableFlags_SortTristate",
-                     flags_value = int(ImGuiTableFlags.SortTristate)))
+                     flags_value = ImGuiTableFlags.SortTristate))
                 tree_pop()
             }
 
@@ -2666,10 +2653,10 @@ def private show_advanced() {
                               (id = "TBL_ADV_SHOW_HEADERS", text = "show_headers"))
                 edit_checkbox_flags(safe_addr(TABLES_ADV_FLAGS),
                     (id = "TBL_ADV_F_HHC", text = "ImGuiTableFlags_HighlightHoveredColumn",
-                     flags_value = int(ImGuiTableFlags.HighlightHoveredColumn)))
+                     flags_value = ImGuiTableFlags.HighlightHoveredColumn))
                 edit_checkbox_flags(safe_addr(TABLES_ADV_COLUMNS_BASE_FLAGS),
                     (id = "TBL_ADV_CBF_AH", text = "ImGuiTableColumnFlags_AngledHeader",
-                     flags_value = int(ImGuiTableColumnFlags.AngledHeader)))
+                     flags_value = ImGuiTableColumnFlags.AngledHeader))
                 tree_pop()
             }
 
@@ -2737,7 +2724,7 @@ def private show_advanced() {
         rebuild_adv_items()
 
         // ---- BeginTable (cpp:5889-5890) ----
-        let inner_width_to_use = ((TABLES_ADV_FLAGS & int(ImGuiTableFlags.ScrollX)) != 0
+        let inner_width_to_use = ((TABLES_ADV_FLAGS & ImGuiTableFlags.ScrollX) != ImGuiTableFlags.None
                                   ? TABLES_ADV_INNER_WIDTH
                                   : 0.0f)
         let effective_outer_size = (TABLES_ADV_OUTER_SIZE_ENABLED
@@ -2745,7 +2732,7 @@ def private show_advanced() {
                                     : float2(0.0f, 0.0f))
         data_table(TABLES_ADV_T,
                    (text = "##table_advanced", columns = 6,
-                    flags = unsafe(reinterpret<ImGuiTableFlags>(TABLES_ADV_FLAGS)),
+                    flags = TABLES_ADV_FLAGS,
                     outer_size = effective_outer_size,
                     inner_width = inner_width_to_use)) {
             // ---- Columns (cpp:5895-5901) ----
@@ -2753,7 +2740,7 @@ def private show_advanced() {
             // Description picks WidthStretch only when NoHostExtendX is off
             // (cpp:5899 ternary) — otherwise the table can't grow into the
             // stretch column. Bitfield-as-int test on TABLES_ADV_FLAGS.
-            let base = unsafe(reinterpret<ImGuiTableColumnFlags>(TABLES_ADV_COLUMNS_BASE_FLAGS))
+            let base = TABLES_ADV_COLUMNS_BASE_FLAGS
             table_setup_column("ID",
                 base | ImGuiTableColumnFlags.DefaultSort |
                     ImGuiTableColumnFlags.WidthFixed |
@@ -2769,7 +2756,7 @@ def private show_advanced() {
             table_setup_column("Quantity",
                 base | ImGuiTableColumnFlags.PreferSortDescending,
                 0.0f, TABLES_SORT_COL_QUANTITY)
-            let desc_extra = ((TABLES_ADV_FLAGS & int(ImGuiTableFlags.NoHostExtendX)) != 0
+            let desc_extra = ((TABLES_ADV_FLAGS & ImGuiTableFlags.NoHostExtendX) != ImGuiTableFlags.None
                               ? ImGuiTableColumnFlags.None
                               : ImGuiTableColumnFlags.WidthStretch)
             table_setup_column("Description", base | desc_extra,
@@ -2813,7 +2800,7 @@ def private show_advanced() {
 
             // ---- Headers (cpp:5919-5922) ----
             if (TABLES_ADV_SHOW_HEADERS &&
-                (TABLES_ADV_COLUMNS_BASE_FLAGS & int(ImGuiTableColumnFlags.AngledHeader)) != 0) {
+                (TABLES_ADV_COLUMNS_BASE_FLAGS & ImGuiTableColumnFlags.AngledHeader) != ImGuiTableColumnFlags.None) {
                 table_angled_headers_row()
             }
             if (TABLES_ADV_SHOW_HEADERS) {

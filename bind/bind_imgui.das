@@ -76,6 +76,7 @@ class ImguiGen : CppGenBind {
             "ImGuiColorEditFlags"       => "ImGuiColorEditFlags_",
             "ImGuiConfigFlags"          => "ImGuiConfigFlags_",
             "ImGuiComboFlags"           => "ImGuiComboFlags_",
+            "ImGuiDockNodeFlags"        => "ImGuiDockNodeFlags_",
             "ImGuiDragDropFlags"        => "ImGuiDragDropFlags_",
             "ImGuiFocusedFlags"         => "ImGuiFocusedFlags_",
             "ImGuiHoveredFlags"         => "ImGuiHoveredFlags_",

@@ -10,6 +10,7 @@ require imgui/imgui_scope_builtin public
 require imgui/imgui_table_builtin public
 require imgui/imgui_boost_v2 public
 require daslib/safe_addr
+require daslib/enum_trait
 require math
 
 require widgets public
@@ -87,43 +88,41 @@ var WO_NO_DOCKING = false
 var WO_UNSAVED_DOCUMENT = false
 
 def private compute_demo_window_flags() : ImGuiWindowFlags {
-    // Build flags as int (the | / |= operators are bitfield-typed by default;
-    // wrap in int() to compose freely, then reinterpret back at the call site).
-    var flags = int(ImGuiWindowFlags.None)
+    var flags = ImGuiWindowFlags.None
     if (WO_NO_TITLEBAR) {
-        flags |= int(ImGuiWindowFlags.NoTitleBar)
+        flags |= ImGuiWindowFlags.NoTitleBar
     }
     if (WO_NO_SCROLLBAR) {
-        flags |= int(ImGuiWindowFlags.NoScrollbar)
+        flags |= ImGuiWindowFlags.NoScrollbar
     }
     if (!WO_NO_MENU) {
-        flags |= int(ImGuiWindowFlags.MenuBar)
+        flags |= ImGuiWindowFlags.MenuBar
     }
     if (WO_NO_MOVE) {
-        flags |= int(ImGuiWindowFlags.NoMove)
+        flags |= ImGuiWindowFlags.NoMove
     }
     if (WO_NO_RESIZE) {
-        flags |= int(ImGuiWindowFlags.NoResize)
+        flags |= ImGuiWindowFlags.NoResize
     }
     if (WO_NO_COLLAPSE) {
-        flags |= int(ImGuiWindowFlags.NoCollapse)
+        flags |= ImGuiWindowFlags.NoCollapse
     }
     if (WO_NO_NAV) {
-        flags |= int(ImGuiWindowFlags.NoNav)
+        flags |= ImGuiWindowFlags.NoNav
     }
     if (WO_NO_BACKGROUND) {
-        flags |= int(ImGuiWindowFlags.NoBackground)
+        flags |= ImGuiWindowFlags.NoBackground
     }
     if (WO_NO_BRING_TO_FRONT) {
-        flags |= int(ImGuiWindowFlags.NoBringToFrontOnFocus)
+        flags |= ImGuiWindowFlags.NoBringToFrontOnFocus
     }
     if (WO_NO_DOCKING) {
-        flags |= int(ImGuiWindowFlags.NoDocking)
+        flags |= ImGuiWindowFlags.NoDocking
     }
     if (WO_UNSAVED_DOCUMENT) {
-        flags |= int(ImGuiWindowFlags.UnsavedDocument)
+        flags |= ImGuiWindowFlags.UnsavedDocument
     }
-    return unsafe(reinterpret<ImGuiWindowFlags>(flags))
+    return flags
 }
 
 def RunImGuiDemo() {
@@ -330,43 +329,38 @@ def private ShowDemoWindowConfiguration() {
         tree_node(DEMO_CONFIG_TREE, (text = "Configuration",
                                        flags = ImGuiTreeNodeFlags.None)) {
             var io & = unsafe(GetIO())
-            var cf_ptr : int?
-            unsafe {
-                cf_ptr = reinterpret<int?>(addr(io.ConfigFlags))
-            }
+            var cf_ptr = unsafe(addr(io.ConfigFlags))
 
             separator_text(DEMO_CFG_SEP_GENERAL, "General")
             edit_checkbox_flags(cf_ptr,
                 (id = "CFG_NAV_KBD", text = "io.ConfigFlags: NavEnableKeyboard",
-                 flags_value = int(ImGuiConfigFlags.NavEnableKeyboard)))
+                 flags_value = ImGuiConfigFlags.NavEnableKeyboard))
             edit_checkbox_flags(cf_ptr,
                 (id = "CFG_NAV_PAD", text = "io.ConfigFlags: NavEnableGamepad",
-                 flags_value = int(ImGuiConfigFlags.NavEnableGamepad)))
+                 flags_value = ImGuiConfigFlags.NavEnableGamepad))
             edit_checkbox_flags(cf_ptr,
                 (id = "CFG_NAV_MOUSE_POS",
                  text = "io.ConfigFlags: NavEnableSetMousePos",
-                 flags_value = int(ImGuiConfigFlags.NavEnableSetMousePos)))
+                 flags_value = ImGuiConfigFlags.NavEnableSetMousePos))
             edit_checkbox_flags(cf_ptr,
                 (id = "CFG_NO_MOUSE", text = "io.ConfigFlags: NoMouse",
-                 flags_value = int(ImGuiConfigFlags.NoMouse)))
+                 flags_value = ImGuiConfigFlags.NoMouse))
             // cpp:481-489 — when NoMouse is on, flash a "press SPACE" reminder
             // and consume Space to unset the bit; matches cpp behavior so a
             // tester can't lock themselves out.
-            if (int(io.ConfigFlags) != 0 &&
-                (int(io.ConfigFlags) & int(ImGuiConfigFlags.NoMouse)) != 0) {
+            if (bool(io.ConfigFlags & ImGuiConfigFlags.NoMouse)) {
                 if (fmod(float(GetTime()), 0.40f) < 0.20f) {
                     same_line(DEMO_CFG_NOMOUSE_SL)
                     text(DEMO_CFG_NOMOUSE_HINT, (text = "<<PRESS SPACE TO DISABLE>>"))
                 }
                 if (IsKeyPressed(ImGuiKey.Space, true)) {
-                    io.ConfigFlags = unsafe(reinterpret<ImGuiConfigFlags>(
-                        int(io.ConfigFlags) & ~int(ImGuiConfigFlags.NoMouse)))
+                    io.ConfigFlags &= ~ImGuiConfigFlags.NoMouse
                 }
             }
             edit_checkbox_flags(cf_ptr,
                 (id = "CFG_NO_MOUSE_CURSOR",
                  text = "io.ConfigFlags: NoMouseCursorChange",
-                 flags_value = int(ImGuiConfigFlags.NoMouseCursorChange)))
+                 flags_value = ImGuiConfigFlags.NoMouseCursorChange))
             edit_checkbox(unsafe(addr(io.ConfigInputTrickleEventQueue)),
                 (id = "CFG_TRICKLE_QUEUE",
                  text = "io.ConfigInputTrickleEventQueue"))
@@ -377,8 +371,8 @@ def private ShowDemoWindowConfiguration() {
             edit_checkbox_flags(cf_ptr,
                 (id = "CFG_DOCKING_ENABLE",
                  text = "io.ConfigFlags: DockingEnable",
-                 flags_value = int(ImGuiConfigFlags.DockingEnable)))
-            if ((int(io.ConfigFlags) & int(ImGuiConfigFlags.DockingEnable)) != 0) {
+                 flags_value = ImGuiConfigFlags.DockingEnable))
+            if (bool(io.ConfigFlags & ImGuiConfigFlags.DockingEnable)) {
                 with_indent(0.0f) {
                     edit_checkbox(unsafe(addr(io.ConfigDockingNoSplit)),
                         (id = "CFG_DOCK_NO_SPLIT",
@@ -399,8 +393,8 @@ def private ShowDemoWindowConfiguration() {
             edit_checkbox_flags(cf_ptr,
                 (id = "CFG_VIEWPORTS_ENABLE",
                  text = "io.ConfigFlags: ViewportsEnable",
-                 flags_value = int(ImGuiConfigFlags.ViewportsEnable)))
-            if ((int(io.ConfigFlags) & int(ImGuiConfigFlags.ViewportsEnable)) != 0) {
+                 flags_value = ImGuiConfigFlags.ViewportsEnable))
+            if (bool(io.ConfigFlags & ImGuiConfigFlags.ViewportsEnable)) {
                 with_indent(0.0f) {
                     edit_checkbox(unsafe(addr(io.ConfigViewportsNoAutoMerge)),
                         (id = "CFG_VP_NO_AUTO_MERGE",
