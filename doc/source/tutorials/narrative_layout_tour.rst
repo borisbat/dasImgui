@@ -56,7 +56,7 @@ Live (with reload):
    daslang-live modules/dasImgui/examples/tutorial/narrative_layout_tour.das
 
 The standalone form opens a window with the static layout. The driver
-under ``tests/integration/record_boost_narrative_layout.das`` posts
+under ``tests/integration/record_narrative_layout_tour.das`` posts
 the recorded narrate calls when run as a two-shell driver — see
 :doc:`recording`.
 
@@ -74,7 +74,7 @@ Stable idents keep the driver-script paths file-edit-resistant.
 
    Full source: :download:`examples/tutorial/narrative_layout_tour.das <../../../examples/tutorial/narrative_layout_tour.das>`
 
-   Recording driver: ``tests/integration/record_boost_narrative_layout.das``.
+   Recording driver: ``tests/integration/record_narrative_layout_tour.das``.
 
    :ref:`Containers <tutorial_containers>` — the ``[container]`` family
    counterpart (these are flat ``[widget]`` calls; no body).

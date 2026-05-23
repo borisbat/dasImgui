@@ -206,7 +206,7 @@ the keyboard tour) through the playwright transport instead of curl.
 
    Full source: :download:`examples/tutorial/visual_aids_tour.das <../../../examples/tutorial/visual_aids_tour.das>`
 
-   Driver: :download:`tests/integration/record_visual_aids.das <../../../tests/integration/record_visual_aids.das>` — the Phase 4/5 keeper, walks every aid through a 30-second tour.
+   Driver: :download:`tests/integration/record_visual_aids_tour.das <../../../tests/integration/record_visual_aids_tour.das>` — the Phase 4/5 keeper, walks every aid through a 30-second tour.
 
    Implementation: ``modules/dasImgui/widgets/imgui_visual_aids.das`` —
    the full surface plus narrate auto-fit, key HUD, focus rect.
