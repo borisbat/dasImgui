@@ -1855,6 +1855,16 @@ def edit_checkbox(var ptr : bool? implicit; text : string = "") : bool {
 }
 
 [edit_widget]
+def edit_menu_item(var ptr : bool? implicit; text : string = "";
+                   shortcut : string = ""; enabled : bool = true) : bool {
+    //! ``MenuItem(label, shortcut, ptr, enabled)`` against a caller-owned ``bool?``. Mirrors ``edit_checkbox`` shape for menu contexts — the menu item shows a check mark while ``*ptr`` is true and toggles it on click. Caller owns persistence; no ``@live`` preservation. Required ``id="..."`` at the call site keys the telemetry path.
+    let lbl = empty(text) ? widget_ident : text
+    let changed = MenuItem(lbl, shortcut, ptr, enabled)
+    edit_finalize(widget_ident, "edit_menu_item", ptr)
+    return changed
+}
+
+[edit_widget]
 def edit_radio_button(var ptr : bool? implicit; text : string = "") : bool {
     //! Bool-form ``RadioButton`` against a caller-owned ``bool?``; the widget flips ``*ptr`` on click (ImGui's RadioButton-bool doesn't mutate). For grouped int-form radios, declare a ``RadioIntState`` and use ``radio_button_int``.
     let lbl = empty(text) ? widget_ident : text

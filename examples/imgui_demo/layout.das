@@ -35,15 +35,11 @@ require math
 //   - HelpMarker(...) text inlined via item_tooltip on a "(?)" text_disabled,
 //     mirroring widgets.das.
 //
-// Skipped vs C++ (each cited at the relevant location below):
+// Workarounds vs C++ (each cited at the relevant location below):
 //   - cpp:3604: DragFloat2 on a `ImVec2 size` (struct field-pair). The
 //     edit_drag_float2 rail wants a `float2?`, and ImVec2's float-pair layout
 //     matches float2's, but addressing a stack ImVec2 as float2? would need
 //     a reinterpret bounce-buffer. Workaround: edit two separate floats.
-//   - cpp:3631-3656: the per-clip-region DrawList calls — AddRectFilled /
-//     AddText to the WindowDrawList. These render as InvisibleButton-only
-//     stubs; the drawlist rail (PR-B1) doesn't carry the per-region clip-rect
-//     overrides the C++ branch uses (PushClipRect-then-AddText). TODO Phase 3.
 //   - cpp:3392-3398: BeginChild("scrolling") re-entry trick to nudge scroll
 //     state from outside the child body. The `child_scroll_reenter(IDENT,
 //     text) { ... }` wrapper replicates the original `child(IDENT)` container's
