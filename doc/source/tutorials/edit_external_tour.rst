@@ -81,13 +81,13 @@ Live (with reload):
 Drive the widgets from outside via ``imgui_set`` / ``imgui_focus`` /
 ``imgui_key_type`` / ``imgui_mouse_play`` -- the recorded APNG above
 exercises every shape via
-``tests/integration/record_edit_external.das``.
+``tests/integration/record_editing_external.das``.
 
 .. seealso::
 
    Full source: :download:`examples/tutorial/editing_external.das <../../../examples/tutorial/editing_external.das>`
 
-   Recording driver: ``tests/integration/record_edit_external.das``.
+   Recording driver: ``tests/integration/record_editing_external.das``.
 
    :ref:`State telemetry <tutorial_state_telemetry>` — the snapshot
    path that ``edit_*`` widgets register under.

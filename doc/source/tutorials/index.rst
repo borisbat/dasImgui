@@ -13,14 +13,20 @@ construction.
 
    boost_basics.rst
    widgets_tour.rst
+   display_widgets.rst
+   narrative_widgets.rst
    custom_widgets.rst
    layout.rst
+   layout_primitives.rst
    docking.rst
    with_style.rst
    with_id.rst
+   with_disabled.rst
    state_telemetry.rst
    containers.rst
+   main_menu_bar.rst
    popup_window.rst
+   flat_tooltips.rst
    drag_drop.rst
    live_reload.rst
    driving_outside.rst

@@ -36,9 +36,16 @@ if (-not $Quiet) {
 Set-Location $repoRoot
 
 # Fetch the assets branch ref. --depth 1 keeps the local clone small.
-git fetch --depth 1 $Remote assets 2>&1 | Out-Null
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "FAIL: git fetch ${Remote}/assets failed" -ForegroundColor Red
+# Run the native git call with ErrorAction=Continue so PowerShell doesn't
+# abort on stderr-as-NativeCommandError (git's "From https://..." progress
+# line trips it under `Stop`). The exit code is the actual success signal.
+$prevEAP = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
+git fetch --depth 1 $Remote assets
+$fetchExit = $LASTEXITCODE
+$ErrorActionPreference = $prevEAP
+if ($fetchExit -ne 0) {
+    Write-Host "FAIL: git fetch ${Remote}/assets failed (exit $fetchExit)" -ForegroundColor Red
     exit 1
 }
 
@@ -56,8 +63,7 @@ if ($LASTEXITCODE -ne 0) {
 
 # Unstage them so they don't appear in `git diff` -- they're .gitignored
 # but git checkout from a ref stages them anyway.
-git reset HEAD -- doc/source/_static/tutorials/*.apng 2>&1 | Out-Null
-
+git reset HEAD -- doc/source/_static/tutorials/*.apng
 $count = (Get-ChildItem $tutorialDir -Filter "*.apng" | Measure-Object).Count
 $totalMB = [math]::Round(((Get-ChildItem $tutorialDir -Filter "*.apng" | Measure-Object Length -Sum).Sum / 1MB), 1)
 Write-Host "[fetch_tutorial_apngs] $count APNGs ($totalMB MB) ready in $tutorialDir"

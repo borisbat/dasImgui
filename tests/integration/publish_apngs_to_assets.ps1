@@ -29,6 +29,19 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# Run a native command with ErrorActionPreference = Continue so PowerShell
+# doesn't wrap stderr (git progress / worktree messages) in NativeCommandError
+# and abort under `Stop`. Caller checks $LASTEXITCODE afterwards.
+function Invoke-NativeIgnoringStderr {
+    $prevEAP = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+        & $args[0] @($args | Select-Object -Skip 1)
+    } finally {
+        $ErrorActionPreference = $prevEAP
+    }
+}
+
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoRoot  = (Resolve-Path (Join-Path $scriptDir "..\..")).Path
 $srcTutorialDir = Join-Path $repoRoot "doc\source\_static\tutorials"
@@ -47,13 +60,21 @@ Write-Host "[publish_apngs_to_assets] remote: $Remote"
 
 # Spin up a fresh worktree pinned to origin/assets so we don't disturb the
 # source-branch working tree.
-git -C $repoRoot fetch $Remote assets 2>&1 | Out-Null
+Invoke-NativeIgnoringStderr git -C $repoRoot fetch $Remote assets
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "FAIL: git fetch ${Remote}/assets failed (exit $LASTEXITCODE)" -ForegroundColor Red
+    exit 1
+}
 if (Test-Path $worktreePath) {
     Write-Host "[publish_apngs_to_assets] removing stale worktree at $worktreePath"
-    git -C $repoRoot worktree remove --force $worktreePath 2>&1 | Out-Null
+    Invoke-NativeIgnoringStderr git -C $repoRoot worktree remove --force $worktreePath
     Remove-Item -Recurse -Force $worktreePath -ErrorAction SilentlyContinue
 }
-git -C $repoRoot worktree add -B assets-publish $worktreePath "$Remote/assets" 2>&1 | Out-Null
+Invoke-NativeIgnoringStderr git -C $repoRoot worktree add -B assets-publish $worktreePath "$Remote/assets"
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "FAIL: git worktree add failed (exit $LASTEXITCODE)" -ForegroundColor Red
+    exit 1
+}
 Write-Host "[publish_apngs_to_assets] worktree: $worktreePath"
 
 # Replace the worktree's APNG set with the source-branch versions.
@@ -63,16 +84,16 @@ Remove-Item -Force (Join-Path $dstTutorialDir "*.apng") -ErrorAction SilentlyCon
 Copy-Item -Force "$srcTutorialDir\*.apng" -Destination $dstTutorialDir
 
 # Amend the root commit so history stays at one commit.
-git -C $worktreePath add doc/source/_static/tutorials/
+Invoke-NativeIgnoringStderr git -C $worktreePath add doc/source/_static/tutorials/
 $pending = git -C $worktreePath diff --cached --name-only
 if (-not $pending) {
     Write-Host "[publish_apngs_to_assets] no APNG changes vs $Remote/assets -- nothing to push"
     if (-not $KeepWorktree) {
-        git -C $repoRoot worktree remove --force $worktreePath 2>&1 | Out-Null
+        Invoke-NativeIgnoringStderr git -C $repoRoot worktree remove --force $worktreePath
     }
     exit 0
 }
-git -C $worktreePath commit --amend --no-edit | Out-Null
+Invoke-NativeIgnoringStderr git -C $worktreePath commit --amend --no-edit | Out-Null
 
 if ($DryRun) {
     Write-Host "[publish_apngs_to_assets] -DryRun: would force-push assets-publish -> $Remote/assets"
@@ -83,15 +104,15 @@ if ($DryRun) {
     }
 } else {
     Write-Host "[publish_apngs_to_assets] force-pushing to $Remote/assets ..."
-    git -C $worktreePath push --force-with-lease $Remote "HEAD:assets"
+    Invoke-NativeIgnoringStderr git -C $worktreePath push --force-with-lease $Remote "HEAD:assets"
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "FAIL: push to $Remote/assets failed" -ForegroundColor Red
+        Write-Host "FAIL: push to $Remote/assets failed (exit $LASTEXITCODE)" -ForegroundColor Red
         exit 1
     }
     Write-Host "[publish_apngs_to_assets] OK -- GitHub will GC the previous blobs in ~2 weeks." -ForegroundColor Green
 }
 
 if (-not $KeepWorktree) {
-    git -C $repoRoot worktree remove --force $worktreePath 2>&1 | Out-Null
-    git -C $repoRoot branch -D assets-publish 2>&1 | Out-Null
+    Invoke-NativeIgnoringStderr git -C $repoRoot worktree remove --force $worktreePath
+    Invoke-NativeIgnoringStderr git -C $repoRoot branch -D assets-publish
 }

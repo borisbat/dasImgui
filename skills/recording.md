@@ -155,6 +155,30 @@ Submenu items DO register bboxes **once the parent is open** — click parent fi
 
 For drivers that need to click outside any registered widget (`main_menu_bar` strip dismissal, raw-canvas coordinates, viewport-corner anchors), capture pixel coords empirically and bake them as named constants — see the "Resolving widget coords" recipe above.
 
+### Menu interactions: bundle open + child click into ONE mouse_play
+
+A split-stream menu interaction — two separate `imgui_mouse_play` calls, one to open the menu, one to click the child — does NOT work. Between the two calls the synth cursor holds its last position but no fresh mouse events fire, and ImGui's menu auto-close timer closes the menu before the second call arrives. The child click then lands on empty bar chrome instead of the menu item, and the recording shows the menu opening + closing with no toggle/click effect.
+
+The reliable pattern is **one `imgui_mouse_play` per menu** that bundles header-click + lerp + child-click in a single event stream:
+
+```daslang
+// MI_DARKMODE.bbox isn't known until the menu opens, but the menu
+// opens DOWN from the header — estimate y by adding 32px to p_file.y.
+let p_darkmode = (p_file._0, p_file._1 + 32.0f)
+var events : array<JsonValue?>
+events |> click_at(0, p_file, 200)         // open File menu
+events |> click_at(1200, p_darkmode, 600)  // lerp + click child
+post_command(app, "imgui_mouse_play", JV((events = events)))
+sleep(3500u)                                // dwell so result is visible
+```
+
+Two consequences:
+
+- The child's bbox isn't available until after the menu opens, so you can't `widget_center(snap, "MAIN_BAR/FILE_MENU/MI_DARKMODE")` up front. Either resnap inside the same dwell (rarely worth it) or estimate the child's position from the parent header with a known offset (item height ≈ 22px in the default font; first item ≈ header_bottom + 14px → `p_file.y + 32` for `MI_DARKMODE`).
+- Narrate text describing the action lands AFTER the bundled click, not between the two halves. Frame the narrate as "Click File, then Dark mode — MI_DARKMODE.value flips" rather than two separate "open" / "click" lines. See `tests/integration/record_main_menu_bar.das` for the canonical shape.
+
+The same pattern applies to any UI element with hover-driven auto-close: `combo_select`, `popup_context_window`, `tooltip` cascades.
+
 ## Verifying a recording without playing it
 
 Don't rely on eyeballs alone — instrument it. Two probes:
