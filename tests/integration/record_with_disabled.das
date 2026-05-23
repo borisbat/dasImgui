@@ -98,12 +98,12 @@ def main {
             frames = NARRATE_FRAMES
         )))
         sleep(READ_MS)
+        //! ImGui's button_repeat needs ONE long press, not multiple discrete
+        //! clicks — repeat fires while a single press is held. drag_along
+        //! with from_pos == to_pos emits a 3-second hold at p_step.
         var step_events : array<JsonValue?>
-        step_events |> click_at(0, p_step, 250)
-        step_events |> click_at(1500, p_step, 0)
-        step_events |> click_at(3000, p_step, 0)
-        step_events |> click_at(4500, p_step, 0)
+        step_events |> drag_along(0, p_step, p_step, 3000, 250)
         post_command(app, "imgui_mouse_play", JV((events = step_events)))
-        sleep(RESULT_MS)
+        sleep(4500u)
     }
 }

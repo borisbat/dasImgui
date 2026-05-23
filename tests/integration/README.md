@@ -72,7 +72,7 @@ to a public branch:
 $env:DASLANG_EXE = "D:/Work/daScript/bin/Release/daslang.exe"
 
 # 1. Generate APNGs locally (whole sweep or single driver)
-pwsh tests/integration/rerecord_all.ps1                # ~20 min, all 26 drivers
+pwsh tests/integration/rerecord_all.ps1                # ~20 min, all drivers found via glob
 # OR
 daslang.exe -project_root . tests/integration/record_X.das
 

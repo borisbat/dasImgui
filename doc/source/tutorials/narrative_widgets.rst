@@ -10,11 +10,12 @@ All share a ``NarrativeState`` (or ``LabelTextState``) payload that echoes
 the call-site string back into the snapshot, so playwright tests can
 assert "the label says what I expect" without any layout state.
 
-The eight rails:
+The nine rails:
 
-* ``text("...")`` — one line of plain text.
-* ``text_unformatted("...")`` — same shape, skips ImGui's ``printf``-style
-  parsing (faster for known-safe strings).
+* ``text("...")`` — one line of plain text. Implemented via
+  ``TextUnformatted`` (no printf-style format expansion).
+* ``text_unformatted("...")`` — explicit alias for ``text``; identical
+  implementation. Exists so call sites can signal intent.
 * ``text_wrapped("...")`` — reflows long strings to the window's content
   edge.
 * ``text_colored((color = float4(...), text = ...))`` — colored variant.
@@ -48,21 +49,19 @@ Baseline boost layer (``imgui/imgui_boost_v2`` re-exports
 text vs text_unformatted vs text_wrapped
 ========================================
 
-The three "plain" variants pick by intent, not by content:
-
-* ``text(s)`` — emits ``s`` through ImGui's ``Text(...)`` (printf-style
-  arg pass-through). Safe for arbitrary daslang strings since the boost
-  rail passes ``s`` through without expanding format specifiers, but
-  matches the imgui_demo idiom.
-* ``text_unformatted(s)`` — emits ``s`` through ``TextUnformatted(s)``.
-  Marginally faster on long pre-baked strings since ImGui skips the
-  format-string parse.
+* ``text(s)`` — emits ``s`` through ImGui's ``TextUnformatted(s)``. No
+  printf-style format expansion; the string is rendered verbatim.
+* ``text_unformatted(s)`` — identical to ``text(s)`` (same
+  ``TextUnformatted`` call). Exists as an explicit-intent alias for call
+  sites where ``unformatted`` reads better, or where you want to
+  underscore the no-printf-expansion contract for readers.
 * ``text_wrapped(s)`` — emits through ``TextWrapped(s)`` so the text
   reflows at the window's content edge. The wrap position respects
   ``with_text_wrap_pos`` if you've pushed one.
 
-The payload shape is identical for all three — only the rendered behavior
-differs.
+The payload shape is identical for all three; the alias-pair
+(``text`` / ``text_unformatted``) renders identically, while
+``text_wrapped`` is the one that actually changes rendering behavior.
 
 Colored vs disabled
 ===================
@@ -92,8 +91,9 @@ label_text
 ==========
 
 ``label_text((key, value))`` is ImGui's two-column property-sheet format
-— left column shows ``value``, right column shows ``key``. The visual
-order matches ``LabelText("Version", "v2.0-detour")`` from the C++ side.
+— ``key`` renders in the left label gutter, ``value`` in the right
+column. The visual order matches ``LabelText("Version", "v2.0-detour")``
+from the C++ side ("Version" on the left, "v2.0-detour" on the right).
 Both strings round-trip through the snapshot payload, so snapshot-driven
 property tests get both halves for assertion.
 
