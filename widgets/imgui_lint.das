@@ -38,7 +38,7 @@ let private ALLOWED_IMGUI : table<string> <- {
     "CreateContext", "DestroyContext", "GetCurrentContext", "SetCurrentContext",
     "NewFrame", "EndFrame", "Render", "GetDrawData",
     // IO / per-item state queries (post-widget probes — no v2 host needed)
-    "GetIO", "GetStyle",
+    "GetIO", "GetStyle", "GetVersion",
     "IsItemHovered", "IsItemActive", "IsItemClicked", "IsItemFocused",
     "IsItemActivated", "IsItemDeactivated", "IsItemDeactivatedAfterEdit",
     "IsItemToggledOpen", "IsItemVisible", "IsItemEdited",

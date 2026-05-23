@@ -6,8 +6,11 @@ module imgui_demo
 require imgui public
 require imgui/imgui_widgets_builtin public
 require imgui/imgui_containers_builtin public
+require imgui/imgui_scope_builtin public
+require imgui/imgui_table_builtin public
 require imgui/imgui_boost_v2 public
 require daslib/safe_addr
+require math
 
 require widgets public
 require layout public
@@ -26,7 +29,7 @@ require app_dockspace public
 require app_documents public
 require app_small public
 
-// Mirrors imgui_demo.cpp:275-6455 — void ImGui::ShowDemoWindow(bool* p_open).
+// Mirrors imgui_demo.cpp:275-649 — void ImGui::ShowDemoWindow(bool* p_open).
 // Renamed to avoid collision with ImGui's built-in ShowDemoWindow binding.
 //
 // The window carries a MenuBar with three sub-menus:
@@ -38,13 +41,9 @@ require app_small public
 //              About; each pops its own ImGui-native window via the
 //              ShowMetricsWindow / ShowDebugLogWindow / etc. bindings.
 //
-// Beneath the menubar, the six demo-window section dispatchers render in
-// order (Widgets, Layout, Popups, Tables, Columns, Inputs).
-//
-// All toggle state lives in plain module-scope vars (NOT widget state) so
-// the dispatch can read them directly outside the window's body — the
-// `edit_menu_item` rail takes a `safe_addr`-owned `bool?` and the Show*
-// windows take `bool?` too, so the same address chains through both.
+// Beneath the menubar live three meta-sections (Help / Configuration /
+// Window options), then the six demo-window section dispatchers (Widgets,
+// Layout, Popups, Tables, Columns, Inputs).
 
 // Examples-menu toggles — 13 entries (1 main menu bar + 8 small + 4 full).
 var SHOW_APP_MAIN_MENU_BAR = false
@@ -69,10 +68,70 @@ var SHOW_TOOL_ID_STACK = false
 var SHOW_TOOL_STYLE_EDITOR = false
 var SHOW_TOOL_ABOUT = false
 
+// Window-options toggles — 12 booleans wired into DEMO_WIN's ImGuiWindowFlags.
+// cpp:335-346 — each `no_*` ORs the matching WindowFlag bit (or, for no_menu,
+// inverts since the default is to render the menu bar). DEMO_WIN's `closable`
+// param is false in this port so `no_close` is informational only (cpp uses
+// it to swap p_open=NULL; we don't surface a close button on this window).
+var WO_NO_TITLEBAR = false
+var WO_NO_SCROLLBAR = false
+var WO_NO_MENU = false
+var WO_NO_MOVE = false
+var WO_NO_RESIZE = false
+var WO_NO_COLLAPSE = false
+var WO_NO_CLOSE = false
+var WO_NO_NAV = false
+var WO_NO_BACKGROUND = false
+var WO_NO_BRING_TO_FRONT = false
+var WO_NO_DOCKING = false
+var WO_UNSAVED_DOCUMENT = false
+
+def private compute_demo_window_flags() : ImGuiWindowFlags {
+    // Build flags as int (the | / |= operators are bitfield-typed by default;
+    // wrap in int() to compose freely, then reinterpret back at the call site).
+    var flags = int(ImGuiWindowFlags.None)
+    if (WO_NO_TITLEBAR) {
+        flags |= int(ImGuiWindowFlags.NoTitleBar)
+    }
+    if (WO_NO_SCROLLBAR) {
+        flags |= int(ImGuiWindowFlags.NoScrollbar)
+    }
+    if (!WO_NO_MENU) {
+        flags |= int(ImGuiWindowFlags.MenuBar)
+    }
+    if (WO_NO_MOVE) {
+        flags |= int(ImGuiWindowFlags.NoMove)
+    }
+    if (WO_NO_RESIZE) {
+        flags |= int(ImGuiWindowFlags.NoResize)
+    }
+    if (WO_NO_COLLAPSE) {
+        flags |= int(ImGuiWindowFlags.NoCollapse)
+    }
+    if (WO_NO_NAV) {
+        flags |= int(ImGuiWindowFlags.NoNav)
+    }
+    if (WO_NO_BACKGROUND) {
+        flags |= int(ImGuiWindowFlags.NoBackground)
+    }
+    if (WO_NO_BRING_TO_FRONT) {
+        flags |= int(ImGuiWindowFlags.NoBringToFrontOnFocus)
+    }
+    if (WO_NO_DOCKING) {
+        flags |= int(ImGuiWindowFlags.NoDocking)
+    }
+    if (WO_UNSAVED_DOCUMENT) {
+        flags |= int(ImGuiWindowFlags.UnsavedDocument)
+    }
+    return unsafe(reinterpret<ImGuiWindowFlags>(flags))
+}
+
 def RunImGuiDemo() {
     window(DEMO_WIN, (text = "Dear ImGui Demo (daslang port)",
                       closable = false,
-                      flags = ImGuiWindowFlags.MenuBar)) {
+                      flags = compute_demo_window_flags())) {
+        // Menu bar — gated by the WO_NO_MENU toggle below (ImGui silently
+        // ignores menu_bar() when the window lacks the MenuBar flag).
         menu_bar(DEMO_MENU_BAR) {
             menu(DEMO_MENU_FILE, (text = "Menu", enabled = true)) {
                 ShowExampleMenuFile()
@@ -124,12 +183,23 @@ def RunImGuiDemo() {
             }
         }
 
-        ShowDemoWindowWidgets()
-        ShowDemoWindowLayout()
-        ShowDemoWindowPopups()
-        ShowDemoWindowTables()
-        ShowDemoWindowColumns()
-        ShowDemoWindowInputs()
+        text("dear imgui says hello! ({GetVersion()}) ({IMGUI_VERSION_NUM})")
+        spacing(DEMO_INTRO_SPACING)
+
+        // Big-widget default width — 12 characters of right-pad for labels;
+        // mirrors cpp:380 PushItemWidth(GetFontSize() * -12).
+        with_item_width(GetFontSize() * -12.0f) {
+            ShowDemoWindowHelp()
+            ShowDemoWindowConfiguration()
+            ShowDemoWindowWindowOptions()
+
+            ShowDemoWindowWidgets()
+            ShowDemoWindowLayout()
+            ShowDemoWindowPopups()
+            ShowDemoWindowTables()
+            ShowDemoWindowColumns()
+            ShowDemoWindowInputs()
+        }
     }
 
     // Example-app windows live OUTSIDE the demo window — each opens its own.
@@ -212,5 +282,234 @@ def RunImGuiDemo() {
     }
     if (SHOW_TOOL_ABOUT) {
         ShowAboutWindow(safe_addr(SHOW_TOOL_ABOUT))
+    }
+}
+
+// =============================================================================
+// Help — cpp:444-462
+// Bullet-text overview of the demo + a SeparatorText divider per section
+// (ABOUT / PROGRAMMER GUIDE / USER GUIDE), then ShowUserGuide bullets.
+// =============================================================================
+def private ShowDemoWindowHelp() {
+    collapsing_header(DEMO_HELP_HEADER, (text = "Help",
+                                          closable = false,
+                                          flags = ImGuiTreeNodeFlags.None)) {
+        separator_text(DEMO_HELP_SEP_ABOUT, "ABOUT THIS DEMO:")
+        bullet_text("Sections below are demonstrating many aspects of the library.")
+        bullet_text("The \"Examples\" menu above leads to more demo contents.")
+        bullet_text((text = "The \"Examples\" menu above gives access to: About Box, " +
+            "Style Editor,\nand Metrics/Debugger (general purpose Dear ImGui " +
+            "debugging tool)."))
+
+        separator_text(DEMO_HELP_SEP_PROG, "PROGRAMMER GUIDE:")
+        bullet_text("See the ShowDemoWindow() code in imgui_demo.cpp. <- you are here!")
+        bullet_text("See comments in imgui.cpp.")
+        bullet_text("See example applications in the examples/ folder.")
+        bullet_text("Read the FAQ at https://www.dearimgui.com/faq/")
+        bullet_text("Set 'io.ConfigFlags |= NavEnableKeyboard' for keyboard controls.")
+        bullet_text("Set 'io.ConfigFlags |= NavEnableGamepad' for gamepad controls.")
+
+        separator_text(DEMO_HELP_SEP_USER, "USER GUIDE:")
+        user_guide::ShowUserGuide()
+    }
+}
+
+// =============================================================================
+// Configuration — cpp:465-616
+// Sub-TreeNode "Configuration##2" body with 5 SeparatorText groups: General /
+// Docking / Multi-viewports / Widgets / Debug. CheckboxFlags on io.ConfigFlags
+// for nav/no-mouse/docking/viewport bits; plain Checkbox on the boolean
+// io.Config* / io.MouseDrawCursor fields. Help markers (cpp:473..) are
+// dropped here — they're "(?)"+item_tooltip chains and add a lot of state for
+// a debug-helper section. Easy to add later if needed.
+// =============================================================================
+def private ShowDemoWindowConfiguration() {
+    collapsing_header(DEMO_CONFIG_HEADER, (text = "Configuration",
+                                             closable = false,
+                                             flags = ImGuiTreeNodeFlags.None)) {
+        tree_node(DEMO_CONFIG_TREE, (text = "Configuration",
+                                       flags = ImGuiTreeNodeFlags.None)) {
+            var io & = unsafe(GetIO())
+            var cf_ptr : int?
+            unsafe {
+                cf_ptr = reinterpret<int?>(addr(io.ConfigFlags))
+            }
+
+            separator_text(DEMO_CFG_SEP_GENERAL, "General")
+            edit_checkbox_flags(cf_ptr,
+                (id = "CFG_NAV_KBD", text = "io.ConfigFlags: NavEnableKeyboard",
+                 flags_value = int(ImGuiConfigFlags.NavEnableKeyboard)))
+            edit_checkbox_flags(cf_ptr,
+                (id = "CFG_NAV_PAD", text = "io.ConfigFlags: NavEnableGamepad",
+                 flags_value = int(ImGuiConfigFlags.NavEnableGamepad)))
+            edit_checkbox_flags(cf_ptr,
+                (id = "CFG_NAV_MOUSE_POS",
+                 text = "io.ConfigFlags: NavEnableSetMousePos",
+                 flags_value = int(ImGuiConfigFlags.NavEnableSetMousePos)))
+            edit_checkbox_flags(cf_ptr,
+                (id = "CFG_NO_MOUSE", text = "io.ConfigFlags: NoMouse",
+                 flags_value = int(ImGuiConfigFlags.NoMouse)))
+            // cpp:481-489 — when NoMouse is on, flash a "press SPACE" reminder
+            // and consume Space to unset the bit; matches cpp behavior so a
+            // tester can't lock themselves out.
+            if (int(io.ConfigFlags) != 0 &&
+                (int(io.ConfigFlags) & int(ImGuiConfigFlags.NoMouse)) != 0) {
+                if (fmod(float(GetTime()), 0.40f) < 0.20f) {
+                    same_line(DEMO_CFG_NOMOUSE_SL)
+                    text(DEMO_CFG_NOMOUSE_HINT, (text = "<<PRESS SPACE TO DISABLE>>"))
+                }
+                if (IsKeyPressed(ImGuiKey.Space, true)) {
+                    io.ConfigFlags = unsafe(reinterpret<ImGuiConfigFlags>(
+                        int(io.ConfigFlags) & ~int(ImGuiConfigFlags.NoMouse)))
+                }
+            }
+            edit_checkbox_flags(cf_ptr,
+                (id = "CFG_NO_MOUSE_CURSOR",
+                 text = "io.ConfigFlags: NoMouseCursorChange",
+                 flags_value = int(ImGuiConfigFlags.NoMouseCursorChange)))
+            edit_checkbox(unsafe(addr(io.ConfigInputTrickleEventQueue)),
+                (id = "CFG_TRICKLE_QUEUE",
+                 text = "io.ConfigInputTrickleEventQueue"))
+            edit_checkbox(unsafe(addr(io.MouseDrawCursor)),
+                (id = "CFG_MOUSE_DRAW_CURSOR", text = "io.MouseDrawCursor"))
+
+            separator_text(DEMO_CFG_SEP_DOCKING, "Docking")
+            edit_checkbox_flags(cf_ptr,
+                (id = "CFG_DOCKING_ENABLE",
+                 text = "io.ConfigFlags: DockingEnable",
+                 flags_value = int(ImGuiConfigFlags.DockingEnable)))
+            if ((int(io.ConfigFlags) & int(ImGuiConfigFlags.DockingEnable)) != 0) {
+                with_indent(0.0f) {
+                    edit_checkbox(unsafe(addr(io.ConfigDockingNoSplit)),
+                        (id = "CFG_DOCK_NO_SPLIT",
+                         text = "io.ConfigDockingNoSplit"))
+                    edit_checkbox(unsafe(addr(io.ConfigDockingWithShift)),
+                        (id = "CFG_DOCK_WITH_SHIFT",
+                         text = "io.ConfigDockingWithShift"))
+                    edit_checkbox(unsafe(addr(io.ConfigDockingAlwaysTabBar)),
+                        (id = "CFG_DOCK_ALWAYS_TAB_BAR",
+                         text = "io.ConfigDockingAlwaysTabBar"))
+                    edit_checkbox(unsafe(addr(io.ConfigDockingTransparentPayload)),
+                        (id = "CFG_DOCK_TRANSP_PAYLOAD",
+                         text = "io.ConfigDockingTransparentPayload"))
+                }
+            }
+
+            separator_text(DEMO_CFG_SEP_VIEWPORTS, "Multi-viewports")
+            edit_checkbox_flags(cf_ptr,
+                (id = "CFG_VIEWPORTS_ENABLE",
+                 text = "io.ConfigFlags: ViewportsEnable",
+                 flags_value = int(ImGuiConfigFlags.ViewportsEnable)))
+            if ((int(io.ConfigFlags) & int(ImGuiConfigFlags.ViewportsEnable)) != 0) {
+                with_indent(0.0f) {
+                    edit_checkbox(unsafe(addr(io.ConfigViewportsNoAutoMerge)),
+                        (id = "CFG_VP_NO_AUTO_MERGE",
+                         text = "io.ConfigViewportsNoAutoMerge"))
+                    edit_checkbox(unsafe(addr(io.ConfigViewportsNoTaskBarIcon)),
+                        (id = "CFG_VP_NO_TASKBAR",
+                         text = "io.ConfigViewportsNoTaskBarIcon"))
+                    edit_checkbox(unsafe(addr(io.ConfigViewportsNoDecoration)),
+                        (id = "CFG_VP_NO_DECORATION",
+                         text = "io.ConfigViewportsNoDecoration"))
+                    edit_checkbox(unsafe(addr(io.ConfigViewportsNoDefaultParent)),
+                        (id = "CFG_VP_NO_DEFAULT_PARENT",
+                         text = "io.ConfigViewportsNoDefaultParent"))
+                }
+            }
+
+            separator_text(DEMO_CFG_SEP_WIDGETS, "Widgets")
+            edit_checkbox(unsafe(addr(io.ConfigInputTextCursorBlink)),
+                (id = "CFG_TEXT_BLINK", text = "io.ConfigInputTextCursorBlink"))
+            edit_checkbox(unsafe(addr(io.ConfigInputTextEnterKeepActive)),
+                (id = "CFG_TEXT_ENTER_KEEP_ACTIVE",
+                 text = "io.ConfigInputTextEnterKeepActive"))
+            edit_checkbox(unsafe(addr(io.ConfigDragClickToInputText)),
+                (id = "CFG_DRAG_CLICK_TO_INPUT",
+                 text = "io.ConfigDragClickToInputText"))
+            edit_checkbox(unsafe(addr(io.ConfigWindowsResizeFromEdges)),
+                (id = "CFG_WIN_RESIZE_EDGES",
+                 text = "io.ConfigWindowsResizeFromEdges"))
+            edit_checkbox(unsafe(addr(io.ConfigWindowsMoveFromTitleBarOnly)),
+                (id = "CFG_WIN_MOVE_FROM_TITLE",
+                 text = "io.ConfigWindowsMoveFromTitleBarOnly"))
+            edit_checkbox(unsafe(addr(io.ConfigMacOSXBehaviors)),
+                (id = "CFG_MACOS_BEHAVIORS", text = "io.ConfigMacOSXBehaviors"))
+            text("Also see Style->Rendering for rendering options.")
+
+            separator_text(DEMO_CFG_SEP_DEBUG, "Debug")
+            edit_checkbox(unsafe(addr(io.ConfigDebugIsDebuggerPresent)),
+                (id = "CFG_DBG_DEBUGGER_PRESENT",
+                 text = "io.ConfigDebugIsDebuggerPresent"))
+            // cpp:552 — wraps the next checkbox in BeginDisabled/EndDisabled
+            // because the option must be set at boot to mean anything; the
+            // grey-out is purely advisory.
+            with_disabled(true) {
+                edit_checkbox(unsafe(addr(io.ConfigDebugBeginReturnValueOnce)),
+                    (id = "CFG_DBG_BEGIN_RETVAL_ONCE",
+                     text = "io.ConfigDebugBeginReturnValueOnce"))
+            }
+            edit_checkbox(unsafe(addr(io.ConfigDebugBeginReturnValueLoop)),
+                (id = "CFG_DBG_BEGIN_RETVAL_LOOP",
+                 text = "io.ConfigDebugBeginReturnValueLoop"))
+            edit_checkbox(unsafe(addr(io.ConfigDebugIgnoreFocusLoss)),
+                (id = "CFG_DBG_IGNORE_FOCUS_LOSS",
+                 text = "io.ConfigDebugIgnoreFocusLoss"))
+            edit_checkbox(unsafe(addr(io.ConfigDebugIniSettings)),
+                (id = "CFG_DBG_INI_SETTINGS", text = "io.ConfigDebugIniSettings"))
+        }
+    }
+}
+
+// =============================================================================
+// Window options — cpp:619-637
+// 3-column table of 12 checkboxes that drive DEMO_WIN's ImGuiWindowFlags via
+// the compute_demo_window_flags() helper above. Order matches cpp.
+// =============================================================================
+def private ShowDemoWindowWindowOptions() {
+    collapsing_header(DEMO_WIN_OPTS_HEADER,
+                      (text = "Window options", closable = false,
+                       flags = ImGuiTreeNodeFlags.None)) {
+        data_table(DEMO_WIN_OPTS_TABLE,
+                   (text = "split", columns = 3,
+                    flags = ImGuiTableFlags.None,
+                    outer_size = float2(0.0f, 0.0f),
+                    inner_width = 0.0f)) {
+            table_next_column()
+            edit_checkbox(safe_addr(WO_NO_TITLEBAR),
+                (id = "WO_NO_TITLEBAR", text = "No titlebar"))
+            table_next_column()
+            edit_checkbox(safe_addr(WO_NO_SCROLLBAR),
+                (id = "WO_NO_SCROLLBAR", text = "No scrollbar"))
+            table_next_column()
+            edit_checkbox(safe_addr(WO_NO_MENU),
+                (id = "WO_NO_MENU", text = "No menu"))
+            table_next_column()
+            edit_checkbox(safe_addr(WO_NO_MOVE),
+                (id = "WO_NO_MOVE", text = "No move"))
+            table_next_column()
+            edit_checkbox(safe_addr(WO_NO_RESIZE),
+                (id = "WO_NO_RESIZE", text = "No resize"))
+            table_next_column()
+            edit_checkbox(safe_addr(WO_NO_COLLAPSE),
+                (id = "WO_NO_COLLAPSE", text = "No collapse"))
+            table_next_column()
+            edit_checkbox(safe_addr(WO_NO_CLOSE),
+                (id = "WO_NO_CLOSE", text = "No close"))
+            table_next_column()
+            edit_checkbox(safe_addr(WO_NO_NAV),
+                (id = "WO_NO_NAV", text = "No nav"))
+            table_next_column()
+            edit_checkbox(safe_addr(WO_NO_BACKGROUND),
+                (id = "WO_NO_BG", text = "No background"))
+            table_next_column()
+            edit_checkbox(safe_addr(WO_NO_BRING_TO_FRONT),
+                (id = "WO_NO_BRING_TO_FRONT", text = "No bring to front"))
+            table_next_column()
+            edit_checkbox(safe_addr(WO_NO_DOCKING),
+                (id = "WO_NO_DOCKING", text = "No docking"))
+            table_next_column()
+            edit_checkbox(safe_addr(WO_UNSAVED_DOCUMENT),
+                (id = "WO_UNSAVED_DOCUMENT", text = "Unsaved document"))
+        }
     }
 }
