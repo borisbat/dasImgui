@@ -133,15 +133,19 @@ def private PopupsSection() {
                     menu_label(POPUPS_STACKED_SUBMENU_CLICK,
                                (text = "Click me", shortcut = "",
                                 selected = false, enabled = true))
-                    // C++ nests yet another "Stacked Popup" button + another
-                    // popup. The deepest level renders "I am the last one
-                    // here." Same idents would alias the outer level — drop
-                    // the deepest recursion (parity with the lint we'd hit
-                    // on duplicate-IDENT at the same scope; ImGui's nesting
-                    // semantics are already demonstrated by this level).
-                    // TODO Phase 3: surface a deeper nested-popup pattern
-                    // (probably indexed by a synthetic depth counter) if
-                    // tests want the full three-level stack.
+                    // Deepest "Stacked Popup" — distinct IDENT pair so its
+                    // state global doesn't alias the outer level. ImGui's
+                    // popup-stack uses the str_id ("another popup") to track
+                    // the stack, so reusing the cpp string is fine; only the
+                    // das state ident must be unique per scope.
+                    if (button(POPUPS_DEEPEST_BTN, (text = "Stacked Popup"))) {
+                        open_popup(POPUPS_DEEPEST_POPUP)
+                    }
+                    popup(POPUPS_DEEPEST_POPUP,
+                          (text = "another popup",
+                           flags = ImGuiWindowFlags.None)) {
+                        text("I am the last one here.")
+                    }
                 }
             }
         }

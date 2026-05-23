@@ -10,6 +10,7 @@ require imgui/imgui_scope_builtin
 require imgui/imgui_drawlist_builtin     // with_foreground_drawlist + add_line
 require daslib/safe_addr
 require daslib/enum_trait
+require strings    // format / to_char for InputQueueCharacters per-char render
 
 // Mirrors imgui_demo.cpp:6249-6452 — static void ShowDemoWindowInputs().
 
@@ -111,13 +112,18 @@ def private InputsSubSection() {
         text((text = mods_line))
 
         // Chars queue — InputQueueCharacters is an ImVector<ImWchar>; the
-        // C++ formats each as "'<c>' (0x<hex>)". We don't have a public
-        // accessor to its Size/data pair on the daslang side without a
-        // dedicated binding, so we report the count via the binding-exposed
-        // field and skip the per-character render.
-        // TODO Phase 3: bind InputQueueCharacters element access for a
-        // faithful "'<c>' (0x<hex>)" rendering.
-        text("Chars queue: (per-character render pending Phase 3 binding)")
+        // ImVector binding wires up das_index and das_default_vector_size so
+        // `length()` + `[i]` work directly. cpp formats each as
+        // "'<c>' (0x<hex>)" — we build the whole line as one string and
+        // render with a single text() (matches the Mouse-down/Keys-down
+        // pattern above, no SameLine() per-character splice needed).
+        var chars_line = "Chars queue:"
+        for (c16 in io.InputQueueCharacters) {
+            let c = int(c16)
+            let printable = (c > 32 && c <= 255) ? to_char(c) : "?"
+            chars_line += " '{printable}' (0x{fmt(":04X", c)})"
+        }
+        text((text = chars_line))
     }
 }
 
