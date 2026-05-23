@@ -38,39 +38,37 @@ var private DS_FLAG_PASSTHRU_CENTRAL = false
 var private DS_REQUEST_CLOSE = false
 
 def private current_dockspace_flags() : ImGuiDockNodeFlags {
-    // ImGuiDockNodeFlags is a plain int enum on the C++ side; build the bit
-    // set as int and cast back at the call site.
-    var bits = 0
+    var flags = ImGuiDockNodeFlags.None
     if (DS_FLAG_NO_DOCKING_OVER_CENTRAL) {
-        bits |= int(ImGuiDockNodeFlags.NoDockingOverCentralNode)
+        flags |= ImGuiDockNodeFlags.NoDockingOverCentralNode
     }
     if (DS_FLAG_NO_DOCKING_SPLIT) {
-        bits |= int(ImGuiDockNodeFlags.NoDockingSplit)
+        flags |= ImGuiDockNodeFlags.NoDockingSplit
     }
     if (DS_FLAG_NO_UNDOCKING) {
-        bits |= int(ImGuiDockNodeFlags.NoUndocking)
+        flags |= ImGuiDockNodeFlags.NoUndocking
     }
     if (DS_FLAG_NO_RESIZE) {
-        bits |= int(ImGuiDockNodeFlags.NoResize)
+        flags |= ImGuiDockNodeFlags.NoResize
     }
     if (DS_FLAG_AUTO_HIDE_TAB_BAR) {
-        bits |= int(ImGuiDockNodeFlags.AutoHideTabBar)
+        flags |= ImGuiDockNodeFlags.AutoHideTabBar
     }
     if (DS_FLAG_PASSTHRU_CENTRAL) {
-        bits |= int(ImGuiDockNodeFlags.PassthruCentralNode)
+        flags |= ImGuiDockNodeFlags.PassthruCentralNode
     }
-    return unsafe(reinterpret<ImGuiDockNodeFlags>(bits))
+    return flags
 }
 
 def private current_host_flags() : ImGuiWindowFlags {
     // PassthruCentralNode only works when the host window itself is
     // background-less; without NoBackground the host fill covers the
     // central node and the pass-through visual is suppressed.
-    var bits = int(ImGuiWindowFlags.MenuBar | ImGuiWindowFlags.NoDocking)
+    var flags = ImGuiWindowFlags.MenuBar | ImGuiWindowFlags.NoDocking
     if (DS_FLAG_PASSTHRU_CENTRAL) {
-        bits |= int(ImGuiWindowFlags.NoBackground)
+        flags |= ImGuiWindowFlags.NoBackground
     }
-    return unsafe(reinterpret<ImGuiWindowFlags>(bits))
+    return flags
 }
 
 def private render_ds_window() {

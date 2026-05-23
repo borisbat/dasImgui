@@ -2438,13 +2438,16 @@ def edit_slider_angle(var ptr : float? implicit; text : string = "";
 }
 
 [edit_widget]
-def edit_checkbox_flags(var ptr : int? implicit; text : string = "";
-                        flags_value : int = 0) : bool {
-    //! ``CheckboxFlags`` against a caller-owned ``int?`` bitfield; toggles the ``flags_value`` bit. Payload serializes the underlying ``int``; visual state on the bit is implicit.
+def edit_checkbox_flags(var ptr : auto(FLAGT)? implicit; text : string = "";
+                        flags_value : FLAGT = default<FLAGT>) : bool {
+    //! ``CheckboxFlags`` against a caller-owned ``FLAGT?`` enum bitfield; toggles the ``flags_value`` bit. Payload serializes the underlying ``int``; visual state on the bit is implicit.
     let lbl = empty(text) ? widget_ident : text
-    let changed = CheckboxFlags(lbl, ptr, flags_value)
-    edit_finalize(widget_ident, "edit_checkbox_flags", ptr)
-    return changed
+    var p : FLAGT? = ptr
+    unsafe {
+        let changed = imgui::CheckboxFlags(lbl, reinterpret<int?>(p), int(flags_value))
+        edit_finalize(widget_ident, "edit_checkbox_flags", p)
+        return changed
+    }
 }
 
 [edit_widget]

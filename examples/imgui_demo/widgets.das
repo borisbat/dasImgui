@@ -67,12 +67,9 @@ require math
 var WIDGETS_DISABLE_ALL = false
 
 // ----- Tree Nodes/Advanced — external-pointer state -----
-// `CheckboxFlags` (now `edit_checkbox_flags`) binds an `int?` form, so the
-// base-flags state is stored as `int` and converted back to
-// `ImGuiTreeNodeFlags` at the TreeNodeEx call site.
-var WIDGETS_TREE_BASE_FLAGS = int(ImGuiTreeNodeFlags.OpenOnArrow |
-                                  ImGuiTreeNodeFlags.OpenOnDoubleClick |
-                                  ImGuiTreeNodeFlags.SpanAvailWidth)
+var WIDGETS_TREE_BASE_FLAGS = (ImGuiTreeNodeFlags.OpenOnArrow |
+                               ImGuiTreeNodeFlags.OpenOnDoubleClick |
+                               ImGuiTreeNodeFlags.SpanAvailWidth)
 var WIDGETS_TREE_SELECTION_MASK = 1 << 2
 
 // ----- Basic/SliderAngle external-pointer -----
@@ -752,15 +749,15 @@ def private TreeNodesSection() {
             edit_checkbox_flags(safe_addr(WIDGETS_TREE_BASE_FLAGS),
                 (id = "WIDGETS_TREE_FLAG_OPEN_ON_ARROW",
                  text = "ImGuiTreeNodeFlags_OpenOnArrow",
-                 flags_value = int(ImGuiTreeNodeFlags.OpenOnArrow)))
+                 flags_value = ImGuiTreeNodeFlags.OpenOnArrow))
             edit_checkbox_flags(safe_addr(WIDGETS_TREE_BASE_FLAGS),
                 (id = "WIDGETS_TREE_FLAG_OPEN_ON_DOUBLE_CLICK",
                  text = "ImGuiTreeNodeFlags_OpenOnDoubleClick",
-                 flags_value = int(ImGuiTreeNodeFlags.OpenOnDoubleClick)))
+                 flags_value = ImGuiTreeNodeFlags.OpenOnDoubleClick))
             edit_checkbox_flags(safe_addr(WIDGETS_TREE_BASE_FLAGS),
                 (id = "WIDGETS_TREE_FLAG_SPAN_AVAIL_WIDTH",
                  text = "ImGuiTreeNodeFlags_SpanAvailWidth",
-                 flags_value = int(ImGuiTreeNodeFlags.SpanAvailWidth)))
+                 flags_value = ImGuiTreeNodeFlags.SpanAvailWidth))
             same_line(WIDGETS_SL_17)
             text_disabled("(?)")
             item_tooltip(WIDGETS_TREE_HM2_TIP) {
@@ -772,11 +769,11 @@ def private TreeNodesSection() {
             edit_checkbox_flags(safe_addr(WIDGETS_TREE_BASE_FLAGS),
                 (id = "WIDGETS_TREE_FLAG_SPAN_FULL_WIDTH",
                  text = "ImGuiTreeNodeFlags_SpanFullWidth",
-                 flags_value = int(ImGuiTreeNodeFlags.SpanFullWidth)))
+                 flags_value = ImGuiTreeNodeFlags.SpanFullWidth))
             edit_checkbox_flags(safe_addr(WIDGETS_TREE_BASE_FLAGS),
                 (id = "WIDGETS_TREE_FLAG_SPAN_TEXT_WIDTH",
                  text = "ImGuiTreeNodeFlags_SpanTextWidth",
-                 flags_value = int(ImGuiTreeNodeFlags.SpanTextWidth)))
+                 flags_value = ImGuiTreeNodeFlags.SpanTextWidth))
             same_line(WIDGETS_SL_18)
             text_disabled("(?)")
             item_tooltip(WIDGETS_TREE_HM3_TIP) {
@@ -787,7 +784,7 @@ def private TreeNodesSection() {
             edit_checkbox_flags(safe_addr(WIDGETS_TREE_BASE_FLAGS),
                 (id = "WIDGETS_TREE_FLAG_SPAN_ALL_COLUMNS",
                  text = "ImGuiTreeNodeFlags_SpanAllColumns",
-                 flags_value = int(ImGuiTreeNodeFlags.SpanAllColumns)))
+                 flags_value = ImGuiTreeNodeFlags.SpanAllColumns))
             same_line(WIDGETS_SL_19)
             text_disabled("(?)")
             item_tooltip(WIDGETS_TREE_HM4_TIP) {
@@ -798,11 +795,11 @@ def private TreeNodesSection() {
             edit_checkbox_flags(safe_addr(WIDGETS_TREE_BASE_FLAGS),
                 (id = "WIDGETS_TREE_FLAG_ALLOW_OVERLAP",
                  text = "ImGuiTreeNodeFlags_AllowOverlap",
-                 flags_value = int(ImGuiTreeNodeFlags.AllowOverlap)))
+                 flags_value = ImGuiTreeNodeFlags.AllowOverlap))
             edit_checkbox_flags(safe_addr(WIDGETS_TREE_BASE_FLAGS),
                 (id = "WIDGETS_TREE_FLAG_FRAMED",
                  text = "ImGuiTreeNodeFlags_Framed",
-                 flags_value = int(ImGuiTreeNodeFlags.Framed)))
+                 flags_value = ImGuiTreeNodeFlags.Framed))
             same_line(WIDGETS_SL_20)
             text_disabled("(?)")
             item_tooltip(WIDGETS_TREE_HM5_TIP) {
@@ -822,12 +819,10 @@ def private TreeNodesSection() {
             var node_clicked = -1
             for (i in range(6)) {
                 // Disable default "open on single-click" + set Selected from mask.
-                // node_flags stays as int (matching WIDGETS_TREE_BASE_FLAGS) so
-                // `|=` works; cast back to ImGuiTreeNodeFlags at the call site.
                 var node_flags = WIDGETS_TREE_BASE_FLAGS
                 let is_selected = (WIDGETS_TREE_SELECTION_MASK & (1 << i)) != 0
                 if (is_selected) {
-                    node_flags |= int(ImGuiTreeNodeFlags.Selected)
+                    node_flags |= ImGuiTreeNodeFlags.Selected
                 }
                 // Per-row ID scope. `tree_node_ex` (leaf-form boost widget)
                 // returns the open bool without claiming a TreePop — caller
@@ -841,7 +836,7 @@ def private TreeNodesSection() {
                     if (i < 3) {
                         let node_open = tree_node_ex(WIDGETS_TREE_LOOP_NODE[i],
                             (text = "Selectable Node {i}",
-                             flags = unsafe(reinterpret<ImGuiTreeNodeFlags>(node_flags))))
+                             flags = node_flags))
                         if (IsItemClicked() && !IsItemToggledOpen()) {
                             node_clicked = i
                         }
@@ -863,11 +858,11 @@ def private TreeNodesSection() {
                         }
                     } else {
                         // Leaves: Leaf + NoTreePushOnOpen — no TreePop is paired.
-                        node_flags |= int(ImGuiTreeNodeFlags.Leaf |
-                                          ImGuiTreeNodeFlags.NoTreePushOnOpen)
+                        node_flags |= (ImGuiTreeNodeFlags.Leaf |
+                                       ImGuiTreeNodeFlags.NoTreePushOnOpen)
                         tree_node_ex(WIDGETS_TREE_LOOP_LEAF[i],
                             (text = "Selectable Leaf {i}",
-                             flags = unsafe(reinterpret<ImGuiTreeNodeFlags>(node_flags))))
+                             flags = node_flags))
                         if (IsItemClicked() && !IsItemToggledOpen()) {
                             node_clicked = i
                         }
@@ -2847,16 +2842,16 @@ def private DataTypesSection() {
         let speed = 0.2f
         edit_drag_scalar(safe_addr(WIDGETS_DT_S8),
             (id = "WIDGETS_DT_DRAG_S8", text = "drag s8",
-             speed = speed, v_min = int8(0), v_max = cl ? int8(50) : int8(0)))
+             speed = speed, v_min = int8(0), v_max = int8(cl ? 50 : 0)))
         edit_drag_scalar(safe_addr(WIDGETS_DT_U8),
             (id = "WIDGETS_DT_DRAG_U8", text = "drag u8",
-             speed = speed, v_min = uint8(0), v_max = cl ? uint8(50) : uint8(0), format = "%u ms"))
+             speed = speed, v_min = uint8(0), v_max = uint8(cl ? 50 : 0), format = "%u ms"))
         edit_drag_scalar(safe_addr(WIDGETS_DT_S16),
             (id = "WIDGETS_DT_DRAG_S16", text = "drag s16",
-             speed = speed, v_min = int16(0), v_max = cl ? int16(50) : int16(0)))
+             speed = speed, v_min = int16(0), v_max = int16(cl ? 50 : 0)))
         edit_drag_scalar(safe_addr(WIDGETS_DT_U16),
             (id = "WIDGETS_DT_DRAG_U16", text = "drag u16",
-             speed = speed, v_min = uint16(0), v_max = cl ? uint16(50) : uint16(0), format = "%u ms"))
+             speed = speed, v_min = uint16(0), v_max = uint16(cl ? 50 : 0), format = "%u ms"))
         edit_drag_scalar(safe_addr(WIDGETS_DT_S32),
             (id = "WIDGETS_DT_DRAG_S32", text = "drag s32",
              speed = speed, v_min = 0, v_max = cl ? 50 : 0))
@@ -3004,16 +2999,16 @@ def private DataTypesSection() {
         let st = WIDGETS_DT_INPUTS_STEP.value
         edit_input_scalar(safe_addr(WIDGETS_DT_S8),
             (id = "WIDGETS_DT_IN_S8", text = "input s8",
-             step = st ? int8(1) : int8(0), step_fast = int8(0), format = "%d"))
+             step = int8(st ? 1 : 0), step_fast = int8(0), format = "%d"))
         edit_input_scalar(safe_addr(WIDGETS_DT_U8),
             (id = "WIDGETS_DT_IN_U8", text = "input u8",
-             step = st ? uint8(1) : uint8(0), step_fast = uint8(0), format = "%u"))
+             step = uint8(st ? 1 : 0), step_fast = uint8(0), format = "%u"))
         edit_input_scalar(safe_addr(WIDGETS_DT_S16),
             (id = "WIDGETS_DT_IN_S16", text = "input s16",
-             step = st ? int16(1) : int16(0), step_fast = int16(0), format = "%d"))
+             step = int16(st ? 1 : 0), step_fast = int16(0), format = "%d"))
         edit_input_scalar(safe_addr(WIDGETS_DT_U16),
             (id = "WIDGETS_DT_IN_U16", text = "input u16",
-             step = st ? uint16(1) : uint16(0), step_fast = uint16(0), format = "%u"))
+             step = uint16(st ? 1 : 0), step_fast = uint16(0), format = "%u"))
         edit_input_scalar(safe_addr(WIDGETS_DT_S32),
             (id = "WIDGETS_DT_IN_S32", text = "input s32",
              step = st ? 1 : 0, step_fast = 0, format = "%d"))

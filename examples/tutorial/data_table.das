@@ -147,16 +147,16 @@ def update() {
                     flags = ImGuiWindowFlags.None)) {
         text(DT_HEADER, (text = "Three columns, six rows, frozen header. Click headers to sort; Shift+click for multi-column."))
 
-        let tflags = int(ImGuiTableFlags.BordersOuter |
-                         ImGuiTableFlags.RowBg |
-                         ImGuiTableFlags.Resizable |
-                         ImGuiTableFlags.Reorderable |
-                         ImGuiTableFlags.Hideable |
-                         ImGuiTableFlags.Sortable |
-                         ImGuiTableFlags.SortMulti |
-                         ImGuiTableFlags.ScrollY)
+        let tflags = (ImGuiTableFlags.BordersOuter |
+                      ImGuiTableFlags.RowBg |
+                      ImGuiTableFlags.Resizable |
+                      ImGuiTableFlags.Reorderable |
+                      ImGuiTableFlags.Hideable |
+                      ImGuiTableFlags.Sortable |
+                      ImGuiTableFlags.SortMulti |
+                      ImGuiTableFlags.ScrollY)
         data_table(DT_TABLE, (text = "##rows", columns = 3,
-                              flags = unsafe(reinterpret<ImGuiTableFlags>(tflags)),
+                              flags = tflags,
                               outer_size = float2(0.0f, 0.0f),
                               inner_width = 0.0f)) {
             table_setup_scroll_freeze(0, 1)
