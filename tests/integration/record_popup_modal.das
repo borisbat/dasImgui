@@ -43,9 +43,11 @@ def main {
         let T_OPEN_SETTINGS = "PM_WIN/OPEN_SETTINGS"
         let T_STATUS = "PM_WIN/STATUS_LINE"
 
-        var snap = wait_for_render(app, T_OPEN_CONFIRM, 10.0f)
+        // wait_for_widget gates on existence; wait_for_render passes
+        // through for absent paths.
+        var snap = wait_for_widget(app, T_OPEN_CONFIRM, 10.0f)
         if (snap == null) {
-            panic("{T_OPEN_CONFIRM} never rendered — wrong app running?")
+            panic("{T_OPEN_CONFIRM} never registered — wrong app running?")
         }
         let p_confirm_btn = widget_center(snap, T_OPEN_CONFIRM)
         let p_settings_btn = widget_center(snap, T_OPEN_SETTINGS)
@@ -79,7 +81,7 @@ def main {
 
         // ---- Stage 3: close the confirm modal via Yes-button click ----
         // After the modal is open, CONFIRM_YES is registered.
-        var ack_snap = wait_for_render(app, "PM_WIN/CONFIRM_MODAL/CONFIRM_YES", 5.0f)
+        var ack_snap = wait_for_widget(app, "PM_WIN/CONFIRM_MODAL/CONFIRM_YES", 5.0f)
         if (ack_snap != null) {
             let p_yes = widget_center(ack_snap, "PM_WIN/CONFIRM_MODAL/CONFIRM_YES")
             var yes_events : array<JsonValue?>
@@ -109,7 +111,7 @@ def main {
         sleep(READ_MS)
 
         // ---- Stage 5: dismiss via Apply button ----
-        var apply_snap = wait_for_render(app, "PM_WIN/SETTINGS_MODAL/S_APPLY", 5.0f)
+        var apply_snap = wait_for_widget(app, "PM_WIN/SETTINGS_MODAL/S_APPLY", 5.0f)
         if (apply_snap != null) {
             let p_apply = widget_center(apply_snap, "PM_WIN/SETTINGS_MODAL/S_APPLY")
             var apply_events : array<JsonValue?>

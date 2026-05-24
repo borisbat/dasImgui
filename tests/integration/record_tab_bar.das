@@ -45,9 +45,11 @@ def main {
         let T_INFO = "TB_WIN/MAIN_TABS/INFO_TAB"
         let T_DRAFT = "TB_WIN/MAIN_TABS/DRAFT_TAB"
 
-        var snap = wait_for_render(app, T_GENERAL, 10.0f)
+        // wait_for_widget gates on existence; wait_for_render passes
+        // through for absent paths.
+        var snap = wait_for_widget(app, T_GENERAL, 10.0f)
         if (snap == null) {
-            panic("{T_GENERAL} never rendered — wrong app running?")
+            panic("{T_GENERAL} never registered — wrong app running?")
         }
         let p_general = widget_center(snap, T_GENERAL)
         let p_audio = widget_center(snap, T_AUDIO)

@@ -45,9 +45,11 @@ def main {
         let T_FOV_LEAF = "TN_WIN/RENDER_TREE/CAMERA_SUBTREE/RENDER_FOV"
         let T_ASSETS_LEAF = "TN_WIN/ASSETS_TREE/ASSETS_HINT"
 
-        var snap = wait_for_render(app, T_PHYSICS_LEAF, 10.0f)
+        // wait_for_widget gates on existence; wait_for_render passes
+        // through for absent paths.
+        var snap = wait_for_widget(app, T_PHYSICS_LEAF, 10.0f)
         if (snap == null) {
-            panic("{T_PHYSICS_LEAF} never rendered — wrong app running?")
+            panic("{T_PHYSICS_LEAF} never registered — wrong app running?")
         }
         let p_physics = widget_center(snap, T_PHYSICS_LEAF)
 
@@ -83,7 +85,7 @@ def main {
         post_command(app, "imgui_open", JV((target = T_RENDER_PATH)))
         sleep(TOGGLE_DWELL_MS)
         // Re-snap to pick up the now-rendered RENDER children.
-        var snap2 = wait_for_render(app, T_FOV_LEAF, 5.0f)
+        var snap2 = wait_for_widget(app, T_FOV_LEAF, 5.0f)
         if (snap2 != null) {
             let p_fov = widget_center(snap2, T_FOV_LEAF)
             move_to(app, p_fov, 700)
@@ -101,7 +103,7 @@ def main {
         // pushing ASSETS_TREE down). ASSETS_HINT exists from frame 1 because
         // the tutorial source declares ASSETS_TREE with DefaultOpen.
         var p_assets = widget_center(snap, T_ASSETS_LEAF)
-        var snap_assets = wait_for_render(app, T_ASSETS_LEAF, 5.0f)
+        var snap_assets = wait_for_widget(app, T_ASSETS_LEAF, 5.0f)
         if (snap_assets != null) {
             p_assets = widget_center(snap_assets, T_ASSETS_LEAF)
         }

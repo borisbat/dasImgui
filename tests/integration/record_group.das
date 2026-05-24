@@ -45,9 +45,11 @@ def main {
         let T_HOVER = "GRP_WIN/HOVER_GRP/HOVER_BTN"
         let T_ROW = "GRP_WIN/ROW_GRP/ROW_RESET"
 
-        var snap = wait_for_render(app, T_LEFT, 10.0f)
+        // wait_for_widget gates on existence; wait_for_render passes
+        // through for absent paths (widget_rendered defaults to true).
+        var snap = wait_for_widget(app, T_LEFT, 10.0f)
         if (snap == null) {
-            panic("{T_LEFT} never rendered — wrong app running?")
+            panic("{T_LEFT} never registered — wrong app running?")
         }
         let p_left = widget_center(snap, T_LEFT)
         let p_right = widget_center(snap, T_RIGHT)

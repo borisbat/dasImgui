@@ -46,9 +46,12 @@ def main {
         let T_B_LEAF = "CHILD_WIN/AUTO_B/B_VSYNC"
         let T_C_LEAF = "CHILD_WIN/SCROLL_C/LONG_LINE"
 
-        var snap = wait_for_render(app, T_A_ROW, 10.0f)
+        // wait_for_widget gates on path EXISTENCE; wait_for_render's
+        // widget_rendered defaults to true for absent paths, so a typoed
+        // target would slip past and bboxes would silently be (0,0).
+        var snap = wait_for_widget(app, T_A_ROW, 10.0f)
         if (snap == null) {
-            panic("{T_A_ROW} never rendered — wrong app running?")
+            panic("{T_A_ROW} never registered — wrong app running?")
         }
         let p_a = widget_center(snap, T_A_ROW)
         let p_a_mid = widget_center(snap, T_A_MID)

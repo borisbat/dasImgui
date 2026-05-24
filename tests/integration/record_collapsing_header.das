@@ -46,9 +46,11 @@ def main {
         let T_CLOSABLE_PATH = "CH_WIN/CLOSABLE_CH"
         let T_STARTUP_LEAF = "CH_WIN/STARTUP_CH/STARTUP_HINT"
 
-        var snap = wait_for_render(app, T_BASIC_LEAF, 10.0f)
+        // wait_for_widget gates on existence; wait_for_render passes
+        // through for absent paths.
+        var snap = wait_for_widget(app, T_BASIC_LEAF, 10.0f)
         if (snap == null) {
-            panic("{T_BASIC_LEAF} never rendered — wrong app running?")
+            panic("{T_BASIC_LEAF} never registered — wrong app running?")
         }
         let p_basic = widget_center(snap, T_BASIC_LEAF)
         let p_closable = widget_center(snap, T_CLOSABLE_LEAF)
