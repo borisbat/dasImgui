@@ -17,6 +17,8 @@ require imgui/imgui_widgets_builtin
 require imgui/imgui_containers_builtin
 require imgui/imgui_visual_aids
 
+var private SCROLL_ROW : table<int; NarrativeState>
+
 // =============================================================================
 // TUTORIAL: child — BeginChild/EndChild sub-windows.
 //
@@ -77,7 +79,7 @@ def update() {
                          child_flags = ImGuiChildFlags.Border,
                          window_flags = ImGuiWindowFlags.None)) {
             for (i in range(20)) {
-                text("row {i} — content overflows the visible region")
+                text(SCROLL_ROW[i], (text = "row {i} — content overflows the visible region"))
             }
         }
         text("scroll.y = {SCROLL_A.scroll.y} / {SCROLL_A.scroll_max.y}")
