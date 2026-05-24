@@ -657,11 +657,20 @@ var g_frame : int = 0
 // across containers stay distinct.
 
 struct WidgetMeta {
-    module_name : string                         //! owning module; lets clear_module_widgets drop on reload
-    kind : string                                //! widget kind ("button", "slider_float", ...)
-    state_addr_getter : lambda<() : void?>       //! resolves the live state-struct address on every invoke (stable for globals; key-checked re-resolution for indexed widgets) — used by finalize lambdas to avoid dangling captures after table rehash/erase
-    serializer : lambda<() : JsonValue?>         //! captured-state serializer; invoked at imgui_snapshot time
-    last_seen_frame : int                        //! last g_frame this path appeared in g_registry; -1 = never rendered
+    module_name : string                                  //! owning module; lets clear_module_widgets drop on reload
+    kind : string                                         //! widget kind ("button", "slider_float", ...)
+    // Int-keyed path (non-indexed widgets and `table<int; …>` indexed widgets).
+    // k=0 for non-indexed (getter ignores it).
+    addr_getter_int : function<(k : int) : void?>         //! plain function pointer; no heap-allocated capture frame
+    serializer_int  : function<(k : int) : JsonValue?>
+    k_int : int
+    // String-keyed path (`table<string; …>` indexed widgets only).
+    // Both fns are null when has_str_key=false; selected by has_str_key.
+    addr_getter_str : function<(k : string) : void?>
+    serializer_str  : function<(k : string) : JsonValue?>
+    k_str : string
+    has_str_key : bool                                    //! true => use the _str fns + k_str; false => use the _int fns + k_int
+    last_seen_frame : int                                 //! last g_frame this path appeared in g_registry; -1 = never rendered
 }
 
 var g_widgets : table<string; WidgetMeta>
@@ -933,25 +942,48 @@ def public widget_registered(path : string) : bool {
 def public register_widget(module_name : string;
                            bare_ident : string;
                            kind : string;
-                           var state_addr_getter : lambda<() : void?>;
-                           var serializer : lambda<() : JsonValue?>) {
-    //! Module-init registration of a widget into the long-lived ``g_widgets`` table; ``module_name`` lets :ref:`clear_module_widgets <function-imgui_boost_runtime_clear_module_widgets_string>` drop it on reload. ``state_addr_getter`` is invoked on every dispatcher/serializer call to resolve the live state-struct address — stable closure for globals, key-checked re-resolution for indexed widgets.
+                           addr_getter : function<(k : int) : void?>;
+                           serializer : function<(k : int) : JsonValue?>;
+                           k : int = 0) {
+    //! Module-init registration of a widget into the long-lived ``g_widgets`` table; ``module_name`` lets :ref:`clear_module_widgets <function-imgui_boost_runtime_clear_module_widgets_string>` drop it on reload. ``addr_getter(k)`` resolves the live state-struct address on every dispatcher/serializer call — stable function pointer for globals (k ignored), key-checked re-resolution for indexed widgets with int keys (k = the table key, stored once at registration). For string-keyed indexed widgets use :ref:`register_widget_str <function-imgui_boost_runtime_register_widget_str_string_string_string_function_ls__ls_k_c_string_const_gr__c_void_q__gr__function_ls__ls_k_c_string_const_gr__c_json_JsonValue_q__gr__string_const>`.
     unsafe {
         g_widgets[bare_ident] <- WidgetMeta(
             module_name = module_name,
             kind = kind,
-            state_addr_getter <- state_addr_getter,
-            serializer <- serializer,
+            addr_getter_int = addr_getter,
+            serializer_int = serializer,
+            k_int = k,
+            last_seen_frame = -1
+        )
+    }
+}
+
+def public register_widget_str(module_name : string;
+                               bare_ident : string;
+                               kind : string;
+                               addr_getter : function<(k : string) : void?>;
+                               serializer : function<(k : string) : JsonValue?>;
+                               k : string) {
+    //! String-keyed sibling of :ref:`register_widget <function-imgui_boost_runtime_register_widget_string_string_string_function_ls__ls_k_c_int_const_gr__c_void_q__gr__function_ls__ls_k_c_string_const_gr__c_json_JsonValue_q__gr__int_const>` — for ``table<string; …>`` indexed widgets. Sets ``has_str_key`` so the dispatcher/serializer routes through ``addr_getter_str(k_str)`` instead of the int path.
+    unsafe {
+        g_widgets[bare_ident] <- WidgetMeta(
+            module_name = module_name,
+            kind = kind,
+            addr_getter_str = addr_getter,
+            serializer_str = serializer,
+            k_str := k,
+            has_str_key = true,
             last_seen_frame = -1
         )
     }
 }
 
 def public lookup_state_addr(path : string) : void? {
-    //! Resolve a widget's current state-struct address by path — invokes the registered ``state_addr_getter`` so indexed-form widgets reinterpret the live table slot on every call instead of dereferencing a stale capture. Returns null when ``path`` is absent from ``g_widgets`` or the getter reports the slot is gone (erased indexed key). Uses ``?[]`` safe lookup so the finalize lambdas can run from inside an ``imgui_snapshot`` iteration without tripping the locked-table guard (``tab[k]`` is daslang's auto-insert form).
+    //! Resolve a widget's current state-struct address by path — invokes the registered ``addr_getter`` so indexed-form widgets reinterpret the live table slot on every call instead of dereferencing a stale capture. Returns null when ``path`` is absent from ``g_widgets`` or the getter reports the slot is gone (erased indexed key). Uses ``?[]`` safe lookup so the finalize lambdas can run from inside an ``imgui_snapshot`` iteration without tripping the locked-table guard (``tab[k]`` is daslang's auto-insert form).
     let meta = unsafe(g_widgets?[path])
     return null if (meta == null)
-    return invoke(meta.state_addr_getter)
+    return meta.addr_getter_str(meta.k_str) if (meta.has_str_key)
+    return meta.addr_getter_int(meta.k_int)
 }
 
 def public state_jv(path : string; t : type<auto(T)>) : JsonValue? {
@@ -1139,7 +1171,13 @@ def private extract_string_field(obj : JsonValue?; name : string) : string {
 
 def private widget_meta_jv(path_key : string; meta : WidgetMeta) : JsonValue? {
     // Snapshot blob for a widget registered but not rendered this frame: rendered=false, state payload only.
-    return JV((kind = meta.kind, rendered = false, payload = invoke(meta.serializer)))
+    var payload : JsonValue?
+    if (meta.has_str_key) {
+        payload = meta.serializer_str(meta.k_str)
+    } else {
+        payload = meta.serializer_int(meta.k_int)
+    }
+    return JV((kind = meta.kind, rendered = false, payload = payload))
 }
 
 def private io_jv() : JsonValue? {

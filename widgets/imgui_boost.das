@@ -524,17 +524,40 @@ class WidgetCallMacro : AstCallMacro {
                     imgui_boost_runtime::clear_module_widgets($v(modLit))
                 ))
             }
+            // Emit per-widget top-level getter + serializer as plain
+            // functions (no captures — they read the module-scope state global
+            // directly). register_widget then receives `@@<fn>` literals, so the
+            // long-lived registry stores plain function pointers instead of
+            // heap-allocated lambda capture frames. The `k` parameter is part
+            // of the unified API with indexed widgets — non-indexed getters
+            // ignore it.
+            let addrFnName = "__widget_addr${bareName}"
+            let jvFnName = "__widget_jv${bareName}"
+            if (find_unique_function(mod, addrFnName, true) == null) {
+                var addrFn = qmacro_function(addrFnName) $(k : int) : void? {
+                    return unsafe(addr($i(identLit)))
+                }
+                addrFn.flags.generated = true
+                addrFn.flags.privateFunction = true
+                addrFn.body |> force_at(expr.at)
+                mod |> add_function(addrFn)
+            }
+            if (find_unique_function(mod, jvFnName, true) == null) {
+                var jvFn = qmacro_function(jvFnName) $(k : int) : JsonValue? {
+                    return JV($i(identLit))
+                }
+                jvFn.flags.generated = true
+                jvFn.flags.privateFunction = true
+                jvFn.body |> force_at(expr.at)
+                mod |> add_function(jvFn)
+            }
             reg.list |> push(qmacro(
                 imgui_boost_runtime::register_widget(
                     $v(modLit),
                     $v(identLit),
                     $v(kindLit),
-                    @() : void? {
-                        return unsafe(addr($i(identLit)))
-                    },
-                    @() : JsonValue? {
-                        return JV($i(identLit))
-                    }
+                    @@$c(addrFnName),
+                    @@$c(jvFnName)
                 )
             ))
         }
@@ -652,6 +675,55 @@ class WidgetCallMacro : AstCallMacro {
         // Qualify the inner call to the widget impl so the wrapper can't pick
         // up a same-named function in another module.
         let qualifiedKind = "{string(render_fn._module.name)}::{kind_name}"
+        // Key-type-aware fn-ptr emit. Int and string keys go through parallel
+        // register_widget overloads (register_widget / register_widget_str);
+        // the per-(kind, IDENT) addr-getter + serializer are typed accordingly
+        // and shared across every call site for the same (kind, IDENT).
+        let keyIsString = tabType.firstType != null && tabType.firstType.baseType == Type.tString
+        if (tabType.firstType == null ||
+            (tabType.firstType.baseType != Type.tInt && tabType.firstType.baseType != Type.tString)) {
+            macro_error(prog, expr.at,
+                "{kind_name}({bareName}[k]): only `table<int; …>` and `table<string; …>` are supported for indexed widgets (got `{describe(tabType)}`).")
+            return <- default<ExpressionPtr>
+        }
+        let indexedAddrFnName = "__widget_addr$indexed${kind_name}${bareName}"
+        let indexedJvFnName = "__widget_jv$indexed${kind_name}${bareName}"
+        if (find_unique_function(mod, indexedAddrFnName, true) == null) {
+            var addrFn : FunctionPtr
+            if (keyIsString) {
+                addrFn = qmacro_function(indexedAddrFnName) $(k : string) : void? {
+                    return null if (!key_exists($i(bareNameLit), k))
+                    return unsafe(addr($i(bareNameLit)[k]))
+                }
+            } else {
+                addrFn = qmacro_function(indexedAddrFnName) $(k : int) : void? {
+                    return null if (!key_exists($i(bareNameLit), k))
+                    return unsafe(addr($i(bareNameLit)[k]))
+                }
+            }
+            addrFn.flags.generated = true
+            addrFn.flags.privateFunction = true
+            addrFn.body |> force_at(expr.at)
+            mod |> add_function(addrFn)
+        }
+        if (find_unique_function(mod, indexedJvFnName, true) == null) {
+            var jvFn : FunctionPtr
+            if (keyIsString) {
+                jvFn = qmacro_function(indexedJvFnName) $(k : string) : JsonValue? {
+                    return null if (!key_exists($i(bareNameLit), k))
+                    return JV($i(bareNameLit)[k])
+                }
+            } else {
+                jvFn = qmacro_function(indexedJvFnName) $(k : int) : JsonValue? {
+                    return null if (!key_exists($i(bareNameLit), k))
+                    return JV($i(bareNameLit)[k])
+                }
+            }
+            jvFn.flags.generated = true
+            jvFn.flags.privateFunction = true
+            jvFn.body |> force_at(expr.at)
+            mod |> add_function(jvFn)
+        }
         // Emit the wrapper helper once per (kind, IDENT). find_unique_function
         // probes the user module before add_function fires; re-running visit()
         // for the same wrapper (e.g. a second call site) is a no-op.
@@ -684,27 +756,27 @@ class WidgetCallMacro : AstCallMacro {
             bodyStmts |> push <| qmacro_expr(${
                 let path = imgui_boost_runtime::widget_path_key(bare)
             })
-            // First-touch / post-reload register. Both lambdas capture the
-            // key by value; the address getter and serializer guard with
-            // ``key_exists`` and re-resolve ``TABLE[k]`` on every invoke, so
-            // rehashing or erase+re-add never desyncs state.
-            bodyStmts |> push <| qmacro_expr(${
-                if (!imgui_boost_runtime::widget_registered(path)) {
-                    unsafe {
-                        let addr_getter <- @ capture(= k) () : void ? {
-                            return null if (!key_exists($i(bareNameLit), k))
-                            return unsafe(addr($i(bareNameLit)[k]))
-                        }
-                        let ser <- @ capture(= k) () : JsonValue ? {
-                            return null if (!key_exists($i(bareNameLit), k))
-                            return JV($i(bareNameLit)[k])
-                        }
+            // First-touch / post-reload register. We pass plain function
+            // pointers into register_widget(_str); the runtime stores them in
+            // WidgetMeta along with `k` (consulted on every getter/serializer
+            // invoke). No lambda capture frame allocated per call site.
+            if (keyIsString) {
+                bodyStmts |> push <| qmacro_expr(${
+                    if (!imgui_boost_runtime::widget_registered(path)) {
+                        imgui_boost_runtime::register_widget_str(
+                            $v(moduleName), path, $v(kindLit),
+                            @@$c(indexedAddrFnName), @@$c(indexedJvFnName), k)
+                    }
+                })
+            } else {
+                bodyStmts |> push <| qmacro_expr(${
+                    if (!imgui_boost_runtime::widget_registered(path)) {
                         imgui_boost_runtime::register_widget(
                             $v(moduleName), path, $v(kindLit),
-                            addr_getter, ser)
+                            @@$c(indexedAddrFnName), @@$c(indexedJvFnName), k)
                     }
-                }
-            })
+                })
+            }
             // Final call. The called [container]'s own finally block pops
             // its container_path_push, so no wrapper-side pop is needed.
             if (retType.baseType == Type.tVoid) {
