@@ -110,7 +110,7 @@ def update() {
         // ---- C: OpenOnArrow — clicking the label doesn't expand ----
         tree_node(ASSETS_TREE, (text = "Assets (OpenOnArrow)",
                                 flags = ImGuiTreeNodeFlags.OpenOnArrow)) {
-            text("OpenOnArrow flag — clicking the LABEL doesn't toggle.")
+            text(ASSETS_HINT, (text = "OpenOnArrow flag — clicking the LABEL doesn't toggle."))
             text("Click the arrow chevron specifically. Useful for")
             text("selectable-row trees where the label is the selection.")
         }

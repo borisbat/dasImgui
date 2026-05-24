@@ -96,7 +96,7 @@ def update() {
         collapsing_header(STARTUP_CH, (text = "Starts open (DefaultOpen flag)",
                                        closable = false,
                                        flags = ImGuiTreeNodeFlags.DefaultOpen)) {
-            text("ImGuiTreeNodeFlags.DefaultOpen makes the chevron expanded")
+            text(STARTUP_HINT, (text = "ImGuiTreeNodeFlags.DefaultOpen makes the chevron expanded"))
             text("on first render — subsequent frames respect user input.")
         }
     }

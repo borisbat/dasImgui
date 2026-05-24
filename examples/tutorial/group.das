@@ -33,8 +33,8 @@ require imgui/imgui_visual_aids
 //      tooltip attach to "anywhere inside the icon-plus-label cluster".
 //
 // GroupState is empty — no flags, no observables. Pure structural marker.
-// The path push still happens, so a button inside group(LEFT_GRP) is
-// reachable at MAIN_WIN/LEFT_GRP/SAVE_BTN.
+// The path push still happens, so a checkbox inside group(LEFT_GRP) is
+// reachable at GRP_WIN/LEFT_GRP/L_WIRE.
 //
 // STANDALONE: daslang.exe modules/dasImgui/examples/tutorial/group.das
 // LIVE:       daslang-live modules/dasImgui/examples/tutorial/group.das

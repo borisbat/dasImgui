@@ -36,22 +36,27 @@ def widget_center(var snap : JsonValue?; ident : string) : tuple<float; float> {
 def main {
     with_recording_app("examples/tutorial/child.das",
                        "child.apng", 60) $(app) {
-        let T_A = "CHILD_WIN/SCROLL_A"
-        let T_B = "CHILD_WIN/AUTO_B"
-        let T_C = "CHILD_WIN/SCROLL_C"
-        let T_WIN = "CHILD_WIN"
+        // Anchor every cursor + narration target at a LEAF widget inside each
+        // child — container [container] wrappers (child/group/window/etc.)
+        // don't capture a bbox on finalize, so addressing the container path
+        // resolves to (0,0). Leaves have a real bbox via the per-widget
+        // current_item_bbox snapshot. See PR #67 Copilot review round 1.
+        let T_A_ROW = "CHILD_WIN/SCROLL_A/SCROLL_ROW[0]"
+        let T_A_MID = "CHILD_WIN/SCROLL_A/SCROLL_ROW[5]"
+        let T_B_LEAF = "CHILD_WIN/AUTO_B/B_VSYNC"
+        let T_C_LEAF = "CHILD_WIN/SCROLL_C/LONG_LINE"
 
-        var snap = wait_for_render(app, T_A, 10.0f)
+        var snap = wait_for_render(app, T_A_ROW, 10.0f)
         if (snap == null) {
-            panic("{T_A} never rendered — wrong app running?")
+            panic("{T_A_ROW} never rendered — wrong app running?")
         }
-        let p_a = widget_center(snap, T_A)
-        let p_b = widget_center(snap, T_B)
-        let p_c = widget_center(snap, T_C)
-        let p_win = widget_center(snap, T_WIN)
+        let p_a = widget_center(snap, T_A_ROW)
+        let p_a_mid = widget_center(snap, T_A_MID)
+        let p_b = widget_center(snap, T_B_LEAF)
+        let p_c = widget_center(snap, T_C_LEAF)
 
         //! Initial cursor placement — flips synth_cursor_owned.
-        move_to(app, p_win, 600)
+        move_to(app, p_b, 600)
         sleep(SETTLE_MS)
 
         // ---- Stage 1: bordered, scrolled child ----
@@ -59,12 +64,15 @@ def main {
         sleep(SETTLE_MS)
         post_command(app, "imgui_narrate", JV((
             text = "child(IDENT, (size, child_flags, window_flags)) — bordered fixed-size with vertical scroll. ChildState.scroll mirrors the visible position.",
-            target = T_A,
+            target = T_A_ROW,
             frames = NARRATE_FRAMES
         )))
         sleep(READ_MS)
 
         // ---- Stage 2: wheel-scroll the bordered child via imgui_mouse_scroll ----
+        // Park the cursor mid-child so ImGui attributes the wheel event to SCROLL_A.
+        move_to(app, p_a_mid, 600)
+        sleep(SETTLE_MS)
         post_command(app, "imgui_mouse_scroll", JV((x = 0.0f, y = -3.0f)))
         sleep(400u)
         post_command(app, "imgui_mouse_scroll", JV((x = 0.0f, y = -3.0f)))
@@ -73,7 +81,7 @@ def main {
         sleep(SCROLL_DWELL_MS)
         post_command(app, "imgui_narrate", JV((
             text = "scroll.y updates after the wheel scrolls the bordered region — the boost wrapper captures GetScrollY() each frame.",
-            target = T_A,
+            target = T_A_MID,
             frames = NARRATE_FRAMES
         )))
         sleep(READ_MS)
@@ -83,7 +91,7 @@ def main {
         sleep(SETTLE_MS)
         post_command(app, "imgui_narrate", JV((
             text = "AutoResizeY + FrameStyle — height tracks the body's content extent; FrameStyle gives an input-group chrome border.",
-            target = T_B,
+            target = T_B_LEAF,
             frames = NARRATE_FRAMES
         )))
         sleep(READ_MS)
@@ -93,7 +101,7 @@ def main {
         sleep(SETTLE_MS)
         post_command(app, "imgui_narrate", JV((
             text = "window_flags.HorizontalScrollbar + a wide single line — drag the bottom scroller. scroll.x mirrors the value.",
-            target = T_C,
+            target = T_C_LEAF,
             frames = NARRATE_FRAMES
         )))
         sleep(READ_MS)

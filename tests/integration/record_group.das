@@ -37,11 +37,13 @@ def widget_center(var snap : JsonValue?; ident : string) : tuple<float; float> {
 def main {
     with_recording_app("examples/tutorial/group.das",
                        "group.apng", 60) $(app) {
-        let T_LEFT = "GRP_WIN/LEFT_GRP"
-        let T_RIGHT = "GRP_WIN/RIGHT_GRP"
-        let T_HOVER = "GRP_WIN/HOVER_GRP"
-        let T_ROW = "GRP_WIN/ROW_GRP"
-        let T_WIN = "GRP_WIN"
+        // Anchor cursor + narration at LEAF widgets inside each group —
+        // group's [container] wrapper finalizes without a bbox. See PR #67
+        // Copilot round 1.
+        let T_LEFT = "GRP_WIN/LEFT_GRP/L_WIRE"
+        let T_RIGHT = "GRP_WIN/RIGHT_GRP/R_VSYNC"
+        let T_HOVER = "GRP_WIN/HOVER_GRP/HOVER_BTN"
+        let T_ROW = "GRP_WIN/ROW_GRP/ROW_RESET"
 
         var snap = wait_for_render(app, T_LEFT, 10.0f)
         if (snap == null) {
@@ -51,10 +53,9 @@ def main {
         let p_right = widget_center(snap, T_RIGHT)
         let p_hover = widget_center(snap, T_HOVER)
         let p_row = widget_center(snap, T_ROW)
-        let p_win = widget_center(snap, T_WIN)
 
         //! Initial cursor placement.
-        move_to(app, p_win, 600)
+        move_to(app, p_left, 600)
         sleep(SETTLE_MS)
 
         // ---- Stage 1: side-by-side groups ----

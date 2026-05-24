@@ -36,10 +36,12 @@ def widget_center(var snap : JsonValue?; ident : string) : tuple<float; float> {
 def main {
     with_recording_app("examples/tutorial/popup_modal.das",
                        "popup_modal.apng", 60) $(app) {
+        // window/popup_modal containers finalize without a bbox — anchor
+        // every cursor + narration target at a button or text leaf. See
+        // PR #67 Copilot round 1.
         let T_OPEN_CONFIRM = "PM_WIN/OPEN_CONFIRM"
         let T_OPEN_SETTINGS = "PM_WIN/OPEN_SETTINGS"
         let T_STATUS = "PM_WIN/STATUS_LINE"
-        let T_WIN = "PM_WIN"
 
         var snap = wait_for_render(app, T_OPEN_CONFIRM, 10.0f)
         if (snap == null) {
@@ -48,10 +50,9 @@ def main {
         let p_confirm_btn = widget_center(snap, T_OPEN_CONFIRM)
         let p_settings_btn = widget_center(snap, T_OPEN_SETTINGS)
         let p_status = widget_center(snap, T_STATUS)
-        let p_win = widget_center(snap, T_WIN)
 
         //! Initial cursor placement.
-        move_to(app, p_win, 600)
+        move_to(app, p_confirm_btn, 600)
         sleep(SETTLE_MS)
 
         // ---- Stage 1: narrate the confirm trigger ----
@@ -67,9 +68,11 @@ def main {
         // ---- Stage 2: open the confirm modal via imgui_open ----
         post_command(app, "imgui_open", JV((target = "PM_WIN/CONFIRM_MODAL")))
         sleep(MODAL_DWELL_MS)
+        // Once the modal is up, its CONFIRM_YES button is a registered leaf.
+        // Anchor narration there for a stable position over the modal.
         post_command(app, "imgui_narrate", JV((
             text = "imgui_open flips pending_open; next frame the modal opens via OpenPopup. The Yes/No buttons fall through to state.pending_close on click.",
-            target = T_WIN,
+            target = "PM_WIN/CONFIRM_MODAL/CONFIRM_YES",
             frames = NARRATE_FRAMES
         )))
         sleep(READ_MS)
@@ -100,7 +103,7 @@ def main {
         sleep(MODAL_DWELL_MS)
         post_command(app, "imgui_narrate", JV((
             text = "closable=true adds an X-button on the title bar. ImGui wires it to state.open — click X (or press ESC) to flip open=false and dismiss.",
-            target = T_WIN,
+            target = "PM_WIN/SETTINGS_MODAL/S_AUTOSAVE",
             frames = NARRATE_FRAMES
         )))
         sleep(READ_MS)

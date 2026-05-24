@@ -10,12 +10,14 @@ require daslib/json_boost public
 
 //! Driver script: record ``collapsing_header.apng`` against
 //! ``examples/tutorial/collapsing_header.das``. Tours three variants —
-//! basic, closable (X-button), and DefaultOpen.
+//! basic, closable (X-button), and DefaultOpen. Open/close is driven
+//! via imgui_open / imgui_close because collapsing_header's [container]
+//! wrapper doesn't capture a header bbox (chevron click would need one).
 
 let NARRATE_FRAMES = 240        //! 4.0s visible at 60 fps app
 let READ_MS    = 5000u          //! 5s read window
 let SETTLE_MS  = 1500u          //! 1.5s cursor settle
-let CHEVRON_DWELL_MS = 2200u    //! 2.2s post-chevron-click dwell
+let TOGGLE_DWELL_MS = 2200u     //! 2.2s post-toggle dwell
 
 def widget_bbox(var snap : JsonValue?; ident : string) : float4 {
     var b = snap?["globals"]?[ident]?["bbox"]
@@ -32,92 +34,69 @@ def widget_center(var snap : JsonValue?; ident : string) : tuple<float; float> {
     return ((b.x + b.z) * 0.5f, (b.y + b.w) * 0.5f)
 }
 
-def widget_left_edge(var snap : JsonValue?; ident : string) : tuple<float; float> {
-    let b = widget_bbox(snap, ident)
-    // Chevron sits in the first ~16px of the header row.
-    return (b.x + 10.0f, (b.y + b.w) * 0.5f)
-}
-
 [export]
 def main {
     with_recording_app("examples/tutorial/collapsing_header.das",
                        "collapsing_header.apng", 60) $(app) {
-        let T_BASIC = "CH_WIN/BASIC_CH"
-        let T_CLOSABLE = "CH_WIN/CLOSABLE_CH"
-        let T_STARTUP = "CH_WIN/STARTUP_CH"
-        let T_WIN = "CH_WIN"
+        // Anchor cursor + narration at LEAF widgets inside each section —
+        // collapsing_header finalizes without a bbox. See PR #67 Copilot
+        // round 1.
+        let T_BASIC_LEAF = "CH_WIN/BASIC_CH/BASIC_LIVE"
+        let T_CLOSABLE_LEAF = "CH_WIN/CLOSABLE_CH/VOLUME"
+        let T_CLOSABLE_PATH = "CH_WIN/CLOSABLE_CH"
+        let T_STARTUP_LEAF = "CH_WIN/STARTUP_CH/STARTUP_HINT"
 
-        var snap = wait_for_render(app, T_BASIC, 10.0f)
+        var snap = wait_for_render(app, T_BASIC_LEAF, 10.0f)
         if (snap == null) {
-            panic("{T_BASIC} never rendered — wrong app running?")
+            panic("{T_BASIC_LEAF} never rendered — wrong app running?")
         }
-        let p_basic = widget_center(snap, T_BASIC)
-        let p_basic_chevron = widget_left_edge(snap, T_BASIC)
-        let p_closable = widget_center(snap, T_CLOSABLE)
-        let p_startup = widget_center(snap, T_STARTUP)
-        let p_win = widget_center(snap, T_WIN)
+        let p_basic = widget_center(snap, T_BASIC_LEAF)
+        let p_closable = widget_center(snap, T_CLOSABLE_LEAF)
 
         //! Initial cursor placement.
-        move_to(app, p_win, 600)
+        move_to(app, p_basic, 600)
         sleep(SETTLE_MS)
 
-        // ---- Stage 1: hover the basic header, narrate ----
+        // ---- Stage 1: narrate the basic section ----
         move_to(app, p_basic, 900)
         sleep(SETTLE_MS)
         post_command(app, "imgui_narrate", JV((
-            text = "collapsing_header(IDENT, (text, closable, flags)) — section header that folds via the chevron on the left. Unlike tree_node there's no TreePop pair.",
-            target = T_BASIC,
+            text = "collapsing_header(IDENT, (text, closable, flags)) — section header that folds via the chevron. Unlike tree_node there's no TreePop pair.",
+            target = T_BASIC_LEAF,
             frames = NARRATE_FRAMES
         )))
         sleep(READ_MS)
 
-        // ---- Stage 2: click the basic chevron to collapse ----
-        var collapse_events : array<JsonValue?>
-        collapse_events |> click_at(0, p_basic_chevron, 200)
-        post_command(app, "imgui_mouse_play", JV((events = collapse_events)))
-        sleep(CHEVRON_DWELL_MS)
-        post_command(app, "imgui_narrate", JV((
-            text = "Chevron click toggles opened — the body stops rendering until reopened. State.opened mirrors the per-frame fold.",
-            target = T_BASIC,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
-        var expand_events : array<JsonValue?>
-        expand_events |> click_at(0, p_basic_chevron, 200)
-        post_command(app, "imgui_mouse_play", JV((events = expand_events)))
-        sleep(1500u)
-
-        // ---- Stage 3: closable header ----
+        // ---- Stage 2: hover the closable section's slider ----
         move_to(app, p_closable, 900)
         sleep(SETTLE_MS)
         post_command(app, "imgui_narrate", JV((
             text = "closable=true adds an X-button on the right of the header strip. Click X to set state.open=false; the whole row disappears.",
-            target = T_CLOSABLE,
+            target = T_CLOSABLE_LEAF,
             frames = NARRATE_FRAMES
         )))
         sleep(READ_MS)
 
-        // ---- Stage 4: drive imgui_close on closable header ----
-        post_command(app, "imgui_close", JV((target = T_CLOSABLE)))
-        sleep(1800u)
+        // ---- Stage 3: drive imgui_close on closable header ----
+        post_command(app, "imgui_close", JV((target = T_CLOSABLE_PATH)))
+        sleep(TOGGLE_DWELL_MS)
         post_command(app, "imgui_narrate", JV((
             text = "imgui_close flips pending_close; next frame the closable header is hidden entirely. Re-open via imgui_open against the same target.",
-            target = T_WIN,
+            target = T_BASIC_LEAF,
             frames = NARRATE_FRAMES
         )))
         sleep(READ_MS)
-        post_command(app, "imgui_open", JV((target = T_CLOSABLE)))
+        post_command(app, "imgui_open", JV((target = T_CLOSABLE_PATH)))
         sleep(1500u)
 
-        // ---- Stage 5: DefaultOpen ----
-        move_to(app, p_startup, 900)
-        sleep(SETTLE_MS)
+        // ---- Stage 4: DefaultOpen flag — narrate via STARTUP_CH path ----
+        // Re-snapshot so we see the now-reopened CLOSABLE section's leaf
+        // and grab STARTUP_CH for a final narration anchor.
         post_command(app, "imgui_narrate", JV((
             text = "ImGuiTreeNodeFlags.DefaultOpen — first-render expansion; user input afterwards. Same flag enum as tree_node.",
-            target = T_STARTUP,
+            target = T_STARTUP_LEAF,
             frames = NARRATE_FRAMES
         )))
         sleep(READ_MS)
     }
 }
-

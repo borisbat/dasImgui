@@ -36,12 +36,14 @@ def widget_center(var snap : JsonValue?; ident : string) : tuple<float; float> {
 def main {
     with_recording_app("examples/tutorial/tab_bar.das",
                        "tab_bar.apng", 60) $(app) {
+        // tab_item DOES capture a header bbox (current_item_bbox after
+        // BeginTabItem), so these paths resolve correctly. The bar itself
+        // (TB_WIN/MAIN_TABS) is stateless_finalize without bbox — anchor
+        // narration at a tab header instead. See PR #67 Copilot round 1.
         let T_GENERAL = "TB_WIN/MAIN_TABS/GENERAL_TAB"
         let T_AUDIO = "TB_WIN/MAIN_TABS/AUDIO_TAB"
         let T_INFO = "TB_WIN/MAIN_TABS/INFO_TAB"
         let T_DRAFT = "TB_WIN/MAIN_TABS/DRAFT_TAB"
-        let T_BAR = "TB_WIN/MAIN_TABS"
-        let T_WIN = "TB_WIN"
 
         var snap = wait_for_render(app, T_GENERAL, 10.0f)
         if (snap == null) {
@@ -51,10 +53,9 @@ def main {
         let p_audio = widget_center(snap, T_AUDIO)
         let p_info = widget_center(snap, T_INFO)
         let p_draft = widget_center(snap, T_DRAFT)
-        let p_win = widget_center(snap, T_WIN)
 
         //! Initial cursor placement.
-        move_to(app, p_win, 600)
+        move_to(app, p_general, 600)
         sleep(SETTLE_MS)
 
         // ---- Stage 1: hover the tab strip ----
@@ -62,7 +63,7 @@ def main {
         sleep(SETTLE_MS)
         post_command(app, "imgui_narrate", JV((
             text = "tab_bar(IDENT, (flags)) hosts tab_item children. Only the active tab's body block runs; ImGui owns active-tab selection internally.",
-            target = T_BAR,
+            target = T_GENERAL,
             frames = NARRATE_FRAMES
         )))
         sleep(READ_MS)
@@ -105,9 +106,11 @@ def main {
 
         post_command(app, "imgui_close", JV((target = T_DRAFT)))
         sleep(SWITCH_DWELL_MS)
+        // DRAFT_TAB is gone from the registry now; anchor narration at
+        // GENERAL_TAB (a still-visible tab header) instead.
         post_command(app, "imgui_narrate", JV((
             text = "imgui_close routes through pending_close — Draft disappears from the strip. imgui_open against the same path re-registers it.",
-            target = T_BAR,
+            target = T_GENERAL,
             frames = NARRATE_FRAMES
         )))
         sleep(READ_MS)

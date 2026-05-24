@@ -70,7 +70,7 @@ Hit-testing a cluster
 =====================
 
 ``IsItemHovered`` after ``EndGroup`` applies to the whole group's bbox.
-The tutorial uses it to gate an ``item_tooltip``:
+The tutorial uses it to gate a manual ``tooltip``:
 
 .. code-block:: das
 

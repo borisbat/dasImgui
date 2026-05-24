@@ -36,22 +36,23 @@ def widget_center(var snap : JsonValue?; ident : string) : tuple<float; float> {
 def main {
     with_recording_app("examples/tutorial/tree_node.das",
                        "tree_node.apng", 60) $(app) {
-        let T_PHYSICS = "TN_WIN/PHYSICS_TREE"
-        let T_RENDER = "TN_WIN/RENDER_TREE"
-        let T_ASSETS = "TN_WIN/ASSETS_TREE"
-        let T_WIN = "TN_WIN"
+        // tree_node and window containers finalize without a bbox, so
+        // anchor every move/narrate target at a real leaf widget. See
+        // PR #67 Copilot round 1.
+        let T_PHYSICS_PATH = "TN_WIN/PHYSICS_TREE"
+        let T_PHYSICS_LEAF = "TN_WIN/PHYSICS_TREE/PHYSICS_GRAVITY"
+        let T_RENDER_PATH = "TN_WIN/RENDER_TREE"
+        let T_FOV_LEAF = "TN_WIN/RENDER_TREE/CAMERA_SUBTREE/RENDER_FOV"
+        let T_ASSETS_LEAF = "TN_WIN/ASSETS_TREE/ASSETS_HINT"
 
-        var snap = wait_for_render(app, T_PHYSICS, 10.0f)
+        var snap = wait_for_render(app, T_PHYSICS_LEAF, 10.0f)
         if (snap == null) {
-            panic("{T_PHYSICS} never rendered — wrong app running?")
+            panic("{T_PHYSICS_LEAF} never rendered — wrong app running?")
         }
-        let p_physics = widget_center(snap, T_PHYSICS)
-        let p_render = widget_center(snap, T_RENDER)
-        let p_assets = widget_center(snap, T_ASSETS)
-        let p_win = widget_center(snap, T_WIN)
+        let p_physics = widget_center(snap, T_PHYSICS_LEAF)
 
         //! Initial cursor placement.
-        move_to(app, p_win, 600)
+        move_to(app, p_physics, 600)
         sleep(SETTLE_MS)
 
         // ---- Stage 1: narrate PHYSICS (DefaultOpen) ----
@@ -59,41 +60,49 @@ def main {
         sleep(SETTLE_MS)
         post_command(app, "imgui_narrate", JV((
             text = "tree_node(IDENT, (text, flags)) — block-arg container. DefaultOpen flag expanded the chevron from frame 1; opened mirrors TreeNodeEx's return.",
-            target = T_PHYSICS,
+            target = T_PHYSICS_LEAF,
             frames = NARRATE_FRAMES
         )))
         sleep(READ_MS)
 
         // ---- Stage 2: close PHYSICS via imgui_close ----
-        post_command(app, "imgui_close", JV((target = T_PHYSICS)))
+        post_command(app, "imgui_close", JV((target = T_PHYSICS_PATH)))
         sleep(TOGGLE_DWELL_MS)
+        // PHYSICS_GRAVITY is gone now that PHYSICS_TREE is collapsed —
+        // narrate against ASSETS_HINT (always present) to mention the gating.
         post_command(app, "imgui_narrate", JV((
             text = "imgui_close routes through pending_close — next frame SetNextItemOpen(false) overrides ImGui's stored state. opened flips false; the body block stops running.",
-            target = T_PHYSICS,
+            target = T_ASSETS_LEAF,
             frames = NARRATE_FRAMES
         )))
         sleep(READ_MS)
-        post_command(app, "imgui_open", JV((target = T_PHYSICS)))
+        post_command(app, "imgui_open", JV((target = T_PHYSICS_PATH)))
         sleep(1500u)
 
         // ---- Stage 3: open RENDER, then narrate nesting ----
-        post_command(app, "imgui_open", JV((target = T_RENDER)))
+        post_command(app, "imgui_open", JV((target = T_RENDER_PATH)))
         sleep(TOGGLE_DWELL_MS)
-        move_to(app, p_render, 700)
-        sleep(SETTLE_MS)
+        // Re-snap to pick up the now-rendered RENDER children.
+        var snap2 = wait_for_render(app, T_FOV_LEAF, 5.0f)
+        if (snap2 != null) {
+            let p_fov = widget_center(snap2, T_FOV_LEAF)
+            move_to(app, p_fov, 700)
+            sleep(SETTLE_MS)
+        }
         post_command(app, "imgui_narrate", JV((
             text = "Nested tree_nodes compose freely. Camera subtree's slider registers at TN_WIN/RENDER_TREE/CAMERA_SUBTREE/RENDER_FOV — three-deep path.",
-            target = T_RENDER,
+            target = T_FOV_LEAF,
             frames = NARRATE_FRAMES
         )))
         sleep(READ_MS)
 
         // ---- Stage 4: ASSETS (OpenOnArrow) ----
+        let p_assets = widget_center(snap, T_ASSETS_LEAF)
         move_to(app, p_assets, 900)
         sleep(SETTLE_MS)
         post_command(app, "imgui_narrate", JV((
             text = "OpenOnArrow flag — only the chevron click toggles; clicking the LABEL doesn't expand. Useful for selectable-row trees where the label is the selection.",
-            target = T_ASSETS,
+            target = T_ASSETS_LEAF,
             frames = NARRATE_FRAMES
         )))
         sleep(READ_MS)
