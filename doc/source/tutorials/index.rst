@@ -24,6 +24,12 @@ construction.
    with_disabled.rst
    state_telemetry.rst
    containers.rst
+   child.rst
+   group.rst
+   tree_node.rst
+   collapsing_header.rst
+   tab_bar.rst
+   popup_modal.rst
    main_menu_bar.rst
    popup_window.rst
    flat_tooltips.rst
