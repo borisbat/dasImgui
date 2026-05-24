@@ -941,7 +941,7 @@ def public register_widget(module_name : string;
                            addr_getter : function<(k : int) : void?>;
                            serializer : function<(k : int) : JsonValue?>;
                            k : int = 0) {
-    //! Module-init registration of a widget into the long-lived ``g_widgets`` table; ``module_name`` lets :ref:`clear_module_widgets <function-imgui_boost_runtime_clear_module_widgets_string>` drop it on reload. ``addr_getter(k)`` resolves the live state-struct address on every dispatcher/serializer call — stable function pointer for globals (k ignored), key-checked re-resolution for indexed widgets with int keys (k = the table key, stored once at registration). For string-keyed indexed widgets use :ref:`register_widget_str <function-imgui_boost_runtime_register_widget_str_string_string_string_function_ls__ls_k_c_string_const_gr__c_void_q__gr__function_ls__ls_k_c_string_const_gr__c_json_JsonValue_q__gr__string_const>`.
+    //! Module-init registration of a widget into the long-lived ``g_widgets`` table; ``module_name`` lets :ref:`clear_module_widgets <function-imgui_boost_runtime_clear_module_widgets_string>` drop it on reload. ``addr_getter(k)`` resolves the live state-struct address on every dispatcher/serializer call — stable function pointer for globals (k ignored), key-checked re-resolution for indexed widgets with int keys (k = the table key, stored once at registration). For string-keyed indexed widgets use ``register_widget_str`` (sibling overload below).
     unsafe {
         g_widgets[bare_ident] <- WidgetMeta(
             module_name = module_name,
@@ -960,7 +960,7 @@ def public register_widget_str(module_name : string;
                                addr_getter : function<(k : string) : void?>;
                                serializer : function<(k : string) : JsonValue?>;
                                k : string) {
-    //! String-keyed sibling of :ref:`register_widget <function-imgui_boost_runtime_register_widget_string_string_string_function_ls__ls_k_c_int_const_gr__c_void_q__gr__function_ls__ls_k_c_string_const_gr__c_json_JsonValue_q__gr__int_const>` — for ``table<string; …>`` indexed widgets. Sets ``has_str_key`` so the dispatcher/serializer routes through ``addr_getter_str(k_str)`` instead of the int path.
+    //! String-keyed sibling of ``register_widget`` — for ``table<string; …>`` indexed widgets. Sets ``has_str_key`` so the dispatcher/serializer routes through ``addr_getter_str(k_str)`` instead of the int path.
     unsafe {
         g_widgets[bare_ident] <- WidgetMeta(
             module_name = module_name,
