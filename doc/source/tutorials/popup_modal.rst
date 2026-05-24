@@ -71,10 +71,12 @@ The classic "Yes/No before destructive action":
        }
    }
 
-``closable=false`` means there's no X-button. The body's Yes/No buttons
-are the only exits — both write to ``CONFIRM_RESULT`` and set
-``pending_close``. Without a way to dismiss the modal, the user is
-trapped on this question until they answer.
+``closable=false`` means there's no X-button — but ESC still closes the
+modal (ImGui's built-in popup keybinding, unaffected by ``closable``).
+The body's Yes/No buttons are the explicit answer paths: both write to
+``CONFIRM_RESULT`` and set ``pending_close``. To make the modal truly
+non-dismissable, pass ``ImGuiWindowFlags.NoMove | NoSavedSettings`` and
+intercept the ESC key in app code — outside the scope of this tutorial.
 
 The ``AlwaysAutoResize`` flag (passed via ``flags``) sizes the modal to
 its content — saves the caller from picking width/height by hand.
@@ -115,9 +117,9 @@ Same machinery, different UX:
   resolve the modal before doing anything else. Use for destructive
   confirms, multi-step wizards, blocking error dialogs.
 
-The two share ``PopupState`` exactly — same ``open`` / ``opened`` /
+The two share ``PopupState`` exactly — same ``open`` / ``flags`` /
 ``pending_open`` / ``pending_close`` fields. Switching between forms
-is one-word edit.
+is a one-word edit.
 
 Pending-flag channels
 =====================

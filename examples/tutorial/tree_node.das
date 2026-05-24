@@ -108,8 +108,12 @@ def update() {
         }
 
         // ---- C: OpenOnArrow — clicking the label doesn't expand ----
-        tree_node(ASSETS_TREE, (text = "Assets (OpenOnArrow)",
-                                flags = ImGuiTreeNodeFlags.OpenOnArrow)) {
+        // DefaultOpen so ASSETS_HINT is in the registry from frame 1 (the
+        // recording driver narrates against it). The OpenOnArrow flag is
+        // still demonstrated: collapse via chevron, then try clicking the
+        // label — it stays collapsed. Only the arrow toggles.
+        tree_node(ASSETS_TREE, (text = "Assets (OpenOnArrow + DefaultOpen)",
+                                flags = ImGuiTreeNodeFlags.OpenOnArrow | ImGuiTreeNodeFlags.DefaultOpen)) {
             text(ASSETS_HINT, (text = "OpenOnArrow flag — clicking the LABEL doesn't toggle."))
             text("Click the arrow chevron specifically. Useful for")
             text("selectable-row trees where the label is the selection.")

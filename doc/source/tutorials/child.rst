@@ -119,9 +119,13 @@ The B child uses ``AutoResizeY | FrameStyle``:
 
 Size's Y is ``0.0f`` — required when ``AutoResizeY`` is active so ImGui
 treats the slot as auto. The height grows to fit the body each frame.
-The recorded height (visible after the frame) lives at
-``AUTO_B.scroll_max.y + AUTO_B.scroll.y`` because ``scroll_max`` excludes
-the visible portion.
+
+``scroll`` and ``scroll_max`` both report (0, 0) for an AutoResize child:
+no overflow means no scroll range. To check the rendered height, read
+``AUTO_B.size.y`` after the frame — the wrapper writes it from the
+caller's input. (Content extent itself isn't directly exposed by
+ImGui's child API; if you need it, take a snapshot from inside the body
+via a sentinel widget at the end.)
 
 Horizontal scroll
 =================

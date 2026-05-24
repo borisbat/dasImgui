@@ -97,7 +97,14 @@ def main {
         sleep(READ_MS)
 
         // ---- Stage 4: ASSETS (OpenOnArrow) ----
-        let p_assets = widget_center(snap, T_ASSETS_LEAF)
+        // Re-snap because the layout has shifted (RENDER_TREE is now open,
+        // pushing ASSETS_TREE down). ASSETS_HINT exists from frame 1 because
+        // the tutorial source declares ASSETS_TREE with DefaultOpen.
+        var p_assets = widget_center(snap, T_ASSETS_LEAF)
+        var snap_assets = wait_for_render(app, T_ASSETS_LEAF, 5.0f)
+        if (snap_assets != null) {
+            p_assets = widget_center(snap_assets, T_ASSETS_LEAF)
+        }
         move_to(app, p_assets, 900)
         sleep(SETTLE_MS)
         post_command(app, "imgui_narrate", JV((

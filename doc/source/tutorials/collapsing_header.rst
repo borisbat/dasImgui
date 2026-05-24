@@ -14,9 +14,13 @@ close lifecycle. Two distinct gates govern visibility:
   sets ``state.open=false``. While ``state.open`` is false, **the whole
   header strip is hidden** (not just its body).
 
-The boost wrapper exposes both gates via the standard
-``pending_open`` / ``pending_close`` flags, so the live commands
-``imgui_open`` / ``imgui_close`` work on either dimension.
+The boost wrapper exposes one channel — ``pending_open`` /
+``pending_close`` — that drives the **chevron** (expanded gate). The
+live commands ``imgui_open`` / ``imgui_close`` ride that channel.
+``imgui_open`` additionally re-sets ``state.open=true`` so a previously
+X-hidden strip becomes visible again. ``imgui_close`` does NOT touch
+``state.open`` — to hide the strip, click the X-button or write
+``state.open=false`` from app code.
 
 Source: ``examples/tutorial/collapsing_header.das``.
 
@@ -122,23 +126,28 @@ Same convention as the other tutorials.
 Driving from outside
 ====================
 
-Both gates are driveable. To collapse-and-hide the closable header:
+To collapse the chevron (body stops rendering; the header strip stays
+visible):
 
 .. code-block:: bash
 
    curl -X POST -d '{"name":"imgui_close","args":{"target":"CH_WIN/CLOSABLE_CH"}}' \
         localhost:9090/command
 
-To bring it back:
+To re-expand the chevron — and, for a closable header that had been
+X-hidden, re-show the whole strip:
 
 .. code-block:: bash
 
    curl -X POST -d '{"name":"imgui_open","args":{"target":"CH_WIN/CLOSABLE_CH"}}' \
         localhost:9090/command
 
-A non-closable header treats ``imgui_open`` / ``imgui_close`` as
-"set the chevron state" — ``state.open`` is ignored, only
-``state.pending_open`` / ``pending_close`` (the chevron channel) fire.
+``imgui_open`` writes both ``state.pending_open`` AND ``state.open=true``
+so a previously X-hidden header re-appears. ``imgui_close``, by
+contrast, only writes ``state.pending_close`` — there's no path that
+hides the strip via live commands. To hide the strip programmatically,
+write ``state.open=false`` from app code (the X-button is the only
+user-driven path).
 
 .. seealso::
 

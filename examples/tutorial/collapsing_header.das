@@ -24,26 +24,33 @@ require imgui/imgui_visual_aids
 //                             flags = ImGuiTreeNodeFlags....)) { body }
 //
 // Same shape as tree_node BUT no TreePop pair — ImGui owns the close lifecycle.
-// Two distinct gates control whether the body runs:
+// Two distinct gates control visibility, each on its own field:
 //
-//   1. EXPANDED (chevron) — user toggles via the disclosure arrow. The boost
-//      wrapper mirrors this in state.opened (per-frame, from CollapsingHeader's
-//      return). pending_open / pending_close (driven by imgui_open / imgui_close)
-//      flip the expansion via SetNextItemOpen.
+//   1. EXPANDED (chevron) — controls whether the BODY runs. state.opened
+//      mirrors CollapsingHeader's per-frame return. pending_open /
+//      pending_close (driven by imgui_open / imgui_close) override the
+//      chevron via SetNextItemOpen on the next frame.
 //
-//   2. CLOSABLE (X-button) — if closable=true, ImGui adds an X-button that
-//      sets state.open=false. While state.open is false the section is hidden
-//      entirely (not even a header strip renders). Open-channel flipping needs
-//      both gates: pending_open sets state.open back to true AND SetNextItemOpen.
+//   2. CLOSABLE (X-button) — controls whether the entire HEADER STRIP
+//      renders. Only active when closable=true. ImGui flips state.open=false
+//      on X-click; the wrapper then skips BeginCollapsingHeader entirely so
+//      the strip vanishes. imgui_open re-sets state.open=true; imgui_close
+//      does NOT — it only collapses the chevron via the expanded channel.
+//      To programmatically hide the strip, write state.open=false from app
+//      code.
 //
 // STANDALONE: daslang.exe modules/dasImgui/examples/tutorial/collapsing_header.das
 // LIVE:       daslang-live modules/dasImgui/examples/tutorial/collapsing_header.das
 //
 // DRIVE (when running live):
-//   curl -X POST -d '{"name":"imgui_open","args":{"target":"CH_WIN/CLOSABLE_CH"}}' \
-//        localhost:9090/command
+//   # Collapse the chevron (body stops rendering; header strip stays):
 //   curl -X POST -d '{"name":"imgui_close","args":{"target":"CH_WIN/CLOSABLE_CH"}}' \
 //        localhost:9090/command
+//   # Re-expand the chevron AND re-show the strip if X-button hid it:
+//   curl -X POST -d '{"name":"imgui_open","args":{"target":"CH_WIN/CLOSABLE_CH"}}' \
+//        localhost:9090/command
+//   # To HIDE the strip, click the X-button or write CLOSABLE_CH.open=false
+//   # from app code — there's no imgui_close path that does this.
 // =============================================================================
 
 [export]

@@ -95,7 +95,10 @@ def update() {
             checkbox(B_VSYNC, (text = "VSync"))
             slider_int(B_LIMIT, (text = "frame limit"))
         }
-        text("auto height = {AUTO_B.scroll_max.y + AUTO_B.scroll.y}px")
+        // AutoResizeY trims overflow to zero, so scroll = (0,0) and
+        // scroll_max = (0,0). The child's actual size lives in size.y;
+        // print scroll fields directly to show "no overflow".
+        text("AUTO_B.scroll = ({AUTO_B.scroll.x}, {AUTO_B.scroll.y}); scroll_max = ({AUTO_B.scroll_max.x}, {AUTO_B.scroll_max.y})")
         spacing()
 
         // ---- C: bordered, horizontal scroll ----

@@ -81,7 +81,7 @@ def main {
         post_command(app, "imgui_close", JV((target = T_CLOSABLE_PATH)))
         sleep(TOGGLE_DWELL_MS)
         post_command(app, "imgui_narrate", JV((
-            text = "imgui_close flips pending_close; next frame the closable header is hidden entirely. Re-open via imgui_open against the same target.",
+            text = "imgui_close flips pending_close; next frame the chevron collapses and the body stops rendering. The header STRIP stays visible — only the X-button (or app code setting state.open=false) hides the whole row.",
             target = T_BASIC_LEAF,
             frames = NARRATE_FRAMES
         )))
@@ -90,8 +90,6 @@ def main {
         sleep(1500u)
 
         // ---- Stage 4: DefaultOpen flag — narrate via STARTUP_CH path ----
-        // Re-snapshot so we see the now-reopened CLOSABLE section's leaf
-        // and grab STARTUP_CH for a final narration anchor.
         post_command(app, "imgui_narrate", JV((
             text = "ImGuiTreeNodeFlags.DefaultOpen — first-render expansion; user input afterwards. Same flag enum as tree_node.",
             target = T_STARTUP_LEAF,
