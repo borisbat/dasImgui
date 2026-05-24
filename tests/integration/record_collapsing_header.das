@@ -41,19 +41,29 @@ def main {
         // Anchor cursor + narration at LEAF widgets inside each section —
         // collapsing_header finalizes without a bbox. See PR #67 Copilot
         // round 1.
+        let T_BASIC_PATH = "CH_WIN/BASIC_CH"
         let T_BASIC_LEAF = "CH_WIN/BASIC_CH/BASIC_LIVE"
         let T_CLOSABLE_LEAF = "CH_WIN/CLOSABLE_CH/VOLUME"
         let T_CLOSABLE_PATH = "CH_WIN/CLOSABLE_CH"
         let T_STARTUP_LEAF = "CH_WIN/STARTUP_CH/STARTUP_HINT"
 
-        // wait_for_widget gates on existence; wait_for_render passes
-        // through for absent paths.
-        var snap = wait_for_widget(app, T_BASIC_LEAF, 10.0f)
+        // Startup gate on STARTUP_HINT — STARTUP_CH and CLOSABLE_CH are
+        // DefaultOpen so their leaves register frame 1, but BASIC_CH is NOT
+        // DefaultOpen and its body stays unrendered until we imgui_open it.
+        var snap = wait_for_widget(app, T_STARTUP_LEAF, 10.0f)
         if (snap == null) {
-            panic("{T_BASIC_LEAF} never registered — wrong app running?")
+            panic("{T_STARTUP_LEAF} never registered — wrong app running?")
         }
-        let p_basic = widget_center(snap, T_BASIC_LEAF)
         let p_closable = widget_center(snap, T_CLOSABLE_LEAF)
+
+        // Open BASIC_CH so its body widgets exist for Stage 1 narration.
+        post_command(app, "imgui_open", JV((target = T_BASIC_PATH)))
+        sleep(TOGGLE_DWELL_MS)
+        var snap_basic = wait_for_widget(app, T_BASIC_LEAF, 5.0f)
+        if (snap_basic == null) {
+            panic("{T_BASIC_LEAF} never registered after imgui_open {T_BASIC_PATH}")
+        }
+        let p_basic = widget_center(snap_basic, T_BASIC_LEAF)
 
         //! Initial cursor placement.
         move_to(app, p_basic, 600)
