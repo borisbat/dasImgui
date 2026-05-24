@@ -659,16 +659,12 @@ var g_frame : int = 0
 struct WidgetMeta {
     module_name : string                                  //! owning module; lets clear_module_widgets drop on reload
     kind : string                                         //! widget kind ("button", "slider_float", ...)
-    // Int-keyed path (non-indexed widgets and `table<int; …>` indexed widgets).
-    // k=0 for non-indexed (getter ignores it).
-    addr_getter_int : function<(k : int) : void?>         //! plain function pointer; no heap-allocated capture frame
-    serializer_int  : function<(k : int) : JsonValue?>
-    k_int : int
-    // String-keyed path (`table<string; …>` indexed widgets only).
-    // Both fns are null when has_str_key=false; selected by has_str_key.
-    addr_getter_str : function<(k : string) : void?>
-    serializer_str  : function<(k : string) : JsonValue?>
-    k_str : string
+    addr_getter_int : function<(k : int) : void?>         //! int-keyed path: resolves live state-struct address. k=0 for non-indexed widgets (getter ignores it), the table key for ``table<int; …>`` indexed widgets. Plain function pointer — no heap-allocated lambda capture frame.
+    serializer_int  : function<(k : int) : JsonValue?>    //! int-keyed serializer; mirror of ``addr_getter_int`` shape. Invoked at imgui_snapshot time.
+    k_int : int                                           //! int key stored at registration: 0 for non-indexed, the actual ``TABLE[k]`` key for int-indexed widgets.
+    addr_getter_str : function<(k : string) : void?>      //! string-keyed path: resolves live state-struct address for ``table<string; …>`` indexed widgets. Null when ``has_str_key=false``.
+    serializer_str  : function<(k : string) : JsonValue?> //! string-keyed serializer; null when ``has_str_key=false``.
+    k_str : string                                        //! string key stored at registration; empty when ``has_str_key=false``.
     has_str_key : bool                                    //! true => use the _str fns + k_str; false => use the _int fns + k_int
     last_seen_frame : int                                 //! last g_frame this path appeared in g_registry; -1 = never rendered
 }
