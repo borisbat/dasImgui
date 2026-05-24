@@ -84,19 +84,21 @@ def main {
         // ---- Stage 3: open RENDER, then narrate nesting ----
         post_command(app, "imgui_open", JV((target = T_RENDER_PATH)))
         sleep(TOGGLE_DWELL_MS)
-        // Re-snap to pick up the now-rendered RENDER children.
+        // Re-snap to pick up the now-rendered RENDER children. Narration must
+        // stay inside this guard — narrating against an unregistered T_FOV_LEAF
+        // silently lands the overlay at (0,0).
         var snap2 = wait_for_widget(app, T_FOV_LEAF, 5.0f)
         if (snap2 != null) {
             let p_fov = widget_center(snap2, T_FOV_LEAF)
             move_to(app, p_fov, 700)
             sleep(SETTLE_MS)
+            post_command(app, "imgui_narrate", JV((
+                text = "Nested tree_nodes compose freely. Camera subtree's slider registers at TN_WIN/RENDER_TREE/CAMERA_SUBTREE/RENDER_FOV — three-deep path.",
+                target = T_FOV_LEAF,
+                frames = NARRATE_FRAMES
+            )))
+            sleep(READ_MS)
         }
-        post_command(app, "imgui_narrate", JV((
-            text = "Nested tree_nodes compose freely. Camera subtree's slider registers at TN_WIN/RENDER_TREE/CAMERA_SUBTREE/RENDER_FOV — three-deep path.",
-            target = T_FOV_LEAF,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
 
         // ---- Stage 4: ASSETS (OpenOnArrow) ----
         // Re-snap because the layout has shifted (RENDER_TREE is now open,

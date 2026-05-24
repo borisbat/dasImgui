@@ -70,8 +70,12 @@ def main {
         // ---- Stage 2: open the confirm modal via imgui_open ----
         post_command(app, "imgui_open", JV((target = "PM_WIN/CONFIRM_MODAL")))
         sleep(MODAL_DWELL_MS)
-        // Once the modal is up, its CONFIRM_YES button is a registered leaf.
-        // Anchor narration there for a stable position over the modal.
+        // Gate narration on CONFIRM_YES actually being registered — otherwise
+        // a slow modal open silently lands the overlay at (0,0).
+        var ack_snap = wait_for_widget(app, "PM_WIN/CONFIRM_MODAL/CONFIRM_YES", 5.0f)
+        if (ack_snap == null) {
+            panic("PM_WIN/CONFIRM_MODAL/CONFIRM_YES never registered — imgui_open didn't take")
+        }
         post_command(app, "imgui_narrate", JV((
             text = "imgui_open flips pending_open; next frame the modal opens via OpenPopup. The Yes/No buttons fall through to state.pending_close on click.",
             target = "PM_WIN/CONFIRM_MODAL/CONFIRM_YES",
@@ -80,14 +84,10 @@ def main {
         sleep(READ_MS)
 
         // ---- Stage 3: close the confirm modal via Yes-button click ----
-        // After the modal is open, CONFIRM_YES is registered.
-        var ack_snap = wait_for_widget(app, "PM_WIN/CONFIRM_MODAL/CONFIRM_YES", 5.0f)
-        if (ack_snap != null) {
-            let p_yes = widget_center(ack_snap, "PM_WIN/CONFIRM_MODAL/CONFIRM_YES")
-            var yes_events : array<JsonValue?>
-            yes_events |> click_at(0, p_yes, 200)
-            post_command(app, "imgui_mouse_play", JV((events = yes_events)))
-        }
+        let p_yes = widget_center(ack_snap, "PM_WIN/CONFIRM_MODAL/CONFIRM_YES")
+        var yes_events : array<JsonValue?>
+        yes_events |> click_at(0, p_yes, 200)
+        post_command(app, "imgui_mouse_play", JV((events = yes_events)))
         sleep(MODAL_DWELL_MS)
         move_to(app, p_status, 700)
         sleep(SETTLE_MS)
@@ -103,6 +103,12 @@ def main {
         sleep(SETTLE_MS)
         post_command(app, "imgui_open", JV((target = "PM_WIN/SETTINGS_MODAL")))
         sleep(MODAL_DWELL_MS)
+        // Gate on S_APPLY existing — S_AUTOSAVE registers in the same frame
+        // (same modal body), so the narrate target is safe once S_APPLY is up.
+        var apply_snap = wait_for_widget(app, "PM_WIN/SETTINGS_MODAL/S_APPLY", 5.0f)
+        if (apply_snap == null) {
+            panic("PM_WIN/SETTINGS_MODAL body never registered — imgui_open didn't take")
+        }
         post_command(app, "imgui_narrate", JV((
             text = "closable=true adds an X-button on the title bar. ImGui wires it to state.open — click X (or press ESC) to flip open=false and dismiss.",
             target = "PM_WIN/SETTINGS_MODAL/S_AUTOSAVE",
@@ -111,13 +117,10 @@ def main {
         sleep(READ_MS)
 
         // ---- Stage 5: dismiss via Apply button ----
-        var apply_snap = wait_for_widget(app, "PM_WIN/SETTINGS_MODAL/S_APPLY", 5.0f)
-        if (apply_snap != null) {
-            let p_apply = widget_center(apply_snap, "PM_WIN/SETTINGS_MODAL/S_APPLY")
-            var apply_events : array<JsonValue?>
-            apply_events |> click_at(0, p_apply, 200)
-            post_command(app, "imgui_mouse_play", JV((events = apply_events)))
-        }
+        let p_apply = widget_center(apply_snap, "PM_WIN/SETTINGS_MODAL/S_APPLY")
+        var apply_events : array<JsonValue?>
+        apply_events |> click_at(0, p_apply, 200)
+        post_command(app, "imgui_mouse_play", JV((events = apply_events)))
         sleep(MODAL_DWELL_MS)
     }
 }
