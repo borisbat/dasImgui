@@ -64,12 +64,13 @@ class ContainerFunctionMacro : AstFunctionAnnotation {
 
 class DrawlistPrimCallMacro : AstCallMacro {
     kind_name : string
+    target_mod : string  // module that owns the [drawlist_prim] function; qualifies the emit to prevent same-name collisions
 
     def override visit(prog : ProgramPtr; mod : Module?;
                        var expr : ExprCallMacro?) : ExpressionPtr {
         let modName = mod == null ? "anon" : string(mod.name)
         let path_key = "{modName}:{expr.at.line:d}:{expr.at.column:d}"
-        var rewritten = new ExprCall(at = expr.at, name := kind_name)
+        var rewritten = new ExprCall(at = expr.at, name := "{target_mod}::{kind_name}")
         var pathArg = new ExprConstString(at = expr.at, value := path_key)
         rewritten.arguments |> push(pathArg)
         for (a in expr.arguments) {
@@ -97,8 +98,13 @@ class DrawlistPrimFunctionMacro : AstFunctionAnnotation {
             _type <- new TypeDecl(baseType = Type.tString, at = func.at))
         widthIdentVar.flags.generated = true
         func.arguments |> emplace(widthIdentVar, 0)
-        var inst = new DrawlistPrimCallMacro(kind_name = kind)
-        compiling_module() |> add_call_macro(make_call_macro(kind, inst))
+        // Capture the owning module name (compiling_module() — func._module is
+        // not yet set at apply time). Used to qualify the call_macro's emit so
+        // a same-named function in another module can't be picked up.
+        let cmod = compiling_module()
+        var inst = new DrawlistPrimCallMacro(kind_name = kind,
+                                             target_mod = string(cmod.name))
+        cmod |> add_call_macro(make_call_macro(kind, inst))
         return true
     }
 }
@@ -133,9 +139,9 @@ def private apply_widget_or_container(var func : FunctionPtr; var errors : das_s
     // matching pop lives in body.finalList (always-runs on normal return).
     // PopID lives in widget_finalize / container_finalize at the bottom.
     var fblk = new ExprBlock(at = func.body.at)
-    fblk.list |> push(qmacro(widget_prelude($i("widget_ident"))))
+    fblk.list |> push(qmacro(imgui_boost_runtime::widget_prelude($i("widget_ident"))))
     if (is_container) {
-        fblk.list |> push(qmacro(container_path_push($i("widget_ident"))))
+        fblk.list |> push(qmacro(imgui_boost_runtime::container_path_push($i("widget_ident"))))
     }
     let oldBody = func.body as ExprBlock
     for (el in oldBody.list) {
@@ -145,7 +151,7 @@ def private apply_widget_or_container(var func : FunctionPtr; var errors : das_s
         fblk.finalList |> push(clone_expression(ef))
     }
     if (is_container) {
-        fblk.finalList |> push(qmacro(container_path_pop()))
+        fblk.finalList |> push(qmacro(imgui_boost_runtime::container_path_pop()))
     }
     func.body = fblk
     // Register the per-kind call macro instance. The same WidgetCallMacro
@@ -518,17 +524,40 @@ class WidgetCallMacro : AstCallMacro {
                     imgui_boost_runtime::clear_module_widgets($v(modLit))
                 ))
             }
+            // Emit per-widget top-level getter + serializer as plain
+            // functions (no captures — they read the module-scope state global
+            // directly). register_widget then receives `@@<fn>` literals, so the
+            // long-lived registry stores plain function pointers instead of
+            // heap-allocated lambda capture frames. The `k` parameter is part
+            // of the unified API with indexed widgets — non-indexed getters
+            // ignore it.
+            let addrFnName = "__widget_addr${bareName}"
+            let jvFnName = "__widget_jv${bareName}"
+            if (find_unique_function(mod, addrFnName, true) == null) {
+                var addrFn = qmacro_function(addrFnName) $(k : int) : void? {
+                    return unsafe(addr($i(identLit)))
+                }
+                addrFn.flags.generated = true
+                addrFn.flags.privateFunction = true
+                addrFn.body |> force_at(expr.at)
+                mod |> add_function(addrFn)
+            }
+            if (find_unique_function(mod, jvFnName, true) == null) {
+                var jvFn = qmacro_function(jvFnName) $(k : int) : JsonValue? {
+                    return JV($i(identLit))
+                }
+                jvFn.flags.generated = true
+                jvFn.flags.privateFunction = true
+                jvFn.body |> force_at(expr.at)
+                mod |> add_function(jvFn)
+            }
             reg.list |> push(qmacro(
                 imgui_boost_runtime::register_widget(
                     $v(modLit),
                     $v(identLit),
                     $v(kindLit),
-                    @() : void? {
-                        return unsafe(addr($i(identLit)))
-                    },
-                    @() : JsonValue? {
-                        return JV($i(identLit))
-                    }
+                    @@$c(addrFnName),
+                    @@$c(jvFnName)
                 )
             ))
         }
@@ -551,7 +580,11 @@ class WidgetCallMacro : AstCallMacro {
         if (pathOverridePresent) {
             widgetIdent = pathOverride
         }
-        var newCall = new ExprCall(at = expr.at, name := render_fn_name)
+        // Qualify with the widget impl's home module so a same-named function
+        // in another loaded module can't shadow the dispatch. render_fn._module
+        // is populated by the time visit() runs (post-binding).
+        var newCall = new ExprCall(at = expr.at,
+                                   name := "{string(render_fn._module.name)}::{render_fn_name}")
         newCall.arguments |> push(new ExprVar(at = expr.at, name := bareName))
         newCall.arguments |> push(new ExprConstString(at = expr.at, value := widgetIdent))
         for (i in range(firstUserArg, length(expr.arguments))) {
@@ -639,6 +672,58 @@ class WidgetCallMacro : AstCallMacro {
         let moduleName = string(mod.name)
         let bareNameLit = bareName
         let kindLit = kind_name
+        // Qualify the inner call to the widget impl so the wrapper can't pick
+        // up a same-named function in another module.
+        let qualifiedKind = "{string(render_fn._module.name)}::{kind_name}"
+        // Key-type-aware fn-ptr emit. Int and string keys go through parallel
+        // register_widget overloads (register_widget / register_widget_str);
+        // the per-(kind, IDENT) addr-getter + serializer are typed accordingly
+        // and shared across every call site for the same (kind, IDENT).
+        let keyIsString = tabType.firstType != null && tabType.firstType.baseType == Type.tString
+        if (tabType.firstType == null ||
+            (tabType.firstType.baseType != Type.tInt && tabType.firstType.baseType != Type.tString)) {
+            macro_error(prog, expr.at,
+                "{kind_name}({bareName}[k]): only `table<int; …>` and `table<string; …>` are supported for indexed widgets (got `{describe(tabType)}`).")
+            return <- default<ExpressionPtr>
+        }
+        let indexedAddrFnName = "__widget_addr$indexed${kind_name}${bareName}"
+        let indexedJvFnName = "__widget_jv$indexed${kind_name}${bareName}"
+        if (find_unique_function(mod, indexedAddrFnName, true) == null) {
+            var addrFn : FunctionPtr
+            if (keyIsString) {
+                addrFn = qmacro_function(indexedAddrFnName) $(k : string) : void? {
+                    return null if (!key_exists($i(bareNameLit), k))
+                    return unsafe(addr($i(bareNameLit)[k]))
+                }
+            } else {
+                addrFn = qmacro_function(indexedAddrFnName) $(k : int) : void? {
+                    return null if (!key_exists($i(bareNameLit), k))
+                    return unsafe(addr($i(bareNameLit)[k]))
+                }
+            }
+            addrFn.flags.generated = true
+            addrFn.flags.privateFunction = true
+            addrFn.body |> force_at(expr.at)
+            mod |> add_function(addrFn)
+        }
+        if (find_unique_function(mod, indexedJvFnName, true) == null) {
+            var jvFn : FunctionPtr
+            if (keyIsString) {
+                jvFn = qmacro_function(indexedJvFnName) $(k : string) : JsonValue? {
+                    return null if (!key_exists($i(bareNameLit), k))
+                    return JV($i(bareNameLit)[k])
+                }
+            } else {
+                jvFn = qmacro_function(indexedJvFnName) $(k : int) : JsonValue? {
+                    return null if (!key_exists($i(bareNameLit), k))
+                    return JV($i(bareNameLit)[k])
+                }
+            }
+            jvFn.flags.generated = true
+            jvFn.flags.privateFunction = true
+            jvFn.body |> force_at(expr.at)
+            mod |> add_function(jvFn)
+        }
         // Emit the wrapper helper once per (kind, IDENT). find_unique_function
         // probes the user module before add_function fires; re-running visit()
         // for the same wrapper (e.g. a second call site) is a no-op.
@@ -671,36 +756,36 @@ class WidgetCallMacro : AstCallMacro {
             bodyStmts |> push <| qmacro_expr(${
                 let path = imgui_boost_runtime::widget_path_key(bare)
             })
-            // First-touch / post-reload register. Both lambdas capture the
-            // key by value; the address getter and serializer guard with
-            // ``key_exists`` and re-resolve ``TABLE[k]`` on every invoke, so
-            // rehashing or erase+re-add never desyncs state.
-            bodyStmts |> push <| qmacro_expr(${
-                if (!imgui_boost_runtime::widget_registered(path)) {
-                    unsafe {
-                        let addr_getter <- @ capture(= k) () : void ? {
-                            return null if (!key_exists($i(bareNameLit), k))
-                            return unsafe(addr($i(bareNameLit)[k]))
-                        }
-                        let ser <- @ capture(= k) () : JsonValue ? {
-                            return null if (!key_exists($i(bareNameLit), k))
-                            return JV($i(bareNameLit)[k])
-                        }
+            // First-touch / post-reload register. We pass plain function
+            // pointers into register_widget(_str); the runtime stores them in
+            // WidgetMeta along with `k` (consulted on every getter/serializer
+            // invoke). No lambda capture frame allocated per call site.
+            if (keyIsString) {
+                bodyStmts |> push <| qmacro_expr(${
+                    if (!imgui_boost_runtime::widget_registered(path)) {
+                        imgui_boost_runtime::register_widget_str(
+                            $v(moduleName), path, $v(kindLit),
+                            @@$c(indexedAddrFnName), @@$c(indexedJvFnName), k)
+                    }
+                })
+            } else {
+                bodyStmts |> push <| qmacro_expr(${
+                    if (!imgui_boost_runtime::widget_registered(path)) {
                         imgui_boost_runtime::register_widget(
                             $v(moduleName), path, $v(kindLit),
-                            addr_getter, ser)
+                            @@$c(indexedAddrFnName), @@$c(indexedJvFnName), k)
                     }
-                }
-            })
+                })
+            }
             // Final call. The called [container]'s own finally block pops
             // its container_path_push, so no wrapper-side pop is needed.
             if (retType.baseType == Type.tVoid) {
                 bodyStmts |> push <| qmacro_expr(${
-                    $c(kindLit)($a(callArgs))
+                    $c(qualifiedKind)($a(callArgs))
                 })
             } else {
                 bodyStmts |> push <| qmacro_expr(${
-                    return $c(kindLit)($a(callArgs))
+                    return $c(qualifiedKind)($a(callArgs))
                 })
             }
             var fn = qmacro_function(wrapperName) $(k : $t(keyType); $a(wrapperArgs)) : $t(retType) {
@@ -715,8 +800,11 @@ class WidgetCallMacro : AstCallMacro {
                 return <- default<ExpressionPtr>
             }
         }
-        // Rewrite call: wrapperName(indexExpr, ...remaining args)
-        var newCall = new ExprCall(at = expr.at, name := wrapperName)
+        // Rewrite call: wrapperName(indexExpr, ...remaining args). Use `__::`
+        // to constrain overload resolution to the user module (where we just
+        // installed the wrapper via add_function); also rules out collisions
+        // with any same-named function in other loaded modules.
+        var newCall = new ExprCall(at = expr.at, name := "__::{wrapperName}")
         newCall.arguments |> push(indexExpr)
         for (i in range(1, length(expr.arguments))) {
             let a = expr.arguments[i]
@@ -792,9 +880,9 @@ def private apply_edit_widget_or_container(var func : FunctionPtr; var errors : 
     // emitted inside `invoke(blk)` nest under our ident); matching pop
     // lives in body.finalList so it always runs on normal return.
     var fblk = new ExprBlock(at = func.body.at)
-    fblk.list |> push(qmacro(widget_prelude($i("widget_ident"))))
+    fblk.list |> push(qmacro(imgui_boost_runtime::widget_prelude($i("widget_ident"))))
     if (is_container) {
-        fblk.list |> push(qmacro(container_path_push($i("widget_ident"))))
+        fblk.list |> push(qmacro(imgui_boost_runtime::container_path_push($i("widget_ident"))))
     }
     let oldBody = func.body as ExprBlock
     for (el in oldBody.list) {
@@ -804,7 +892,7 @@ def private apply_edit_widget_or_container(var func : FunctionPtr; var errors : 
         fblk.finalList |> push(clone_expression(ef))
     }
     if (is_container) {
-        fblk.finalList |> push(qmacro(container_path_pop()))
+        fblk.finalList |> push(qmacro(imgui_boost_runtime::container_path_pop()))
     }
     func.body = fblk
     var inst = new EditExternalCallMacro(
@@ -867,7 +955,9 @@ class EditExternalCallMacro : AstCallMacro {
             return <- default<ExpressionPtr>
         }
         // Rewrite to positional: kind_name(ptr, "<idLit>", ...named args destructured).
-        var newCall = new ExprCall(at = expr.at, name := kind_name)
+        // Qualified with the [edit_widget] impl's home module to dodge collisions.
+        var newCall = new ExprCall(at = expr.at,
+                                   name := "{string(render_fn._module.name)}::{kind_name}")
         newCall.arguments |> push(clone_expression(expr.arguments[0]))
         newCall.arguments |> push(new ExprConstString(at = expr.at, value := idLit))
         for (i in range(1, length(expr.arguments))) {
