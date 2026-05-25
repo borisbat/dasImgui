@@ -15,26 +15,28 @@ require strings
 require math
 
 //! Built-in widgets defined via `[widget]` — the same mechanism users get.
-//! Each def constructs two short closures (serializer + dispatcher) and
-//! hands them to widget_finalize. Common per-frame fields (hex_id/bbox/
-//! hover/active/focus) are captured inside widget_finalize; per-kind state
-//! lives in the state struct alone.
+//! Each def hands ``(state_addr, ti)`` (the state's address + its runtime
+//! ``TypeInfo``) to ``widget_finalize``; common per-frame fields (hex_id/
+//! bbox/hover/active/focus) are captured inside widget_finalize; per-kind
+//! state lives in the state struct alone.
 //!
-//! Four private *_finalize helpers below collapse the repetitive
-//! lambda-construction + widget_finalize call shared across click /
-//! toggle / radio_int / pending-value widget families. Each widget def
-//! stays focused on the imgui call + per-frame state mutation. The
-//! `pending_value_finalize` helper is generic on the state struct and
-//! drives `from_JV` off `typedecl(state.pending_value)` — one body
-//! covers every Drag* / Slider* / Input* family without per-type
-//! duplication.
+//! HTTP dispatch goes through ``g_dispatchers`` keyed by ``(*ti).hash`` (the
+//! state struct's runtime type), populated by the ``[widget_dispatch]``
+//! defs paired with each state struct further down. One ``[widget_dispatch]``
+//! body covers every widget kind that shares that state — e.g. one
+//! ClickState dispatcher handles ``button`` / ``small_button`` /
+//! ``arrow_button`` / ``invisible_button`` / ``image_button``. No
+//! per-widget serializer or dispatcher lambda is emitted; snapshot reads
+//! route through ``sprint_json_at(state_addr, *ti)`` and set-actions
+//! through ``sscan_json_at(state_addr, *ti)``.
 
 // ===== Common finalize helpers =====
-
+//
 // Generic state-addr+ti plumbing for [widget]/[container] state structs.
 // Pull (state_addr, ti) out of a state-by-ref param exactly once, then route
 // to widget_finalize / container_finalize. The kind-specific action handlers
-// live in [widget_dispatch] defs near each state struct's call sites.
+// live in [widget_dispatch] defs near each state struct's call sites; HTTP
+// dispatch matches them by ti.hash via g_dispatchers in imgui_boost_runtime.
 
 def private finalize_state(widget_ident : string; kind : string;
                            var state : auto(ST); var entry : WidgetEntry) {

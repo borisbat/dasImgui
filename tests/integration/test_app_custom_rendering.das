@@ -25,13 +25,13 @@ def test_app_custom_rendering_smoke(t : T?) {
         t |> success(widget_exists(snap0, "CR_WIN/CR_TABS"),
                      "CR_WIN/CR_TABS tab_bar registers")
         let tab_prim = find_widget(snap0, "CR_WIN/CR_TABS/CR_TAB_PRIM")
-        t |> equal(string(tab_prim?["kind"] ?? ""), "tab_item",
+        t |> equal(tab_prim?["kind"] ?? "", "tab_item",
                    "CR_TAB_PRIM (default-active) renders as tab_item")
 
         // Context-menu popup is always installed (per the cpp port) but
         // open=false by default — confirms the popup container is wired.
         let ctx = find_widget(snap0, "CR_CV_CTX_MENU")
-        t |> equal(string(ctx?["kind"] ?? ""), "popup",
+        t |> equal(ctx?["kind"] ?? "", "popup",
                    "CR_CV_CTX_MENU registered as kind=popup")
         t |> equal(ctx?["payload"]?["open"] ?? true, false,
                    "context menu starts closed")

@@ -24,7 +24,7 @@ def test_app_small_auto_resize_smoke(t : T?) {
         var slider = find_widget(snap0, "SMALL_AUTO_WIN/SMALL_AUTO_SLIDER")
         t |> equal(slider?["kind"] ?? "", "slider_int",
                    "slider registers as kind=slider_int")
-        t |> equal(int(slider?["payload"]?["value"] ?? 0), 10,
+        t |> equal(slider?["payload"]?["value"] ?? 0, 10,
                    "slider initial value matches the init=10 seed")
 
         // Drive value to 5 and verify the new line count via the per-line

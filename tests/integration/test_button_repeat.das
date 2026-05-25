@@ -24,7 +24,7 @@ def test_button_repeat_smoke(t : T?) {
         // The repeat-vs-fire-once behavioral difference requires hold-time
         // input; record_button_repeat.das exercises that. Smoke gate is
         // just existence + initial click_count == 0.
-        let outside_clicks = int(widget_payload_field(snap, "MAIN_WIN/BTN_OUTSIDE", "click_count") ?? 0)
+        let outside_clicks = widget_payload_field(snap, "MAIN_WIN/BTN_OUTSIDE", "click_count") ?? 0
         t |> equal(outside_clicks, 0, "outside button has not been clicked yet")
     }
 }

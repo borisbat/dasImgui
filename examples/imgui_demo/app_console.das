@@ -121,7 +121,7 @@ def private exec_command(cmd : string) {
 // =============================================================================
 
 def private is_word_sep(c : int) : bool {
-    return c == int(' ') || c == int('\t') || c == int(',') || c == int(';')
+    return c == ' ' || c == '\t' || c == ',' || c == ';'
 }
 
 def private text_edit_callback(var data : ImGuiInputTextCallbackData) : int {
@@ -141,12 +141,9 @@ def private text_edit_callback(var data : ImGuiInputTextCallbackData) : int {
         let upper_prefix = to_upper(prefix)
         let plen = word_end - word_start
 
-        var candidates : array<string>
-        for (c in CONSOLE_COMMANDS) {
-            if (length(c) >= plen && to_upper(slice(c, 0, plen)) == upper_prefix) {
-                candidates |> push_clone(c)
-            }
-        }
+        var candidates <- [for (c in CONSOLE_COMMANDS);
+                               c;
+                               where length(c) >= plen && to_upper(slice(c, 0, plen)) == upper_prefix]
 
         if (empty(candidates)) {
             add_log("No match for \"{prefix}\"!")

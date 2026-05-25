@@ -81,7 +81,7 @@ def ShowExampleAppLog() {
             let words = fixed_array("Bumfuzzled", "Cattywampus", "Snickersnee",
                                     "Abibliophobia", "Absquatulate",
                                     "Nincompoop", "Pauciloquent")
-            for (n in range(5)) {
+            for (_n in range(5)) {
                 let category = categories[LOG_DEBUG_COUNTER % length(categories)]
                 let word = words[LOG_DEBUG_COUNTER % length(words)]
                 add_log("[{LOG_DEBUG_COUNTER}] [{category}] " +
@@ -134,7 +134,7 @@ def ShowExampleAppLog() {
                     // terms, so `PassFilter("")` returns true even though
                     // the filter is active — clipper path would then
                     // render lines the user explicitly excluded.)
-                    list_clipper(length(LOG_ITEMS)) <| $(start, end_) {
+                    list_clipper(length(LOG_ITEMS)) $(start, end_) {
                         for (i in range(start, end_)) {
                             text(LOG_ITEM_TEXT[i], (text = LOG_ITEMS[i]))
                         }

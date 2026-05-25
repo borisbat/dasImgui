@@ -690,6 +690,16 @@ struct WidgetMeta {
 
 var g_widgets : table<string; WidgetMeta>
 
+// Sentinel module_name for entries created lazily by `widgets_mark_seen` (the
+// [edit_widget] external-pointer path). Pre-registered entries from
+// `register_widget`/`register_widget_indexed`/`register_widget_str` carry the
+// caller's `compiling_module().name` — which is "" for main files (top-level
+// scripts with no `module X` decl) and non-empty for required modules. Lazy
+// entries get this sentinel instead so the snapshot freshness gate at
+// `widget_meta_jv`'s iteration loop can drop them after one frame absent
+// without affecting main-file pre-registered entries.
+let private LAZY_EDIT_WIDGET_MODULE = "<edit_widget>"
+
 // ===== Phase 2 reverse maps + coroutine runner =====
 //
 // `g_id_to_path` is a long-lived hex_id → path_key map populated by every
@@ -1034,7 +1044,7 @@ def public widget_finalize(widget_ident : string;
                            state_addr : void?;
                            ti : TypeInfo const?) {
     //! Bottom-of-body helper for ``[widget]`` macros: capture bbox/hover/active/focus, write (state_addr, ti) into ``g_widgets[path_key]``, and ``PopID``.
-    //! Snapshot reads via ``sprint_json_at(state_addr, *ti, …)``; HTTP dispatch resolves the per-kind handler from ``g_kind_dispatchers`` keyed by ``kind``. No per-widget lambdas required.
+    //! Snapshot reads via ``sprint_json_at(state_addr, *ti, …)``; HTTP dispatch resolves the handler from ``g_dispatchers`` keyed by ``(*ti).hash`` (the state struct's runtime type). No per-widget lambdas required.
     let path_key = widget_path_key(widget_ident)
     check_unique_render(path_key, kind)
     entry.kind = kind
@@ -1066,10 +1076,9 @@ def private widgets_mark_seen(bare_ident : string; path_key : string;
     // this is an idempotent overwrite of identical values; for [edit_widget]
     // external-pointer widgets (which never went through register_widget at
     // [init]) this is the only source of the meta — create it lazily on
-    // first render. The owning module is the one running the render path
-    // (compiling_module()-equivalent at runtime isn't available, so we tag
-    // edit_widget metas with kind alone; clear_module_widgets keeps working
-    // because pre-registered metas always carry module_name from register_widget).
+    // first render. Lazy entries get a sentinel module_name so the snapshot
+    // freshness gate can drop them after one frame absent without affecting
+    // pre-registered entries from top-level scripts (which carry module_name="").
     if (state_addr != null && ti != null) {
         if (key_exists(g_widgets, path_key)) {
             unsafe {
@@ -1080,6 +1089,7 @@ def private widgets_mark_seen(bare_ident : string; path_key : string;
         } else {
             unsafe {
                 g_widgets[path_key] <- WidgetMeta(
+                    module_name = LAZY_EDIT_WIDGET_MODULE,
                     kind = kind,
                     state_addr = state_addr,
                     ti = ti,
@@ -1109,16 +1119,17 @@ def public container_finalize(widget_ident : string;
     PopID()
 }
 
-// ===== L2/L3 dispatcher table — per-kind, addr-routed =====
+// ===== L2/L3 dispatcher table — per-state-struct-type, addr-routed =====
 //
-// One top-level function per widget kind, registered into ``g_kind_dispatchers``
-// at module init via the ``[widget_dispatch]`` annotation (imgui_boost.das).
-// At HTTP dispatch time, ``dispatch_or_err`` resolves the target path's meta
-// to ``(state_addr, kind)``, looks up the kind's dispatcher, and invokes it
-// with ``(state_addr, action, payload_json_string)``. No per-widget capture
-// frame, no ``from_JV<T>`` generic instantiation — the dispatcher casts
-// ``state_addr`` to its state-struct type and runs ``sscan_json`` on the
-// typed pending field for ``set`` actions.
+// One top-level function per state struct, registered into ``g_dispatchers``
+// at module init via the ``[widget_dispatch]`` annotation (imgui_boost.das),
+// keyed by the state's runtime ``TypeInfo.hash``. At HTTP dispatch time,
+// ``dispatch_or_err`` resolves the target path's meta to ``(state_addr, ti)``,
+// looks up ``g_dispatchers[(*ti).hash]``, and invokes the dispatcher with
+// ``(state_addr, action, payload_json_string)``. No per-widget capture frame,
+// no ``from_JV<T>`` generic instantiation — the dispatcher casts ``state_addr``
+// to its state-struct type and runs ``sscan_json`` on the typed pending field
+// for ``set`` actions.
 
 typedef KindDispatcher = function<(state_addr : void?; action : string; payload : string) : void>
 
@@ -1236,7 +1247,17 @@ def imgui_snapshot(input : JsonValue?) : JsonValue? {
         if (key_exists(g_registry, k)) {
             globals |> insert(k, widget_entry_jv(k, g_registry[k]))
         } else {
-            continue if (find(k, "[") >= 0 && meta.last_seen_frame < g_frame - 1)
+            // Freshness gate for entries clear_module_widgets can't reach on
+            // @live reload: indexed slots (path contains '[' — user-table key
+            // may have been erased) and lazy-created [edit_widget] entries
+            // (module_name == LAZY_EDIT_WIDGET_MODULE sentinel — never went
+            // through register_widget). Both self-expire after one frame
+            // absent so snapshot doesn't deref a state_addr left dangling by
+            // a heap reset. Pre-registered entries with module_name == ""
+            // (main-file top-level scripts) are safe — clear_module_widgets("")
+            // covers them on reload.
+            let needs_freshness = find(k, "[") >= 0 || meta.module_name == LAZY_EDIT_WIDGET_MODULE
+            continue if (needs_freshness && meta.last_seen_frame < g_frame - 1)
             globals |> insert(k, widget_meta_jv(k, meta))
         }
     }

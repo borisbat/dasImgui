@@ -355,10 +355,7 @@ def public expect_render(app : ImguiApp;
     let g = snap?["globals"]
     if (g != null && g is _object) {
         let obj & = unsafe(g as _object)
-        var key_list : array<string>
-        for (k in keys(obj)) {
-            key_list |> push(k)
-        }
+        let key_list <- [for (k in keys(obj)); k]
         keys_buf = "[" + join(key_list, ", ") + "]"
     }
     panic("expect_render({widget_ident}) timeout after {timeout_sec}s — widget never reported rendered:true.\nRegistered widgets: {keys_buf}")

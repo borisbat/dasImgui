@@ -27,8 +27,8 @@ def test_child_scroll_reenter_moves_scroll(t : T?) {
         t |> success(snap0 != null, "SCROLLY child renders")
         if (snap0 == null) return
         // SCROLLY.scroll.y starts at 0.0 — the child opens scrolled to top.
-        let y0 = (find_widget(snap0, "MAIN_WIN/SCROLLY")?["payload"]?["scroll"]?["y"] ?? 0.0lf)
-        t |> equal(double(y0), 0.0lf, "initial SCROLLY.scroll.y == 0")
+        let y0 : double = find_widget(snap0, "MAIN_WIN/SCROLLY")?["payload"]?["scroll"]?["y"] ?? 0.0lf
+        t |> equal(y0, 0.0lf, "initial SCROLLY.scroll.y == 0")
         // One click should fire child_scroll_reenter once and move scroll
         // by `delta = 8.0f` (per the feature file). Click several times to
         // get a clearly-non-zero observation that's robust to single-frame
@@ -40,7 +40,7 @@ def test_child_scroll_reenter_moves_scroll(t : T?) {
         var snap1 = snapshot(d)
         t |> success(snap1 != null, "post-click snapshot available")
         if (snap1 == null) return
-        let y1 : double = double(find_widget(snap1, "MAIN_WIN/SCROLLY")?["payload"]?["scroll"]?["y"] ?? 0.0lf)
+        let y1 : double = find_widget(snap1, "MAIN_WIN/SCROLLY")?["payload"]?["scroll"]?["y"] ?? 0.0lf
         t |> success(y1 > 0.0lf,
                      "SCROLLY.scroll.y moved (y={y1}); wrapper's PushID(IDENT) reentered the same window")
     }

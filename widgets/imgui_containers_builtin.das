@@ -33,17 +33,19 @@ require math
 // renderer consumes them at the top of the next frame.
 //
 // `stateless_finalize` — for containers whose dispatch surface is empty
-// (group, menu_bar, menu, child, tab_bar, tooltip, item_tooltip). The
-// dispatcher lambda is a no-op; the serializer still reflects state for
-// snapshot.
+// (group, menu_bar, menu, child, tab_bar, tooltip, item_tooltip). No
+// ``[widget_dispatch]`` is registered for those state structs; ``dispatch_or_err``
+// reports "no dispatcher for ti.hash …" if a stray action ever targets them.
+// The serializer still reflects state for snapshot.
 //
 // `combo_select` / `list_box` reuse ComboState / ListBoxState (a
-// `pending_value : int` shape) and inline their own dispatcher because the
-// shared `pending_value_finalize` helper is private to imgui_widgets_builtin.
+// `pending_value : int` shape) and share the per-state-struct dispatcher
+// from imgui_widgets_builtin (one ``[widget_dispatch]`` per state type
+// covers every kind that uses that state).
 
 def private open_close_finalize(widget_ident : string; kind : string; var state : auto(ST);
                                 bbox : float4 = float4(0.0f, 0.0f, 0.0f, 0.0f)) {
-    //! Container finalize for state with ``pending_open`` / ``pending_close``. Routes the open/close [widget_dispatch] handlers (registered per kind below) through ``g_kind_dispatchers``.
+    //! Container finalize for state with ``pending_open`` / ``pending_close``. Dispatch routes through ``g_dispatchers`` keyed by ``ST``'s ``TypeInfo.hash`` to the ``[widget_dispatch] def _(var state : ST; …)`` body below.
     var entry : WidgetEntry
     entry.bbox = bbox
     unsafe {
@@ -55,7 +57,7 @@ def private open_close_finalize(widget_ident : string; kind : string; var state 
 
 def public stateless_finalize(widget_ident : string; kind : string; var state : auto(ST);
                               bbox : float4 = float4(0.0f, 0.0f, 0.0f, 0.0f)) {
-    //! Container finalize for stateless containers (no dispatcher actions). Snapshot rail still reflects state for telemetry; dispatch is a registered no-op per kind below.
+    //! Container finalize for stateless containers (no dispatcher actions). Snapshot rail still reflects state for telemetry; no ``[widget_dispatch]`` is registered for ``ST``, so ``g_dispatchers[(*ti).hash]`` is absent and dispatch_or_err reports "no dispatcher for ti.hash …" if a stray action ever targets one.
     var entry : WidgetEntry
     entry.bbox = bbox
     unsafe {

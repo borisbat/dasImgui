@@ -145,7 +145,7 @@ def public apply_daslang_theme(var style : ImGuiStyle) {
 def public apply_daslang_theme() {
     //! Convenience overload — applies the theme to ``ImGui::GetStyle()``.
     //! Call once from your script's ``init()`` after ``live_imgui_init``.
-    apply_daslang_theme(unsafe(GetStyle()))
+    apply_daslang_theme(GetStyle())
 }
 
 // ===== Font =====

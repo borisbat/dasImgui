@@ -29,9 +29,9 @@ def count_primitives_under(var snap : JsonValue?; prefix : string) : int {
     var globals = snap?["globals"]
     return n if (globals == null || !(globals.value is _object))
     for (k, v in keys(globals.value as _object), values(globals.value as _object)) {
-        let kind = string(v?["kind"] ?? "")
+        let kind = v?["kind"] ?? ""
         if (length(kind) > 4 && slice(kind, 0, 4) == "add_") {
-            if (length(prefix) == 0) {
+            if (empty(prefix)) {
                 n++ if (find(k, "/") == -1)
             } else {
                 n++ if (length(k) > length(prefix) && slice(k, 0, length(prefix)) == prefix)

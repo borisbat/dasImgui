@@ -72,7 +72,7 @@ def ShowExampleAppLayout() : bool {
             }
         }
         // Left pane — resizable child with 100 selectable rows.
-        let left_flags = int(ImGuiChildFlags.Border) | int(ImGuiChildFlags.ResizeX)
+        let left_flags = int(ImGuiChildFlags.Border | ImGuiChildFlags.ResizeX)
         child(SMALL_LAYOUT_LEFT_CHILD,
               (text = "left pane", size = float2(150.0f, 0.0f),
                child_flags = unsafe(reinterpret<ImGuiChildFlags>(left_flags)),
@@ -167,9 +167,9 @@ def private ShowPlaceholderObject(prefix : string; uid : int) {
                         table_next_row()
                         table_set_column_index(0)
                         align_text_to_frame_padding(SMALL_PROPED_ATFP_FIELD)
-                        let leaf_flags = (int(ImGuiTreeNodeFlags.Leaf) |
-                                          int(ImGuiTreeNodeFlags.NoTreePushOnOpen) |
-                                          int(ImGuiTreeNodeFlags.Bullet))
+                        let leaf_flags = int(ImGuiTreeNodeFlags.Leaf |
+                                              ImGuiTreeNodeFlags.NoTreePushOnOpen |
+                                              ImGuiTreeNodeFlags.Bullet)
                         tree_node_ex(SMALL_PROPED_FIELD[i],
                             (text = "Field_{i}",
                              flags = unsafe(reinterpret<ImGuiTreeNodeFlags>(leaf_flags))))
@@ -207,9 +207,9 @@ def ShowExampleAppPropertyEditor() : bool {
             }
         }
         with_style((ImGuiStyleVar.FramePadding, float2(2.0f, 2.0f))) {
-            let tflags = (int(ImGuiTableFlags.BordersOuter) |
-                          int(ImGuiTableFlags.Resizable) |
-                          int(ImGuiTableFlags.ScrollY))
+            let tflags = int(ImGuiTableFlags.BordersOuter |
+                              ImGuiTableFlags.Resizable |
+                              ImGuiTableFlags.ScrollY)
             data_table(SMALL_PROPED_TABLE,
                        (text = "##split", columns = 2,
                         flags = unsafe(reinterpret<ImGuiTableFlags>(tflags)),
@@ -297,7 +297,7 @@ def ShowExampleAppLongText() : bool {
             } elif (SMALL_LONG_TEST_TYPE == 1) {
                 // Clipper-cull. Per-line content is identical (matches cpp).
                 with_style((ImGuiStyleVar.ItemSpacing, float2(0.0f, 0.0f))) {
-                    list_clipper(lines_n) <| $(start, end_) {
+                    list_clipper(lines_n) $(start, end_) {
                         for (i in range(start, end_)) {
                             text(SMALL_LONG_LINES_TEXT[i],
                                 (text = SMALL_LONG_LINES_BUF[i]))
@@ -380,7 +380,7 @@ def small_constr_init() {
                                       float(int(data.DesiredSize.x / aspect_ratio)))
         })
     SMALL_CONSTR_SQUARE_CN <- ImGuiSizeConstraints(
-        @ (var data : ImGuiSizeCallbackData) : void {
+        @(var data : ImGuiSizeCallbackData) : void {
             let s = max(data.DesiredSize.x, data.DesiredSize.y)
             data.DesiredSize = float2(s, s)
         })
@@ -489,12 +489,12 @@ var private SMALL_OVERLAY_LOCATION = 0  // 0..3 = corner, -1 = custom, -2 = cent
 
 def ShowExampleAppSimpleOverlay() : bool {
     let PAD = 10.0f
-    var window_flags = (int(ImGuiWindowFlags.NoDecoration) |
-                        int(ImGuiWindowFlags.NoDocking) |
-                        int(ImGuiWindowFlags.AlwaysAutoResize) |
-                        int(ImGuiWindowFlags.NoSavedSettings) |
-                        int(ImGuiWindowFlags.NoFocusOnAppearing) |
-                        int(ImGuiWindowFlags.NoNav))
+    var window_flags = int(ImGuiWindowFlags.NoDecoration |
+                            ImGuiWindowFlags.NoDocking |
+                            ImGuiWindowFlags.AlwaysAutoResize |
+                            ImGuiWindowFlags.NoSavedSettings |
+                            ImGuiWindowFlags.NoFocusOnAppearing |
+                            ImGuiWindowFlags.NoNav)
     let viewport = GetMainViewport()
     if (SMALL_OVERLAY_LOCATION >= 0) {
         let work_pos = viewport.WorkPos
@@ -510,7 +510,7 @@ def ShowExampleAppSimpleOverlay() : bool {
         SetNextWindowViewport(viewport.ID)
         window_flags |= int(ImGuiWindowFlags.NoMove)
     } elif (SMALL_OVERLAY_LOCATION == -2) {
-        let center = viewport_center(unsafe(*viewport))
+        let center = viewport_center(unsafe(*viewport))   // nolint:STYLE024  ptr-deref needs unsafe (rule misses ExprPtr2Ref)
         SetNextWindowPos(center, ImGuiCond.Always, float2(0.5f, 0.5f))
         SetNextWindowViewport(viewport.ID)
         window_flags |= int(ImGuiWindowFlags.NoMove)
@@ -571,9 +571,9 @@ def ShowExampleAppSimpleOverlay() : bool {
 // =============================================================================
 
 var private SMALL_FULL_USE_WORK_AREA = true
-var private SMALL_FULL_FLAGS = (int(ImGuiWindowFlags.NoDecoration) |
-                                int(ImGuiWindowFlags.NoMove) |
-                                int(ImGuiWindowFlags.NoSavedSettings))
+var private SMALL_FULL_FLAGS = int(ImGuiWindowFlags.NoDecoration |
+                                    ImGuiWindowFlags.NoMove |
+                                    ImGuiWindowFlags.NoSavedSettings)
 
 def ShowExampleAppFullscreen() : bool {
     let viewport = GetMainViewport()
@@ -660,7 +660,7 @@ def ShowExampleAppWindowTitles() {
     let frame = GetFrameCount()
     let spinner = "|/-\\"
     let si = (frame / 15) % 4
-    let title = "Animated title {character_at(spinner, si)} {frame}###AnimatedTitle"
+    let title = "Animated title {character_at(spinner, si)} {frame}###AnimatedTitle"   // nolint:PERF003  4-char literal, once per frame
     SetNextWindowPos(float2(base_pos.x + 100.0f, base_pos.y + 300.0f),
                      ImGuiCond.FirstUseEver, float2(0.0f, 0.0f))
     window(SMALL_TITLES_W3, (text = title, closable = false,

@@ -1,0 +1,112 @@
+#!/usr/bin/env bash
+# pre-push: mirror CI's formatter + lint on changed .das files.
+# Cross-platform: runs under Git Bash on Windows, bash on Linux/macOS.
+#
+# Enable per-clone:
+#   git config core.hooksPath .githooks
+# Skip once:
+#   git push --no-verify
+# Override daslang binary path:
+#   DASLANG=/path/to/daslang git push
+#
+# dasImgui is a module, not a daslang checkout — the daslang binary lives
+# in the user's daslang clone. The hook probes sibling layouts; set $DASLANG
+# (or $DASLANG_SRC for the source tree) to override.
+
+set -eu
+
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
+
+# Resolve daslang binary — sibling daScript checkout, then $PATH.
+resolve_daslang() {
+    if [ -n "${DASLANG:-}" ] && [ -x "$DASLANG" ]; then
+        echo "$DASLANG"; return
+    fi
+    for p in \
+        "$ROOT/../daScript/bin/Release/daslang.exe" \
+        "$ROOT/../daScript/bin/Debug/daslang.exe" \
+        "$ROOT/../daScript/bin/daslang" \
+        "$ROOT/../daScript/bin/daslang.exe" \
+        "$ROOT/../daScript/build/daslang" \
+        "$ROOT/../daScript/build/bin/daslang" \
+        "$ROOT/../daslang/bin/Release/daslang.exe" \
+        "$ROOT/../daslang/bin/daslang"
+    do
+        [ -x "$p" ] && { echo "$p"; return; }
+    done
+    local from_path
+    from_path="$(command -v daslang 2>/dev/null || true)"
+    [ -n "$from_path" ] && { echo "$from_path"; return; }
+    return 1
+}
+
+DASLANG="$(resolve_daslang || true)"
+if [ -z "$DASLANG" ]; then
+    echo "pre-push: daslang binary not found" >&2
+    echo "         set DASLANG=/path/to/daslang(.exe) or build a sibling daScript checkout" >&2
+    exit 1
+fi
+
+# Resolve daslang source root (need utils/lint/main.das + utils/das-fmt/dasfmt.das).
+DASLANG_SRC="${DASLANG_SRC:-}"
+if [ -z "$DASLANG_SRC" ]; then
+    bindir="$(cd "$(dirname "$DASLANG")" && pwd)"
+    while [ "$bindir" != "/" ] && [ ! -f "$bindir/utils/lint/main.das" ]; do
+        bindir="$(dirname "$bindir")"
+    done
+    [ -f "$bindir/utils/lint/main.das" ] && DASLANG_SRC="$bindir"
+fi
+if [ -z "$DASLANG_SRC" ] || [ ! -f "$DASLANG_SRC/utils/lint/main.das" ]; then
+    echo "pre-push: cannot locate daslang source tree (utils/lint/main.das)" >&2
+    echo "         set DASLANG_SRC=/path/to/daScript to override" >&2
+    exit 1
+fi
+
+echo "pre-push: using $DASLANG"
+echo "pre-push: daslang source: $DASLANG_SRC"
+
+# Formatter: whole tree, verify-only (CI parity).
+echo "pre-push: formatter --verify ..."
+"$DASLANG" "$DASLANG_SRC/utils/das-fmt/dasfmt.das" -- --path "$ROOT" --verify
+
+# Lint: only .das files changed in the pushed range vs remote tip
+# (mirrors CI's `git diff origin/<base>...HEAD`).
+ZERO40="0000000000000000000000000000000000000000"
+ZERO64="0000000000000000000000000000000000000000000000000000000000000000"
+RANGES=()
+while read -r LOCAL_REF LOCAL_SHA REMOTE_REF REMOTE_SHA; do
+    case "$LOCAL_SHA" in "$ZERO40"|"$ZERO64") continue;; esac  # branch delete
+    case "$REMOTE_SHA" in
+        "$ZERO40"|"$ZERO64")
+            BASE="$(git merge-base "$LOCAL_SHA" origin/master 2>/dev/null || true)"
+            [ -n "$BASE" ] && RANGES+=("$BASE..$LOCAL_SHA")
+            ;;
+        *)
+            RANGES+=("$REMOTE_SHA..$LOCAL_SHA")
+            ;;
+    esac
+done
+
+if [ ${#RANGES[@]} -eq 0 ]; then
+    echo "pre-push: no ranges (deleting or empty); skipping lint"
+    exit 0
+fi
+
+# Portable read-into-array (mapfile is bash 4+; macOS default ships bash 3.2).
+CHANGED=()
+while IFS= read -r line; do
+    CHANGED+=("$line")
+done < <(git diff --name-only --diff-filter=AM "${RANGES[@]}" -- '*.das' | sort -u)
+
+if [ ${#CHANGED[@]} -eq 0 ]; then
+    echo "pre-push: no .das files changed; skipping lint"
+    exit 0
+fi
+
+echo "pre-push: linting ${#CHANGED[@]} .das file(s)"
+# `-load_module $ROOT` lets the lint resolve `require imgui/*` for dasImgui's
+# own modules. Parallel workers don't propagate `-load_module` (worker argv
+# starts at $0 = daslang), so we stay serial here. CI is also serial; this
+# is a few seconds per file in practice.
+"$DASLANG" -load_module "$ROOT" "$DASLANG_SRC/utils/lint/main.das" -- "${CHANGED[@]}" --quiet -j 1

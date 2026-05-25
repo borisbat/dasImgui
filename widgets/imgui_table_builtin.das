@@ -187,7 +187,7 @@ def public sort_specs(blk : block<(specs : array<TableSortSpec>) : void>) : bool
             let s = GetSortSpec(p, i)
             arr |> push(TableSortSpec(
                 column_index = int(s.ColumnIndex),
-                column_user_id = uint(s.ColumnUserID),
+                column_user_id = s.ColumnUserID,
                 sort_order = int(s.SortOrder),
                 sort_direction = GetColumnSortDirection(s)))
         }

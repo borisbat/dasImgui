@@ -273,7 +273,7 @@ def private HorizontalScrollingSection() {
             columns_open(10)
             // Cull the 2000 virtual rows to the visible region via the
             // list_clipper boost helper (wraps ImGuiListClipper Begin/Step/End).
-            list_clipper(2000) <| $(start, end_) {
+            list_clipper(2000) $(start, end_) {
                 for (i in range(start, end_)) {
                     for (j in range(10)) {
                         text("Line {i} Column {j}...")
