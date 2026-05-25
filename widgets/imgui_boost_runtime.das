@@ -1101,7 +1101,7 @@ def public container_finalize(widget_ident : string;
                               var entry : WidgetEntry;
                               var serializer : lambda<() : JsonValue?>;
                               var dispatcher : lambda<(action : string; payload : JsonValue?) : void>) {
-    //! Container counterpart of :ref:`widget_finalize <function-imgui_boost_runtime_widget_finalize>`; install the per-container serializer + dispatcher at the cached container path key.
+    //! Container counterpart of ``widget_finalize`` (sibling above); install the per-container serializer + dispatcher at the cached container path key.
     let path_key = container_path_key()
     check_unique_render(path_key, kind)
     entry.kind = kind
