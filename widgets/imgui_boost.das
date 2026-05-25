@@ -949,3 +949,93 @@ class EditExternalCallMacro : AstCallMacro {
         return <- newCall
     }
 }
+
+// ===== [widget_dispatch] — per-state-struct dispatcher registration =====
+//
+// Applied to a top-level function with signature
+//   def <name>(var state : T; action : string; payload : string) { ... }
+// keyed by the FIRST PARAMETER'S STRUCT TYPE (T), not by the function name.
+// One ``[widget_dispatch]`` per state struct covers every widget kind whose
+// state is that struct — e.g. the single ClickState dispatcher fires for
+// ``button``/``small_button``/``arrow_button``/.... Macro emits:
+//   - a type-erased wrapper that casts ``state_addr : void?`` to ``T?`` and
+//     delegates to the user body, and
+//   - an init registration via
+//       imgui_boost_runtime::register_widget_dispatch_for_type(
+//           reinterpret<TypeInfo const?>(typeinfo rtti_typeinfo(type<T>)),
+//           @@<wrapper>)
+//     pushed into the shared per-module ``register`imgui`widget_kinds`` init
+//     block (same setup_call_list pattern as [widget]'s register_widget at L518).
+//
+// External widget kinds defined in user modules use this same annotation. The
+// function NAME is irrelevant — what matters is the first parameter's struct
+// type. Built-in dispatchers live in ``imgui_widgets_builtin.das`` /
+// ``imgui_containers_builtin.das`` / ``imgui_docking_builtin.das`` /
+// ``imgui_layout_builtin.das`` alongside the existing ``_finalize`` helpers.
+
+[function_macro(name = "widget_dispatch")]
+class WidgetDispatchFunctionMacro : AstFunctionAnnotation {
+    //! ``[widget_dispatch]`` annotation — registers a per-state-struct dispatcher for HTTP set/click/open/close actions. Required signature: ``def <name>(var state : T; action : string; payload : string)``. Keyed by ``T`` (first parameter's struct type); the function name is irrelevant. One body per state struct covers every kind whose state is ``T``. Renames the user function to private ``__dispatch_body_<T>`` (avoids collision with same-named ``[widget]`` defs), emits a type-erased wrapper ``__dispatch_wrap_<T>``, and pushes an init call to ``register_widget_dispatch_for_type`` so ``dispatch_or_err`` resolves via ``meta.ti.hash`` at runtime.
+    def override apply(var func : FunctionPtr; var group : ModuleGroup;
+                       args : AnnotationArgumentList; var errors : das_string) : bool {
+        if (length(func.arguments) != 3) {
+            errors := "[widget_dispatch] requires exactly 3 parameters: (var state : T; action : string; payload : string)"
+            return false
+        }
+        let stateArg = func.arguments[0]
+        if (stateArg._type == null || stateArg._type.structType == null) {
+            errors := "[widget_dispatch] first parameter must be a struct (state)"
+            return false
+        }
+        let actionArg = func.arguments[1]
+        if (actionArg._type == null || actionArg._type.baseType != Type.tString) {
+            errors := "[widget_dispatch] second parameter must be `action : string`"
+            return false
+        }
+        let payloadArg = func.arguments[2]
+        if (payloadArg._type == null || payloadArg._type.baseType != Type.tString) {
+            errors := "[widget_dispatch] third parameter must be `payload : string`"
+            return false
+        }
+        // Key the dispatcher by the state struct's name (not the function
+        // name). This collapses N kinds sharing a state struct down to one
+        // body — and the macro can be re-applied to multiple bodies for the
+        // same struct (last wins, with a setup_call_list dedup keeping the
+        // init block idempotent).
+        let structName = string(stateArg._type.structType.name)
+        func.name := "__dispatch_body_{structName}"
+        func.flags.generated = true
+        func.flags.privateFunction = true
+        let mod = compiling_module()
+        let wrapperName = "__dispatch_wrap_{structName}"
+        let bodyName = "__dispatch_body_{structName}"
+        if (find_unique_function(mod, wrapperName, true) == null) {
+            // Type-erased wrapper. Casts addr to ``T -const?`` and delegates
+            // to the renamed user body. One wrapper per state struct;
+            // registered against the struct's ``TypeInfo`` hash via the
+            // init block below.
+            var wrapper = qmacro_function(wrapperName) $(state_addr : void?; action : string; payload : string) {
+                unsafe {
+                    var s & = *reinterpret<$t(stateArg._type) -const?>(state_addr)
+                    $c(bodyName)(s, action, payload)
+                }
+            }
+            wrapper.flags.generated = true
+            wrapper.flags.privateFunction = true
+            wrapper.body |> force_at(func.at)
+            mod |> add_function(wrapper)
+        }
+        // Push init registration into the shared module init block. Pass the
+        // state struct's TypeInfo* at registration time; the runtime reads
+        // ``ti.hash`` and stores under that key in ``g_dispatchers``.
+        var reg <- setup_call_list("register`imgui`widget_kinds", func.at, true, true)
+        let wrapperLit = wrapperName
+        var typeForTI = clone_type(stateArg._type)
+        reg.list |> push(qmacro(
+            imgui_boost_runtime::register_widget_dispatch_for_type(
+                unsafe(reinterpret<TypeInfo const?>(typeinfo rtti_typeinfo(type<$t(typeForTI)>))),
+                @@$c(wrapperLit))
+        ))
+        return true
+    }
+}

@@ -635,15 +635,20 @@ def private resolve_meta_addr(meta : WidgetMeta) : void? {
 }
 
 def private state_payload_jv(state_addr : void?; ti : TypeInfo const?) : JsonValue? {
-    //! Build the per-widget state JSON payload via ``sprint_json_at`` + ``read_json``. Returns ``null`` when either ``state_addr`` or ``ti`` is null (erased indexed slot / unregistered kind).
+    //! Build the per-widget state JSON payload. Always routes through ``sprint_json_at`` (the C++ debug walker). For non-Structure types (bool / scalar / vector pointee — e.g. ``edit_*`` rails), wraps the raw output in a ``{"value": ...}`` envelope to match the historic shape; for structures the walker output is used as-is. ``from_JV<vecN>`` accepts both the array form ``[x,y,z]`` (which the walker emits) and the object form ``{x,y,z}``, so callers don't need a per-kind serializer to massage the wire shape. Returns ``null`` when ``state_addr`` or ``ti`` is missing.
     return null if (state_addr == null || ti == null)
     var err : string
-    return read_json(sprint_json_at(state_addr, *ti, false), err)
+    let raw = sprint_json_at(state_addr, *ti, false)
+    return read_json("\{\"value\":{raw}\}", err) if ((*ti).basicType != Type.tStructure)
+    return read_json(raw, err)
 }
 
 def private widget_entry_jv(ident : string; var entry : WidgetEntry) : JsonValue? {
-    if (key_exists(g_serializers, ident)) {
-        entry.payload = invoke(g_serializers[ident])
+    // Snapshot blob for a widget rendered this frame. Reads state via
+    // (state_addr, ti) from g_widgets[ident] through state_payload_jv.
+    let meta = unsafe(g_widgets?[ident])
+    if (meta != null) {
+        entry.payload = state_payload_jv(resolve_meta_addr(*meta), meta.ti)
     }
     return JV(entry)
 }
@@ -870,47 +875,23 @@ def public register_focusable(widget_ident : string) {
 }
 
 def public pending_value_container_finalize(widget_ident : string; kind : string;
-                                            var state : auto) {
-    //! Container-side install of the ``pending_value`` dispatcher (``imgui_set``); used by layout containers like ``split_h`` / ``dock_left``.
-    let path = container_path_key()
+                                            var state : auto(ST)) {
+    //! Container-side finalize for state structs with ``pending_value``/``has_pending``. Writes (addr(state), TypeInfo of ST) into ``g_widgets``; per-kind dispatcher routes ``set`` actions via ``[widget_dispatch]`` or a manual ``register_widget_kind`` entry.
     var entry : WidgetEntry
     unsafe {
-        let ser <- @ capture(= path) () : JsonValue ? {
-            return state_jv(path, type<typedecl(state)>)
-        }
-        let disp <- @ capture(= path) (action : string; payload : JsonValue ?) {
-            with_state(path, type<typedecl(state)>) $(var s) {
-                if (action == "set") {
-                    s.pending_value = from_JV(payload?["value"],
-                                              type<typedecl(s.pending_value)>,
-                                              default<typedecl(s.pending_value)>)
-                    s.has_pending = true
-                }
-            }
-        }
-        container_finalize(widget_ident, kind, entry, ser, disp)
+        container_finalize(widget_ident, kind, entry,
+                           addr(state),
+                           reinterpret<TypeInfo const?>(typeinfo rtti_typeinfo(type<ST>)))
     }
 }
 
-def public pending_value_finalize(widget_ident : string; kind : string; var state : auto) {
-    //! Generic serializer + ``imgui_set`` dispatcher install for any state struct with ``has_pending``/``pending_value``/``changed``; covers Drag/Slider/Input-numeric/Color/Combo/ListBox.
-    let path = widget_path_key(widget_ident)
+def public pending_value_finalize(widget_ident : string; kind : string; var state : auto(ST)) {
+    //! Generic finalize for any state struct with ``pending_value``/``has_pending`` (Drag/Slider/Input-numeric/Color/Combo/ListBox). Writes (addr(state), TypeInfo of ST) into ``g_widgets``; per-kind dispatcher is registered via ``[widget_dispatch]`` and routes the ``set`` action through ``sscan_json`` on the typed ``state.pending_value``.
     var entry : WidgetEntry
     unsafe {
-        let ser <- @ capture(= path) () : JsonValue ? {
-            return state_jv(path, type<typedecl(state)>)
-        }
-        let disp <- @ capture(= path) (action : string; payload : JsonValue ?) {
-            with_state(path, type<typedecl(state)>) $(var s) {
-                if (action == "set") {
-                    s.pending_value = from_JV(payload?["value"],
-                                              type<typedecl(s.pending_value)>,
-                                              default<typedecl(s.pending_value)>)
-                    s.has_pending = true
-                }
-            }
-        }
-        widget_finalize(widget_ident, kind, entry, ser, disp)
+        widget_finalize(widget_ident, kind, entry,
+                        addr(state),
+                        reinterpret<TypeInfo const?>(typeinfo rtti_typeinfo(type<ST>)))
     }
     register_focusable(widget_ident)
 }
@@ -1027,9 +1008,6 @@ def public with_state(path : string; t : type<auto(T)>;
     }
 }
 
-var private g_serializers : table<string; lambda<() : JsonValue?>>
-var private g_dispatcher_seen : table<string; bool>
-
 // Per-frame "this path rendered already" set. Each path_key may be
 // finalized exactly once between begin_frame()/end_of_frame() — collision
 // means a single-global widget got rendered twice in the same frame
@@ -1053,9 +1031,10 @@ def private check_unique_render(path_key : string; kind : string) {
 def public widget_finalize(widget_ident : string;
                            kind : string;
                            var entry : WidgetEntry;
-                           var serializer : lambda<() : JsonValue?>;
-                           var dispatcher : lambda<(action : string; payload : JsonValue?) : void>) {
-    //! Bottom-of-body helper for ``[widget]`` macros: capture bbox/hover/active/focus, install the per-widget serializer + dispatcher, and ``PopID``.
+                           state_addr : void?;
+                           ti : TypeInfo const?) {
+    //! Bottom-of-body helper for ``[widget]`` macros: capture bbox/hover/active/focus, write (state_addr, ti) into ``g_widgets[path_key]``, and ``PopID``.
+    //! Snapshot reads via ``sprint_json_at(state_addr, *ti, …)``; HTTP dispatch resolves the per-kind handler from ``g_kind_dispatchers`` keyed by ``kind``. No per-widget lambdas required.
     let path_key = widget_path_key(widget_ident)
     check_unique_render(path_key, kind)
     entry.kind = kind
@@ -1068,27 +1047,45 @@ def public widget_finalize(widget_ident : string;
     entry.focus = IsItemFocused()
     g_id_to_path[entry.hex_id] = path_key
     g_id_to_bbox[entry.hex_id] = entry.bbox
-    unsafe {
-        g_serializers[path_key] <- serializer
-    }
-    if (!key_exists(g_dispatcher_seen, path_key)) {
-        unsafe {
-            g_dispatchers[path_key] <- dispatcher
-        }
-        g_dispatcher_seen[path_key] = true
-    }
     g_registry[path_key] <- entry
-    widgets_mark_seen(widget_ident, path_key)
+    widgets_mark_seen(widget_ident, path_key, kind, state_addr, ti)
     PopID()
 }
 
-def private widgets_mark_seen(bare_ident : string; path_key : string) {
+def private widgets_mark_seen(bare_ident : string; path_key : string;
+                              kind : string; state_addr : void?; ti : TypeInfo const?) {
     // First render: migrate the bare-ident entry to its container-aware path_key. Subsequent renders just bump last_seen_frame.
     if (bare_ident != path_key && key_exists(g_widgets, bare_ident)) {
         var moved <- g_widgets[bare_ident]
         g_widgets |> erase(bare_ident)
         unsafe {
             g_widgets[path_key] <- moved
+        }
+    }
+    // Refresh (state_addr, ti) every frame. For pre-registered [widget] paths
+    // this is an idempotent overwrite of identical values; for [edit_widget]
+    // external-pointer widgets (which never went through register_widget at
+    // [init]) this is the only source of the meta — create it lazily on
+    // first render. The owning module is the one running the render path
+    // (compiling_module()-equivalent at runtime isn't available, so we tag
+    // edit_widget metas with kind alone; clear_module_widgets keeps working
+    // because pre-registered metas always carry module_name from register_widget).
+    if (state_addr != null && ti != null) {
+        if (key_exists(g_widgets, path_key)) {
+            unsafe {
+                var meta & = g_widgets[path_key]
+                meta.state_addr = state_addr
+                meta.ti = ti
+            }
+        } else {
+            unsafe {
+                g_widgets[path_key] <- WidgetMeta(
+                    kind = kind,
+                    state_addr = state_addr,
+                    ti = ti,
+                    last_seen_frame = -1
+                )
+            }
         }
     }
     if (key_exists(g_widgets, path_key)) {
@@ -1099,36 +1096,45 @@ def private widgets_mark_seen(bare_ident : string; path_key : string) {
 def public container_finalize(widget_ident : string;
                               kind : string;
                               var entry : WidgetEntry;
-                              var serializer : lambda<() : JsonValue?>;
-                              var dispatcher : lambda<(action : string; payload : JsonValue?) : void>) {
-    //! Container counterpart of ``widget_finalize`` (sibling above); install the per-container serializer + dispatcher at the cached container path key.
+                              state_addr : void?;
+                              ti : TypeInfo const?) {
+    //! Container counterpart of ``widget_finalize`` (sibling above); writes ``(state_addr, ti)`` into ``g_widgets`` at the cached container path key.
     let path_key = container_path_key()
     check_unique_render(path_key, kind)
     entry.kind = kind
     entry.hex_id = GetID(widget_ident)
     g_id_to_path[entry.hex_id] = path_key
-    unsafe {
-        g_serializers[path_key] <- serializer
-    }
-    if (!key_exists(g_dispatcher_seen, path_key)) {
-        unsafe {
-            g_dispatchers[path_key] <- dispatcher
-        }
-        g_dispatcher_seen[path_key] = true
-    }
     g_registry[path_key] <- entry
-    widgets_mark_seen(widget_ident, path_key)
+    widgets_mark_seen(widget_ident, path_key, kind, state_addr, ti)
     PopID()
 }
 
-// ===== L2/L3 dispatcher table =====
+// ===== L2/L3 dispatcher table — per-kind, addr-routed =====
 //
-// One closure per registered widget. The closure switches on `action`
-// ("click", "set", "open", "close") and applies the payload to the
-// captured state global. Lazy first-frame registration via widget_finalize
-// above keeps the boost's macro layer free of per-kind init emission.
+// One top-level function per widget kind, registered into ``g_kind_dispatchers``
+// at module init via the ``[widget_dispatch]`` annotation (imgui_boost.das).
+// At HTTP dispatch time, ``dispatch_or_err`` resolves the target path's meta
+// to ``(state_addr, kind)``, looks up the kind's dispatcher, and invokes it
+// with ``(state_addr, action, payload_json_string)``. No per-widget capture
+// frame, no ``from_JV<T>`` generic instantiation — the dispatcher casts
+// ``state_addr`` to its state-struct type and runs ``sscan_json`` on the
+// typed pending field for ``set`` actions.
 
-var private g_dispatchers : table<string; lambda<(action : string; payload : JsonValue?) : void>>
+typedef KindDispatcher = function<(state_addr : void?; action : string; payload : string) : void>
+
+//! Dispatch is keyed by the state's runtime ``TypeInfo.hash`` — one dispatcher
+//! per state-struct type covers every widget kind that uses that struct (e.g.
+//! the single ClickState dispatcher fires for ``button``/``small_button``/
+//! ``arrow_button``/...). Non-Structure ti (scalar pointee from ``[edit_widget]``)
+//! that don't have a registered dispatcher fall back to the generic
+//! ``sscan_json_at(state_addr, *ti)`` write-through in ``dispatch_or_err``.
+var private g_dispatchers : table<uint64; KindDispatcher>
+
+def public register_widget_dispatch_for_type(ti : TypeInfo const?; dispatcher : KindDispatcher) {
+    //! Register a dispatcher for every widget whose state has this ``TypeInfo``. Emitted by the ``[widget_dispatch]`` annotation. The user-facing function name is irrelevant — what matters is the first parameter's struct type.
+    return if (ti == null)
+    g_dispatchers[(*ti).hash] = dispatcher
+}
 
 // ===== Phase 2 — Result wire format + per-command await =====
 //
@@ -1256,7 +1262,7 @@ def private classify_target(target : string) : tuple<int; string> {
         if (key_exists(g_id_to_path, hid)) return (2, g_id_to_path[hid])
         return (1, target)
     }
-    if (key_exists(g_dispatchers, target)) return (2, target)
+    if (key_exists(g_widgets, target)) return (2, target)
     return (0, target)
 }
 
@@ -1279,7 +1285,35 @@ def private dispatch_or_err(action : string; input : JsonValue?) : Result<string
             g_pending_focus |> insert(resolved)
             return ok(resolved, type<string>)
         }
-        invoke(g_dispatchers[resolved], action, input)
+        let meta = unsafe(g_widgets?[resolved])
+        if (meta == null) return err("no widget meta for {resolved}", type<string>)
+        let state_addr = resolve_meta_addr(*meta)
+        if (state_addr == null) return err("state slot gone for {resolved}", type<string>)
+        return err("widget meta missing TypeInfo for {resolved} (kind {meta.kind})", type<string>) if (meta.ti == null)
+        // payload is the JSON string of the action's value field — most kinds
+        // sscan into a typed pending field; multi-field actions (set_window_pos)
+        // sscan the whole value object. Falls back to the whole input when
+        // there's no "value" field (e.g. open/close on a container — no payload).
+        let value = input?["value"]
+        var payload : string
+        if (value != null) {
+            payload = write_json(value)
+        }
+        let ti_hash = (*meta.ti).hash
+        let dispatcher = unsafe(g_dispatchers?[ti_hash])
+        if (dispatcher != null) {
+            invoke(*dispatcher, state_addr, action, payload)
+            return ok(resolved, type<string>)
+        }
+        // No registered dispatcher for this state struct. For non-Structure ti
+        // (scalar pointee from [edit_widget]), fall back to a generic scalar
+        // write-through using the runtime ti. Structures with no dispatcher
+        // are display-only — silently succeed.
+        if ((*meta.ti).basicType != Type.tStructure && action == "set") {
+            unsafe {
+                sscan_json_at(payload, state_addr, *meta.ti)
+            }
+        }
         return ok(resolved, type<string>)
     }
     if (action != "click") return err("L1 hex_id fallback only supports 'click', got '{action}'", type<string>)

@@ -39,18 +39,19 @@ def show_defaults(var state : DefaultsState; text : string) : int {
     Text("count={state.count} ratio={state.ratio} caption={state.caption}")
     var entry : WidgetEntry
     unsafe {
-        let ser <- @ capture(& state) () : JsonValue ? {
-            return JV(state)
-        }
-        let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
-            if (action == "set") {
-                state.pending_bump = true
-                state.has_pending = true
-            }
-        }
-        widget_finalize(widget_ident, "show_defaults", entry, ser, disp)
+        widget_finalize(widget_ident, "show_defaults", entry,
+                        addr(state),
+                        reinterpret<TypeInfo const?>(typeinfo rtti_typeinfo(type<DefaultsState>)))
     }
     return state.count
+}
+
+[widget_dispatch]
+def show_defaults(var state : DefaultsState; action : string; payload : string) {
+    if (action == "set") {
+        state.pending_bump = true
+        state.has_pending = true
+    }
 }
 
 [export]

@@ -200,6 +200,10 @@ def dock_left(var state : SliderStateFloat; blk : block) {
     pending_value_container_finalize(widget_ident, "dock_left", state)
 }
 
+// (split_h / split_v / dock_left all use SliderStateFloat — the dispatcher
+//  for that state struct lives in imgui_widgets_builtin and covers them
+//  automatically since dispatch is keyed by state ti.hash.)
+
 // ===== columns =====
 
 def public columns_open(n : int; id : string = ""; border : bool = true) {

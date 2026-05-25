@@ -41,41 +41,27 @@ require math
 // `pending_value : int` shape) and inline their own dispatcher because the
 // shared `pending_value_finalize` helper is private to imgui_widgets_builtin.
 
-def private open_close_finalize(widget_ident : string; kind : string; var state : auto;
+def private open_close_finalize(widget_ident : string; kind : string; var state : auto(ST);
                                 bbox : float4 = float4(0.0f, 0.0f, 0.0f, 0.0f)) {
-    let path = container_path_key()
+    //! Container finalize for state with ``pending_open`` / ``pending_close``. Routes the open/close [widget_dispatch] handlers (registered per kind below) through ``g_kind_dispatchers``.
     var entry : WidgetEntry
     entry.bbox = bbox
     unsafe {
-        let ser <- @ capture(= path) () : JsonValue ? {
-            return state_jv(path, type<typedecl(state)>)
-        }
-        let disp <- @ capture(= path) (action : string; payload : JsonValue ?) {
-            with_state(path, type<typedecl(state)>) $(var s) {
-                if (action == "open") {
-                    s.pending_open = true
-                } elif (action == "close") {
-                    s.pending_close = true
-                }
-            }
-        }
-        container_finalize(widget_ident, kind, entry, ser, disp)
+        container_finalize(widget_ident, kind, entry,
+                           addr(state),
+                           reinterpret<TypeInfo const?>(typeinfo rtti_typeinfo(type<ST>)))
     }
 }
 
-def public stateless_finalize(widget_ident : string; kind : string; var state : auto;
+def public stateless_finalize(widget_ident : string; kind : string; var state : auto(ST);
                               bbox : float4 = float4(0.0f, 0.0f, 0.0f, 0.0f)) {
-    let path = container_path_key()
+    //! Container finalize for stateless containers (no dispatcher actions). Snapshot rail still reflects state for telemetry; dispatch is a registered no-op per kind below.
     var entry : WidgetEntry
     entry.bbox = bbox
     unsafe {
-        let ser <- @ capture(= path) () : JsonValue ? {
-            return state_jv(path, type<typedecl(state)>)
-        }
-        let disp <- @ capture(= path) (action : string; payload : JsonValue ?) {
-            // No actions; serializer is the only telemetry surface for stateless containers.
-        }
-        container_finalize(widget_ident, kind, entry, ser, disp)
+        container_finalize(widget_ident, kind, entry,
+                           addr(state),
+                           reinterpret<TypeInfo const?>(typeinfo rtti_typeinfo(type<ST>)))
     }
 }
 
@@ -674,21 +660,11 @@ def combo_select(var state : ComboState; text : string; preview_value : string;
         invoke(blk)
         EndCombo()
     }
-    let path = container_path_key()
     var entry : WidgetEntry
     unsafe {
-        let ser <- @ capture(= path) () : JsonValue ? {
-            return state_jv(path, type<typedecl(state)>)
-        }
-        let disp <- @ capture(= path) (action : string; payload : JsonValue ?) {
-            with_state(path, type<typedecl(state)>) $(var s) {
-                if (action == "set") {
-                    s.pending_value = payload?["value"] ?? 0
-                    s.has_pending = true
-                }
-            }
-        }
-        container_finalize(widget_ident, "combo_select", entry, ser, disp)
+        container_finalize(widget_ident, "combo_select", entry,
+                           addr(state),
+                           reinterpret<TypeInfo const?>(typeinfo rtti_typeinfo(type<ComboState>)))
     }
 }
 
@@ -706,21 +682,11 @@ def list_box(var state : ListBoxState; text : string; size : float2; blk : block
         invoke(blk)
         EndListBox()
     }
-    let path = container_path_key()
     var entry : WidgetEntry
     unsafe {
-        let ser <- @ capture(= path) () : JsonValue ? {
-            return state_jv(path, type<typedecl(state)>)
-        }
-        let disp <- @ capture(= path) (action : string; payload : JsonValue ?) {
-            with_state(path, type<typedecl(state)>) $(var s) {
-                if (action == "set") {
-                    s.pending_value = payload?["value"] ?? 0
-                    s.has_pending = true
-                }
-            }
-        }
-        container_finalize(widget_ident, "list_box", entry, ser, disp)
+        container_finalize(widget_ident, "list_box", entry,
+                           addr(state),
+                           reinterpret<TypeInfo const?>(typeinfo rtti_typeinfo(type<ListBoxState>)))
     }
 }
 
@@ -758,4 +724,50 @@ def drag_drop_target(var state : DragDropTargetState; blk : block) {
         EndDragDropTarget()
     }
     stateless_finalize(widget_ident, "drag_drop_target", state)
+}
+
+// ===== Per-state-struct dispatchers (containers) =====
+//
+// One [widget_dispatch] body per state struct. Dispatch keyed by ti.hash
+// fires for every container kind whose state is that struct (popup +
+// popup_modal share PopupState etc.). TreeNodeState/ComboState/ListBoxState
+// dispatchers live in imgui_widgets_builtin.das; their dispatchers also
+// cover the container forms (tree_node, combo_select, list_box) without
+// extra registration. Stateless containers (group/menu/popup_context*/
+// tab_bar/tooltip/drag_drop_*) get no dispatcher and silently no-op.
+
+[widget_dispatch]
+def _window_dispatch(var state : WindowState; action : string; payload : string) {
+    if (action == "open") {
+        state.pending_open = true
+    } elif (action == "close") {
+        state.pending_close = true
+    }
+}
+
+[widget_dispatch]
+def _popup_dispatch(var state : PopupState; action : string; payload : string) {
+    if (action == "open") {
+        state.pending_open = true
+    } elif (action == "close") {
+        state.pending_close = true
+    }
+}
+
+[widget_dispatch]
+def _tab_item_dispatch(var state : TabItemState; action : string; payload : string) {
+    if (action == "open") {
+        state.pending_open = true
+    } elif (action == "close") {
+        state.pending_close = true
+    }
+}
+
+[widget_dispatch]
+def _collapsing_header_dispatch(var state : CollapsingHeaderState; action : string; payload : string) {
+    if (action == "open") {
+        state.pending_open = true
+    } elif (action == "close") {
+        state.pending_close = true
+    }
 }
