@@ -15,6 +15,7 @@ require daslib/coroutines public
 require daslib/async_boost
 require daslib/archive
 require daslib/result public
+require daslib/rtti
 require math
 require strings
 
@@ -612,19 +613,32 @@ struct MainMenuBarState {
 
 struct WidgetEntry {
     //! Per-frame snapshot of one rendered widget. Common fields populated
-    //! every frame; per-kind detail is materialized on demand by the
-    //! serializer lambda stored in `g_serializers[ident]` (parallel table)
-    //! and pasted into `payload` at imgui_snapshot time. The lambda lives
-    //! outside the entry because `g_registry` is cleared every frame and
-    //! we need the serializer (which captures `& state` of the per-widget
-    //! global) to survive that clear.
+    //! every frame; per-kind detail is materialized on demand from the
+    //! ``(addr, ti)`` pair stored in ``g_widgets[ident]`` and pasted into
+    //! ``payload`` at imgui_snapshot time via ``sprint_json_at`` +
+    //! ``read_json``. No per-widget serializer lambda — the addr+ti pair
+    //! survives ``g_registry``'s per-frame clear because it's pinned in
+    //! the long-lived ``g_widgets`` table.
     kind : string                                //! widget kind ("button", "slider_float", ...)
     hex_id : uint                                //! ImGui's GetID() for this widget on this frame
     bbox : float4                                //! packed [x0, y0, x1, y1]
     @optional hover : bool                       //! IsItemHovered() this frame
     @optional active : bool                      //! IsItemActive() this frame
     @optional focus : bool                       //! IsItemFocused() this frame
-    @optional payload : JsonValue?               //! populated by widget_entry_jv from g_serializers
+    @optional payload : JsonValue?               //! populated by widget_entry_jv from (addr, ti) via sprint_json_at + read_json
+}
+
+def private resolve_meta_addr(meta : WidgetMeta) : void? {
+    return meta.addr_getter_str(meta.k_str) if (meta.has_str_key)
+    return meta.addr_getter_int(meta.k_int) if (meta.addr_getter_int != null)
+    return meta.state_addr
+}
+
+def private state_payload_jv(state_addr : void?; ti : TypeInfo const?) : JsonValue? {
+    //! Build the per-widget state JSON payload via ``sprint_json_at`` + ``read_json``. Returns ``null`` when either ``state_addr`` or ``ti`` is null (erased indexed slot / unregistered kind).
+    return null if (state_addr == null || ti == null)
+    var err : string
+    return read_json(sprint_json_at(state_addr, *ti, false), err)
 }
 
 def private widget_entry_jv(ident : string; var entry : WidgetEntry) : JsonValue? {
@@ -659,13 +673,13 @@ var g_frame : int = 0
 struct WidgetMeta {
     module_name : string                                  //! owning module; lets clear_module_widgets drop on reload
     kind : string                                         //! widget kind ("button", "slider_float", ...)
-    addr_getter_int : function<(k : int) : void?>         //! int-keyed path: resolves live state-struct address. k=0 for non-indexed widgets (getter ignores it), the table key for ``table<int; …>`` indexed widgets. Plain function pointer — no heap-allocated lambda capture frame.
-    serializer_int  : function<(k : int) : JsonValue?>    //! int-keyed serializer; mirror of ``addr_getter_int`` shape. Invoked at imgui_snapshot time.
-    k_int : int                                           //! int key stored at registration: 0 for non-indexed, the actual ``TABLE[k]`` key for int-indexed widgets.
-    addr_getter_str : function<(k : string) : void?>      //! string-keyed path: resolves live state-struct address for ``table<string; …>`` indexed widgets. Null when ``has_str_key=false``.
-    serializer_str  : function<(k : string) : JsonValue?> //! string-keyed serializer; null when ``has_str_key=false``.
+    state_addr : void?                                    //! non-indexed: stable address of the module-scope state global (set by ``register_widget``). Indexed widgets pass ``null`` here and re-resolve per-k through ``addr_getter_int`` / ``addr_getter_str``. Named ``state_addr`` (not ``addr``) because daslang reserves ``addr`` as the builtin address-of operator.
+    ti : TypeInfo const?                            //! ``TypeInfo`` of the state value at ``addr`` (or the indexed slot's element). Drives ``sprint_json_at`` at snapshot time and ``sscan_json_at`` on dispatcher set-actions without per-call-site daslang thunks.
+    addr_getter_int : function<(k : int) : void?>         //! int-indexed path only: resolves live state-struct address per-call against the user's ``table<int; …>``. Null for non-indexed widgets — use ``addr`` instead.
+    k_int : int                                           //! int key stored at registration for indexed-int widgets; 0 when not indexed.
+    addr_getter_str : function<(k : string) : void?>      //! string-indexed path only: resolves live state-struct address for ``table<string; …>``. Null when ``has_str_key=false``.
     k_str : string                                        //! string key stored at registration; empty when ``has_str_key=false``.
-    has_str_key : bool                                    //! true => use the _str fns + k_str; false => use the _int fns + k_int
+    has_str_key : bool                                    //! true => use ``addr_getter_str`` + ``k_str``; false => use ``state_addr`` (non-indexed) or ``addr_getter_int`` + ``k_int``.
     last_seen_frame : int                                 //! last g_frame this path appeared in g_registry; -1 = never rendered
 }
 
@@ -903,12 +917,7 @@ def public pending_value_finalize(widget_ident : string; kind : string; var stat
 
 def public clear_module_widgets(module_name : string) {
     //! Drop every widget tagged with this module from the long-lived registries (g_widgets / id_to_path / focusable / pending_focus); called from each module's ``[init]`` so hot-reload re-binds cleanly.
-    var paths_to_remove : array<string>
-    for (k, m in keys(g_widgets), values(g_widgets)) {
-        if (m.module_name == module_name) {
-            paths_to_remove |> push(k)
-        }
-    }
+    var paths_to_remove <- [for (k, m in keys(g_widgets), values(g_widgets)); k; where m.module_name == module_name]
     for (k in paths_to_remove) {
         g_widgets |> erase(k)
     }
@@ -938,16 +947,33 @@ def public widget_registered(path : string) : bool {
 def public register_widget(module_name : string;
                            bare_ident : string;
                            kind : string;
-                           addr_getter : function<(k : int) : void?>;
-                           serializer : function<(k : int) : JsonValue?>;
-                           k : int = 0) {
-    //! Module-init registration of a widget into the long-lived ``g_widgets`` table; ``module_name`` lets :ref:`clear_module_widgets <function-imgui_boost_runtime_clear_module_widgets_string>` drop it on reload. ``addr_getter(k)`` resolves the live state-struct address on every dispatcher/serializer call — stable function pointer for globals (k ignored), key-checked re-resolution for indexed widgets with int keys (k = the table key, stored once at registration). For string-keyed indexed widgets use ``register_widget_str`` (sibling overload below).
+                           state_addr : void?;
+                           ti : TypeInfo const?) {
+    //! Module-init registration of a non-indexed widget into the long-lived ``g_widgets`` table. ``state_addr`` is the stable address of the module-scope state global (passed by the ``[widget]`` macro as ``unsafe(addr(IDENT))``); ``ti`` is its ``TypeInfo`` (``typeinfo rtti_typeinfo(IDENT)``). Both feed ``sprint_json_at`` at snapshot time — no per-widget getter/serializer functions emitted. For indexed widgets use ``register_widget_indexed`` / ``register_widget_str``.
     unsafe {
         g_widgets[bare_ident] <- WidgetMeta(
             module_name = module_name,
             kind = kind,
+            state_addr = state_addr,
+            ti = ti,
+            last_seen_frame = -1
+        )
+    }
+}
+
+def public register_widget_indexed(module_name : string;
+                                   bare_ident : string;
+                                   kind : string;
+                                   addr_getter : function<(k : int) : void?>;
+                                   ti : TypeInfo const?;
+                                   k : int) {
+    //! Int-indexed sibling of ``register_widget``. ``addr_getter(k)`` re-resolves per-call against the user's ``table<int; …>`` (slots may be erased between frames); ``ti`` is the element's ``TypeInfo``. ``k`` is the table key, stored once at registration.
+    unsafe {
+        g_widgets[bare_ident] <- WidgetMeta(
+            module_name = module_name,
+            kind = kind,
+            ti = ti,
             addr_getter_int = addr_getter,
-            serializer_int = serializer,
             k_int = k,
             last_seen_frame = -1
         )
@@ -958,15 +984,15 @@ def public register_widget_str(module_name : string;
                                bare_ident : string;
                                kind : string;
                                addr_getter : function<(k : string) : void?>;
-                               serializer : function<(k : string) : JsonValue?>;
+                               ti : TypeInfo const?;
                                k : string) {
-    //! String-keyed sibling of ``register_widget`` — for ``table<string; …>`` indexed widgets. Sets ``has_str_key`` so the dispatcher/serializer routes through ``addr_getter_str(k_str)`` instead of the int path.
+    //! String-keyed sibling of ``register_widget_indexed`` for ``table<string; …>``. Sets ``has_str_key`` so the lookup routes through ``addr_getter_str(k_str)``.
     unsafe {
         g_widgets[bare_ident] <- WidgetMeta(
             module_name = module_name,
             kind = kind,
+            ti = ti,
             addr_getter_str = addr_getter,
-            serializer_str = serializer,
             k_str := k,
             has_str_key = true,
             last_seen_frame = -1
@@ -975,11 +1001,10 @@ def public register_widget_str(module_name : string;
 }
 
 def public lookup_state_addr(path : string) : void? {
-    //! Resolve a widget's current state-struct address by path — invokes the registered ``addr_getter`` so indexed-form widgets reinterpret the live table slot on every call instead of dereferencing a stale capture. Returns null when ``path`` is absent from ``g_widgets`` or the getter reports the slot is gone (erased indexed key). Uses ``?[]`` safe lookup so the finalize lambdas can run from inside an ``imgui_snapshot`` iteration without tripping the locked-table guard (``tab[k]`` is daslang's auto-insert form).
+    //! Resolve a widget's current state-struct address by path. For non-indexed widgets returns ``meta.state_addr`` directly; for indexed widgets invokes the registered ``addr_getter`` so the live table slot is re-resolved on every call (slots may be erased between frames). Returns null when ``path`` is absent from ``g_widgets`` or the getter reports the slot is gone.
     let meta = unsafe(g_widgets?[path])
     return null if (meta == null)
-    return meta.addr_getter_str(meta.k_str) if (meta.has_str_key)
-    return meta.addr_getter_int(meta.k_int)
+    return resolve_meta_addr(*meta)
 }
 
 def public state_jv(path : string; t : type<auto(T)>) : JsonValue? {
@@ -1076,7 +1101,7 @@ def public container_finalize(widget_ident : string;
                               var entry : WidgetEntry;
                               var serializer : lambda<() : JsonValue?>;
                               var dispatcher : lambda<(action : string; payload : JsonValue?) : void>) {
-    //! Container counterpart of :ref:`widget_finalize <function-imgui_boost_runtime_widget_finalize_string_string_WidgetEntry_lambda_ls__c_void_gr__lambda_ls_action_c_string;payload_c_JsonValue_q__c_void_gr_>`; install the per-container serializer + dispatcher at the cached container path key.
+    //! Container counterpart of :ref:`widget_finalize <function-imgui_boost_runtime_widget_finalize>`; install the per-container serializer + dispatcher at the cached container path key.
     let path_key = container_path_key()
     check_unique_render(path_key, kind)
     entry.kind = kind
@@ -1166,14 +1191,8 @@ def private extract_string_field(obj : JsonValue?; name : string) : string {
 }
 
 def private widget_meta_jv(path_key : string; meta : WidgetMeta) : JsonValue? {
-    // Snapshot blob for a widget registered but not rendered this frame: rendered=false, state payload only.
-    var payload : JsonValue?
-    if (meta.has_str_key) {
-        payload = meta.serializer_str(meta.k_str)
-    } else {
-        payload = meta.serializer_int(meta.k_int)
-    }
-    return JV((kind = meta.kind, rendered = false, payload = payload))
+    // Snapshot blob for a widget registered but not rendered this frame: rendered=false, state payload only. State payload is built from (addr, ti) via sprint_json_at + read_json — no per-widget serializer function.
+    return JV((kind = meta.kind, rendered = false, payload = state_payload_jv(resolve_meta_addr(meta), meta.ti)))
 }
 
 def private io_jv() : JsonValue? {
@@ -1227,7 +1246,7 @@ def imgui_snapshot(input : JsonValue?) : JsonValue? {
 }
 
 def private classify_target(target : string) : tuple<int; string> {
-    // Map target → (level, resolved). 2 = L2 path, 1 = L1 hex_id (click-only via bbox synthesis), 0 = unresolvable.
+    // Map target → (level, resolved). 2 = L2 path (dispatcher rendered at least once), 1 = L1 hex_id (click-only via bbox synthesis), 0 = unresolvable.
     if (empty(target)) return (0, "")
     let n = length(target)
     let is_hex = n > 2 && slice(target, 0, 2) == "0x" || n > 2 && slice(target, 0, 2) == "0X"
