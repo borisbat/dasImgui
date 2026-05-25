@@ -1313,8 +1313,9 @@ def private dispatch_or_err(action : string; input : JsonValue?) : Result<string
         return err("widget meta missing TypeInfo for {resolved} (kind {meta.kind})", type<string>) if (meta.ti == null)
         // payload is the JSON string of the action's value field — most kinds
         // sscan into a typed pending field; multi-field actions (set_window_pos)
-        // sscan the whole value object. Falls back to the whole input when
-        // there's no "value" field (e.g. open/close on a container — no payload).
+        // sscan the whole value object. When there's no "value" field (e.g.
+        // open/close on a container) payload stays "" — those dispatchers don't
+        // read it.
         let value = input?["value"]
         var payload : string
         if (value != null) {

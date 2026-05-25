@@ -34,9 +34,10 @@ require math
 //
 // `stateless_finalize` — for containers whose dispatch surface is empty
 // (group, menu_bar, menu, child, tab_bar, tooltip, item_tooltip). No
-// ``[widget_dispatch]`` is registered for those state structs; ``dispatch_or_err``
-// reports "no dispatcher for ti.hash …" if a stray action ever targets them.
-// The serializer still reflects state for snapshot.
+// ``[widget_dispatch]`` is registered for those state structs; on a stray
+// action targeting one, ``dispatch_or_err`` silently returns ok (the
+// Structure-with-no-dispatcher path is treated as display-only). The
+// serializer still reflects state for snapshot.
 //
 // `combo_select` / `list_box` reuse ComboState / ListBoxState (a
 // `pending_value : int` shape) and share the per-state-struct dispatcher
@@ -57,7 +58,7 @@ def private open_close_finalize(widget_ident : string; kind : string; var state 
 
 def public stateless_finalize(widget_ident : string; kind : string; var state : auto(ST);
                               bbox : float4 = float4(0.0f, 0.0f, 0.0f, 0.0f)) {
-    //! Container finalize for stateless containers (no dispatcher actions). Snapshot rail still reflects state for telemetry; no ``[widget_dispatch]`` is registered for ``ST``, so ``g_dispatchers[(*ti).hash]`` is absent and dispatch_or_err reports "no dispatcher for ti.hash …" if a stray action ever targets one.
+    //! Container finalize for stateless containers (no dispatcher actions). Snapshot rail still reflects state for telemetry; no ``[widget_dispatch]`` is registered for ``ST``, so ``g_dispatchers[(*ti).hash]`` is absent and ``dispatch_or_err`` silently returns ok if a stray action ever targets one (Structure-with-no-dispatcher = display-only).
     var entry : WidgetEntry
     entry.bbox = bbox
     unsafe {
