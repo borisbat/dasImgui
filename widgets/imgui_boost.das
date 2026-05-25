@@ -524,40 +524,19 @@ class WidgetCallMacro : AstCallMacro {
                     imgui_boost_runtime::clear_module_widgets($v(modLit))
                 ))
             }
-            // Emit per-widget top-level getter + serializer as plain
-            // functions (no captures — they read the module-scope state global
-            // directly). register_widget then receives `@@<fn>` literals, so the
-            // long-lived registry stores plain function pointers instead of
-            // heap-allocated lambda capture frames. The `k` parameter is part
-            // of the unified API with indexed widgets — non-indexed getters
-            // ignore it.
-            let addrFnName = "__widget_addr${bareName}"
-            let jvFnName = "__widget_jv${bareName}"
-            if (find_unique_function(mod, addrFnName, true) == null) {
-                var addrFn = qmacro_function(addrFnName) $(k : int) : void? {
-                    return unsafe(addr($i(identLit)))
-                }
-                addrFn.flags.generated = true
-                addrFn.flags.privateFunction = true
-                addrFn.body |> force_at(expr.at)
-                mod |> add_function(addrFn)
-            }
-            if (find_unique_function(mod, jvFnName, true) == null) {
-                var jvFn = qmacro_function(jvFnName) $(k : int) : JsonValue? {
-                    return JV($i(identLit))
-                }
-                jvFn.flags.generated = true
-                jvFn.flags.privateFunction = true
-                jvFn.body |> force_at(expr.at)
-                mod |> add_function(jvFn)
-            }
+            // Pass the state global's address + TypeInfo directly to
+            // register_widget — no per-widget getter/serializer thunks. The
+            // address is a stable inline expression; the TypeInfo resolves
+            // through ``rtti_typeinfo`` to a static-table pointer. Snapshot
+            // and dispatcher paths use these via ``sprint_json_at`` /
+            // ``sscan_json_at`` (zero per-call-site daslang code).
             reg.list |> push(qmacro(
                 imgui_boost_runtime::register_widget(
                     $v(modLit),
                     $v(identLit),
                     $v(kindLit),
-                    @@$c(addrFnName),
-                    @@$c(jvFnName)
+                    unsafe(addr($i(identLit))),
+                    unsafe(reinterpret<TypeInfo const?>(typeinfo rtti_typeinfo($i(identLit))))
                 )
             ))
         }
@@ -687,8 +666,11 @@ class WidgetCallMacro : AstCallMacro {
             return <- default<ExpressionPtr>
         }
         let indexedAddrFnName = "__widget_addr$indexed${kind_name}${bareName}"
-        let indexedJvFnName = "__widget_jv$indexed${kind_name}${bareName}"
         if (find_unique_function(mod, indexedAddrFnName, true) == null) {
+            // Shared per-(kind, IDENT) addr-getter. Still needed for indexed
+            // widgets because table slots may be erased between frames — we
+            // re-resolve per-call. JV-getter is gone; ``sprint_json_at`` reads
+            // the resolved addr + ``ti`` directly.
             var addrFn : FunctionPtr
             if (keyIsString) {
                 addrFn = qmacro_function(indexedAddrFnName) $(k : string) : void? {
@@ -705,24 +687,6 @@ class WidgetCallMacro : AstCallMacro {
             addrFn.flags.privateFunction = true
             addrFn.body |> force_at(expr.at)
             mod |> add_function(addrFn)
-        }
-        if (find_unique_function(mod, indexedJvFnName, true) == null) {
-            var jvFn : FunctionPtr
-            if (keyIsString) {
-                jvFn = qmacro_function(indexedJvFnName) $(k : string) : JsonValue? {
-                    return null if (!key_exists($i(bareNameLit), k))
-                    return JV($i(bareNameLit)[k])
-                }
-            } else {
-                jvFn = qmacro_function(indexedJvFnName) $(k : int) : JsonValue? {
-                    return null if (!key_exists($i(bareNameLit), k))
-                    return JV($i(bareNameLit)[k])
-                }
-            }
-            jvFn.flags.generated = true
-            jvFn.flags.privateFunction = true
-            jvFn.body |> force_at(expr.at)
-            mod |> add_function(jvFn)
         }
         // Emit the wrapper helper once per (kind, IDENT). find_unique_function
         // probes the user module before add_function fires; re-running visit()
@@ -743,37 +707,45 @@ class WidgetCallMacro : AstCallMacro {
             }
             let keyType = clone_type(tabType.firstType)
             let retType = clone_type(render_fn.result)
-            var bodyStmts : array<ExpressionPtr>
-            // bare = "<bareName>[<k>]" — runtime interp builds the path component
-            bodyStmts |> push <| qmacro_expr(${
-                let bare = "{$v(bareNameLit)}[{k}]"
-            })
+            // bare = "<bareName>[<k>]" — runtime interp builds the path component.
             // Do NOT push to container_path here even for containers — the
             // called [container]'s own macro-injected `container_path_push
             // (widget_ident)` does that with the same `bare` value. A wrapper
             // push would double-nest the path (`.../DYN_TAB[0]/DYN_TAB[0]`).
-            // path = container-aware key (matches what widget_finalize computes)
-            bodyStmts |> push <| qmacro_expr(${
-                let path = imgui_boost_runtime::widget_path_key(bare)
-            })
-            // First-touch / post-reload register. We pass plain function
-            // pointers into register_widget(_str); the runtime stores them in
-            // WidgetMeta along with `k` (consulted on every getter/serializer
-            // invoke). No lambda capture frame allocated per call site.
+            // path = container-aware key (matches what widget_finalize computes).
+            var bodyStmts <- [
+                qmacro_expr(${
+                    let bare = "{$v(bareNameLit)}[{k}]"
+                }),
+                qmacro_expr(${
+                    let path = imgui_boost_runtime::widget_path_key(bare)
+                })]
+            // First-touch / post-reload register. ``addr_getter`` is the
+            // per-(kind, IDENT) shared fn-ptr (re-resolves the live table
+            // slot per-call so erased keys surface as null). ``ti`` is the
+            // element ``TypeInfo`` resolved from a typed ``IDENT[k]`` lookup
+            // — the typer walks back through ``IDENT``'s table type to the
+            // element type, then ``rtti_typeinfo`` resolves to a static-table
+            // pointer at compile time (the runtime expression is never
+            // evaluated). No per-call-site daslang code path.
             if (keyIsString) {
                 bodyStmts |> push <| qmacro_expr(${
                     if (!imgui_boost_runtime::widget_registered(path)) {
                         imgui_boost_runtime::register_widget_str(
                             $v(moduleName), path, $v(kindLit),
-                            @@$c(indexedAddrFnName), @@$c(indexedJvFnName), k)
+                            @@$c(indexedAddrFnName),
+                            unsafe(reinterpret<TypeInfo const?>(typeinfo rtti_typeinfo($i(bareNameLit)[k]))),
+                            k)
                     }
                 })
             } else {
                 bodyStmts |> push <| qmacro_expr(${
                     if (!imgui_boost_runtime::widget_registered(path)) {
-                        imgui_boost_runtime::register_widget(
+                        imgui_boost_runtime::register_widget_indexed(
                             $v(moduleName), path, $v(kindLit),
-                            @@$c(indexedAddrFnName), @@$c(indexedJvFnName), k)
+                            @@$c(indexedAddrFnName),
+                            unsafe(reinterpret<TypeInfo const?>(typeinfo rtti_typeinfo($i(bareNameLit)[k]))),
+                            k)
                     }
                 })
             }

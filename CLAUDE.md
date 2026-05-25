@@ -141,16 +141,48 @@ for (col in type<ImGuiCol>) {
 
 ## Tests (`tests/integration/`)
 
-Tests run via `dastest`. From the daslang repo root with dasImgui installed `--global`:
+Tests run via `dastest`. Two equivalent local recipes — one mirrors CI exactly (`daspkg install --global`), one skips the install and uses this checkout directly via `-load_module`. **Both require `cwd = <dasImgui-root>`** because (a) the `modules/dasImgui` self-junction has to be visible to satisfy `--test modules/dasImgui/tests/integration` AND (b) `test_module_isolation.das` does `fopen("modules/dasImgui/widgets/imgui_visual_aids.das")` relative to cwd. **Both require `--headless`** — without it, the spawned daslang-live subprocesses pop real GLFW windows and flake on focus/port-reuse.
+
+**Recipe A — CI mirror (daspkg --global):**
 
 ```bash
+cd <daslang>
+<daslang>/bin/Release/daslang utils/daspkg/main.das -- install <path-to-this-dasImgui> --global
 <daslang>/bin/Release/daslang dastest/dastest.das -- \
     --test modules/dasImgui/tests/integration \
     --headless \
     --exclude glfw_synth --exclude key_hud
 ```
 
+**Recipe B — local-only (`-load_module`, no install):**
+
+```bash
+cd <dasImgui-root>                             # so modules/dasImgui self-junction resolves
+<daslang>/bin/Release/daslang \
+    -load_module <dasImgui-root> \             # daslang flag, BEFORE the script path
+    <daslang>/dastest/dastest.das -- \
+    --test modules/dasImgui/tests/integration \
+    --headless \
+    --exclude glfw_synth --exclude key_hud
+```
+
+`-load_module` is the daslang-side flag (see `daslang -h`) and **must come before the dastest script path**; placing it after `--` makes dastest swallow it and daslang's default project_root scan never picks up the module's `.das_module` (`register_native_path("imgui", "imgui_harness", ...)`) — so the very first test fails with `error[20605]: missing prerequisite 'imgui/imgui_harness'`. The self-junction alone (`modules/dasImgui -> .`) is NOT sufficient; daslang's project_root scan skips self-references.
+
+**Windows local runs also need the same `--exclude` set as Windows CI** (libhv's IOCP path stalls at 16 POSTs/subprocess):
+
+```bash
+    --exclude inputs_drag --exclude inputs_numeric --exclude inputs_slider \
+    --exclude indexed_dynamic --exclude inputs_color --exclude inputs_choice \
+    --exclude inputs_text
+```
+
 The `--headless` flag propagates to spawned daslang-live subprocesses via `widgets/imgui_playwright.das:515` (`playwright_wants_headless`).
+
+**Process cleanup between runs.** A killed/timed-out dastest leaves the live `daslang-live` child holding port 9090; the next run then fails immediately with `ERROR: another instance of daslang-live is already running on port 9090` on every test. Sweep before re-running:
+
+```powershell
+Get-Process -Name 'daslang','daslang-live','dastest','imguiApp','imguiAppHeadless' -ErrorAction SilentlyContinue | Stop-Process -Force
+```
 
 **Three test families:**
 
