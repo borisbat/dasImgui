@@ -48,7 +48,7 @@ def test_drawlist_path_key_shape(t : T?) {
         var bad_shape = ""
         var bad_bbox = ""
         for (k, v in keys(globals.value as _object), values(globals.value as _object)) {
-            let kind = string(v?["kind"] ?? "")
+            let kind = v?["kind"] ?? ""
             if (!is_drawlist_kind(kind)) continue
             seen_drawlist++
             // Strip container prefix (anything before the last '/')
@@ -80,7 +80,7 @@ def test_drawlist_path_key_shape(t : T?) {
         // without snagging neighbouring widget machinery.
         var state_global_leaks = ""
         for (k, v in keys(globals.value as _object), values(globals.value as _object)) {
-            let kind = string(v?["kind"] ?? "")
+            let kind = v?["kind"] ?? ""
             if (!is_drawlist_kind(kind)) continue
             var leaf = k
             let last_slash = rfind(k, "/")

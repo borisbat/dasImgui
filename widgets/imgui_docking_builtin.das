@@ -68,56 +68,64 @@ struct DockWindowState {
 
 def private dockspace_finalize(widget_ident : string; kind : string;
                                var state : DockSpaceState) {
-    let path = container_path_key()
+    //! Dockspace finalize. State path; the per-kind [widget_dispatch] handles "reset".
     var entry : WidgetEntry
     unsafe {
-        let ser <- @ capture(= path) () : JsonValue ? {
-            return state_jv(path, type<typedecl(state)>)
-        }
-        let disp <- @ capture(= path) (action : string; payload : JsonValue ?) {
-            with_state(path, type<typedecl(state)>) $(var s) {
-                if (action == "reset") {
-                    s.pending_reset = true
-                }
-            }
-        }
-        container_finalize(widget_ident, kind, entry, ser, disp)
+        container_finalize(widget_ident, kind, entry,
+                           addr(state),
+                           reinterpret<TypeInfo const?>(typeinfo rtti_typeinfo(type<DockSpaceState>)))
     }
 }
 
 def private dock_window_finalize(widget_ident : string; var state : DockWindowState) {
-    let path = container_path_key()
+    //! dock_window finalize. State path; the per-kind [widget_dispatch] handles open/close/dock/undock/set_window_pos.
     var entry : WidgetEntry
     unsafe {
-        let ser <- @ capture(= path) () : JsonValue ? {
-            return state_jv(path, type<typedecl(state)>)
+        container_finalize(widget_ident, "dock_window", entry,
+                           addr(state),
+                           reinterpret<TypeInfo const?>(typeinfo rtti_typeinfo(type<DockWindowState>)))
+    }
+}
+
+// Per-state-struct dispatchers for the docking family.
+
+[widget_dispatch]
+def _dockspace_dispatch(var state : DockSpaceState; action : string; payload : string) {
+    if (action == "reset") {
+        state.pending_reset = true
+    }
+}
+
+[widget_dispatch]
+def _dock_window_dispatch(var state : DockWindowState; action : string; payload : string) {
+    if (action == "open") {
+        state.pending_open = true
+    } elif (action == "close") {
+        state.pending_close = true
+    } elif (action == "dock") {
+        unsafe {
+            sscan_json_at(payload, addr(state.pending_dock_to),
+                          *reinterpret<TypeInfo const?>(typeinfo rtti_typeinfo(type<uint>)))
         }
-        let disp <- @ capture(= path) (action : string; payload : JsonValue ?) {
-            with_state(path, type<typedecl(state)>) $(var s) {
-                if (action == "open") {
-                    s.pending_open = true
-                } elif (action == "close") {
-                    s.pending_close = true
-                } elif (action == "dock") {
-                    s.pending_dock_to = from_JV(payload?["value"], type<uint>, 0u)
-                } elif (action == "undock") {
-                    s.pending_undock = true
-                } elif (action == "set_window_pos") {
-                    //! Payload shape: `{x, y[, w, h]}` — pos always set, size optional.
-                    let v = payload?["value"]
-                    s.pending_pos = float2(v?["x"] ?? 0.0f, v?["y"] ?? 0.0f)
-                    s.pending_pos_set = true
-                    let has_w = v?["w"] != null
-                    let has_h = v?["h"] != null
-                    if (has_w || has_h) {
-                        s.pending_size = float2(v?["w"] ?? s.size.x,
-                                                v?["h"] ?? s.size.y)
-                        s.pending_size_set = true
-                    }
-                }
+    } elif (action == "undock") {
+        state.pending_undock = true
+    } elif (action == "set_window_pos") {
+        // Payload: ``{x, y[, w, h]}`` — pos always set, size optional. The one
+        // place we still touch JsonValue at dispatch time; alternative would
+        // be a dedicated payload struct just for this action.
+        var err : string
+        let v = read_json(payload, err)
+        if (v != null) {
+            state.pending_pos = float2(v?["x"] ?? 0.0f, v?["y"] ?? 0.0f)
+            state.pending_pos_set = true
+            let has_w = v?["w"] != null
+            let has_h = v?["h"] != null
+            if (has_w || has_h) {
+                state.pending_size = float2(v?["w"] ?? state.size.x,
+                                            v?["h"] ?? state.size.y)
+                state.pending_size_set = true
             }
         }
-        container_finalize(widget_ident, "dock_window", entry, ser, disp)
     }
 }
 

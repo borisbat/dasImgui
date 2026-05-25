@@ -23,9 +23,9 @@ def test_app_dockspace_smoke(t : T?) {
         if (snap == null) return
 
         let ds = find_widget(snap, "DS_WIN/DS")
-        t |> equal(string(ds?["kind"] ?? ""), "dockspace_in_window",
+        t |> equal(ds?["kind"] ?? "", "dockspace_in_window",
                    "DS_WIN/DS registers as kind=dockspace_in_window")
-        let dock_id = uint(ds?["payload"]?["dock_id"] ?? 0u)
+        let dock_id = ds?["payload"]?["dock_id"] ?? 0u
         t |> success(dock_id != 0u,
                      "dock_id captured (got 0x{dock_id})")
 

@@ -15,134 +15,84 @@ require strings
 require math
 
 //! Built-in widgets defined via `[widget]` — the same mechanism users get.
-//! Each def constructs two short closures (serializer + dispatcher) and
-//! hands them to widget_finalize. Common per-frame fields (hex_id/bbox/
-//! hover/active/focus) are captured inside widget_finalize; per-kind state
-//! lives in the state struct alone.
+//! Each def hands ``(state_addr, ti)`` (the state's address + its runtime
+//! ``TypeInfo``) to ``widget_finalize``; common per-frame fields (hex_id/
+//! bbox/hover/active/focus) are captured inside widget_finalize; per-kind
+//! state lives in the state struct alone.
 //!
-//! Four private *_finalize helpers below collapse the repetitive
-//! lambda-construction + widget_finalize call shared across click /
-//! toggle / radio_int / pending-value widget families. Each widget def
-//! stays focused on the imgui call + per-frame state mutation. The
-//! `pending_value_finalize` helper is generic on the state struct and
-//! drives `from_JV` off `typedecl(state.pending_value)` — one body
-//! covers every Drag* / Slider* / Input* family without per-type
-//! duplication.
+//! HTTP dispatch goes through ``g_dispatchers`` keyed by ``(*ti).hash`` (the
+//! state struct's runtime type), populated by the ``[widget_dispatch]``
+//! defs paired with each state struct further down. One ``[widget_dispatch]``
+//! body covers every widget kind that shares that state — e.g. one
+//! ClickState dispatcher handles ``button`` / ``small_button`` /
+//! ``arrow_button`` / ``invisible_button`` / ``image_button``. No
+//! per-widget serializer or dispatcher lambda is emitted; snapshot reads
+//! route through ``sprint_json_at(state_addr, *ti)`` and set-actions
+//! through ``sscan_json_at(state_addr, *ti)``.
 
 // ===== Common finalize helpers =====
+//
+// Generic state-addr+ti plumbing for [widget]/[container] state structs.
+// Pull (state_addr, ti) out of a state-by-ref param exactly once, then route
+// to widget_finalize / container_finalize. The kind-specific action handlers
+// live in [widget_dispatch] defs near each state struct's call sites; HTTP
+// dispatch matches them by ti.hash via g_dispatchers in imgui_boost_runtime.
+
+def private finalize_state(widget_ident : string; kind : string;
+                           var state : auto(ST); var entry : WidgetEntry) {
+    unsafe {
+        widget_finalize(widget_ident, kind, entry,
+                        addr(state),
+                        reinterpret<TypeInfo const?>(typeinfo rtti_typeinfo(type<ST>)))
+    }
+}
+
+def private finalize_container_state(widget_ident : string; kind : string;
+                                     var state : auto(ST); var entry : WidgetEntry) {
+    unsafe {
+        container_finalize(widget_ident, kind, entry,
+                           addr(state),
+                           reinterpret<TypeInfo const?>(typeinfo rtti_typeinfo(type<ST>)))
+    }
+}
 
 def private click_finalize(widget_ident : string; kind : string; var state : ClickState) {
-    //! Lambda + dispatcher install for click-style widgets (Button family).
-    //! Dispatcher action: "click" → state.pending_click = true (consumed next frame).
-    let path = widget_path_key(widget_ident)
+    //! Click-style finalize (Button family). State path; dispatch handled per-kind via [widget_dispatch].
     var entry : WidgetEntry
-    unsafe {
-        let ser <- @ capture(= path) () : JsonValue ? {
-            return state_jv(path, type<typedecl(state)>)
-        }
-        let disp <- @ capture(= path) (action : string; payload : JsonValue ?) {
-            with_state(path, type<typedecl(state)>) $(var s) {
-                if (action == "click") {
-                    s.pending_click = true
-                }
-            }
-        }
-        widget_finalize(widget_ident, kind, entry, ser, disp)
-    }
+    finalize_state(widget_ident, kind, state, entry)
     register_focusable(widget_ident)
 }
 
 def private toggle_finalize(widget_ident : string; kind : string; var state : ToggleState) {
-    //! Lambda + dispatcher install for bool-toggle widgets (Checkbox, RadioButton-bool,
-    //! Selectable, MenuItem). Dispatcher action: "set" with bool payload.
-    let path = widget_path_key(widget_ident)
+    //! Bool-toggle finalize (Checkbox, RadioButton-bool, Selectable, MenuItem). State path; dispatch handled per-kind via [widget_dispatch].
     var entry : WidgetEntry
-    unsafe {
-        let ser <- @ capture(= path) () : JsonValue ? {
-            return state_jv(path, type<typedecl(state)>)
-        }
-        let disp <- @ capture(= path) (action : string; payload : JsonValue ?) {
-            with_state(path, type<typedecl(state)>) $(var s) {
-                if (action == "set") {
-                    s.pending_value = payload?["value"] ?? false
-                    s.pending_toggle = true
-                }
-            }
-        }
-        widget_finalize(widget_ident, kind, entry, ser, disp)
-    }
+    finalize_state(widget_ident, kind, state, entry)
     register_focusable(widget_ident)
 }
 
 def private radio_int_finalize(widget_ident : string; kind : string; var state : RadioIntState) {
-    //! Lambda + dispatcher install for the int-form RadioButton.
-    //! Dispatcher action: "set" with int payload; renderer applies before the imgui call.
-    let path = widget_path_key(widget_ident)
+    //! Int-form RadioButton finalize. State path; dispatch handled per-kind via [widget_dispatch].
     var entry : WidgetEntry
-    unsafe {
-        let ser <- @ capture(= path) () : JsonValue ? {
-            return state_jv(path, type<typedecl(state)>)
-        }
-        let disp <- @ capture(= path) (action : string; payload : JsonValue ?) {
-            with_state(path, type<typedecl(state)>) $(var s) {
-                if (action == "set") {
-                    s.pending_value = payload?["value"] ?? 0
-                    s.pending_set = true
-                }
-            }
-        }
-        widget_finalize(widget_ident, kind, entry, ser, disp)
-    }
+    finalize_state(widget_ident, kind, state, entry)
     register_focusable(widget_ident)
 }
 
 def private text_value_finalize(widget_ident : string; kind : string; var state : InputTextState) {
-    // String-typed cousin of pending_value_finalize. The JsonValue payload's
-    // underlying bytes drop when the dispatcher returns; we `:=` clone into
-    // the widget context heap so `state.pending_value` is still valid when
-    // the next widget body frame consumes it.
-    let path = widget_path_key(widget_ident)
+    //! String-pending finalize. State path; dispatch handled via [widget_dispatch] (clones `value` string into the context heap).
     var entry : WidgetEntry
-    unsafe {
-        let ser <- @ capture(= path) () : JsonValue ? {
-            return state_jv(path, type<typedecl(state)>)
-        }
-        let disp <- @ capture(= path) (action : string; payload : JsonValue ?) {
-            with_state(path, type<typedecl(state)>) $(var s) {
-                if (action == "set") {
-                    s.pending_value := payload?["value"] ?? ""
-                    s.has_pending = true
-                }
-            }
-        }
-        widget_finalize(widget_ident, kind, entry, ser, disp)
-    }
+    finalize_state(widget_ident, kind, state, entry)
     register_focusable(widget_ident)
 }
 
 def edit_finalize(widget_ident : string; kind : string; var ptr : auto(TT)? implicit) {
-    // External-pointer finalize: serializer captures the raw pointer and
-    // dereferences at snapshot time (snapshot reads `*ptr` live), dispatcher
-    // writes through `*ptr` on `set`. Caller owns the pointee — pass
-    // `safe_addr(local)` or `unsafe(addr(struct.field))` and accept lifetime
-    // responsibility. Generic on `TT` so the same body covers every scalar
-    // and vector type (`bool`/`int`/`float`/`float2`/etc.) via from_JV.
-    //
-    // Module-public (was `def private`) so `[edit_container]` rails living
-    // in imgui_containers_builtin.das (`edit_tab_item`, future `edit_window`
-    // etc.) can call edit_finalize without re-implementing the body.
+    //! External-pointer finalize: writes (ptr, ti=TypeInfo of TT) into g_widgets so
+    //! snapshot + dispatch route through `*ptr` via sprint_json_at / sscan_json_at.
+    //! Caller owns the pointee lifetime; pass `safe_addr(local)` or `unsafe(addr(struct.field))`.
     var entry : WidgetEntry
     unsafe {
-        var p = ptr
-        let ser <- @ capture(= p) () : JsonValue ? {
-            return JV((value = *p))
-        }
-        let disp <- @ capture(= p) (action : string; payload : JsonValue ?) {
-            if (action == "set") {
-                *p = from_JV(payload?["value"], type<TT>, default<TT>)
-            }
-        }
-        widget_finalize(widget_ident, kind, entry, ser, disp)
+        widget_finalize(widget_ident, kind, entry,
+                        reinterpret<void?>(ptr),
+                        reinterpret<TypeInfo const?>(typeinfo rtti_typeinfo(type<TT>)))
     }
     register_focusable(widget_ident)
 }
@@ -150,40 +100,296 @@ def edit_finalize(widget_ident : string; kind : string; var ptr : auto(TT)? impl
 def edit_container_open_close_finalize(widget_ident : string; kind : string;
                                        var ptr : bool? implicit;
                                        bbox : float4 = float4(0.0f, 0.0f, 0.0f, 0.0f)) {
-    // [edit_container] finalize for bool-typed open/close pointers. The
-    // container macro pushed `widget_ident` onto the container path BEFORE
-    // the body, so use container_path_key() (NOT widget_path_key, which
-    // would re-append and double the segment).
-    //
-    // Dispatcher handles three actions:
-    //   "set"   — generic JV write-through (mirrors edit_finalize)
-    //   "open"  — *ptr = true   (imgui_open semantic for X-button-style flags)
-    //   "close" — *ptr = false  (imgui_close)
-    // The bool specialization keeps the rail honest: a non-bool external
-    // pointer (e.g. edit_progress_bar with float?) has no meaning for
-    // open/close, so it shouldn't get the same helper.
-    //
-    // Optional `bbox` is captured by the caller (current_item_bbox after
-    // BeginTabItem / similar) and registered as the header click target.
+    //! [edit_container] finalize for bool-typed open/close pointers. Pointer + ti go into g_widgets so the per-kind [widget_dispatch] handles "set"/"open"/"close" by writing through ``*ptr``.
     var entry : WidgetEntry
     entry.bbox = bbox
     unsafe {
-        var p = ptr
-        let ser <- @ capture(= p) () : JsonValue ? {
-            return JV((value = *p))
-        }
-        let disp <- @ capture(= p) (action : string; payload : JsonValue ?) {
-            if (action == "set") {
-                *p = from_JV(payload?["value"], type<bool>, false)
-            } elif (action == "open") {
-                *p = true
-            } elif (action == "close") {
-                *p = false
-            }
-        }
-        container_finalize(widget_ident, kind, entry, ser, disp)
+        container_finalize(widget_ident, kind, entry,
+                           reinterpret<void?>(ptr),
+                           reinterpret<TypeInfo const?>(typeinfo rtti_typeinfo(type<bool>)))
     }
 }
+
+// ===== Per-state-struct dispatchers =====
+//
+// One ``[widget_dispatch]`` body per state struct — the macro keys by the
+// first parameter's struct type, so each body fires for every widget kind
+// whose state is that struct (e.g. ClickState handles ``button``/
+// ``small_button``/``arrow_button``/...). No per-kind registration table:
+// ``dispatch_or_err`` looks up by ``meta.ti.hash``.
+//
+// Non-Structure ``ti`` (scalar pointee from ``[edit_widget]``) falls through
+// to the generic ``sscan_json_at(state_addr, *ti)`` in ``dispatch_or_err`` —
+// no per-edit-pointee dispatcher needed.
+//
+// Display-only state structs (NarrativeState, EmptyMarkerState,
+// ProgressBarState, ImageState, PlotState, LabelTextState, TextFilterState,
+// ChildState, GroupState, MenuBarState, MainMenuBarState, MenuState,
+// TooltipState, TabBarState, DragDropSourceState, DragDropTargetState,
+// PopupContextItemState, PopupContextWindowState, PopupWindowState) get no
+// dispatcher — ``dispatch_or_err`` silently succeeds when no entry exists
+// for a Structure ti.
+
+[widget_dispatch]
+def _click_dispatch(var state : ClickState; action : string; payload : string) {
+    if (action == "click") {
+        state.pending_click = true
+    }
+}
+
+[widget_dispatch]
+def _toggle_dispatch(var state : ToggleState; action : string; payload : string) {
+    if (action == "set") {
+        unsafe {
+            sscan_json_at(payload, addr(state.pending_value),
+                          *reinterpret<TypeInfo const?>(typeinfo rtti_typeinfo(type<bool>)))
+        }
+        state.pending_toggle = true
+    }
+}
+
+[widget_dispatch]
+def _radio_int_dispatch(var state : RadioIntState; action : string; payload : string) {
+    if (action == "set") {
+        unsafe {
+            sscan_json_at(payload, addr(state.pending_value),
+                          *reinterpret<TypeInfo const?>(typeinfo rtti_typeinfo(type<int>)))
+        }
+        state.pending_set = true
+    }
+}
+
+[widget_dispatch]
+def _input_text_dispatch(var state : InputTextState; action : string; payload : string) {
+    if (action == "set") {
+        var v : string
+        unsafe {
+            sscan_json_at(payload, addr(v),
+                          *reinterpret<TypeInfo const?>(typeinfo rtti_typeinfo(type<string>)))
+        }
+        state.pending_value := v
+        state.has_pending = true
+    }
+}
+
+[widget_dispatch]
+def _text_show_dispatch(var state : TextShowState; action : string; payload : string) {
+    if (action == "set") {
+        var v : string
+        unsafe {
+            sscan_json_at(payload, addr(v),
+                          *reinterpret<TypeInfo const?>(typeinfo rtti_typeinfo(type<string>)))
+        }
+        state.value := v
+    }
+}
+
+[widget_dispatch]
+def _tree_node_dispatch(var state : TreeNodeState; action : string; payload : string) {
+    if (action == "open") {
+        state.pending_open = true
+    } elif (action == "close") {
+        state.pending_close = true
+    }
+}
+
+// pending_value family — shared body, one thin dispatch per state struct.
+
+def private pending_value_apply(var s : auto(S); payload : string) {
+    unsafe {
+        sscan_json_at(payload, addr(s.pending_value),
+                      *reinterpret<TypeInfo const?>(typeinfo rtti_typeinfo(type<typedecl(s.pending_value)>)))
+    }
+    s.has_pending = true
+}
+
+[widget_dispatch]
+def _pv_drag_float(var state : DragStateFloat; action : string; payload : string) {
+    if (action == "set") {
+        pending_value_apply(state, payload)
+    }
+}
+[widget_dispatch]
+def _pv_drag_float2(var state : DragStateFloat2; action : string; payload : string) {
+    if (action == "set") {
+        pending_value_apply(state, payload)
+    }
+}
+[widget_dispatch]
+def _pv_drag_float3(var state : DragStateFloat3; action : string; payload : string) {
+    if (action == "set") {
+        pending_value_apply(state, payload)
+    }
+}
+[widget_dispatch]
+def _pv_drag_float4(var state : DragStateFloat4; action : string; payload : string) {
+    if (action == "set") {
+        pending_value_apply(state, payload)
+    }
+}
+[widget_dispatch]
+def _pv_drag_int(var state : DragStateInt; action : string; payload : string) {
+    if (action == "set") {
+        pending_value_apply(state, payload)
+    }
+}
+[widget_dispatch]
+def _pv_drag_int2(var state : DragStateInt2; action : string; payload : string) {
+    if (action == "set") {
+        pending_value_apply(state, payload)
+    }
+}
+[widget_dispatch]
+def _pv_drag_int3(var state : DragStateInt3; action : string; payload : string) {
+    if (action == "set") {
+        pending_value_apply(state, payload)
+    }
+}
+[widget_dispatch]
+def _pv_drag_int4(var state : DragStateInt4; action : string; payload : string) {
+    if (action == "set") {
+        pending_value_apply(state, payload)
+    }
+}
+[widget_dispatch]
+def _pv_drag_range_float(var state : DragStateRangeFloat; action : string; payload : string) {
+    if (action == "set") {
+        pending_value_apply(state, payload)
+    }
+}
+[widget_dispatch]
+def _pv_drag_range_int(var state : DragStateRangeInt; action : string; payload : string) {
+    if (action == "set") {
+        pending_value_apply(state, payload)
+    }
+}
+[widget_dispatch]
+def _pv_slider_float(var state : SliderStateFloat; action : string; payload : string) {
+    if (action == "set") {
+        pending_value_apply(state, payload)
+    }
+}
+[widget_dispatch]
+def _pv_slider_float2(var state : SliderStateFloat2; action : string; payload : string) {
+    if (action == "set") {
+        pending_value_apply(state, payload)
+    }
+}
+[widget_dispatch]
+def _pv_slider_float3(var state : SliderStateFloat3; action : string; payload : string) {
+    if (action == "set") {
+        pending_value_apply(state, payload)
+    }
+}
+[widget_dispatch]
+def _pv_slider_float4(var state : SliderStateFloat4; action : string; payload : string) {
+    if (action == "set") {
+        pending_value_apply(state, payload)
+    }
+}
+[widget_dispatch]
+def _pv_slider_int(var state : SliderStateInt; action : string; payload : string) {
+    if (action == "set") {
+        pending_value_apply(state, payload)
+    }
+}
+[widget_dispatch]
+def _pv_slider_int2(var state : SliderStateInt2; action : string; payload : string) {
+    if (action == "set") {
+        pending_value_apply(state, payload)
+    }
+}
+[widget_dispatch]
+def _pv_slider_int3(var state : SliderStateInt3; action : string; payload : string) {
+    if (action == "set") {
+        pending_value_apply(state, payload)
+    }
+}
+[widget_dispatch]
+def _pv_slider_int4(var state : SliderStateInt4; action : string; payload : string) {
+    if (action == "set") {
+        pending_value_apply(state, payload)
+    }
+}
+[widget_dispatch]
+def _pv_input_float(var state : InputStateFloat; action : string; payload : string) {
+    if (action == "set") {
+        pending_value_apply(state, payload)
+    }
+}
+[widget_dispatch]
+def _pv_input_float2(var state : InputStateFloat2; action : string; payload : string) {
+    if (action == "set") {
+        pending_value_apply(state, payload)
+    }
+}
+[widget_dispatch]
+def _pv_input_float3(var state : InputStateFloat3; action : string; payload : string) {
+    if (action == "set") {
+        pending_value_apply(state, payload)
+    }
+}
+[widget_dispatch]
+def _pv_input_float4(var state : InputStateFloat4; action : string; payload : string) {
+    if (action == "set") {
+        pending_value_apply(state, payload)
+    }
+}
+[widget_dispatch]
+def _pv_input_int(var state : InputStateInt; action : string; payload : string) {
+    if (action == "set") {
+        pending_value_apply(state, payload)
+    }
+}
+[widget_dispatch]
+def _pv_input_int2(var state : InputStateInt2; action : string; payload : string) {
+    if (action == "set") {
+        pending_value_apply(state, payload)
+    }
+}
+[widget_dispatch]
+def _pv_input_int3(var state : InputStateInt3; action : string; payload : string) {
+    if (action == "set") {
+        pending_value_apply(state, payload)
+    }
+}
+[widget_dispatch]
+def _pv_input_int4(var state : InputStateInt4; action : string; payload : string) {
+    if (action == "set") {
+        pending_value_apply(state, payload)
+    }
+}
+[widget_dispatch]
+def _pv_input_double(var state : InputStateDouble; action : string; payload : string) {
+    if (action == "set") {
+        pending_value_apply(state, payload)
+    }
+}
+[widget_dispatch]
+def _pv_color3(var state : ColorState3; action : string; payload : string) {
+    if (action == "set") {
+        pending_value_apply(state, payload)
+    }
+}
+[widget_dispatch]
+def _pv_color4(var state : ColorState4; action : string; payload : string) {
+    if (action == "set") {
+        pending_value_apply(state, payload)
+    }
+}
+[widget_dispatch]
+def _pv_combo(var state : ComboState; action : string; payload : string) {
+    if (action == "set") {
+        pending_value_apply(state, payload)
+    }
+}
+[widget_dispatch]
+def _pv_listbox(var state : ListBoxState; action : string; payload : string) {
+    if (action == "set") {
+        pending_value_apply(state, payload)
+    }
+}
+
 
 // ===== Triggers (click family) =====
 
@@ -457,19 +663,7 @@ def tree_node_ex(var state : TreeNodeState; text : string;
     let im_open = TreeNodeEx(text, flags)
     state.opened = im_open
     var entry : WidgetEntry
-    unsafe {
-        let ser <- @ capture(& state) () : JsonValue ? {
-            return JV(state)
-        }
-        let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
-            if (action == "open") {
-                state.pending_open = true
-            } elif (action == "close") {
-                state.pending_close = true
-            }
-        }
-        widget_finalize(widget_ident, "tree_node_ex", entry, ser, disp)
-    }
+    finalize_state(widget_ident, "tree_node_ex", state, entry)
     return im_open
 }
 
@@ -1277,18 +1471,9 @@ def input_text_callback(var state : InputTextState; text : string;
 // ===== Filter family =====
 
 def private text_filter_finalize(widget_ident : string; kind : string; var state : TextFilterState) {
+    //! Filter editor finalize. Read-only via the registry's sprint_json_at rail; dispatch is a registered no-op (a future "set" path would mirror the value back into filter.InputBuf and call filter.Build()).
     var entry : WidgetEntry
-    unsafe {
-        let ser <- @ capture(& state) () : JsonValue ? {
-            return JV((value = state.value))
-        }
-        let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
-            // Read-only for now. A future "set" path would mirror the
-            // value back into filter.InputBuf and call filter.Build();
-            // playwright doesn't drive the filter editor yet.
-        }
-        widget_finalize(widget_ident, kind, entry, ser, disp)
-    }
+    finalize_state(widget_ident, kind, state, entry)
     register_focusable(widget_ident)
 }
 
@@ -1379,21 +1564,9 @@ def combo_getter(var state : ComboState; text : string;
 // fixtures programmatically.
 
 def private text_show_finalize(widget_ident : string; kind : string; var state : TextShowState) {
-    let path = widget_path_key(widget_ident)
+    //! Display-only widget finalize with a "set" action handled by the per-kind [widget_dispatch] (writes state.value).
     var entry : WidgetEntry
-    unsafe {
-        let ser <- @ capture(= path) () : JsonValue ? {
-            return state_jv(path, type<typedecl(state)>)
-        }
-        let disp <- @ capture(= path) (action : string; payload : JsonValue ?) {
-            with_state(path, type<typedecl(state)>) $(var s) {
-                if (action == "set") {
-                    s.value := payload?["value"] ?? ""
-                }
-            }
-        }
-        widget_finalize(widget_ident, kind, entry, ser, disp)
-    }
+    finalize_state(widget_ident, kind, state, entry)
 }
 
 [widget]
@@ -1423,42 +1596,21 @@ def text_show(var state : TextShowState; value : string = "") {
 // `register_focusable` is NOT called (display widgets are not focusable).
 
 def private narrative_finalize(widget_ident : string; kind : string; var state : NarrativeState) {
+    //! Read-only narrative finalize. State payload via sprint_json_at; dispatch is a registered no-op.
     var entry : WidgetEntry
-    unsafe {
-        let ser <- @ capture(& state) () : JsonValue ? {
-            return JV(state)
-        }
-        let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
-            // Read-only display; no L2/L3 actions.
-        }
-        widget_finalize(widget_ident, kind, entry, ser, disp)
-    }
+    finalize_state(widget_ident, kind, state, entry)
 }
 
 def private label_text_finalize(widget_ident : string; kind : string; var state : LabelTextState) {
+    //! Read-only label-text finalize. Same shape as narrative.
     var entry : WidgetEntry
-    unsafe {
-        let ser <- @ capture(& state) () : JsonValue ? {
-            return JV(state)
-        }
-        let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
-            // Read-only display; no L2/L3 actions.
-        }
-        widget_finalize(widget_ident, kind, entry, ser, disp)
-    }
+    finalize_state(widget_ident, kind, state, entry)
 }
 
 def private marker_finalize(widget_ident : string; kind : string; var state : EmptyMarkerState) {
+    //! Stateless decoration finalize. Same shape as narrative.
     var entry : WidgetEntry
-    unsafe {
-        let ser <- @ capture(& state) () : JsonValue ? {
-            return JV(state)
-        }
-        let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
-            // Stateless decoration; no L2/L3 actions.
-        }
-        widget_finalize(widget_ident, kind, entry, ser, disp)
-    }
+    finalize_state(widget_ident, kind, state, entry)
 }
 
 [widget]
@@ -1628,29 +1780,15 @@ def unindent(var state : EmptyMarkerState; indent_w : float = 0.0f) {
 // Per-call args echo into state for telemetry; no dispatcher (read-only).
 
 def private progress_bar_finalize(widget_ident : string; kind : string; var state : ProgressBarState) {
+    //! Read-only progress finalize. Same shape as narrative.
     var entry : WidgetEntry
-    unsafe {
-        let ser <- @ capture(& state) () : JsonValue ? {
-            return JV(state)
-        }
-        let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
-            // Read-only display; no L2/L3 actions.
-        }
-        widget_finalize(widget_ident, kind, entry, ser, disp)
-    }
+    finalize_state(widget_ident, kind, state, entry)
 }
 
 def private image_finalize(widget_ident : string; kind : string; var state : ImageState) {
+    //! Read-only image finalize. Same shape as narrative.
     var entry : WidgetEntry
-    unsafe {
-        let ser <- @ capture(& state) () : JsonValue ? {
-            return JV(state)
-        }
-        let disp <- @ capture(& state) (action : string; payload : JsonValue ?) {
-            // Read-only display; no L2/L3 actions.
-        }
-        widget_finalize(widget_ident, kind, entry, ser, disp)
-    }
+    finalize_state(widget_ident, kind, state, entry)
 }
 
 [widget]
@@ -1742,17 +1880,9 @@ def set_item_tooltip(var state : NarrativeState; text : string;
 // _builtin_PlotLines_cb / _builtin_PlotHistogram_cb forwarders.
 
 def private plot_finalize(widget_ident : string; kind : string; var state : PlotState) {
-    let path = widget_path_key(widget_ident)
+    //! Read-only plot finalize. Same shape as narrative.
     var entry : WidgetEntry
-    unsafe {
-        let ser <- @ capture(= path) () : JsonValue ? {
-            return state_jv(path, type<typedecl(state)>)
-        }
-        let disp <- @ capture(= path) (action : string; payload : JsonValue ?) {
-            // Plot is read-only; no L2/L3 actions. Dispatcher is a no-op.
-        }
-        widget_finalize(widget_ident, kind, entry, ser, disp)
-    }
+    finalize_state(widget_ident, kind, state, entry)
 }
 
 [widget]
@@ -2519,3 +2649,4 @@ def public log_text(s : string) {
     //! and `log_finish()` (or other `LogTo*` brackets).
     LogText(s)
 }
+

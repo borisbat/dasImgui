@@ -397,9 +397,7 @@ def EmbeddedListBox(name : string; var ent : auto(EnumT)&; max_height_in_items :
         for (ef in *ti.enumType) {
             let isSelected = ef.value == int64(int(ent))
             if (Selectable("{ef.name}##{name}", isSelected, ImGuiSelectableFlags.None, float2(max_tw, 0.))) {
-                unsafe {
-                    ent = reinterpret<EnumT>(ef.value)
-                }
+                ent = unsafe(reinterpret<EnumT>(ef.value))
                 return true
             }
         }

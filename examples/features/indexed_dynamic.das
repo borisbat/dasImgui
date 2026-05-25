@@ -82,10 +82,7 @@ def update() {
         // access would trip "can't insert to a locked table" if iterated
         // directly through `keys(...)`, since table[k] auto-inserts and the
         // iterator holds the table lock.
-        var live_keys : array<int>
-        for (k in keys(CHANNEL_VOL)) {
-            live_keys |> push(k)
-        }
+        let live_keys <- [for (k in keys(CHANNEL_VOL)); k]
         for (k in live_keys) {
             slider_float(CHANNEL_VOL[k], (text = "ch{k}"))
         }

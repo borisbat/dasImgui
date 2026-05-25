@@ -39,7 +39,7 @@ def test_app_documents_smoke(t : T?) {
         // Close-confirmation modal is installed; opens only when a dirty
         // doc is being closed. Fresh fixture: starts closed.
         let modal = find_widget(snap, "DOCS_CLOSE_MODAL")
-        t |> equal(string(modal?["kind"] ?? ""), "popup_modal",
+        t |> equal(modal?["kind"] ?? "", "popup_modal",
                    "DOCS_CLOSE_MODAL registered as popup_modal")
         t |> equal(modal?["payload"]?["open"] ?? true, false,
                    "close-confirmation modal starts closed (no dirty docs)")

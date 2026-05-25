@@ -107,10 +107,8 @@ class private WithStyleCallMacro : AstCallMacro {
             macro_verify(length(mt.values) == 2, prog, a.at,
                          "with_style: each tuple must have exactly two elements (enum key, value)")
             return null if (length(mt.values) != 2)
-            let key = clone_expression(mt.values[0])
-            let val = clone_expression(mt.values[1])
             bodyStmts |> push <| qmacro_expr(${
-                push_style_one($e(key), $e(val))
+                push_style_one($e(mt.values[0]), $e(mt.values[1]))
             })
         }
         bodyStmts |> push <| qmacro_expr(${

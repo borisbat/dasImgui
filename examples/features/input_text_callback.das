@@ -21,10 +21,7 @@ let private COMMANDS <- ["help", "history", "clear", "classify", "echo", "exit"]
 def private completion_cb(var data : ImGuiInputTextCallbackData) : int {
     if (data.EventFlag == ImGuiInputTextFlags.CallbackCompletion) {
         let prefix = clone_string(data.Buf)
-        var matches : array<string>
-        for (c in COMMANDS) {
-            if (c |> starts_with(prefix)) matches |> push(c)
-        }
+        var matches <- [for (c in COMMANDS); c; where c |> starts_with(prefix)]
         if (length(matches) == 1) {
             data |> DeleteChars(0, data.BufTextLen)
             data |> InsertChars(0, matches[0])

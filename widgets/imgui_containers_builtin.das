@@ -33,49 +33,38 @@ require math
 // renderer consumes them at the top of the next frame.
 //
 // `stateless_finalize` — for containers whose dispatch surface is empty
-// (group, menu_bar, menu, child, tab_bar, tooltip, item_tooltip). The
-// dispatcher lambda is a no-op; the serializer still reflects state for
-// snapshot.
+// (group, menu_bar, menu, child, tab_bar, tooltip, item_tooltip). No
+// ``[widget_dispatch]`` is registered for those state structs; on a stray
+// action targeting one, ``dispatch_or_err`` silently returns ok (the
+// Structure-with-no-dispatcher path is treated as display-only). The
+// serializer still reflects state for snapshot.
 //
 // `combo_select` / `list_box` reuse ComboState / ListBoxState (a
-// `pending_value : int` shape) and inline their own dispatcher because the
-// shared `pending_value_finalize` helper is private to imgui_widgets_builtin.
+// `pending_value : int` shape) and share the per-state-struct dispatcher
+// from imgui_widgets_builtin (one ``[widget_dispatch]`` per state type
+// covers every kind that uses that state).
 
-def private open_close_finalize(widget_ident : string; kind : string; var state : auto;
+def private open_close_finalize(widget_ident : string; kind : string; var state : auto(ST);
                                 bbox : float4 = float4(0.0f, 0.0f, 0.0f, 0.0f)) {
-    let path = container_path_key()
+    //! Container finalize for state with ``pending_open`` / ``pending_close``. Dispatch routes through ``g_dispatchers`` keyed by ``ST``'s ``TypeInfo.hash`` to the ``[widget_dispatch] def _(var state : ST; …)`` body below.
     var entry : WidgetEntry
     entry.bbox = bbox
     unsafe {
-        let ser <- @ capture(= path) () : JsonValue ? {
-            return state_jv(path, type<typedecl(state)>)
-        }
-        let disp <- @ capture(= path) (action : string; payload : JsonValue ?) {
-            with_state(path, type<typedecl(state)>) $(var s) {
-                if (action == "open") {
-                    s.pending_open = true
-                } elif (action == "close") {
-                    s.pending_close = true
-                }
-            }
-        }
-        container_finalize(widget_ident, kind, entry, ser, disp)
+        container_finalize(widget_ident, kind, entry,
+                           addr(state),
+                           reinterpret<TypeInfo const?>(typeinfo rtti_typeinfo(type<ST>)))
     }
 }
 
-def public stateless_finalize(widget_ident : string; kind : string; var state : auto;
+def public stateless_finalize(widget_ident : string; kind : string; var state : auto(ST);
                               bbox : float4 = float4(0.0f, 0.0f, 0.0f, 0.0f)) {
-    let path = container_path_key()
+    //! Container finalize for stateless containers (no dispatcher actions). Snapshot rail still reflects state for telemetry; no ``[widget_dispatch]`` is registered for ``ST``, so ``g_dispatchers[(*ti).hash]`` is absent and ``dispatch_or_err`` silently returns ok if a stray action ever targets one (Structure-with-no-dispatcher = display-only).
     var entry : WidgetEntry
     entry.bbox = bbox
     unsafe {
-        let ser <- @ capture(= path) () : JsonValue ? {
-            return state_jv(path, type<typedecl(state)>)
-        }
-        let disp <- @ capture(= path) (action : string; payload : JsonValue ?) {
-            // No actions; serializer is the only telemetry surface for stateless containers.
-        }
-        container_finalize(widget_ident, kind, entry, ser, disp)
+        container_finalize(widget_ident, kind, entry,
+                           addr(state),
+                           reinterpret<TypeInfo const?>(typeinfo rtti_typeinfo(type<ST>)))
     }
 }
 
@@ -674,21 +663,11 @@ def combo_select(var state : ComboState; text : string; preview_value : string;
         invoke(blk)
         EndCombo()
     }
-    let path = container_path_key()
     var entry : WidgetEntry
     unsafe {
-        let ser <- @ capture(= path) () : JsonValue ? {
-            return state_jv(path, type<typedecl(state)>)
-        }
-        let disp <- @ capture(= path) (action : string; payload : JsonValue ?) {
-            with_state(path, type<typedecl(state)>) $(var s) {
-                if (action == "set") {
-                    s.pending_value = payload?["value"] ?? 0
-                    s.has_pending = true
-                }
-            }
-        }
-        container_finalize(widget_ident, "combo_select", entry, ser, disp)
+        container_finalize(widget_ident, "combo_select", entry,
+                           addr(state),
+                           reinterpret<TypeInfo const?>(typeinfo rtti_typeinfo(type<ComboState>)))
     }
 }
 
@@ -706,21 +685,11 @@ def list_box(var state : ListBoxState; text : string; size : float2; blk : block
         invoke(blk)
         EndListBox()
     }
-    let path = container_path_key()
     var entry : WidgetEntry
     unsafe {
-        let ser <- @ capture(= path) () : JsonValue ? {
-            return state_jv(path, type<typedecl(state)>)
-        }
-        let disp <- @ capture(= path) (action : string; payload : JsonValue ?) {
-            with_state(path, type<typedecl(state)>) $(var s) {
-                if (action == "set") {
-                    s.pending_value = payload?["value"] ?? 0
-                    s.has_pending = true
-                }
-            }
-        }
-        container_finalize(widget_ident, "list_box", entry, ser, disp)
+        container_finalize(widget_ident, "list_box", entry,
+                           addr(state),
+                           reinterpret<TypeInfo const?>(typeinfo rtti_typeinfo(type<ListBoxState>)))
     }
 }
 
@@ -758,4 +727,50 @@ def drag_drop_target(var state : DragDropTargetState; blk : block) {
         EndDragDropTarget()
     }
     stateless_finalize(widget_ident, "drag_drop_target", state)
+}
+
+// ===== Per-state-struct dispatchers (containers) =====
+//
+// One [widget_dispatch] body per state struct. Dispatch keyed by ti.hash
+// fires for every container kind whose state is that struct (popup +
+// popup_modal share PopupState etc.). TreeNodeState/ComboState/ListBoxState
+// dispatchers live in imgui_widgets_builtin.das; their dispatchers also
+// cover the container forms (tree_node, combo_select, list_box) without
+// extra registration. Stateless containers (group/menu/popup_context*/
+// tab_bar/tooltip/drag_drop_*) get no dispatcher and silently no-op.
+
+[widget_dispatch]
+def _window_dispatch(var state : WindowState; action : string; payload : string) {
+    if (action == "open") {
+        state.pending_open = true
+    } elif (action == "close") {
+        state.pending_close = true
+    }
+}
+
+[widget_dispatch]
+def _popup_dispatch(var state : PopupState; action : string; payload : string) {
+    if (action == "open") {
+        state.pending_open = true
+    } elif (action == "close") {
+        state.pending_close = true
+    }
+}
+
+[widget_dispatch]
+def _tab_item_dispatch(var state : TabItemState; action : string; payload : string) {
+    if (action == "open") {
+        state.pending_open = true
+    } elif (action == "close") {
+        state.pending_close = true
+    }
+}
+
+[widget_dispatch]
+def _collapsing_header_dispatch(var state : CollapsingHeaderState; action : string; payload : string) {
+    if (action == "open") {
+        state.pending_open = true
+    } elif (action == "close") {
+        state.pending_close = true
+    }
 }

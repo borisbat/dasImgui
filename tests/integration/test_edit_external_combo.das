@@ -22,7 +22,7 @@ def test_edit_external_combo_smoke(t : T?) {
         t |> success(widget_exists(snap, "MAIN_WIN/COMBO_DIFFICULTY"),
                      "COMBO_DIFFICULTY registered")
 
-        let idx0 = int(widget_payload_field(snap, "MAIN_WIN/COMBO_THEME", "value") ?? 0)
+        let idx0 = widget_payload_field(snap, "MAIN_WIN/COMBO_THEME", "value") ?? 0
         t |> equal(idx0, 1, "initial selected idx = 1 ('Dark')")
 
         set_value(d, "MAIN_WIN/COMBO_THEME", JV(3))

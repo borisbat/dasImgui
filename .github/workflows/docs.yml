@@ -50,6 +50,8 @@ jobs:
           # Path basename becomes the daspkg install dir basename
           # (daspkg uses source basename, not .das_package's package_name).
           path: dasImgui
+          # Full history for the lint step's `git diff origin/<base>...HEAD`.
+          fetch-depth: 0
 
       - name: "Install system dependencies"
         run: |
@@ -78,6 +80,31 @@ jobs:
             -DDAS_GLFW_DISABLED=OFF \
             -G Ninja
           cmake --build ./build --parallel --target daslang
+
+      - name: "Lint changed .das files"
+        # Mirrors daslang's extended_checks.yml lint step. Runs against the
+        # dasImgui checkout via `-load_module` so requires inside `imgui/*`
+        # resolve without daspkg-installing the module first — fails fast
+        # before the slower APNG fetch + sphinx build.
+        working-directory: ${{ github.workspace }}/dasImgui
+        run: |
+          set -eux
+          BASE_REF="${{ github.event.pull_request.base.ref }}"
+          BASE_REF="${BASE_REF:-master}"
+          # Ensure origin/$BASE_REF is fetched even if checkout pinned us
+          # to a non-default branch.
+          git fetch --depth=50 origin "$BASE_REF" 2>/dev/null || true
+          mapfile -t CHANGED < <(git diff --name-only --diff-filter=AM "origin/${BASE_REF}...HEAD" -- '*.das')
+          if [ ${#CHANGED[@]} -eq 0 ]; then
+            echo "no .das files changed; skipping lint"
+            exit 0
+          fi
+          echo "linting ${#CHANGED[@]} file(s): ${CHANGED[*]}"
+          # Serial (-j 1): parallel workers don't propagate -load_module.
+          ${{ github.workspace }}/daslang-src/bin/daslang \
+            -load_module ${{ github.workspace }}/dasImgui \
+            ${{ github.workspace }}/daslang-src/utils/lint/main.das -- \
+            "${CHANGED[@]}" --quiet -j 1
 
       - name: "Fetch tutorial APNGs from orphan assets branch"
         working-directory: ${{ github.workspace }}/dasImgui

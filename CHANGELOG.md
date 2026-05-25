@@ -2,6 +2,43 @@
 
 ## Unreleased
 
+### Changed
+
+- **`[widget_dispatch]` annotation re-keyed by state-struct type, not by
+  function name.** One `[widget_dispatch] def _(var state : T; action;
+  payload)` body fires for every widget kind whose state is `T` — the
+  fn name is irrelevant. Dispatch lookup at HTTP-receive time uses
+  `meta.ti.hash` (one global `g_dispatchers : table<uint64;
+  KindDispatcher>`); non-Structure `ti` (scalar pointee from
+  `[edit_widget]`) falls through to a generic `sscan_json_at(state_addr,
+  *ti)` in `dispatch_or_err`. Built-in widgets builtin file no longer
+  carries the `_register_*_dispatch_kinds()` `[init]` blocks (gone:
+  ~150 explicit `register_widget_kind` calls); ~50 per-kind
+  `dispatch_*` helpers collapse to ~35 per-state-struct
+  `[widget_dispatch]` bodies. Display-only state structs
+  (Narrative/Empty/Plot/Image/etc.) get no dispatcher and silently
+  no-op.
+- **Per-widget serializer/dispatcher lambdas killed.** Pre-PR4 every
+  `[widget]` body emitted 2 heap-allocated closures per render
+  (`ser <- @ capture(...)` + `disp <- @ capture(...)`); `widget_finalize`
+  routed them through path-keyed `g_serializers` / `g_dispatchers`
+  tables. Post-PR4: `widget_finalize` takes `(state_addr : void?, ti :
+  TypeInfo const?)` directly, no closures emitted. Snapshot rail
+  routes through `sprint_json_at(state_addr, *ti)` (which now matches
+  daslib `JV<vec>` wire shape after upstream daslang #2871). Compile
+  delta on `examples/imgui_demo/imgui_demo.das`: **−19.8% wall**
+  (7.01s → 5.62s mean, every patched run beats every baseline run).
+- **`[edit_widget]` family no longer needs per-pointee-type dispatcher
+  registrations.** Pre-PR4: 10 hardcoded `dispatch_edit_bool` /
+  `dispatch_edit_int` / `dispatch_edit_float3` / ... wrappers + one
+  `register_widget_kind` per edit_* kind. Post-PR4: 0. The scalar-
+  pointee `ti` is recorded in `g_widgets[path].ti`; `dispatch_or_err`
+  detects non-Structure ti and uses it to drive
+  `sscan_json_at(state_addr, *ti)` directly. Generic auto(T) edit_*
+  rails (`edit_drag_scalar` / `edit_input_scalar` / `edit_checkbox_flags`
+  / ...) work out of the box — meta.ti varies per instantiation, the
+  generic path covers everything.
+
 ### Added
 
 - `popup_window(IDENT, str_id, flags) $blk` — stateless `[container]`

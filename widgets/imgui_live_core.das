@@ -413,13 +413,13 @@ def private mod_name_to_key(name : string) : int {
 }
 
 def private needs_shift_ascii(c : int) : bool {
-    if (c >= int('A') && c <= int('Z')) return true   // nolint:PERF014
-    return (c == int('~') || c == int('!') || c == int('@') || c == int('#')
-         || c == int('$') || c == int('%') || c == int('^') || c == int('&')
-         || c == int('*') || c == int('(') || c == int(')') || c == int('_')
-         || c == int('+') || c == int('{') || c == int('}') || c == int('|')
-         || c == int(':') || c == int('"') || c == int('<') || c == int('>')
-         || c == int('?'))
+    if (c >= 'A' && c <= 'Z') return true   // nolint:PERF014
+    return (c == '~' || c == '!' || c == '@' || c == '#'
+         || c == '$' || c == '%' || c == '^' || c == '&'
+         || c == '*' || c == '(' || c == ')' || c == '_'
+         || c == '+' || c == '{' || c == '}' || c == '|'
+         || c == ':' || c == '"' || c == '<' || c == '>'
+         || c == '?')
 }
 
 def private base_key_ascii(c : int) : int {
@@ -430,35 +430,35 @@ def private base_key_ascii(c : int) : int {
     // float literal), so we anchor the digit base on `ImGuiKey.A - 10`.
     let key_a = int(ImGuiKey.A)
     let key_0 = key_a - 10
-    if (c >= int('A') && c <= int('Z')) return key_a + (c - int('A'))   // nolint:PERF014
-    if (c >= int('a') && c <= int('z')) return key_a + (c - int('a'))   // nolint:PERF014
-    if (c >= int('0') && c <= int('9')) return key_0 + (c - int('0'))   // nolint:PERF014
+    if (c >= 'A' && c <= 'Z') return key_a + (c - 'A')   // nolint:PERF014
+    if (c >= 'a' && c <= 'z') return key_a + (c - 'a')   // nolint:PERF014
+    if (c >= '0' && c <= '9') return key_0 + (c - '0')   // nolint:PERF014
     // shifted digit row: ! @ # $ % ^ & * ( ) → keys 1 2 3 4 5 6 7 8 9 0
-    if (c == int('!')) return key_0 + 1
-    if (c == int('@')) return key_0 + 2
-    if (c == int('#')) return key_0 + 3
-    if (c == int('$')) return key_0 + 4
-    if (c == int('%')) return key_0 + 5
-    if (c == int('^')) return key_0 + 6
-    if (c == int('&')) return key_0 + 7
-    if (c == int('*')) return key_0 + 8
-    if (c == int('(')) return key_0 + 9
-    if (c == int(')')) return key_0
+    if (c == '!') return key_0 + 1
+    if (c == '@') return key_0 + 2
+    if (c == '#') return key_0 + 3
+    if (c == '$') return key_0 + 4
+    if (c == '%') return key_0 + 5
+    if (c == '^') return key_0 + 6
+    if (c == '&') return key_0 + 7
+    if (c == '*') return key_0 + 8
+    if (c == '(') return key_0 + 9
+    if (c == ')') return key_0
     // punctuation
-    if (c == int(' ')) return int(ImGuiKey.Space)
-    if (c == int('\n')) return int(ImGuiKey.Enter)
-    if (c == int('\t')) return int(ImGuiKey.Tab)
-    if (c == int(',') || c == int('<')) return int(ImGuiKey.Comma)
-    if (c == int('.') || c == int('>')) return int(ImGuiKey.Period)
-    if (c == int('/') || c == int('?')) return int(ImGuiKey.Slash)
-    if (c == int(';') || c == int(':')) return int(ImGuiKey.Semicolon)
-    if (c == int('\'') || c == int('"')) return int(ImGuiKey.Apostrophe)
-    if (c == int('-') || c == int('_')) return int(ImGuiKey.Minus)
-    if (c == int('=') || c == int('+')) return int(ImGuiKey.Equal)
-    if (c == int('[') || c == int('{')) return int(ImGuiKey.LeftBracket)
-    if (c == int(']') || c == int('}')) return int(ImGuiKey.RightBracket)
-    if (c == int('\\') || c == int('|')) return int(ImGuiKey.Backslash)
-    if (c == int('`') || c == int('~')) return int(ImGuiKey.GraveAccent)
+    if (c == ' ') return int(ImGuiKey.Space)
+    if (c == '\n') return int(ImGuiKey.Enter)
+    if (c == '\t') return int(ImGuiKey.Tab)
+    if (c == ',' || c == '<') return int(ImGuiKey.Comma)
+    if (c == '.' || c == '>') return int(ImGuiKey.Period)
+    if (c == '/' || c == '?') return int(ImGuiKey.Slash)
+    if (c == ';' || c == ':') return int(ImGuiKey.Semicolon)
+    if (c == '\'' || c == '"') return int(ImGuiKey.Apostrophe)
+    if (c == '-' || c == '_') return int(ImGuiKey.Minus)
+    if (c == '=' || c == '+') return int(ImGuiKey.Equal)
+    if (c == '[' || c == '{') return int(ImGuiKey.LeftBracket)
+    if (c == ']' || c == '}') return int(ImGuiKey.RightBracket)
+    if (c == '\\' || c == '|') return int(ImGuiKey.Backslash)
+    if (c == '`' || c == '~') return int(ImGuiKey.GraveAccent)
     return 0
 }
 
@@ -554,7 +554,7 @@ def imgui_key_chord(input : JsonValue?) : JsonValue? {
     return JV((error = "missing key")) if (empty(args.key))
     var target_key = 0
     if (length(args.key) == 1) {
-        target_key = base_key_ascii(int(first_character(args.key)))
+        target_key = base_key_ascii(first_character(args.key))
     }
     return JV((error = "unsupported chord key", key = args.key)) if (target_key == 0)
     // Validate mod names up front.
