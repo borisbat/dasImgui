@@ -100,7 +100,7 @@ def edit_finalize(widget_ident : string; kind : string; var ptr : auto(TT)? impl
 def edit_container_open_close_finalize(widget_ident : string; kind : string;
                                        var ptr : bool? implicit;
                                        bbox : float4 = float4(0.0f, 0.0f, 0.0f, 0.0f)) {
-    //! [edit_container] finalize for bool-typed open/close pointers. Pointer + ti go into g_widgets so the per-kind [widget_dispatch] handles "set"/"open"/"close" by writing through *ptr.
+    //! [edit_container] finalize for bool-typed open/close pointers. Pointer + ti go into g_widgets so the per-kind [widget_dispatch] handles "set"/"open"/"close" by writing through ``*ptr``.
     var entry : WidgetEntry
     entry.bbox = bbox
     unsafe {
