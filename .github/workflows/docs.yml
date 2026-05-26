@@ -106,16 +106,6 @@ jobs:
             ${{ github.workspace }}/daslang-src/utils/lint/main.das -- \
             "${CHANGED[@]}" --quiet -j 1
 
-      - name: "Fetch tutorial APNGs from orphan assets branch"
-        working-directory: ${{ github.workspace }}/dasImgui
-        run: bash tests/integration/fetch_tutorial_apngs.sh origin
-        # APNGs live on an orphan `assets` branch (force-amend-pushed on each
-        # re-record sweep) so the source-repo history doesn't accumulate
-        # hundreds of MB per refresh. Sphinx needs them on disk before the
-        # html build, otherwise the `.. image:: _static/tutorials/*.apng`
-        # directives 404. Runs BEFORE `daspkg install` so the copy step
-        # below picks up the freshly-fetched APNGs alongside the source.
-
       - name: "daspkg install dasImgui (global)"
         run: |
           set -eux

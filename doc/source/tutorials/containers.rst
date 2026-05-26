@@ -32,8 +32,11 @@ Source: ``examples/tutorial/containers.das``.
 Walkthrough
 ************
 
-.. image:: ../_static/tutorials/containers.apng
-   :alt: containers recording
+.. raw:: html
+
+   <video autoplay loop muted playsinline width="100%">
+     <source src="../_static/tutorials/containers.mp4" type="video/mp4">
+   </video>
 
 .. literalinclude:: ../../../examples/tutorial/containers.das
    :language: das

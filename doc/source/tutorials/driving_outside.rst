@@ -28,8 +28,11 @@ JSON commands** — no synthesized mouse moves into widget centers.
 Walkthrough
 ************
 
-.. image:: ../_static/tutorials/driving_outside.apng
-   :alt: driving_outside recording
+.. raw:: html
+
+   <video autoplay loop muted playsinline width="100%">
+     <source src="../_static/tutorials/driving_outside.mp4" type="video/mp4">
+   </video>
 
 .. literalinclude:: ../../../examples/tutorial/driving_outside.das
    :language: das

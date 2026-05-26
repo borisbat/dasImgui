@@ -37,8 +37,11 @@ Source: ``examples/tutorial/with_disabled.das``.
 Walkthrough
 ************
 
-.. image:: ../_static/tutorials/with_disabled.apng
-   :alt: with_disabled recording
+.. raw:: html
+
+   <video autoplay loop muted playsinline width="100%">
+     <source src="../_static/tutorials/with_disabled.mp4" type="video/mp4">
+   </video>
 
 .. literalinclude:: ../../../examples/tutorial/with_disabled.das
    :language: das

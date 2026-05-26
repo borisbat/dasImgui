@@ -44,28 +44,25 @@ bash       modules/dasImgui/tests/integration/smoke_curl.sh
   custom IDE integration, etc.): the curl smoke is the documented shape.
   Read it as the contract for "what a third-party client should do."
 
-## 3. Recordings — APNG artifact generation
+## 3. Recordings — MP4 artifact generation
 
-`record_*.das` files produce one tutorial-companion APNG each. They are
-NOT in CI; they're one-shell driver scripts that spawn their own
+`record_*.das` files produce one tutorial-companion video each. They
+are NOT in CI; they're one-shell driver scripts that spawn their own
 `daslang-live` host via `with_recording_app`, post a narrate/click/drag
-timeline, and save the APNG. APNGs live on an orphan `assets` branch
-(see "APNG storage" below) and are referenced by the tutorial RST pages
-under `doc/source/tutorials/`.
+timeline, and save an `.apng`. A single ffmpeg pass converts each
+`.apng` to the shipped `.mp4` (~300× smaller). The `.mp4` files live
+in-tree under `doc/source/_static/tutorials/` (~5 MB total for the full
+set) and are referenced by tutorial RST pages.
 
-### The three scripts
+### The script
 
 | Script | Purpose | When to run |
 |---|---|---|
-| `rerecord_all.ps1` | Sequentially re-record every `record_*.das` driver. Writes APNGs to the gitignored `doc/source/_static/tutorials/`. ~20 min. | After cross-cutting visual changes (theme, font, narrate placement) or after touching multiple drivers. |
-| `fetch_tutorial_apngs.ps1` / `.sh` | Pull current `origin/assets` APNGs into the local tutorial dir. Idempotent. | After a fresh clone, before `sphinx-build`. CI runs the `.sh` form automatically. |
-| `publish_apngs_to_assets.ps1` | Spin up a fresh `assets` worktree, replace its APNG set with the working-tree APNGs, amend the orphan commit, force-push with `--force-with-lease`. | After eyeball-approving locally-generated APNGs and before merging the source-branch PR that references them. |
+| `rerecord_all.ps1` | Sequentially re-record every `record_*.das` driver. Writes intermediate APNGs to the gitignored `doc/source/_static/tutorials/`. ~20 min. | After cross-cutting visual changes (theme, font, narrate placement) or after touching multiple drivers. |
 
-### Full publish workflow
+After re-recording, convert APNGs to MP4 via ffmpeg (the deliverables).
 
-The two-step record-then-publish split exists to keep a manual review
-checkpoint between writing/running a driver and pushing binary artifacts
-to a public branch:
+### Full workflow
 
 ```powershell
 # One-time setup — point at your daslang build
@@ -76,49 +73,37 @@ pwsh tests/integration/rerecord_all.ps1                # ~20 min, all drivers fo
 # OR
 daslang.exe -project_root . tests/integration/record_X.das
 
-# 2. EYEBALL REVIEW. APNGs land at doc/source/_static/tutorials/.
-#    Open in a browser, ffmpeg-extract key frames, etc. Iterate on the
-#    driver until satisfied; rerun (1) per scene.
-#
-#    Frame extraction recipe (see skills/recording.md):
+# 2. EYEBALL REVIEW the .apng output before converting.
+#    ffmpeg-extract frames if needed:
 ffmpeg -i doc/source/_static/tutorials/X.apng \
     -vf "select=eq(n\,200)" -frames:v 1 -update 1 frame200.png -y
 
-# 3. Publish — force-amend-push the orphan assets commit.
-#    Ships the WHOLE working-tree APNG set, not just the one(s) you re-recorded.
-#    Run fetch_tutorial_apngs.ps1 first if you want to keep untouched APNGs.
-pwsh tests/integration/publish_apngs_to_assets.ps1
+# 3. Convert APNG → MP4 (the deliverable).
+#    For a single recording:
+ffmpeg -y -loglevel error -i doc/source/_static/tutorials/X.apng \
+    -c:v libx264 -crf 23 -pix_fmt yuv420p -movflags +faststart \
+    doc/source/_static/tutorials/X.mp4
 
-# 4. Push the source-branch PR (record_*.das + RST + index.rst).
-#    CI's sphinx step fetches APNGs from origin/assets via .sh script.
+#    Bulk (all APNGs in the dir):
+cd doc/source/_static/tutorials
+for f in *.apng; do
+    base="${f%.apng}"
+    ffmpeg -y -loglevel error -i "$f" -c:v libx264 -crf 23 \
+           -pix_fmt yuv420p -movflags +faststart "$base.mp4"
+done
+
+# 4. git add the MP4(s) and push the source-branch PR.
+git add doc/source/_static/tutorials/X.mp4
 git push -u origin <branch>
 ```
 
-### Branch contract: `origin/assets`
-
-`origin/assets` is an **orphan branch with exactly one commit**,
-force-amend-pushed on every publish. Tip never has parents; GitHub GCs
-the previous commit's blobs after ~2 weeks. Layout mirrors the source
-repo: `doc/source/_static/tutorials/*.apng` plus a root `README.md`
-documenting the contract.
-
-Never merge anything into `assets`. Never expect history. PRs against
-`assets` are nonsense — `publish_apngs_to_assets.ps1` is the only
-mechanism that writes there.
-
 ### CI integration
 
-`.github/workflows/docs.yml` runs `fetch_tutorial_apngs.sh` before
-`daspkg install dasImgui (global)` so the daspkg copy picks up the
-freshly-fetched binaries alongside the source. Sphinx then reads from
-the daspkg-installed
-`daslang-src/modules/dasImgui/doc/source/_static/tutorials/`.
-
-CI uses `-W` (warnings-as-errors) on sphinx, so an RST referencing a
-missing APNG fails the build. Implication for a new tutorial PR:
-**APNGs must land on `origin/assets` before the source-branch PR can
-merge** (or its docs CI will fail). Pair every new RST commit with a
-prior publish step.
+`.github/workflows/docs.yml` checks out the source — `.mp4` files are
+already in the tree, no fetch step. CI uses `-W` (warnings-as-errors)
+on sphinx, so an RST `<video>` block referencing a missing `.mp4` fails
+the build. Implication for a new tutorial PR: commit the `.mp4`
+ahead of the RST cite to keep CI passing.
 
 ### Adding a new recording
 
@@ -128,14 +113,19 @@ For a new tutorial `foo`:
    (see [`../../skills/recording.md`](../../skills/recording.md) for the
    driver template).
 2. `daslang.exe -project_root . tests/integration/record_foo.das` —
-   produces `doc/source/_static/tutorials/foo.apng`.
+   produces `doc/source/_static/tutorials/foo.apng` (gitignored).
 3. Eyeball-review. ffmpeg-extract frames if needed.
-4. Write `doc/source/tutorials/foo.rst` + add to `index.rst` toctree.
-5. `publish_apngs_to_assets.ps1` — pushes APNG to `origin/assets`.
-6. `git push -u origin <branch>` — source-branch PR with RST + driver.
+4. ffmpeg-convert `foo.apng` → `foo.mp4` (see step 3 of the workflow above).
+5. Write `doc/source/tutorials/foo.rst` + add to `index.rst` toctree.
+6. `git add foo.mp4 record_foo.das foo.rst index.rst` + push.
 
-The order matters: APNG on `assets` first, then source-branch PR. If
-the PR is opened before the APNG lands, the docs CI run will fail.
+### Historical note: orphan `assets` branch
+
+Before the MP4 migration (PR-MP4), the 37-tutorial APNG set totaled
+~1.7 GB and lived on an orphan `assets` branch (force-amend-pushed each
+sweep). The branch is now dead — at ~5 MB of MP4 for the full set, the
+source repo absorbs the deliverables cleanly. The `origin/assets` ref
+can be deleted; nothing references it.
 
 Detailed driver-authoring guidance, pacing constants, menu-interaction
 gotchas, and visual aid recipes live in

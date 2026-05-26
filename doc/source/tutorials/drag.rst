@@ -28,8 +28,11 @@ Source: ``examples/tutorial/drag.das``.
 Walkthrough
 ************
 
-.. image:: ../_static/tutorials/drag.apng
-   :alt: drag tutorial recording
+.. raw:: html
+
+   <video autoplay loop muted playsinline width="100%">
+     <source src="../_static/tutorials/drag.mp4" type="video/mp4">
+   </video>
 
 .. literalinclude:: ../../../examples/tutorial/drag.das
    :language: das

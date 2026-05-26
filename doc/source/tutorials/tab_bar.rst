@@ -26,8 +26,11 @@ Source: ``examples/tutorial/tab_bar.das``.
 Walkthrough
 ************
 
-.. image:: ../_static/tutorials/tab_bar.apng
-   :alt: tab_bar recording
+.. raw:: html
+
+   <video autoplay loop muted playsinline width="100%">
+     <source src="../_static/tutorials/tab_bar.mp4" type="video/mp4">
+   </video>
 
 .. literalinclude:: ../../../examples/tutorial/tab_bar.das
    :language: das

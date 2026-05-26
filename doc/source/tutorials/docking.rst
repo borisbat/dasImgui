@@ -20,8 +20,11 @@ Source: ``examples/tutorial/docking.das``.
 Walkthrough
 ************
 
-.. image:: ../_static/tutorials/docking.apng
-   :alt: docking recording
+.. raw:: html
+
+   <video autoplay loop muted playsinline width="100%">
+     <source src="../_static/tutorials/docking.mp4" type="video/mp4">
+   </video>
 
 .. literalinclude:: ../../../examples/tutorial/docking.das
    :language: das

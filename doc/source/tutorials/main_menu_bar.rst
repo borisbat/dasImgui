@@ -43,8 +43,11 @@ Source: ``examples/tutorial/main_menu_bar.das``.
 Walkthrough
 ************
 
-.. image:: ../_static/tutorials/main_menu_bar.apng
-   :alt: main_menu_bar recording
+.. raw:: html
+
+   <video autoplay loop muted playsinline width="100%">
+     <source src="../_static/tutorials/main_menu_bar.mp4" type="video/mp4">
+   </video>
 
 .. literalinclude:: ../../../examples/tutorial/main_menu_bar.das
    :language: das

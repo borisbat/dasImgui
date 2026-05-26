@@ -34,8 +34,11 @@ Source: ``examples/tutorial/drawlist.das``.
 Walkthrough
 ************
 
-.. image:: ../_static/tutorials/drawlist.apng
-   :alt: drawlist rail recording
+.. raw:: html
+
+   <video autoplay loop muted playsinline width="100%">
+     <source src="../_static/tutorials/drawlist.mp4" type="video/mp4">
+   </video>
 
 .. literalinclude:: ../../../examples/tutorial/drawlist.das
    :language: das

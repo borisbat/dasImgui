@@ -4,16 +4,19 @@
 #
 # All `tests/integration/record_*.das` drivers spawn their own daslang-live on
 # port 9090, so the sweep is strictly serial. Full pass takes ~20 minutes for
-# 23 drivers; cross-cutting visual changes (narrate placement, theme, font
+# 37+ drivers; cross-cutting visual changes (narrate placement, theme, font
 # scale) typically need it. Per-driver runtime = its with_recording_app
 # max_seconds + ~3s host boot/drain.
 #
-# After re-recording, the new APNGs land in doc/source/_static/tutorials/ which
-# is .gitignored on source branches (binaries live on the orphan `assets`
-# branch). Workflow:
-#   1. rerecord_all.ps1            -- this script; produces new APNGs locally
-#   2. eyeball-review the APNGs
-#   3. publish_apngs_to_assets.ps1 -- force-amend-pushes them onto origin/assets
+# After re-recording, .apng files land in doc/source/_static/tutorials/
+# (gitignored — the intermediate artifact, not the deliverable). Convert
+# each to .mp4 via ffmpeg before committing:
+#   for f in doc/source/_static/tutorials/*.apng; do
+#       base="${f%.apng}"
+#       ffmpeg -y -loglevel error -i "$f" -c:v libx264 -crf 23 \
+#              -pix_fmt yuv420p -movflags +faststart "$base.mp4"
+#   done
+# Then `git add doc/source/_static/tutorials/*.mp4` and push.
 #
 # Run:
 #   pwsh modules/dasImgui/tests/integration/rerecord_all.ps1 -DaslangExe D:/Work/daScript/bin/Release/daslang.exe

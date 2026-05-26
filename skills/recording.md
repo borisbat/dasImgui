@@ -209,61 +209,62 @@ Notes:
 
 Pick 5-6 N values spanning the recording (e.g. 60 / 200 / 400 / 600 / 800 / 950 for a 1000-frame recording) and `Read` each PNG. This gives a fast story-arc check without watching the whole thing.
 
-## Where APNGs land
+## Where recordings land
 
 `doc/source/_static/tutorials/`. The helper writes the absolute path via `dir_name(get_this_module_dir()) / RECORD_ASSET_REL` — same idiom `widgets/imgui_theme_daslang.das:155` uses for the bundled font. Caller cwd is irrelevant.
 
-**Important: that directory is `.gitignore`d on every source branch.** APNGs live on an orphan `assets` branch — see "APNG storage" below for the full story. After a `rerecord_*.das` driver writes the file, it shows up locally but `git status` reports nothing. You must publish to `origin/assets` (via `publish_apngs_to_assets.ps1`) for sphinx + CI to see the new version.
+The recorder produces `.apng` (intermediate). The deliverable is `.mp4` produced by a single ffmpeg pass. `.apng` is `.gitignore`d; `.mp4` is tracked in-tree (typical file is 50-300 KB; full set ~5 MB).
 
 When dasImgui is daspkg-installed under `daScript/modules/dasImgui/`, the APNG lands in that install copy. For source-repo workflows (preferred), launch the driver with `-project_root <dasimgui-source>` so the loaded copy IS the source repo. The helper forwards `-project_root` from the driver's own argv to the spawned daslang-live.
 
-Each tutorial RST under `doc/source/tutorials/*.rst` cites its APNG via:
+Each tutorial RST under `doc/source/tutorials/*.rst` cites its video via raw HTML:
 
 ```rst
-.. image:: ../_static/tutorials/scene_name.apng
-   :alt: scene_name recording
+.. raw:: html
+
+   <video autoplay loop muted playsinline width="100%">
+     <source src="../_static/tutorials/scene_name.mp4" type="video/mp4">
+   </video>
 ```
 
-CI's sphinx step uses `-W` (warnings-as-errors), so an RST referencing a missing APNG fails the build. Pair every new tutorial commit with the APNG commit ahead of it (APNG-first, then RST). The APNG-only intermediate state is fine — only the RST cite trips `-W`.
+CI's sphinx step uses `-W` (warnings-as-errors), so an RST referencing a missing `.mp4` fails the build. Commit the `.mp4` ahead of the RST cite to keep the intermediate state passing.
 
-Existing APNG size range: 7.5 MB → 73 MB at logical 1x. Anything way outside that is suspicious (too short = under-paced; too long = uncompressed/oversized).
+Typical sizes: `.mp4` is 50-300 KB at logical 1x (~300× smaller than the source `.apng` thanks to H.264 inter-frame deltas). Anything way outside that is suspicious — too small means failed encode, too big means dropped frames or atypical content.
 
-## APNG storage on the orphan `assets` branch
+## Post-record conversion (.apng → .mp4)
 
-**Why:** the 23 tutorial APNGs total ~770 MB current snapshot, and a re-record sweep churns every blob. Tracking them in source-branch history accumulated ~2.1 GB of git LFS-tier data on master before we moved them out. Per-PR pushes were 5-15 minutes; clones bloated. Now master's prior APNG blobs are baked into its history (we didn't rewrite — that breaks every clone and PR), but **no new APNG blobs land in source branches**.
+The recorder writes `.apng` via `stbi_apng_frame` on a worker thread — that's an intrinsic property of the recording surface, not something we're changing. To produce the shipped `.mp4`, run one ffmpeg pass per recording:
 
-### The branch contract
+```bash
+ffmpeg -y -loglevel error -i scene.apng -c:v libx264 -crf 23 \
+       -pix_fmt yuv420p -movflags +faststart scene.mp4
+```
 
-`origin/assets` is an **orphan branch with exactly one commit**, force-amend-pushed on every re-record sweep. Tip never has parents; GitHub GCs the previous commit's blobs after ~2 weeks. Layout mirrors the source repo: `doc/source/_static/tutorials/*.apng` plus a `README.md` at the root documenting the contract.
+Settings:
+- `-c:v libx264` — H.264 codec; universal browser support, hardware-decoded
+- `-crf 23` — quality knob; 18 = visually lossless, 28 = noticeably compressed. 23 is default and ample for UI recordings
+- `-pix_fmt yuv420p` — required for cross-browser playback (Safari refuses yuv444p)
+- `-movflags +faststart` — moves the MOOV atom to file start so `<video>` can play before the whole file downloads
 
-Never merge anything into `assets`. Never expect history. PRs against `assets` are nonsense.
+Batch convert all recordings under `doc/source/_static/tutorials/`:
 
-### Three scripts
-
-| Script | What it does |
-|---|---|
-| `tests/integration/rerecord_all.ps1` | Sequential re-record sweep, all 23 `record_*.das` drivers. Writes into the local (gitignored) `doc/source/_static/tutorials/`. ~20 minutes wall-time. Flags: `-From <name>`, `-Skip <a,b,c>`, `-DryRun`, `-StopOnFail`. |
-| `tests/integration/fetch_tutorial_apngs.{ps1,sh}` | Pulls the current `origin/assets` APNGs into the local tutorial dir. Idempotent. PowerShell variant for local, bash twin for CI. Required after every fresh clone before `sphinx-build` runs. |
-| `tests/integration/publish_apngs_to_assets.ps1` | Takes the working-tree APNGs (produced by `rerecord_all.ps1`), spins up a fresh `assets` worktree, replaces its APNG set, amends the root commit, force-pushes. Uses `--force-with-lease`. Two-step workflow keeps a manual review checkpoint between record and publish. |
+```bash
+cd doc/source/_static/tutorials
+for f in *.apng; do
+    base="${f%.apng}"
+    ffmpeg -y -loglevel error -i "$f" -c:v libx264 -crf 23 \
+           -pix_fmt yuv420p -movflags +faststart "$base.mp4"
+done
+```
 
 ### Canonical workflows
 
-**Fresh clone, building docs locally:**
+**Fresh clone, building docs locally:** nothing to fetch — `.mp4` files ship in-tree.
 
 ```powershell
 git clone https://github.com/borisbat/dasImgui
 cd dasImgui
-pwsh tests/integration/fetch_tutorial_apngs.ps1
 sphinx-build --keep-going -b html doc/source build/site
-```
-
-**Re-record after a cross-cutting visual change:**
-
-```powershell
-$env:DASLANG_EXE = "D:/Work/daScript/bin/Release/daslang.exe"
-pwsh tests/integration/rerecord_all.ps1                # ~20 min
-# eyeball-review the new APNGs (frame extraction with ffmpeg if useful)
-pwsh tests/integration/publish_apngs_to_assets.ps1     # force-amend-push to origin/assets
 ```
 
 **Single recording, iterating on a driver:**
@@ -271,16 +272,20 @@ pwsh tests/integration/publish_apngs_to_assets.ps1     # force-amend-push to ori
 ```powershell
 daslang.exe -project_root . tests/integration/record_X.das
 # new doc/source/_static/tutorials/X.apng (gitignored)
-# when satisfied: pwsh tests/integration/publish_apngs_to_assets.ps1
+# convert and commit:
+ffmpeg -y -loglevel error -i doc/source/_static/tutorials/X.apng -c:v libx264 -crf 23 -pix_fmt yuv420p -movflags +faststart doc/source/_static/tutorials/X.mp4
+git add doc/source/_static/tutorials/X.mp4
 ```
 
-`publish_apngs_to_assets.ps1` ships the **whole** working-tree APNG set, not just the one you re-recorded. Run a `fetch_tutorial_apngs.ps1` first if you only want to bump one and leave the rest untouched.
+**Re-record after a cross-cutting visual change:** kick the sweep, eyeball the local `.apng`s, then bulk-convert. (The legacy `rerecord_all.ps1` still wraps the sweep; it no longer publishes, since `.mp4` belongs in source.)
 
 ### CI wiring (`.github/workflows/docs.yml`)
 
-`Fetch tutorial APNGs from orphan assets branch` step runs **before** `daspkg install dasImgui (global)` so the daspkg copy picks up the freshly-fetched binaries alongside the source. Sphinx then reads from the daspkg-installed `daslang-src/modules/dasImgui/doc/source/_static/tutorials/`.
+No fetch step. The docs job checks out the source, daspkg-installs dasImgui, runs `imgui2rst`, then `sphinx-build` — the `.mp4` files are already on disk from the checkout. The old "Fetch tutorial APNGs from orphan assets branch" step is gone.
 
-If you add a new tutorial that references an APNG, the workflow is the same: record → publish → push your source-branch PR. The CI fetch step downloads whatever's on `origin/assets` at the time of the build, so the APNG must be on `assets` BEFORE the docs CI run can pass.
+### Historical note: orphan `assets` branch
+
+Before this migration, the 37-tutorial APNG set totaled ~1.7 GB and lived on an orphan `assets` branch (force-amend-pushed on every re-record sweep) to keep the source-repo history small. The branch is now dead — at ~5 MB of MP4 for the full set, the source repo absorbs the deliverables cleanly. The `origin/assets` ref can be deleted; nothing references it.
 
 ## Commit structure for a new recording
 

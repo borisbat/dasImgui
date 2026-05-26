@@ -27,8 +27,11 @@ Source: ``examples/tutorial/popup_window.das``.
 Walkthrough
 ************
 
-.. image:: ../_static/tutorials/popup_window.apng
-   :alt: popup_window recording
+.. raw:: html
+
+   <video autoplay loop muted playsinline width="100%">
+     <source src="../_static/tutorials/popup_window.mp4" type="video/mp4">
+   </video>
 
 .. literalinclude:: ../../../examples/tutorial/popup_window.das
    :language: das

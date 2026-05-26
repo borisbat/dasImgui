@@ -22,8 +22,11 @@ Source: ``examples/features/drag_drop.das``.
 Walkthrough
 ************
 
-.. image:: ../_static/tutorials/drag_drop.apng
-   :alt: drag_drop recording
+.. raw:: html
+
+   <video autoplay loop muted playsinline width="100%">
+     <source src="../_static/tutorials/drag_drop.mp4" type="video/mp4">
+   </video>
 
 .. literalinclude:: ../../../examples/features/drag_drop.das
    :language: das

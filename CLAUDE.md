@@ -196,21 +196,21 @@ CI workflow: `.github/workflows/tests.yml`. Windows CI excludes 7 high-POST test
 
 Sphinx-based tutorial site. CI gates `-W` (warnings-as-errors) BUT pre-runs `utils/imgui2rst.das --detail_output doc/source/stdlib/generated` to generate per-module stdlib refs. **Locally**, `sphinx-build -W` fails on `stdlib/sec_boost.rst:11: toctree contains reference to nonexisting document 'stdlib/generated/imgui_boost_v2'` unless you run imgui2rst first. Plain `sphinx-build --keep-going` (no `-W`) builds clean.
 
-Tutorial pages live in `doc/source/tutorials/*.rst` and reference APNGs from `doc/source/_static/tutorials/*.apng`. Each tutorial appears in `doc/source/tutorials/index.rst`'s toctree.
+Tutorial pages live in `doc/source/tutorials/*.rst` and embed MP4 recordings from `doc/source/_static/tutorials/*.mp4` via raw `<video>` HTML. Each tutorial appears in `doc/source/tutorials/index.rst`'s toctree.
 
-## Tutorial APNG storage — orphan `assets` branch (READ BEFORE BUILDING DOCS LOCALLY)
+## Tutorial recordings — MP4 in source, APNG ignored
 
-**`doc/source/_static/tutorials/*.apng` is `.gitignore`d on every source branch.** The binaries (~770 MB current, multi-GB historical if tracked) live on a force-amend-pushed orphan branch called `assets` so source-branch history doesn't accumulate hundreds of MB per re-record sweep.
+**`doc/source/_static/tutorials/*.mp4` ships in-tree** (~5 MB total for the full set). `*.apng` is gitignored — it's the recorder's raw output; one ffmpeg pass converts to the deliverable MP4.
 
-**Fresh clone before docs build:** run `tests/integration/fetch_tutorial_apngs.ps1` (or `.sh`) — pulls `origin/assets` into the gitignored tutorial dir. Otherwise sphinx's `.. image:: _static/tutorials/X.apng` directives 404. CI's `docs.yml` does this automatically before `daspkg install`.
+**Fresh clone before docs build:** nothing to fetch. The `.mp4` files are in the checkout. Sphinx's raw `<video>` blocks reference them.
 
-**Re-record workflow:** `rerecord_all.ps1` → eyeball-review APNGs locally → `publish_apngs_to_assets.ps1` (force-amend-pushes onto `origin/assets`, keeping that branch at one commit). GitHub GCs the prior blobs in ~2 weeks.
+**Re-record workflow:** `daslang.exe -project_root . tests/integration/record_X.das` → eyeball-review the resulting `.apng` locally → `ffmpeg -y -i X.apng -c:v libx264 -crf 23 -pix_fmt yuv420p -movflags +faststart X.mp4` → `git add X.mp4`.
 
-Full mechanics + script flags: `skills/recording.md` "APNG storage" section.
+Full mechanics + ffmpeg settings: `skills/recording.md` "Post-record conversion" section.
 
 ## Recording
 
-See `skills/recording.md` for the full recipe — pacing constants, two-shell workflow, menu-header coord workaround, screenshot/ffmpeg verification methodology, APNG storage on the orphan `assets` branch.
+See `skills/recording.md` for the full recipe — pacing constants, two-shell workflow, menu-header coord workaround, screenshot/ffmpeg verification methodology, post-record APNG→MP4 conversion.
 
 ## Workflow
 

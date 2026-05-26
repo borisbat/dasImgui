@@ -16,8 +16,11 @@ Source: ``examples/tutorial/custom_widgets.das``.
 Walkthrough
 ************
 
-.. image:: ../_static/tutorials/custom_widgets.apng
-   :alt: custom_widgets recording
+.. raw:: html
+
+   <video autoplay loop muted playsinline width="100%">
+     <source src="../_static/tutorials/custom_widgets.mp4" type="video/mp4">
+   </video>
 
 .. literalinclude:: ../../../examples/tutorial/custom_widgets.das
    :language: das

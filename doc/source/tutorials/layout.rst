@@ -15,8 +15,11 @@ Source: ``examples/tutorial/layout.das``.
 Walkthrough
 ************
 
-.. image:: ../_static/tutorials/layout.apng
-   :alt: layout recording
+.. raw:: html
+
+   <video autoplay loop muted playsinline width="100%">
+     <source src="../_static/tutorials/layout.mp4" type="video/mp4">
+   </video>
 
 .. literalinclude:: ../../../examples/tutorial/layout.das
    :language: das

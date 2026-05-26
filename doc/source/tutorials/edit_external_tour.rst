@@ -16,8 +16,11 @@ keeps the snapshot stable across frames.
 
 Source: ``examples/tutorial/editing_external.das``.
 
-.. image:: ../_static/tutorials/edit_external_tour.apng
-   :alt: edit_external_tour recording
+.. raw:: html
+
+   <video autoplay loop muted playsinline width="100%">
+     <source src="../_static/tutorials/edit_external_tour.mp4" type="video/mp4">
+   </video>
 
 What the tour shows
 ===================

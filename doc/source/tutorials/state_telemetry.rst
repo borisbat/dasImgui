@@ -29,8 +29,11 @@ Source: ``examples/tutorial/state_telemetry.das``.
 Walkthrough
 ************
 
-.. image:: ../_static/tutorials/state_telemetry.apng
-   :alt: state_telemetry recording
+.. raw:: html
+
+   <video autoplay loop muted playsinline width="100%">
+     <source src="../_static/tutorials/state_telemetry.mp4" type="video/mp4">
+   </video>
 
 .. literalinclude:: ../../../examples/tutorial/state_telemetry.das
    :language: das

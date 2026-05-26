@@ -1,15 +1,17 @@
 .. _tutorial_recording:
 
 #######################
-Recording APNGs
+Recording tutorial videos
 #######################
 
-Every APNG in this tutorial set was produced the same way: a **driver**
-script that uses :code:`with_recording_app` to spawn a tiny **subject**
-app as :code:`daslang-live`, toggles visual aids, calls ``record_start``,
+Every tutorial recording is produced the same way: a **driver** script
+uses :code:`with_recording_app` to spawn a tiny **subject** app as
+:code:`daslang-live`, toggles visual aids, calls ``record_start``,
 narrates each interaction, performs the action, and lets the helper
-shut down. This is the meta tutorial — the driver script is the
-artifact, and the embedded recording demonstrates itself.
+shut down. The recorder writes :code:`.apng`; a single ffmpeg pass
+converts each to :code:`.mp4` (H.264) before the file ships in-tree.
+This is the meta tutorial — the driver script is the artifact, and the
+embedded video demonstrates itself.
 
 The helper passes :code:`--imgui-content-scale=1.0` +
 :code:`--no-hdpi-framebuffer` to the spawned :code:`daslang-live` so
@@ -41,8 +43,11 @@ all; it operates entirely through the live-command HTTP surface.
 The driver
 ************
 
-.. image:: ../_static/tutorials/recording.apng
-   :alt: recording recording
+.. raw:: html
+
+   <video autoplay loop muted playsinline width="100%">
+     <source src="../_static/tutorials/recording.mp4" type="video/mp4">
+   </video>
 
 .. literalinclude:: ../../../tests/integration/record_recording.das
    :language: das
@@ -141,7 +146,19 @@ One shell, one command:
 
 The helper spawns daslang-live, runs the body, posts :code:`/shutdown`,
 drains stdout. Wall time = :code:`max_seconds` + ~3s headroom. The APNG
-lands at :code:`<dasimgui>/doc/source/_static/tutorials/recording.apng`.
+lands at :code:`<dasimgui>/doc/source/_static/tutorials/recording.apng`,
+which is gitignored — it's the raw artifact, not the deliverable.
+
+After the recorder finishes, one ffmpeg pass converts to the shipped
+:code:`.mp4`:
+
+.. code-block:: bash
+
+   ffmpeg -y -i recording.apng -c:v libx264 -crf 23 -pix_fmt yuv420p \
+          -movflags +faststart recording.mp4
+
+Typical UI recording: 50-300 KB MP4 (vs 50-100 MB APNG, ~300x smaller).
+The :code:`.mp4` is what RSTs reference and what ships in source.
 
 If you want to iterate without re-recording the host's state, drive a
 manually-launched host via :code:`mcp__daslang__live_command` instead

@@ -42,8 +42,11 @@ Source: ``examples/tutorial/layout_primitives.das``.
 Walkthrough
 ************
 
-.. image:: ../_static/tutorials/layout_primitives.apng
-   :alt: layout_primitives recording
+.. raw:: html
+
+   <video autoplay loop muted playsinline width="100%">
+     <source src="../_static/tutorials/layout_primitives.mp4" type="video/mp4">
+   </video>
 
 .. literalinclude:: ../../../examples/tutorial/layout_primitives.das
    :language: das

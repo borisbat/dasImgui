@@ -26,8 +26,11 @@ Source: ``examples/tutorial/data_table.das``.
 Walkthrough
 ************
 
-.. image:: ../_static/tutorials/data_table.apng
-   :alt: data_table recording
+.. raw:: html
+
+   <video autoplay loop muted playsinline width="100%">
+     <source src="../_static/tutorials/data_table.mp4" type="video/mp4">
+   </video>
 
 .. literalinclude:: ../../../examples/tutorial/data_table.das
    :language: das
