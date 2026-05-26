@@ -1,8 +1,8 @@
 .. _tutorial_recording:
 
-#######################
+###########################
 Recording tutorial videos
-#######################
+###########################
 
 Every tutorial recording is produced the same way: a **driver** script
 uses :code:`with_recording_app` to spawn a tiny **subject** app as
@@ -47,6 +47,7 @@ The driver
 
    <video autoplay loop muted playsinline width="100%">
      <source src="../_static/tutorials/recording.mp4" type="video/mp4">
+     Your browser doesn't support HTML5 video. <a href="../_static/tutorials/recording.mp4">Download the recording</a>.
    </video>
 
 .. literalinclude:: ../../../tests/integration/record_recording.das

@@ -16,6 +16,7 @@ Source: ``examples/tutorial/narrative_layout_tour.das``.
 
    <video autoplay loop muted playsinline width="100%">
      <source src="../_static/tutorials/narrative_layout_tour.mp4" type="video/mp4">
+     Your browser doesn't support HTML5 video. <a href="../_static/tutorials/narrative_layout_tour.mp4">Download the recording</a>.
    </video>
 
 What the tour shows

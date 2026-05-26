@@ -64,36 +64,62 @@ After re-recording, convert APNGs to MP4 via ffmpeg (the deliverables).
 
 ### Full workflow
 
+Step 1 — generate APNGs locally (PowerShell):
+
 ```powershell
 # One-time setup — point at your daslang build
 $env:DASLANG_EXE = "D:/Work/daScript/bin/Release/daslang.exe"
 
-# 1. Generate APNGs locally (whole sweep or single driver)
-pwsh tests/integration/rerecord_all.ps1                # ~20 min, all drivers found via glob
-# OR
+# Whole sweep (all drivers found via glob, ~20 min):
+pwsh tests/integration/rerecord_all.ps1
+# OR single driver:
 daslang.exe -project_root . tests/integration/record_X.das
+```
 
-# 2. EYEBALL REVIEW the .apng output before converting.
-#    ffmpeg-extract frames if needed:
+Step 2 — eyeball-review the resulting `.apng` files in
+`doc/source/_static/tutorials/`. Extract individual frames if needed
+(bash; on PowerShell call `bash -c '<the command>'` or use WSL):
+
+```bash
 ffmpeg -i doc/source/_static/tutorials/X.apng \
     -vf "select=eq(n\,200)" -frames:v 1 -update 1 frame200.png -y
+```
 
-# 3. Convert APNG → MP4 (the deliverable).
-#    For a single recording:
+Step 3 — convert `.apng` → `.mp4` (the deliverable). Single recording
+works in either shell:
+
+```bash
 ffmpeg -y -loglevel error -i doc/source/_static/tutorials/X.apng \
     -c:v libx264 -crf 23 -pix_fmt yuv420p -movflags +faststart \
     doc/source/_static/tutorials/X.mp4
+```
 
-#    Bulk (all APNGs in the dir):
+Bulk-convert every `.apng` in the dir — bash:
+
+```bash
 cd doc/source/_static/tutorials
 for f in *.apng; do
     base="${f%.apng}"
     ffmpeg -y -loglevel error -i "$f" -c:v libx264 -crf 23 \
            -pix_fmt yuv420p -movflags +faststart "$base.mp4"
 done
+```
 
-# 4. git add the MP4(s) and push the source-branch PR.
-git add doc/source/_static/tutorials/X.mp4
+Bulk-convert — PowerShell equivalent:
+
+```powershell
+Set-Location doc/source/_static/tutorials
+Get-ChildItem *.apng | ForEach-Object {
+    $base = $_.BaseName
+    ffmpeg -y -loglevel error -i $_.Name -c:v libx264 -crf 23 `
+           -pix_fmt yuv420p -movflags +faststart "$base.mp4"
+}
+```
+
+Step 4 — stage + push:
+
+```bash
+git add doc/source/_static/tutorials/*.mp4
 git push -u origin <branch>
 ```
 

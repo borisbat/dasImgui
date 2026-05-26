@@ -1,6 +1,6 @@
-# Recording APNG demos
+# Recording tutorial videos
 
-dasImgui ships its tutorial site at `doc/source/` with an APNG per tutorial page (`doc/source/_static/tutorials/*.apng`). Recordings are produced by **one-shell driver scripts** under `tests/integration/record_*.das` that spawn their own `daslang-live` host via `with_recording_app` and post live-commands to it over HTTP. Recordings are NOT in CI — they're manually-driven artifact producers, committed as binary APNGs alongside the driver script.
+dasImgui ships its tutorial site at `doc/source/` with an MP4 per tutorial page (`doc/source/_static/tutorials/*.mp4`). The recorder writes intermediate `.apng` (gitignored); a single ffmpeg pass converts each to H.264 `.mp4` (~300× smaller) — that's what ships in source and what the RSTs reference via `<video>` raw HTML. Recordings are produced by **one-shell driver scripts** under `tests/integration/record_*.das` that spawn their own `daslang-live` host via `with_recording_app` and post live-commands to it over HTTP. Recording is NOT in CI — drivers are manually-driven artifact producers; convert + commit the resulting `.mp4` alongside the driver script.
 
 This page is the recipe. Read before writing or revising any `record_*.das` driver.
 

@@ -32,6 +32,7 @@ Walkthrough
 
    <video autoplay loop muted playsinline width="100%">
      <source src="../_static/tutorials/driving_outside.mp4" type="video/mp4">
+     Your browser doesn't support HTML5 video. <a href="../_static/tutorials/driving_outside.mp4">Download the recording</a>.
    </video>
 
 .. literalinclude:: ../../../examples/tutorial/driving_outside.das

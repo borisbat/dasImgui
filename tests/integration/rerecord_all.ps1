@@ -9,13 +9,17 @@
 # max_seconds + ~3s host boot/drain.
 #
 # After re-recording, .apng files land in doc/source/_static/tutorials/
-# (gitignored — the intermediate artifact, not the deliverable). Convert
-# each to .mp4 via ffmpeg before committing:
-#   for f in doc/source/_static/tutorials/*.apng; do
-#       base="${f%.apng}"
-#       ffmpeg -y -loglevel error -i "$f" -c:v libx264 -crf 23 \
+# (gitignored -- the intermediate artifact, not the deliverable). Convert
+# each to .mp4 via ffmpeg before committing. PowerShell equivalent of
+# the bash loop in tests/integration/README.md:
+#
+#   Set-Location doc/source/_static/tutorials
+#   Get-ChildItem *.apng | ForEach-Object {
+#       $base = $_.BaseName
+#       ffmpeg -y -loglevel error -i $_.Name -c:v libx264 -crf 23 `
 #              -pix_fmt yuv420p -movflags +faststart "$base.mp4"
-#   done
+#   }
+#
 # Then `git add doc/source/_static/tutorials/*.mp4` and push.
 #
 # Run:
