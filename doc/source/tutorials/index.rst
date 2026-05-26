@@ -47,3 +47,5 @@ construction.
    color_button_hover.rst
    selectable_hover.rst
    drawlist.rst
+   drag.rst
+   slider.rst
