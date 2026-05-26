@@ -53,3 +53,5 @@ construction.
    input_text.rst
    toggles.rst
    dropdown_select.rst
+   color.rst
+   buttons.rst
