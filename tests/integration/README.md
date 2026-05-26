@@ -72,8 +72,9 @@ $env:DASLANG_EXE = "D:/Work/daScript/bin/Release/daslang.exe"
 
 # Whole sweep (all drivers found via glob, ~20 min):
 pwsh tests/integration/rerecord_all.ps1
-# OR single driver:
-daslang.exe -project_root . tests/integration/record_X.das
+# OR single driver (uses the env var set above; works whether or
+# not daslang.exe is on PATH):
+& $env:DASLANG_EXE -project_root . tests/integration/record_X.das
 ```
 
 Step 2 — eyeball-review the resulting `.apng` files in
@@ -116,10 +117,11 @@ Get-ChildItem *.apng | ForEach-Object {
 }
 ```
 
-Step 4 — stage + push:
+Step 4 — stage, commit, push:
 
 ```bash
 git add doc/source/_static/tutorials/*.mp4
+git commit -m "docs: re-record tutorial videos"
 git push -u origin <branch>
 ```
 
@@ -143,7 +145,8 @@ For a new tutorial `foo`:
 3. Eyeball-review. ffmpeg-extract frames if needed.
 4. ffmpeg-convert `foo.apng` → `foo.mp4` (see step 3 of the workflow above).
 5. Write `doc/source/tutorials/foo.rst` + add to `index.rst` toctree.
-6. `git add foo.mp4 record_foo.das foo.rst index.rst` + push.
+6. Stage + commit + push: `git add foo.mp4 record_foo.das foo.rst index.rst`,
+   `git commit -m "tutorial: foo"`, `git push -u origin <branch>`.
 
 ### Historical note: orphan `assets` branch
 
