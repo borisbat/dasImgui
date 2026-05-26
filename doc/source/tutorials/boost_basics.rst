@@ -15,8 +15,12 @@ Source: ``examples/tutorial/boost_basics.das``.
 Walkthrough
 ************
 
-.. image:: ../_static/tutorials/boost_basics.apng
-   :alt: boost_basics recording
+.. raw:: html
+
+   <video autoplay loop muted playsinline width="100%">
+     <source src="../_static/tutorials/boost_basics.mp4" type="video/mp4">
+     Your browser doesn't support HTML5 video. <a href="../_static/tutorials/boost_basics.mp4">Download the recording</a>.
+   </video>
 
 .. literalinclude:: ../../../examples/tutorial/boost_basics.das
    :language: das

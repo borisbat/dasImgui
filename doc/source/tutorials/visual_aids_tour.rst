@@ -41,8 +41,12 @@ Source: ``examples/tutorial/visual_aids_tour.das``.
 Walkthrough
 ************
 
-.. image:: ../_static/tutorials/visual_aids_tour.apng
-   :alt: visual_aids_tour recording
+.. raw:: html
+
+   <video autoplay loop muted playsinline width="100%">
+     <source src="../_static/tutorials/visual_aids_tour.mp4" type="video/mp4">
+     Your browser doesn't support HTML5 video. <a href="../_static/tutorials/visual_aids_tour.mp4">Download the recording</a>.
+   </video>
 
 .. literalinclude:: ../../../examples/tutorial/visual_aids_tour.das
    :language: das

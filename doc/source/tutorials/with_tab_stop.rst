@@ -25,8 +25,12 @@ Source: ``examples/tutorial/with_tab_stop.das``.
 Walkthrough
 ************
 
-.. image:: ../_static/tutorials/with_tab_stop.apng
-   :alt: with_tab_stop recording
+.. raw:: html
+
+   <video autoplay loop muted playsinline width="100%">
+     <source src="../_static/tutorials/with_tab_stop.mp4" type="video/mp4">
+     Your browser doesn't support HTML5 video. <a href="../_static/tutorials/with_tab_stop.mp4">Download the recording</a>.
+   </video>
 
 .. literalinclude:: ../../../examples/tutorial/with_tab_stop.das
    :language: das

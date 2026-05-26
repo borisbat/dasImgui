@@ -30,8 +30,12 @@ Source: ``examples/tutorial/flat_tooltips.das``.
 Walkthrough
 ************
 
-.. image:: ../_static/tutorials/flat_tooltips.apng
-   :alt: flat_tooltips recording
+.. raw:: html
+
+   <video autoplay loop muted playsinline width="100%">
+     <source src="../_static/tutorials/flat_tooltips.mp4" type="video/mp4">
+     Your browser doesn't support HTML5 video. <a href="../_static/tutorials/flat_tooltips.mp4">Download the recording</a>.
+   </video>
 
 .. literalinclude:: ../../../examples/tutorial/flat_tooltips.das
    :language: das

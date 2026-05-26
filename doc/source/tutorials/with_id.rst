@@ -27,8 +27,12 @@ Source: ``examples/tutorial/with_id.das``.
 Walkthrough
 ************
 
-.. image:: ../_static/tutorials/with_id.apng
-   :alt: with_id recording
+.. raw:: html
+
+   <video autoplay loop muted playsinline width="100%">
+     <source src="../_static/tutorials/with_id.mp4" type="video/mp4">
+     Your browser doesn't support HTML5 video. <a href="../_static/tutorials/with_id.mp4">Download the recording</a>.
+   </video>
 
 .. literalinclude:: ../../../examples/tutorial/with_id.das
    :language: das
