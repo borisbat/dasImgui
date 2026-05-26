@@ -49,3 +49,5 @@ construction.
    drawlist.rst
    drag.rst
    slider.rst
+   input_numeric.rst
+   input_text.rst
