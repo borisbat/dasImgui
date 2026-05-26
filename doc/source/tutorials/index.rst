@@ -55,3 +55,7 @@ construction.
    dropdown_select.rst
    color.rst
    buttons.rst
+   plot.rst
+   tree_image_misc.rst
+   popups.rst
+   edit_tab_item.rst
