@@ -29,7 +29,11 @@ let DEFAULT_RELOAD_TIMEOUT_SEC : float = 30.0f       // POST /reload to /status.
 let DEFAULT_FRAME_WAIT_SEC : float = 10.0f           // upper bound on "first frame to render the named widget"
 
 let READY_POLL_INTERVAL_MS : uint = 100u             // ms between /status polls — wait_until_ready and reload convergence
-let FRAME_POLL_INTERVAL_MS : uint = 50u              // ms between snapshot polls — ~3 polls/frame at 60fps
+let FRAME_POLL_INTERVAL_MS : uint = 100u             // ms between snapshot polls — 10 req/sec; under libhv's Windows
+                                                     // event-loop cap (~16 req/sec) that previously stalled the test
+                                                     // sweep on heavy imgui_demo harnesses (see tests.yml comment).
+                                                     // ~1.5 polls/frame at 60fps — still snappy in practice; most
+                                                     // wait_for_widget calls complete in 1-2 polls anyway.
 
 struct ImguiApp {
     base_url : string
