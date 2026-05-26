@@ -51,3 +51,5 @@ construction.
    slider.rst
    input_numeric.rst
    input_text.rst
+   toggles.rst
+   dropdown_select.rst
