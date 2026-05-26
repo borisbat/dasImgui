@@ -195,11 +195,22 @@ jobs:
         run: |
           set -eux
           EXTRA_EXCLUDES=""
+          # dastest's total-sweep timeout defaults to 600s. The Windows runner
+          # is ~3-5x slower per test than local Windows (heavy daslang-live
+          # compile + GLFW shared_module load + ImGui ctx setup repeated per
+          # spawned subprocess); the full sweep takes ~10-11 min on a slow
+          # runner instance, which trips the default cap. Local Windows runs
+          # the same sweep in ~5 min. Bump to 1800s (30 min) to give slow
+          # runner instances headroom; on a fast instance the sweep finishes
+          # in ~5 min and the cap never matters.
+          DASTEST_TIMEOUT=600
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
             EXTRA_EXCLUDES="--exclude inputs_drag --exclude inputs_numeric --exclude inputs_slider --exclude inputs_color --exclude inputs_choice --exclude inputs_text --exclude indexed_dynamic"
+            DASTEST_TIMEOUT=1800
           fi
           ${BIN_DIR}/daslang dastest/dastest.das -- \
             --test modules/dasImgui/tests/integration \
+            --timeout $DASTEST_TIMEOUT \
             --exclude glfw_synth \
             --exclude key_hud \
             $EXTRA_EXCLUDES \
