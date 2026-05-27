@@ -12,7 +12,7 @@ container; ``image`` is the display-only sibling of ``image_button``.
 
    tree_node_ex(IDENT, (text = "..", flags = ...))    // returns open bool
                                                        // caller pairs tree_pop()
-   image(IDENT, (texture = tex_id, size = ...,         // display only
+   image(IDENT, (user_texture_id = tex_id, size = .., // display only
                  uv0 = .., uv1 = .., tint_col = ..,    // no ClickState
                  border_col = ..))
 
@@ -97,7 +97,7 @@ icon strip), use ``image``. If it's an interactive surface, use
    let io & = unsafe(GetIO())
    let font_tex = io.Fonts.TexID
    if (font_tex != null) {
-       image(AVATAR, (texture = font_tex,
+       image(AVATAR, (user_texture_id = font_tex,
                       size = float2(128.0f, 128.0f),
                       uv0 = float2(0.0f, 0.0f),
                       uv1 = float2(1.0f, 1.0f),

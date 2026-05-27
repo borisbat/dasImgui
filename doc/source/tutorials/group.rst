@@ -56,6 +56,9 @@ computing column widths.
    group(LEFT_GRP) {
        text("Left block")
        checkbox(L_WIRE, (text = "Wireframe"))
+       // Narrow the slider so the left group leaves room for the
+       // right group on the same row.
+       SetNextItemWidth(160.0f)
        slider_int(L_FRAMES, (text = "frame limit"))
    }
    same_line((spacing = 24.0f))
