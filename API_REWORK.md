@@ -414,7 +414,7 @@ def test_save_flow(t : T?) {
 }
 ```
 
-The Phase 3 surface settled on a block-form lifecycle (`with_imgui_app <| $(app) { ... }`) rather than the originally-sketched noun form (`launch_imgui_app(...)` + `defer() { app |> shutdown() }`): daslang-live IS the launcher, and `popen_argv` inside the block already runs it. `expect_value` takes an explicit `field` arg (4-arg form) — no per-kind default-field table. `type_text` auto-focuses its target before sending characters; the target app must call `advance_coroutines()` each frame for chars to land (Phase 2 coroutine).
+The Phase 3 surface settled on a block-form lifecycle (`with_imgui_app <| $(app) { ... }`) rather than the originally-sketched noun form (`launch_imgui_app(...)` + `defer() { app |> shutdown() }`): daslang-live IS the launcher, and `popen_argv` inside the block already runs it. `expect_value` takes an explicit `field` arg (4-arg form) — no per-kind default-field table. `type_text` auto-focuses its target before sending characters. As of the coroutine-pump-in-harness change, `harness_begin_frame()` calls `advance_coroutines()` automatically, so any harness-using demo gets coroutine support for free (previously the demo had to opt in).
 
 ### 7.2 Process model
 

@@ -30,7 +30,6 @@ def init() {
 [export]
 def update() {
     if (!harness_begin_frame()) return
-    advance_coroutines()
     harness_new_frame()
 
     SetNextWindowSize(ImVec2(560.0, 200.0), ImGuiCond.Always)
