@@ -90,14 +90,14 @@ def update() {
             text("Font atlas not ready — wait for first frame.")
         } else {
             text("image() against the font atlas — varying uv + tint per call.")
-            image((texture = font_tex,
+            image((user_texture_id = font_tex,
                    size = float2(96.0f, 96.0f),
                    uv0 = float2(0.0f, 0.0f),
                    uv1 = float2(1.0f, 1.0f),
                    tint_col = float4(1.0f, 1.0f, 1.0f, 1.0f),
                    border_col = float4(0.0f, 0.0f, 0.0f, 0.0f)))
             same_line(SL_IMG)
-            image((texture = font_tex,
+            image((user_texture_id = font_tex,
                    size = float2(96.0f, 96.0f),
                    uv0 = float2(0.0f, 0.0f),
                    uv1 = float2(1.0f, 1.0f),

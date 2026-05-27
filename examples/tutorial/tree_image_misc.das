@@ -30,7 +30,7 @@ require imgui/imgui_visual_aids
 //                                                          NoTreePushOnOpen
 //                                                          flag).
 //
-//   image(IDENT, (texture = tex_id, size = ...,         — display widget.
+//   image(IDENT, (user_texture_id = tex_id, size = ..,  — display widget.
 //                 uv0 = .., uv1 = .., tint_col = ..,      No state-tracked
 //                 border_col = ..))                       click / hover; cf.
 //                                                          image_button for
@@ -90,7 +90,7 @@ def update() {
         let io & = unsafe(GetIO())
         let font_tex = io.Fonts.TexID
         if (font_tex != null) {
-            image(TI_IMG, (texture = font_tex,
+            image(TI_IMG, (user_texture_id = font_tex,
                            size = float2(128.0f, 128.0f),
                            uv0 = float2(0.0f, 0.0f),
                            uv1 = float2(1.0f, 1.0f),
