@@ -128,7 +128,7 @@ The `widgets/imgui_playwright.das` module exposes:
 
 - `with_recording_app(feature_path, output_basename, max_seconds, body)` — 3-arg form (fps=30 default). Spawns daslang-live for `<dasimgui>/<feature_path>`, posts record_start/stop bracket around `body`, shuts down. APNG lands at `<dasimgui>/doc/source/_static/tutorials/<output_basename>`.
 - `with_recording_app(feature_path, output_basename, max_seconds, fps, body)` — 4-arg form for explicit fps (typically 20 for long captures).
-- `with_imgui_app(feature_path, body)` / `with_imgui_app_opt(...)` — the playwright-test cousin (for `[test] def …(t : T?)` files). Forwards `--headless` from the parent. Recording uses the `_recording_` variant instead because it needs the GL framebuffer.
+- `with_imgui_app(feature_path, body)` — the playwright-test cousin (for `[test] def …(t : T?)` files). Forwards `--headless` from the parent; derives the live-API port from `DEFAULT_LIVE_PORT + worker_index` so dastest's `--isolated-mode --isolated-mode-threads N` parallel workers don't collide. Recording uses the `_recording_` variant instead because it needs the GL framebuffer.
 - `move_to(app, pos, duration_ms = 600)` — lerps cursor from last tracked position to `pos`; updates the tracked pos for the next call.
 - `click_at(var events, t_ms, pos, travel_ms = 500, button = 0)` — appends lerp + press + release + dwell to an events array. Call `post_command(app, "imgui_mouse_play", JV((events = events)))` to fire.
 - `drag_along(var events, t_ms, from_pos, to_pos, drag_ms, approach_ms = 400)` — lerp-to-start + press + drag + release.
