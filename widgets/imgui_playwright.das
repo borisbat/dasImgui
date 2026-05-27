@@ -579,16 +579,6 @@ def public reload(app : ImguiApp; timeout_sec : float = DEFAULT_RELOAD_TIMEOUT_S
     panic("reload did not converge on a clean compile within {timeout_sec}s")
 }
 
-def public with_imgui_app(feature_path : string; body : block<(app : ImguiApp) : void>) {
-    //! Convenience form using the module-level default port + timeouts.
-    //! For non-default knobs, use `with_imgui_app_opt`.
-    with_imgui_app_opt(feature_path,
-                       DEFAULT_LIVE_PORT,
-                       DEFAULT_READY_TIMEOUT_SEC,
-                       DEFAULT_TEST_TIMEOUT_SEC,
-                       body)
-}
-
 var private g_headless_parsed : bool = false
 var private g_headless_cached : bool = false
 
@@ -606,29 +596,58 @@ def private playwright_wants_headless() : bool {
     return g_headless_cached
 }
 
-def public with_imgui_app_opt(feature_path : string;
-                              port : int;
-                              ready_timeout_sec : float;
-                              test_timeout_sec : float;
-                              body : block<(app : ImguiApp) : void>) {
-    //! Spawn ``daslang-live <feature_path>``; runs ``body`` while alive, then POSTs ``/shutdown`` and drains stdout.
-    //! Panics on non-zero exit code, ready-timeout, or test-timeout so the surrounding ``[test]`` fails.
+var private g_worker_index_parsed : bool = false
+var private g_worker_index_cached : int = 0
+
+def private playwright_worker_index() : int {
+    //! ``--worker-index N`` forwarded from dastest's isolated-mode worker.
+    //! Lazily parsed once. Used by ``with_imgui_app`` to derive a per-worker
+    //! live-API port (DEFAULT_LIVE_PORT + worker_index), so N parallel
+    //! dastest workers don't collide on the same TCP port. Defaults to 0
+    //! when absent (sequential mode), giving the same port the codebase has
+    //! always used.
+    if (g_worker_index_parsed) return g_worker_index_cached
+    g_worker_index_parsed = true
+    let args <- get_user_args()
+    let raw = find_flag_raw_value(args, "--worker-index") |> unwrap_or("0")
+    g_worker_index_cached = to_int(raw)
+    return g_worker_index_cached
+}
+
+def public with_imgui_app(feature_path : string;
+                          body : block<(app : ImguiApp) : void>) {
+    //! Spawn ``daslang-live <feature_path>``; runs ``body`` while alive, then
+    //! POSTs ``/shutdown`` and drains stdout. Panics on non-zero exit code,
+    //! ready-timeout, or test-timeout so the surrounding ``[test]`` fails.
+    //!
+    //! Port is always DEFAULT_LIVE_PORT + worker_index — sequential runs (no
+    //! --worker-index in argv) get 9090; dastest's isolated mode brands each
+    //! worker's subprocess argv with --worker-index N so N parallel workers
+    //! land on distinct ports (9090..9090+N-1) and don't collide.
+    //!
     //! Forwards ``--headless`` (read from this process's ``get_user_args()``)
     //! into the spawn so the harness's headless arm fires inside the subprocess.
     let exe = daslang_live_exe()
+    let port = DEFAULT_LIVE_PORT + playwright_worker_index()
+    let ready_timeout_sec = DEFAULT_READY_TIMEOUT_SEC
+    let test_timeout_sec = DEFAULT_TEST_TIMEOUT_SEC
     let app_path = resolve_feature_path(feature_path)
     // -load_module points the spawned daslang-live at the dasImgui module so
     // the feature's `require imgui/...` chain resolves regardless of layout.
     // In CI dasImgui is in the standard module search path so this is a
     // harmless duplicate; locally it's load-bearing.
-    var argv <- [exe, "-load_module", dasimgui_module_root(), app_path]
+    //
+    // --live-port pins the spawned daslang-live's HTTP API to the same port
+    // playwright's base_url targets, so daslang-live's single-instance-lock
+    // keys off the same port playwright dials.
+    var argv <- [exe, "-load_module", dasimgui_module_root(), "--live-port={port}", app_path]
     if (playwright_wants_headless()) {
         argv |> push("--")
         argv |> push("--headless")
         // Cascade guard: harness self-exits a few seconds before the popen
         // watchdog gives up. If body panics and /shutdown is never sent
         // (e.g. expect_value timeout — daslang's `finally` is skipped on
-        // panic), the subprocess still releases port 9090 before the next
+        // panic), the subprocess still releases its port before the next
         // test spawns, instead of zombifying.
         let harness_budget = test_timeout_sec - 5.0f
         if (harness_budget > 5.0f) {

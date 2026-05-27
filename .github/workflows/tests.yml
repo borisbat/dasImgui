@@ -162,6 +162,15 @@ jobs:
         # get_user_args(); playwright forwards it to every spawned daslang-live
         # via popen_argv. No xvfb wrapper needed — no display is opened.
         #
+        # --isolated-mode + --isolated-mode-threads 4: each test runs in its
+        # own subprocess, with 4 in parallel. dastest (PR #2894) brands each
+        # subprocess cmd with `--worker-index N` (N in 0..3); imgui_playwright
+        # reads that flag via get_user_args() and derives a per-worker live-API
+        # port (9090 + N), passed to daslang-live as `--live-port`. Without
+        # the per-worker port, all 4 daslang-live children would race to bind
+        # port 9090. With it, ports 9090/9091/9092/9093 are independent and
+        # workers don't collide. Expected ~3× wall-time reduction vs sequential.
+        #
         # DASLIVE_HV_LOG=stderr: redirect libhv's logger to stderr so we see
         # event-loop/accept diagnostics in CI output. Env propagates to the
         # spawned daslang-live subprocess via popen_argv's inherited env.
@@ -211,6 +220,8 @@ jobs:
           ${BIN_DIR}/daslang dastest/dastest.das -- \
             --test modules/dasImgui/tests/integration \
             --timeout $DASTEST_TIMEOUT \
+            --isolated-mode \
+            --isolated-mode-threads 4 \
             --exclude glfw_synth \
             --exclude key_hud \
             $EXTRA_EXCLUDES \
