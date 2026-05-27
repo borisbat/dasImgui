@@ -13,10 +13,9 @@ require daslib/json_boost public
 //! basic, closable (X-button), and DefaultOpen. Open/close is driven
 //! via imgui_open / imgui_close because collapsing_header's [container]
 //! wrapper doesn't capture a header bbox (chevron click would need one).
+//! Drives BASIC_LIVE checkbox (Stage 1) and VOLUME slider (Stage 2)
+//! inside the opened sections — the audit found these were narrate-only.
 
-let NARRATE_FRAMES = 240        //! 4.0s visible at 60 fps app
-let READ_MS    = 5000u          //! 5s read window
-let SETTLE_MS  = 1500u          //! 1.5s cursor settle
 let TOGGLE_DWELL_MS = 2200u     //! 2.2s post-toggle dwell
 
 def widget_bbox(var snap : JsonValue?; ident : string) : float4 {
@@ -37,7 +36,7 @@ def widget_center(var snap : JsonValue?; ident : string) : tuple<float; float> {
 [export]
 def main {
     with_recording_app("examples/tutorial/collapsing_header.das",
-                       "collapsing_header.apng", 60) $(app) {
+                       "collapsing_header.apng", 75) $(app) {
         // Anchor cursor + narration at LEAF widgets inside each section —
         // collapsing_header finalizes without a bbox. See PR #67 Copilot
         // round 1.
@@ -69,44 +68,29 @@ def main {
         move_to(app, p_basic, 600)
         sleep(SETTLE_MS)
 
-        // ---- Stage 1: narrate the basic section ----
+        // ---- Stage 1: narrate basic + flip BASIC_LIVE checkbox ----
         move_to(app, p_basic, 900)
         sleep(SETTLE_MS)
-        post_command(app, "imgui_narrate", JV((
-            text = "collapsing_header(IDENT, (text, closable, flags)) — section header that folds via the chevron. Unlike tree_node there's no TreePop pair.",
-            target = T_BASIC_LEAF,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        say(app, "collapsing_header(IDENT, (text, closable, flags)) — section header that folds via the chevron. Unlike tree_node there's no TreePop pair.", T_BASIC_LEAF)
+        click(app, T_BASIC_LEAF)
+        sleep(CLICK_DWELL_MS)
+        say(app, "BASIC_LIVE checkbox flipped — body widgets work normally inside the opened section.", T_BASIC_LEAF)
 
-        // ---- Stage 2: hover the closable section's slider ----
+        // ---- Stage 2: drive VOLUME slider inside the closable section ----
         move_to(app, p_closable, 900)
         sleep(SETTLE_MS)
-        post_command(app, "imgui_narrate", JV((
-            text = "closable=true adds an X-button on the right of the header strip. Click X to set state.open=false; the whole row disappears.",
-            target = T_CLOSABLE_LEAF,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        set_value(app, T_CLOSABLE_LEAF, JV(72))
+        sleep(CLICK_DWELL_MS)
+        say(app, "VOLUME slider set to 72 inside CLOSABLE_CH — closable=true adds an X-button on the right of the header strip that flips state.open=false.", T_CLOSABLE_LEAF)
 
         // ---- Stage 3: drive imgui_close on closable header ----
         post_command(app, "imgui_close", JV((target = T_CLOSABLE_PATH)))
         sleep(TOGGLE_DWELL_MS)
-        post_command(app, "imgui_narrate", JV((
-            text = "imgui_close flips pending_close; next frame the chevron collapses and the body stops rendering. The header STRIP stays visible — only the X-button (or app code setting state.open=false) hides the whole row.",
-            target = T_BASIC_LEAF,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        say(app, "imgui_close flips pending_close; next frame the chevron collapses and the body stops rendering. The header STRIP stays visible — only the X-button (or app code setting state.open=false) hides the whole row.", T_BASIC_LEAF)
         post_command(app, "imgui_open", JV((target = T_CLOSABLE_PATH)))
         sleep(1500u)
 
         // ---- Stage 4: DefaultOpen flag — narrate via STARTUP_CH path ----
-        post_command(app, "imgui_narrate", JV((
-            text = "ImGuiTreeNodeFlags.DefaultOpen — first-render expansion; user input afterwards. Same flag enum as tree_node.",
-            target = T_STARTUP_LEAF,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        say(app, "ImGuiTreeNodeFlags.DefaultOpen — first-render expansion; user input afterwards. Same flag enum as tree_node.", T_STARTUP_LEAF)
     }
 }

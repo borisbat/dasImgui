@@ -92,6 +92,7 @@ var public narrate_default_frames : int   = 180
 var public narrate_connector_thickness : float = 1.5f
 var public narrate_shadow_color   : uint  = rgba(0, 0, 0, 90)
 var public narrate_shadow_offset  : float2 = float2(3.0f, 4.0f)
+var public narrate_max_width      : float = 480.0f   //! pixel width at which the callout wraps onto multiple lines; box height grows to fit
 
 // Auto-highlight gate
 var public imgui_auto_highlight_on_command : bool = false
@@ -421,7 +422,10 @@ def private paint_narrates {
         i--
         // Actual text size via the CalcTextSize shim (main.cpp:342) — picks up
         // FontGlobalScale and any active font, so the box fits the rendered text.
-        let text_size = CalcTextSize(g_narrates[i].text, false, -1.0f)
+        // Pass narrate_max_width as wrap_width so long narrations grow vertically
+        // instead of running off the viewport edge. CalcTextSize returns the
+        // bounding rectangle for the wrapped result.
+        let text_size = CalcTextSize(g_narrates[i].text, false, narrate_max_width)
         let box_size = float2(text_size.x + narrate_pad_x * 2.0f,
                               text_size.y + narrate_pad_y * 2.0f)
 
@@ -467,7 +471,12 @@ def private paint_narrates {
                              narrate_shadow_color, narrate_corner_radius, ImDrawFlags.None)
         *dl |> AddRectFilled(anchor, box_end, narrate_bg_color, narrate_corner_radius, ImDrawFlags.None)
         *dl |> AddRect(anchor, box_end, narrate_border_color, narrate_corner_radius, ImDrawFlags.None, narrate_border_thickness)
-        *dl |> AddText(float2(anchor.x + narrate_pad_x, anchor.y + narrate_pad_y), narrate_fg_color, g_narrates[i].text)
+        // 8-arg AddText overload (drawList, font=null, font_size=0, pos, col,
+        // text, wrap_width, cpu_fine_clip_rect=null) — passes wrap_width so the
+        // rendered text matches the multi-line size computed above.
+        *dl |> AddText(null, 0.0f,
+                       float2(anchor.x + narrate_pad_x, anchor.y + narrate_pad_y),
+                       narrate_fg_color, g_narrates[i].text, narrate_max_width, null)
         g_narrates[i].remaining_frames--
         if (g_narrates[i].remaining_frames <= 0) {
             g_narrates |> erase(i)

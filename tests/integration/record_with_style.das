@@ -46,49 +46,31 @@ def main {
         let p_nested_styled = widget_center(snap, T_NESTED_STYLED)
         let p_unstyled      = widget_center(snap, T_UNSTYLED)
 
-        //! Pacing rule (LOCKED): `frames` is the app's frame counter (60 fps
-        //! under vsync), NOT the recorder's fps. For ~3s readable narrate:
-        //!     frames = 180   →  3.0s visible
-        //!     sleep  = 3500u →  narrate disappears with ~500ms gap before next
-        //! Then ~1500ms for the actual interaction (click / drag / dwell).
-
         // ---- Stage 1: mixed color + var in one block ----
-        post_command(app, "imgui_narrate", JV((
-            text = "with_style pushes color + style-var as one block.",
-            target = T_STYLED,
-            frames = 180
-        )))
         move_to(app, p_styled)
-        sleep(3500u)
+        sleep(SETTLE_MS)
+        say(app, "with_style pushes color + style-var as one block.", T_STYLED)
         var styled_events : array<JsonValue?>
         styled_events |> click_at(0, p_styled)
         post_command(app, "imgui_mouse_play", JV((events = styled_events)))
-        sleep(1500u)
+        sleep(CLICK_DWELL_MS)
 
         // ---- Stage 2: nested with_style — inner stacks on outer ----
-        post_command(app, "imgui_narrate", JV((
-            text = "Nested with_style — inner additions stack on outer.",
-            target = T_NESTED_STYLED,
-            frames = 180
-        )))
         move_to(app, p_nested_styled)
-        sleep(3500u)
+        sleep(SETTLE_MS)
+        say(app, "Nested with_style — inner additions stack on outer.", T_NESTED_STYLED)
         var nested_events : array<JsonValue?>
         nested_events |> click_at(0, p_nested_styled)
         post_command(app, "imgui_mouse_play", JV((events = nested_events)))
-        sleep(1500u)
+        sleep(CLICK_DWELL_MS)
 
         // ---- Stage 3: pop balance — baseline restored ----
-        post_command(app, "imgui_narrate", JV((
-            text = "After the block — baseline style is restored.",
-            target = T_UNSTYLED,
-            frames = 180
-        )))
         move_to(app, p_unstyled)
-        sleep(3500u)
+        sleep(SETTLE_MS)
+        say(app, "After the block — baseline style is restored.", T_UNSTYLED)
         var unstyled_events : array<JsonValue?>
         unstyled_events |> click_at(0, p_unstyled)
         post_command(app, "imgui_mouse_play", JV((events = unstyled_events)))
-        sleep(1700u)
+        sleep(CLICK_DWELL_MS)
     }
 }

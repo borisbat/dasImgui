@@ -12,9 +12,6 @@ require daslib/json_boost public
 //! ``examples/tutorial/tab_bar.das``. Tours active-tab switching via
 //! imgui_click against tab headers and the closable-X behavior.
 
-let NARRATE_FRAMES = 240        //! 4.0s visible at 60 fps app
-let READ_MS    = 5000u          //! 5s read window
-let SETTLE_MS  = 1500u          //! 1.5s cursor settle
 let SWITCH_DWELL_MS = 1800u     //! 1.8s post-tab-switch dwell
 
 def widget_bbox(var snap : JsonValue?; ident : string) : float4 {
@@ -63,59 +60,34 @@ def main {
         // ---- Stage 1: hover the tab strip ----
         move_to(app, p_general, 900)
         sleep(SETTLE_MS)
-        post_command(app, "imgui_narrate", JV((
-            text = "tab_bar(IDENT, (flags)) hosts tab_item children. Only the active tab's body block runs; ImGui owns active-tab selection internally.",
-            target = T_GENERAL,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        say(app, "tab_bar(IDENT, (flags)) hosts tab_item children. Only the active tab's body block runs; ImGui owns active-tab selection internally.", T_GENERAL)
 
         // ---- Stage 2: click Audio tab via imgui_click ----
         post_command(app, "imgui_click", JV((target = T_AUDIO)))
         sleep(SWITCH_DWELL_MS)
         move_to(app, p_audio, 700)
         sleep(SETTLE_MS)
-        post_command(app, "imgui_narrate", JV((
-            text = "imgui_click against a tab header switches the active tab. The General body stopped registering its checkboxes — only Audio's widgets are in the snapshot now.",
-            target = T_AUDIO,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        say(app, "imgui_click against a tab header switches the active tab. The General body stopped registering its checkboxes — only Audio's widgets are in the snapshot now.", T_AUDIO)
 
         // ---- Stage 3: switch to Info ----
         post_command(app, "imgui_click", JV((target = T_INFO)))
         sleep(SWITCH_DWELL_MS)
         move_to(app, p_info, 700)
         sleep(SETTLE_MS)
-        post_command(app, "imgui_narrate", JV((
-            text = "Tab switching is path-routed — every tab_item is registered under MAIN_TABS/. Drivers don't need access to ImGui internals.",
-            target = T_INFO,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        say(app, "Tab switching is path-routed — every tab_item is registered under MAIN_TABS/. Drivers don't need access to ImGui internals.", T_INFO)
 
         // ---- Stage 4: switch to Draft, then close it ----
         post_command(app, "imgui_click", JV((target = T_DRAFT)))
         sleep(SWITCH_DWELL_MS)
         move_to(app, p_draft, 700)
         sleep(SETTLE_MS)
-        post_command(app, "imgui_narrate", JV((
-            text = "Draft is closable — the X-button next to the label flips state.open=false. Next frame the tab is skipped entirely.",
-            target = T_DRAFT,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        say(app, "Draft is closable — the X-button next to the label flips state.open=false. Next frame the tab is skipped entirely.", T_DRAFT)
 
         post_command(app, "imgui_close", JV((target = T_DRAFT)))
         sleep(SWITCH_DWELL_MS)
         // DRAFT_TAB is gone from the registry now; anchor narration at
         // GENERAL_TAB (a still-visible tab header) instead.
-        post_command(app, "imgui_narrate", JV((
-            text = "imgui_close routes through pending_close — Draft disappears from the strip. imgui_open against the same path re-registers it.",
-            target = T_GENERAL,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        say(app, "imgui_close routes through pending_close — Draft disappears from the strip. imgui_open against the same path re-registers it.", T_GENERAL)
 
         post_command(app, "imgui_open", JV((target = T_DRAFT)))
         sleep(1500u)

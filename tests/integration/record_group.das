@@ -13,9 +13,6 @@ require daslib/json_boost public
 //! side-by-side via same_line, group-as-hit-target with tooltip, and
 //! the (label | value | button) row composition.
 
-let NARRATE_FRAMES = 240        //! 4.0s visible at 60 fps app
-let READ_MS    = 5000u          //! 5s read window
-let SETTLE_MS  = 1500u          //! 1.5s cursor settle
 let HOVER_DWELL_MS = 2200u      //! 2.2s tooltip dwell
 
 def widget_bbox(var snap : JsonValue?; ident : string) : float4 {
@@ -63,40 +60,20 @@ def main {
         // ---- Stage 1: side-by-side groups ----
         move_to(app, p_left, 900)
         sleep(SETTLE_MS)
-        post_command(app, "imgui_narrate", JV((
-            text = "group(IDENT) wraps BeginGroup/EndGroup. same_line() after a closed group continues from the group's right edge — that's how two stacked column blocks share a row.",
-            target = T_LEFT,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        say(app, "group(IDENT) wraps BeginGroup/EndGroup. same_line() after a closed group continues from the group's right edge — that's how two stacked column blocks share a row.", T_LEFT)
 
         move_to(app, p_right, 700)
         sleep(SETTLE_MS)
-        post_command(app, "imgui_narrate", JV((
-            text = "Right group's first text line aligns with the left's — same_line preserved the row baseline. The path push still happens: LEFT_GRP/L_WIRE vs RIGHT_GRP/R_VSYNC.",
-            target = T_RIGHT,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        say(app, "Right group's first text line aligns with the left's — same_line preserved the row baseline. The path push still happens: LEFT_GRP/L_WIRE vs RIGHT_GRP/R_VSYNC.", T_RIGHT)
 
         // ---- Stage 2: hover the group to fire the combined-bbox tooltip ----
         move_to(app, p_hover, 900)
         sleep(HOVER_DWELL_MS)
-        post_command(app, "imgui_narrate", JV((
-            text = "IsItemHovered() after EndGroup() reports against the combined bbox — hover anywhere in the [i] Info ... Action row to fire the tooltip.",
-            target = T_HOVER,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        say(app, "IsItemHovered() after EndGroup() reports against the combined bbox — hover anywhere in the [i] Info ... Action row to fire the tooltip.", T_HOVER)
 
         // ---- Stage 3: the row pattern ----
         move_to(app, p_row, 900)
         sleep(SETTLE_MS)
-        post_command(app, "imgui_narrate", JV((
-            text = "(label | value | button) — common pattern. The group keeps Speed/slider/Reset on one logical row even if the body grows.",
-            target = T_ROW,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        say(app, "(label | value | button) — common pattern. The group keeps Speed/slider/Reset on one logical row even if the body grows.", T_ROW)
     }
 }

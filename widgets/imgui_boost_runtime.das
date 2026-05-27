@@ -440,6 +440,8 @@ struct WindowState {
     @optional scroll_max : float2             //! (GetScrollMaxX, GetScrollMaxY)
     @optional pending_open : bool             //! imgui_open queued; applied next frame
     @optional pending_close : bool            //! imgui_close queued; applied next frame
+    @optional pending_size : float2           //! imgui_set_window_size queued — applied via SetNextWindowSize next frame
+    @optional pending_size_set : bool         //! gates pending_size (so (0,0) is a valid request, not a sentinel)
 }
 
 struct ChildState {
@@ -1300,6 +1302,20 @@ def private dispatch_or_err(action : string; input : JsonValue?) : Result<string
     let target = extract_string_field(input, "target")
     let (level, resolved) = classify_target(target)
     if (level == 0) return err("unresolvable target: {target}", type<string>)
+    // Click with non-zero button (right-click / middle-click) always goes through
+    // the L1 mouse-event path: popups (popup_context_item / popup_context_window)
+    // and IsItemClicked(N>0) checks respond to real io.AddMouseButtonEvent, not
+    // the L2 dispatcher's state-mutation rail. resolve_target_bbox works at both
+    // path (L2) and hex_id (L1) so this branch handles both target forms.
+    if (action == "click") {
+        let button = int(input?["button"] ?? 0)
+        if (button != 0) {
+            let (got, center) = resolve_target_bbox(resolved)
+            if (!got) return err("target {resolved} has no bbox this frame (not rendered)", type<string>)
+            spawn_coroutine(click_at_coro(center, button))
+            return ok("L1:{resolved}:btn{button}", type<string>)
+        }
+    }
     if (level == 2) {
         if (action == "focus") {
             if (!key_exists(g_focusable, resolved)) return err("target {resolved} is not focusable (display-only widget)", type<string>)
@@ -1416,6 +1432,14 @@ def imgui_set_window_pos(input : JsonValue?) : JsonValue? {
     //! Live-command: reposition the dock_window named by ``input["target"]``. ``value`` is a JSON object with required ``x``/``y`` and optional ``w``/``h``. Routes through SetNextWindowPos / SetNextWindowSize on the next frame; useful for placing a window after ``imgui_undock`` (the floating-window default location is implementation-defined) or for scripted layouts.
     let r = dispatch_or_err("set_window_pos", input)
     if (r._is_ok) dispatch_post_command_hooks("set_window_pos", r._value)
+    return with_await(input, r)
+}
+
+[live_command(description = "Resize a window ('target' name, 'value' = JSON with w/h)")]
+def imgui_set_window_size(input : JsonValue?) : JsonValue? {
+    //! Live-command: resize the window named by ``input["target"]`` to (``w``, ``h``). Routes through SetNextWindowSize on the next frame via the regular-window dispatcher's ``pending_size`` rail. Used by the ``window_size_constraints`` recording driver to demonstrate the SetNextWindowSizeConstraints callbacks (snap/aspect/quantize) without needing a real border-drag synth.
+    let r = dispatch_or_err("set_window_size", input)
+    if (r._is_ok) dispatch_post_command_hooks("set_window_size", r._value)
     return with_await(input, r)
 }
 

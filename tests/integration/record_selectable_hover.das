@@ -31,7 +31,7 @@ def widget_center(var snap : JsonValue?; ident : string) : tuple<float; float> {
 [export]
 def main {
     with_recording_app("examples/tutorial/selectable_hover.das",
-                       "selectable_hover.apng", 30) $(app) {
+                       "selectable_hover.apng", 50) $(app) {
         let T_ROW0   = "SH_WIN/SH_ROW[0]"
         let T_ROW2   = "SH_WIN/SH_ROW[2]"
         let T_ROW4   = "SH_WIN/SH_ROW[4]"
@@ -47,39 +47,19 @@ def main {
         let p_status = widget_center(snap, T_STATUS)
 
         // ---- Stage 1: hover first row ----
-        post_command(app, "imgui_narrate", JV((
-            text = "selectable_hover pins selected=false and returns hover bool.",
-            target = T_ROW0,
-            frames = 200
-        )))
         move_to(app, p_row0)
-        sleep(3500u)
+        say(app, "selectable_hover pins selected=false and returns hover bool.", T_ROW0)
 
         // ---- Stage 2: hover middle row ----
-        post_command(app, "imgui_narrate", JV((
-            text = "Move down the list — STATE_MESSAGE follows the hover.",
-            target = T_ROW2,
-            frames = 180
-        )))
         move_to(app, p_row2)
-        sleep(3500u)
+        say(app, "Move down the list — STATE_MESSAGE follows the hover.", T_ROW2)
 
         // ---- Stage 3: hover last row ----
-        post_command(app, "imgui_narrate", JV((
-            text = "No toggle, no persisted selection — pure hover row.",
-            target = T_ROW4,
-            frames = 180
-        )))
         move_to(app, p_row4)
-        sleep(3500u)
+        say(app, "No toggle, no persisted selection — pure hover row.", T_ROW4)
 
         // ---- Stage 4: focus the status line ----
-        post_command(app, "imgui_narrate", JV((
-            text = "STATE_MESSAGE updates per-frame from each row's hover bool.",
-            target = T_STATUS,
-            frames = 200
-        )))
         move_to(app, p_status)
-        sleep(3500u)
+        say(app, "STATE_MESSAGE updates per-frame from each row's hover bool.", T_STATUS)
     }
 }

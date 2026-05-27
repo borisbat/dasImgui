@@ -9,19 +9,15 @@ require daslib/json public
 require daslib/json_boost public
 
 //! Driver script: record ``popups.apng`` against
-//! ``examples/tutorial/popups.das``. Narrates two right-click context
-//! popups — popup_context_item and popup_context_window.
-//!
-//! popup_context_* is stateless_finalize (no pending_open / pending_close);
-//! ImGui drives open/close internally on actual right-click events.
-//! There's no imgui_right_click synth command, so the recording cannot
-//! programmatically open the popups. Instead the driver narrates the
-//! widget code + the static target — viewers read the prose for the
-//! right-click interaction and try it themselves under daslang-live.
-
-let NARRATE_FRAMES = 180        //! 6s visible at the app's 30 fps target
-let READ_MS        = 3500u      //! 3.5s read window per stage
-let SETTLE_MS      = 1200u      //! 1.2s cursor settle
+//! ``examples/tutorial/popups.das``. Drives two right-click context
+//! popups — popup_context_item (anchored to a button) and
+//! popup_context_window (anchored to the enclosing window) — via the
+//! new ``right_click(app, target)`` helper. The popups are
+//! ``stateless_finalize`` (no pending_open/pending_close); ImGui drives
+//! open/close internally from real ``IsItemClicked(1)`` checks, which
+//! is why the synth has to be a real mouse event with button=1 (the
+//! ``right_click`` helper routes ``imgui_click`` through the L1
+//! ``click_at_coro`` path when button != 0).
 
 def widget_bbox(var snap : JsonValue?; ident : string) : float4 {
     var b = snap?["globals"]?[ident]?["bbox"]
@@ -41,7 +37,7 @@ def widget_center(var snap : JsonValue?; ident : string) : tuple<float; float> {
 [export]
 def main {
     with_recording_app("examples/tutorial/popups.das",
-                       "popups.apng", 30, 30) $(app) {
+                       "popups.apng", 50) $(app) {
         let T_TARGET = "PO_WIN/PO_TARGET"
         let T_HINT   = "PO_WIN/PO_HINT"
 
@@ -56,22 +52,22 @@ def main {
         move_to(app, p_target, 500)
         sleep(SETTLE_MS)
 
-        // ---- Stage 1: narrate popup_context_item ----
-        post_command(app, "imgui_narrate", JV((
-            text = "popup_context_item — attaches to the PREVIOUSLY submitted item. Right-click the button below to open its menu. stateless_finalize: ImGui owns open/close, body runs only while visible.",
-            target = T_TARGET,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        // ---- Stage 1: right-click PO_TARGET to open popup_context_item ----
+        move_to(app, p_target, 600)
+        sleep(SETTLE_MS)
+        right_click(app, T_TARGET)
+        sleep(CLICK_DWELL_MS)
+        say(app, "right_click on PO_TARGET — popup_context_item opens, anchored to the PREVIOUSLY submitted item. stateless_finalize: ImGui owns open/close; body runs only while visible.", T_TARGET)
 
-        // ---- Stage 2: narrate popup_context_window ----
+        // ---- Stage 2: dismiss + right-click PO_HINT for popup_context_window ----
+        // Left-click anywhere outside the popup dismisses it.
         move_to(app, p_hint, 800)
         sleep(SETTLE_MS)
-        post_command(app, "imgui_narrate", JV((
-            text = "popup_context_window — attaches to the ENCLOSING window. Right-click empty space anywhere inside the window to open. Same flags, same stateless model.",
-            target = T_HINT,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        post_command(app, "imgui_click", JV((target = T_HINT)))
+        sleep(CLICK_DWELL_MS)
+
+        right_click(app, T_HINT)
+        sleep(CLICK_DWELL_MS)
+        say(app, "right_click on PO_HINT — popup_context_window opens, anchored to the ENCLOSING window. Same flags, same stateless model.", T_HINT)
     }
 }

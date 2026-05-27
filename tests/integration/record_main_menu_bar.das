@@ -19,9 +19,6 @@ require daslib/json_boost public
 //! auto-close the menu between events, because the cursor goes idle
 //! between the two streams and the menu's auto-close timer fires.
 
-let NARRATE_FRAMES = 240        //! 4.0s visible at 60 fps app
-let READ_MS    = 5000u          //! 5s read window before next stage
-let SETTLE_MS  = 1500u          //! 1.5s cursor settle
 let MENU_DWELL_MS = 3500u       //! settle for combined menu open + child click
 let RESULT_MS  = 2000u          //! 2s post-click dwell
 
@@ -63,12 +60,7 @@ def main {
         // ---- Stage 1: hover the File menu header (narrate only) ----
         move_to(app, p_file, 900)
         sleep(SETTLE_MS)
-        post_command(app, "imgui_narrate", JV((
-            text = "main_menu_bar(IDENT) wraps BeginMainMenuBar/EndMainMenuBar — the screen-top strip. menu() children register routable headers under MAIN_BAR/.",
-            target = T_FILE,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        say(app, "main_menu_bar(IDENT) wraps BeginMainMenuBar/EndMainMenuBar — the screen-top strip. menu() children register routable headers under MAIN_BAR/.", T_FILE)
 
         // ---- Stage 2: click File, lerp into menu, click Dark mode ----
         //! MI_DARKMODE.bbox isn't known until the menu opens, but we know
@@ -83,12 +75,7 @@ def main {
         post_command(app, "imgui_mouse_play", JV((events = open_file_events)))
         sleep(MENU_DWELL_MS)
 
-        post_command(app, "imgui_narrate", JV((
-            text = "Click File, then Dark mode — MI_DARKMODE.value flips. menu_item is the toggleable variant; menu_label (used below for recent files / Star this project) is static.",
-            target = T_BODY,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        say(app, "Click File, then Dark mode — MI_DARKMODE.value flips. menu_item is the toggleable variant; menu_label (used below for recent files / Star this project) is static.", T_BODY)
 
         // ---- Stage 3: click Edit, lerp to Undo, click Undo ----
         let p_undo = (p_edit._0, p_edit._1 + 32.0f)
@@ -98,12 +85,7 @@ def main {
         post_command(app, "imgui_mouse_play", JV((events = open_edit_events)))
         sleep(MENU_DWELL_MS)
 
-        post_command(app, "imgui_narrate", JV((
-            text = "Edit > Undo uses menu_label — clicks increment EDIT_UNDO.click_count without toggling. The body window mirrors both counters in real time.",
-            target = T_BODY,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        say(app, "Edit > Undo uses menu_label — clicks increment EDIT_UNDO.click_count without toggling. The body window mirrors both counters in real time.", T_BODY)
 
         // ---- Stage 4: settle on the state readout ----
         move_to(app, p_body, 900)

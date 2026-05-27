@@ -13,9 +13,6 @@ require daslib/json_boost public
 //! float, scalar int, vector float3, and vertical orientation — and
 //! drives one value via ``imgui_set`` to show the bidirectional channel.
 
-let NARRATE_FRAMES = 240        //! 4.0s visible at 60 fps app
-let READ_MS        = 5000u      //! 5s read window per stage
-let SETTLE_MS      = 1500u      //! 1.5s cursor settle
 let SET_DWELL_MS   = 2200u      //! 2.2s post-imgui_set dwell
 
 def widget_bbox(var snap : JsonValue?; ident : string) : float4 {
@@ -56,42 +53,26 @@ def main {
         sleep(SETTLE_MS)
 
         // ---- Stage 1: narrate scalar float ----
-        post_command(app, "imgui_narrate", JV((
-            text = "slider_float(IDENT, (text, format)) — fixed-width track between (lo, hi). Click track to jump; drag handle to scrub. Bounds REQUIRED.",
-            target = T_FLOAT,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        say(app, "slider_float(IDENT, (text, format)) — fixed-width track between (lo, hi). Click track to jump; drag handle to scrub. Bounds REQUIRED.", T_FLOAT)
 
         // ---- Stage 2: scalar int ----
         move_to(app, p_int, 900)
         sleep(SETTLE_MS)
-        post_command(app, "imgui_narrate", JV((
-            text = "slider_int — same shape, integer steps. format = \"%d%%\" prints a percent suffix on the label.",
-            target = T_INT,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        say(app, "slider_int — same shape, integer steps. format = \"%d%%\" prints a percent suffix on the label.", T_INT)
+        post_command(app, "imgui_set", JV((target = T_INT, value = 7)))
+        sleep(CLICK_DWELL_MS)
 
         // ---- Stage 3: vector float3 ----
         move_to(app, p_vec3, 900)
         sleep(SETTLE_MS)
-        post_command(app, "imgui_narrate", JV((
-            text = "slider_float3 — three handles on one row. State carries float3 value; bounds apply to every component.",
-            target = T_VEC3,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        say(app, "slider_float3 — three handles on one row. State carries float3 value; bounds apply to every component.", T_VEC3)
 
         // ---- Stage 4: vertical orientation ----
         move_to(app, p_vmid, 900)
         sleep(SETTLE_MS)
-        post_command(app, "imgui_narrate", JV((
-            text = "vslider_float — same SliderStateFloat, vertical track. size = (width, height) specifies pixel geometry; everything else is identical.",
-            target = T_VMID,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        say(app, "vslider_float — same SliderStateFloat, vertical track. size = (width, height) specifies pixel geometry; everything else is identical.", T_VMID)
+        post_command(app, "imgui_set", JV((target = T_VMID, value = 0.75f)))
+        sleep(CLICK_DWELL_MS)
 
         // ---- Stage 5: drive from outside via imgui_set ----
         post_command(app, "imgui_set", JV((target = T_FLOAT, value = 0.8f)))
@@ -100,11 +81,6 @@ def main {
         sleep(SET_DWELL_MS)
         move_to(app, p_float, 900)
         sleep(SETTLE_MS)
-        post_command(app, "imgui_narrate", JV((
-            text = "imgui_set writes state.pending_value; next frame consumes it. Same channel for scalar (number) or vector (per-component array).",
-            target = T_FLOAT,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        say(app, "imgui_set writes state.pending_value; next frame consumes it. Same channel for scalar (number) or vector (per-component array).", T_FLOAT)
     }
 }

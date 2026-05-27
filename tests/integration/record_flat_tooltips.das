@@ -14,10 +14,6 @@ require daslib/json_boost public
 //! and the disabled "(?)" + ``set_item_tooltip`` idiom is the dasImgui
 //! replacement for the imgui_demo HelpMarker helper.
 
-let NARRATE_FRAMES = 240        //! 4.0s visible at 60 fps app
-let READ_MS    = 5000u          //! 5s read window before next stage
-let SETTLE_MS  = 1500u          //! 1.5s cursor settle
-
 def widget_bbox(var snap : JsonValue?; ident : string) : float4 {
     var b = snap?["globals"]?[ident]?["bbox"]
     return float4(
@@ -54,22 +50,12 @@ def main {
         // ---- Stage 1: hover SAVE_BTN — tooltip fires ----
         move_to(app, p_save, 900)
         sleep(SETTLE_MS)
-        post_command(app, "imgui_narrate", JV((
-            text = "set_item_tooltip after a button fires its tooltip on hover. No layout scope, no extra widgets — one line per annotation.",
-            target = T_SAVE,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        say(app, "set_item_tooltip after a button fires its tooltip on hover. No layout scope, no extra widgets — one line per annotation.", T_SAVE)
 
         // ---- Stage 2: hover LOAD_BTN — tooltip follows the hovered item ----
         move_to(app, p_load, 900)
         sleep(SETTLE_MS)
-        post_command(app, "imgui_narrate", JV((
-            text = "Each call attaches to the most-recently-submitted item — chain `button(); set_item_tooltip(...)` per row.",
-            target = T_LOAD,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        say(app, "Each call attaches to the most-recently-submitted item — chain `button(); set_item_tooltip(...)` per row.", T_LOAD)
 
         // ---- Stage 3: HelpMarker pattern under the "(?)" glyph ----
         //! The "(?)" glyph is a raw text_disabled call with no ident; its
@@ -77,11 +63,6 @@ def main {
         let p_help = (p_load._0 + 80.0f, p_load._1 + 60.0f)
         move_to(app, p_help, 900)
         sleep(SETTLE_MS)
-        post_command(app, "imgui_narrate", JV((
-            text = "Disabled `(?)` glyph + set_item_tooltip — the v2 replacement for the imgui_demo HelpMarker helper. Two source lines instead of a multiline helper.",
-            target = T_LOAD,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        say(app, "Disabled `(?)` glyph + set_item_tooltip — the v2 replacement for the imgui_demo HelpMarker helper. Two source lines instead of a multiline helper.", T_LOAD)
     }
 }

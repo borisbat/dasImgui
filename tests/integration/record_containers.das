@@ -12,6 +12,12 @@ require daslib/json_boost public
 //!
 //!     bin/Release/daslang.exe -project_root <dasimgui> \
 //!         <dasimgui>/tests/integration/record_containers.das
+//!
+//! Drives the General tab's WIRE checkbox, opens the popup, toggles
+//! OPT_VSYNC inside it, hovers HOVER_BTN for item_tooltip. Tab
+//! switching across tab_bar headers needs ImGuiTabItemFlags.SetSelected
+//! plumbing the boost wrapper doesn't expose — narrated as "try live"
+//! rather than driven, until that rail lands.
 
 def widget_bbox(var snap : JsonValue?; ident : string) : float4 {
     var b = snap?["globals"]?[ident]?["bbox"]
@@ -31,7 +37,7 @@ def widget_center(var snap : JsonValue?; ident : string) : tuple<float; float> {
 [export]
 def main {
     with_recording_app("examples/tutorial/containers.das",
-                       "containers.apng", 60) $(app) {
+                       "containers.apng", 75) $(app) {
         //! Targets are path-qualified — `window`, `menu_bar`, `tab_bar`, etc.
         //! all push their identifier onto the registry path. Note that menu
         //! and tab-item HEADER bboxes aren't registered (ImGui draws them as
@@ -40,6 +46,7 @@ def main {
         let T_WIRE        = "CONT_WIN/MAIN_TABS/GENERAL_TAB/WIRE"
         let T_OPEN_POPUP  = "CONT_WIN/OPEN_POPUP_BTN"
         let T_POPUP       = "CONT_WIN/OPTIONS_POPUP"
+        let T_OPT_VSYNC   = "CONT_WIN/OPTIONS_POPUP/OPT_VSYNC"
         let T_HOVER       = "CONT_WIN/HOVER_BTN"
 
         var snap = wait_for_render(app, T_OPEN_POPUP, 10.0f)
@@ -50,55 +57,41 @@ def main {
         let p_hover      = widget_center(snap, T_HOVER)
         let p_wire       = widget_center(snap, T_WIRE)
 
-        //! Pacing rule (LOCKED): `frames` is the app's frame counter (60 fps
-        //! under vsync), NOT the recorder's fps. For ~3s readable narrate:
-        //!     frames = 180   →  3.0s visible
-        //!     sleep  = 3500u →  narrate disappears with ~500ms gap before next
-        //! Then ~1500ms result dwell after the action.
-
-        // ---- Stage 1: menu bar + tab bar — narrate the chrome ----
-        // The menu bar and tab headers are ImGui-drawn chrome above any
-        // registered widget. The cursor sits at the top of the General tab
-        // (WIRE) so the menu bar and tab strip are both in view.
-        post_command(app, "imgui_narrate", JV((
-            text = "menu_bar and tab_bar share the window chrome.",
-            target = T_WIRE,
-            frames = 200
-        )))
+        // ---- Stage 1: General tab + menu_bar + WIRE checkbox ----
         move_to(app, p_wire)
-        sleep(3500u)
-        post_command(app, "imgui_narrate", JV((
-            text = "Only the active tab's block runs each frame.",
-            target = T_WIRE,
-            frames = 200
-        )))
-        sleep(3500u)
+        sleep(SETTLE_MS)
+        say(app, "menu_bar and tab_bar share the window chrome. General tab is active by default; WIRE checkbox lives in its body. Try Audio / Info tabs live — tab switching needs ImGuiTabItemFlags.SetSelected which the synth doesn't expose yet.", T_WIRE)
+        click(app, T_WIRE)
+        sleep(CLICK_DWELL_MS)
+        say(app, "WIRE flipped — General tab's body runs every frame; inactive tabs (Audio, Info) don't enter their body block.", T_WIRE)
 
-        // ---- Stage 2: popup via pending_open ----
-        post_command(app, "imgui_narrate", JV((
-            text = "popup — open via the button (pending_open).",
-            target = T_OPEN_POPUP,
-            frames = 200
-        )))
+        // ---- Stage 2: popup open via button click, then drive a checkbox inside ----
         move_to(app, p_open_popup)
-        sleep(3500u)
+        sleep(SETTLE_MS)
         var open_events : array<JsonValue?>
         open_events |> click_at(0, p_open_popup)
         post_command(app, "imgui_mouse_play", JV((events = open_events)))
-        sleep(2000u)
+        sleep(CLICK_DWELL_MS)
+        var snap_popup = wait_for_widget(app, T_OPT_VSYNC, 5.0f)
+        if (snap_popup == null) {
+            panic("{T_OPT_VSYNC} never registered after opening popup")
+        }
+        let p_opt_vsync = widget_center(snap_popup, T_OPT_VSYNC)
+
+        move_to(app, p_opt_vsync)
+        sleep(SETTLE_MS)
+        click(app, T_OPT_VSYNC)
+        sleep(CLICK_DWELL_MS)
+        say(app, "popup — opened via pending_open (the button flipped the flag). OPT_VSYNC checkbox lives inside the popup body; the path push works across the popup boundary.", T_OPT_VSYNC)
+
         // Close it via the same channel imgui_close uses.
         post_command(app, "imgui_close", JV((target = T_POPUP)))
-        sleep(1500u)
+        sleep(CLICK_DWELL_MS)
 
         // ---- Stage 3: item_tooltip on hover ----
-        post_command(app, "imgui_narrate", JV((
-            text = "item_tooltip — auto-gated by IsItemHovered.",
-            target = T_HOVER,
-            frames = 200
-        )))
         move_to(app, p_hover)
-        sleep(3500u)
-        // Dwell on the button so ImGui's hover delay fires the tooltip.
+        sleep(SETTLE_MS)
+        say(app, "item_tooltip — auto-gated by IsItemHovered. Dwell on the button below; the BeginItemTooltip block runs while hovered.", T_HOVER)
         sleep(2500u)
     }
 }

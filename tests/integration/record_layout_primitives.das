@@ -14,10 +14,6 @@ require daslib/json_boost public
 //! Three buttons BTN_A/B/C share one ``same_line`` row; the rest of the
 //! window stacks spacing + new_line + dummy demonstrations.
 
-let NARRATE_FRAMES = 240        //! 4.0s visible at 60 fps app
-let READ_MS    = 5000u          //! 5s read window before next stage
-let SETTLE_MS  = 1500u          //! 1.5s cursor settle
-
 def widget_bbox(var snap : JsonValue?; ident : string) : float4 {
     var b = snap?["globals"]?[ident]?["bbox"]
     return float4(
@@ -56,31 +52,22 @@ def main {
         // ---- Stage 1: hover BTN_A — establish the same_line row ----
         move_to(app, p_a, 900)
         sleep(SETTLE_MS)
-        post_command(app, "imgui_narrate", JV((
-            text = "same_line() keeps the next widget on the current row. Three buttons + two same_line() calls = one horizontal strip.",
-            target = T_BTN_A,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        say(app, "same_line() keeps the next widget on the current row. Three buttons + two same_line() calls = one horizontal strip.", T_BTN_A)
+        click(app, T_BTN_A)
+        sleep(CLICK_DWELL_MS)
 
         // ---- Stage 2: traverse the row ----
         move_to(app, p_b, 700)
         sleep(SETTLE_MS)
-        post_command(app, "imgui_narrate", JV((
-            text = "BTN_B is on the same row as BTN_A — the cursor's X advanced via same_line() between calls.",
-            target = T_BTN_B,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        say(app, "BTN_B is on the same row as BTN_A — the cursor's X advanced via same_line() between calls.", T_BTN_B)
+        click(app, T_BTN_B)
+        sleep(CLICK_DWELL_MS)
 
         move_to(app, p_c, 700)
         sleep(SETTLE_MS)
-        post_command(app, "imgui_narrate", JV((
-            text = "BTN_C closes the row. Without same_line(), each button would stack vertically as ImGui's cursor reset to the next line.",
-            target = T_BTN_C,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        say(app, "BTN_C closes the row. Without same_line(), each button would stack vertically as ImGui's cursor reset to the next line.", T_BTN_C)
+        click(app, T_BTN_C)
+        sleep(CLICK_DWELL_MS)
 
         // ---- Stage 3: spacing / new_line / dummy commentary ----
         //! Below BTN_C the tutorial stacks: spacing(), three more spacings,
@@ -90,11 +77,6 @@ def main {
         let p_below = (p_c._0 - 80.0f, p_c._1 + 90.0f)
         move_to(app, p_below, 900)
         sleep(SETTLE_MS)
-        post_command(app, "imgui_narrate", JV((
-            text = "spacing() inserts one line of vertical gap. new_line() advances a full text line. dummy((size)) reserves arbitrary cursor space — all three move the cursor without rendering.",
-            target = T_BTN_C,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        say(app, "spacing() inserts one line of vertical gap. new_line() advances a full text line. dummy((size)) reserves arbitrary cursor space — all three move the cursor without rendering.", T_BTN_C)
     }
 }

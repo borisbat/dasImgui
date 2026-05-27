@@ -136,12 +136,7 @@ def main {
         sleep(400u)
 
         // Narrate the keyboard half so the viewer knows what's coming.
-        post_command(app, "imgui_narrate", JV((
-            text = "Watch the keycap HUD as we type.",
-            target = "SUBJECT_WIN/NAME_INPUT",
-            frames = 180
-        )))
-        sleep(2200u)
+        say(app, "Watch the keycap HUD as we type.", "SUBJECT_WIN/NAME_INPUT")
 
         // Type "Hello, World!" over 4 seconds. Mixed caps + comma + space + bang
         // exercise auto-Shift around capitals and shifted punctuation, so the
@@ -151,12 +146,7 @@ def main {
         sleep(4800u)
 
         // Demonstrate a chord: Ctrl+A. Both Ctrl pill and the "A" keycap pop.
-        post_command(app, "imgui_narrate", JV((
-            text = "Ctrl+A selects all.",
-            target = "SUBJECT_WIN/NAME_INPUT",
-            frames = 150
-        )))
-        sleep(1600u)
+        say(app, "Ctrl+A selects all.", "SUBJECT_WIN/NAME_INPUT")
         post_command(app, "imgui_key_chord", JV((mods = ["Ctrl"], key = "A")))
         sleep(1400u)
 

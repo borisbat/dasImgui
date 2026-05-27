@@ -12,13 +12,6 @@ require daslib/json_boost public
 //! ``examples/tutorial/buttons.das``. Tours six click triggers —
 //! button, small_button, arrow_button (pair), invisible_button,
 //! image_button (font atlas), tab_item_button inside a tab_bar.
-//!
-//! Recorder fps = 30 — click triggers don't animate between events.
-
-let NARRATE_FRAMES = 180        //! 6s visible at the app's 30 fps target
-let READ_MS        = 3500u      //! 3.5s read window per stage
-let SETTLE_MS      = 1200u      //! 1.2s cursor settle
-let CLICK_DWELL_MS = 1500u      //! 1.5s post-click dwell
 
 def widget_bbox(var snap : JsonValue?; ident : string) : float4 {
     var b = snap?["globals"]?[ident]?["bbox"]
@@ -38,7 +31,7 @@ def widget_center(var snap : JsonValue?; ident : string) : tuple<float; float> {
 [export]
 def main {
     with_recording_app("examples/tutorial/buttons.das",
-                       "buttons.apng", 60, 30) $(app) {
+                       "buttons.apng", 60) $(app) {
         let T_GO    = "BT_WIN/BT_GO"
         let T_SMALL = "BT_WIN/BT_SMALL"
         let T_BACK  = "BT_WIN/BT_BACK"
@@ -70,24 +63,14 @@ def main {
         sleep(CLICK_DWELL_MS)
         post_command(app, "imgui_click", JV((target = T_GO)))
         sleep(CLICK_DWELL_MS)
-        post_command(app, "imgui_narrate", JV((
-            text = "button — ClickState records clicks. Return value is per-frame; state.click_count accumulates.",
-            target = T_GO,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        say(app, "button — ClickState records clicks. Return value is per-frame; state.click_count accumulates.", T_GO)
 
         // ---- Stage 2: small_button — no padding ----
         move_to(app, p_small, 800)
         sleep(SETTLE_MS)
         post_command(app, "imgui_click", JV((target = T_SMALL)))
         sleep(CLICK_DWELL_MS)
-        post_command(app, "imgui_narrate", JV((
-            text = "small_button — SmallButton() has zero frame padding. For inline tool strips (quit, reset, dismiss).",
-            target = T_SMALL,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        say(app, "small_button — SmallButton() has zero frame padding. For inline tool strips (quit, reset, dismiss).", T_SMALL)
 
         // ---- Stage 3: arrow_button — directional pair ----
         move_to(app, p_back, 800)
@@ -96,36 +79,21 @@ def main {
         sleep(CLICK_DWELL_MS)
         post_command(app, "imgui_click", JV((target = T_FWD)))
         sleep(CLICK_DWELL_MS)
-        post_command(app, "imgui_narrate", JV((
-            text = "arrow_button — triangle glyph; pass dir = ImGuiDir.Up / .Down / .Left / .Right. Each call site needs its own IDENT.",
-            target = T_BACK,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        say(app, "arrow_button — triangle glyph; pass dir = ImGuiDir.Up / .Down / .Left / .Right. Each call site needs its own IDENT.", T_BACK)
 
         // ---- Stage 4: invisible_button — hit area without glyph ----
         move_to(app, p_hot, 800)
         sleep(SETTLE_MS)
         post_command(app, "imgui_click", JV((target = T_HOT)))
         sleep(CLICK_DWELL_MS)
-        post_command(app, "imgui_narrate", JV((
-            text = "invisible_button — InvisibleButton(label, size). Clickable bbox, zero render. Overlay one on top of a drawlist scene to capture clicks.",
-            target = T_HOT,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        say(app, "invisible_button — InvisibleButton(label, size). Clickable bbox, zero render. Overlay one on top of a drawlist scene to capture clicks.", T_HOT)
 
         // ---- Stage 5: image_button — font atlas as texture ----
         move_to(app, p_img, 800)
         sleep(SETTLE_MS)
         post_command(app, "imgui_click", JV((target = T_IMG)))
         sleep(CLICK_DWELL_MS)
-        post_command(app, "imgui_narrate", JV((
-            text = "image_button — pass user_texture_id : void? + size. The font atlas (io.Fonts.TexID) is always available; real apps load their own.",
-            target = T_IMG,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        say(app, "image_button — pass user_texture_id : void? + size. The font atlas (io.Fonts.TexID) is always available; real apps load their own.", T_IMG)
 
         // ---- Stage 6: tab_item_button — inside tab_bar ----
         move_to(app, p_help, 800)
@@ -134,11 +102,6 @@ def main {
         sleep(CLICK_DWELL_MS)
         post_command(app, "imgui_click", JV((target = T_ADD)))
         sleep(CLICK_DWELL_MS)
-        post_command(app, "imgui_narrate", JV((
-            text = "tab_item_button — button styled as a tab; MUST be inside a tab_bar. flags = Leading anchors to the start, Trailing to the end. Classic uses: help '?' / add '+'.",
-            target = T_HELP,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        say(app, "tab_item_button — button styled as a tab; MUST be inside a tab_bar. flags = Leading anchors to the start, Trailing to the end. Classic uses: help '?' / add '+'.", T_HELP)
     }
 }

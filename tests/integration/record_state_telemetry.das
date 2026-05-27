@@ -47,20 +47,9 @@ def main {
         let p_save   = widget_center(snap, T_SAVE)
         let p_bump   = widget_center(snap, T_BUMP)
 
-        //! Pacing rule (LOCKED): `frames` is the app's frame counter (60 fps
-        //! under vsync), NOT the recorder's fps. For ~3s readable narrate:
-        //!     frames = 180   →  3.0s visible
-        //!     sleep  = 3500u →  narrate disappears with ~500ms gap before next
-        //! Then ~1500ms result dwell after the action.
-
         // ---- Stage 1: auto-emit + click_count ----
-        post_command(app, "imgui_narrate", JV((
-            text = "button(SAVE_BTN, ...) auto-emits the SAVE_BTN global.",
-            target = T_SAVE,
-            frames = 200
-        )))
         move_to(app, p_save)
-        sleep(3500u)
+        say(app, "button(SAVE_BTN, ...) auto-emits the SAVE_BTN global.", T_SAVE)
         var save_events : array<JsonValue?>
         save_events |> click_at(0, p_save)
         post_command(app, "imgui_mouse_play", JV((events = save_events)))
@@ -72,12 +61,7 @@ def main {
         sleep(1500u)
 
         // ---- Stage 2: dotted flags steer the emitted global ----
-        post_command(app, "imgui_narrate", JV((
-            text = "Dotted flags: SPEED.PUBLIC, VOLUME.NOTLIVE.",
-            target = T_SPEED,
-            frames = 200
-        )))
-        sleep(3500u)
+        say(app, "Dotted flags: SPEED.PUBLIC, VOLUME.NOTLIVE.", T_SPEED)
         // imgui_set drives the slider values without simulating a drag.
         post_command(app, "imgui_set", JV((target = T_SPEED, value = 7)))
         sleep(900u)
@@ -85,23 +69,13 @@ def main {
         sleep(1500u)
 
         // ---- Stage 3: text_show + imgui_set drives the value from outside ----
-        post_command(app, "imgui_narrate", JV((
-            text = "text_show — app-side value mirrored into the snapshot.",
-            target = T_STATUS,
-            frames = 200
-        )))
-        sleep(3500u)
+        say(app, "text_show — app-side value mirrored into the snapshot.", T_STATUS)
         post_command(app, "imgui_set", JV((target = T_STATUS, value = "set from outside")))
         sleep(1500u)
 
         // ---- Stage 4: bump rewrites STATUS from inside the app ----
-        post_command(app, "imgui_narrate", JV((
-            text = "Bump rewrites STATUS_TEXT.value from inside the app.",
-            target = T_BUMP,
-            frames = 200
-        )))
         move_to(app, p_bump)
-        sleep(3500u)
+        say(app, "Bump rewrites STATUS_TEXT.value from inside the app.", T_BUMP)
         var bump_events : array<JsonValue?>
         bump_events |> click_at(0, p_bump)
         post_command(app, "imgui_mouse_play", JV((events = bump_events)))
