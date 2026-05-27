@@ -31,8 +31,16 @@ def test_imgui_synth_keys_smoke(t : T?) {
                    "",
                    "NAME_INPUT.value initially empty")
 
-        // Focus then type via the ImGui-bypass path.
-        post_command(d, "imgui_focus", JV((target = "MAIN_WIN/NAME_INPUT")))
+        // Focus then type via the ImGui-bypass path. Linux + macOS
+        // dispatch focus a frame later than Windows; settle on the
+        // payload's `focus` field before firing chars so they don't
+        // arrive ahead of the activation. Same shape as
+        // test_imgui_synth_ctrl_shortcuts.das:40-43.
+        focus(d, "MAIN_WIN/NAME_INPUT")
+        let focused = wait_until(d, 120) $(var s) {
+            return s?["globals"]?["MAIN_WIN/NAME_INPUT"]?["focus"] ?? false
+        }
+        t |> success(focused != null, "NAME_INPUT receives keyboard focus")
         post_command(d, "imgui_key_type", JV((text = "Hello", per_char_ms = 30)))
         t |> success(wait_for_key_idle(d, 4.0f), "key timeline drains")
         t |> success(wait_for_string_value(d, "MAIN_WIN/NAME_INPUT", "value", "Hello", 300),
