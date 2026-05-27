@@ -1307,7 +1307,7 @@ def private dispatch_or_err(action : string; input : JsonValue?) : Result<string
     // the L2 dispatcher's state-mutation rail. resolve_target_bbox works at both
     // path (L2) and hex_id (L1) so this branch handles both target forms.
     if (action == "click") {
-        let button = int(input?["button"] ?? 0)
+        let button = input?["button"] ?? 0
         if (button != 0) {
             let (got, center) = resolve_target_bbox(resolved)
             if (!got) return err("target {resolved} has no bbox this frame (not rendered)", type<string>)
