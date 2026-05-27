@@ -55,77 +55,46 @@ def main {
         let p_file_a  = widget_center(snap, T_FILE_A_BTN)
         let p_clear   = widget_center(snap, T_CLEAR_BTN)
 
-        //! Pacing rule (LOCKED): `frames` is the app's frame counter (60 fps
-        //! under vsync), NOT the recorder's fps. For ~3s readable narrate:
-        //!     frames = 180   →  3.0s visible
-        //!     sleep  = 3500u →  narrate disappears with ~500ms gap before next
-        //! Then ~1500ms result dwell after the action.
-
         // ---- Stage 1: sidebar (dock_left) ----
         // Narrate against EXPLORE_BTN (a real bbox inside the sidebar) since
         // dock_left itself has bbox=(0,0,0,0). Cursor moves into the sidebar.
-        post_command(app, "imgui_narrate", JV((
-            text = "dock_left fixes a sidebar to the left edge.",
-            target = T_EXPLORE_BTN,
-            frames = 200
-        )))
         move_to(app, p_explore)
-        sleep(3500u)
+        say(app, "dock_left fixes a sidebar to the left edge.", T_EXPLORE_BTN)
         post_command(app, "imgui_set", JV((target = T_SIDEBAR, value = 260.0f)))
-        sleep(1500u)
+        sleep(CLICK_DWELL_MS)
 
         // ---- Stage 2: horizontal splitter (split_h on top half) ----
         // Re-resolve FILE_A_BTN bbox; SIDEBAR's resize reflowed the panes.
         // Narrate against FILE_A_BTN (left split pane) — split_h has no bbox.
         snap = wait_for_render(app, T_FILE_A_BTN, 3.0f)
         let p_file_a_now = snap != null ? widget_center(snap, T_FILE_A_BTN) : p_file_a
-        post_command(app, "imgui_narrate", JV((
-            text = "split_h slices the top into left + right.",
-            target = T_FILE_A_BTN,
-            frames = 200
-        )))
         move_to(app, p_file_a_now)
-        sleep(3500u)
+        say(app, "split_h slices the top into left + right.", T_FILE_A_BTN)
         post_command(app, "imgui_set", JV((target = T_SPLIT_MAIN, value = 0.6f)))
-        sleep(1500u)
+        sleep(CLICK_DWELL_MS)
 
         // ---- Stage 3: vertical splitter ----
         // Narrate against CLEAR_BTN (bottom pane) — split_v has no bbox.
         snap = wait_for_render(app, T_CLEAR_BTN, 3.0f)
         let p_clear_now = snap != null ? widget_center(snap, T_CLEAR_BTN) : p_clear
-        post_command(app, "imgui_narrate", JV((
-            text = "split_v splits top from bottom.",
-            target = T_CLEAR_BTN,
-            frames = 200
-        )))
         move_to(app, p_clear_now)
-        sleep(3500u)
+        say(app, "split_v splits top from bottom.", T_CLEAR_BTN)
         post_command(app, "imgui_set", JV((target = T_SPLIT_VERT, value = 0.45f)))
-        sleep(1500u)
+        sleep(CLICK_DWELL_MS)
 
         // ---- Stage 4: click inside sidebar ----
         snap = wait_for_render(app, T_EXPLORE_BTN, 3.0f)
         let p_explore_now = snap != null ? widget_center(snap, T_EXPLORE_BTN) : p_explore
-        post_command(app, "imgui_narrate", JV((
-            text = "Each pane clips its widgets cleanly.",
-            target = T_EXPLORE_BTN,
-            frames = 180
-        )))
-        sleep(3500u)
+        say(app, "Each pane clips its widgets cleanly.", T_EXPLORE_BTN)
         var explore_events : array<JsonValue?>
         explore_events |> click_at(0, p_explore_now)
         post_command(app, "imgui_mouse_play", JV((events = explore_events)))
-        sleep(1500u)
+        sleep(CLICK_DWELL_MS)
 
         // ---- Stage 5: click inside left-split pane (re-resolve bbox; layout shifted) ----
         snap = wait_for_render(app, T_FILE_A_BTN, 5.0f)
         let p_file_a_now2 = snap != null ? widget_center(snap, T_FILE_A_BTN) : p_file_a_now
-        post_command(app, "imgui_narrate", JV((
-            text = "Splitters re-flow the panes on every drag.",
-            target = T_FILE_A_BTN,
-            frames = 180
-        )))
-        sleep(3500u)
+        say(app, "Splitters re-flow the panes on every drag.", T_FILE_A_BTN)
         var file_events : array<JsonValue?>
         file_events |> click_at(0, p_file_a_now2)
         post_command(app, "imgui_mouse_play", JV((events = file_events)))

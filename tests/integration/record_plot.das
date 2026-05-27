@@ -15,10 +15,6 @@ require daslib/json_boost public
 //! ``g_phase`` advances per frame so the sine waves animate during
 //! narration — read time naturally shows the motion.
 
-let NARRATE_FRAMES = 180        //! 6s visible at the app's 30 fps target
-let READ_MS        = 3500u      //! 3.5s read window per stage
-let SETTLE_MS      = 1200u      //! 1.2s cursor settle
-
 def widget_bbox(var snap : JsonValue?; ident : string) : float4 {
     var b = snap?["globals"]?[ident]?["bbox"]
     return float4(
@@ -37,7 +33,7 @@ def widget_center(var snap : JsonValue?; ident : string) : tuple<float; float> {
 [export]
 def main {
     with_recording_app("examples/tutorial/plot.das",
-                       "plot.apng", 40, 30) $(app) {
+                       "plot.apng", 40) $(app) {
         let T_LINES   = "PL_WIN/PL_LINES"
         let T_HIST    = "PL_WIN/PL_HIST"
         let T_LINES_G = "PL_WIN/PL_LINES_G"
@@ -57,41 +53,21 @@ def main {
         sleep(SETTLE_MS)
 
         // ---- Stage 1: plot_lines (array) ----
-        post_command(app, "imgui_narrate", JV((
-            text = "plot_lines (array form) — pass per-frame array<float>; ImGui copies synchronously. Explicit scale_min / scale_max avoids per-frame autoscale jitter.",
-            target = T_LINES,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        say(app, "plot_lines (array form) — pass per-frame array<float>; ImGui copies synchronously. Explicit scale_min / scale_max avoids per-frame autoscale jitter.", T_LINES)
 
         // ---- Stage 2: plot_histogram (array) ----
         move_to(app, p_hist, 800)
         sleep(SETTLE_MS)
-        post_command(app, "imgui_narrate", JV((
-            text = "plot_histogram (array form) — same shape as plot_lines, bars instead of polyline. PlotState records title + samples for snapshot.",
-            target = T_HIST,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        say(app, "plot_histogram (array form) — same shape as plot_lines, bars instead of polyline. PlotState records title + samples for snapshot.", T_HIST)
 
         // ---- Stage 3: plot_lines_getter (lambda) ----
         move_to(app, p_lines_g, 800)
         sleep(SETTLE_MS)
-        post_command(app, "imgui_narrate", JV((
-            text = "plot_lines_getter (lambda) — callback (idx) : float fires once per sample, synchronously inside the C call. Skips the backing array; great for synthesized signals.",
-            target = T_LINES_G,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        say(app, "plot_lines_getter (lambda) — callback (idx) : float fires once per sample, synchronously inside the C call. Skips the backing array; great for synthesized signals.", T_LINES_G)
 
         // ---- Stage 4: plot_histogram_getter (lambda) ----
         move_to(app, p_hist_g, 800)
         sleep(SETTLE_MS)
-        post_command(app, "imgui_narrate", JV((
-            text = "plot_histogram_getter (lambda) — bars from a lambda. Same use-case as plot_lines_getter; pick by visualization style.",
-            target = T_HIST_G,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        say(app, "plot_histogram_getter (lambda) — bars from a lambda. Same use-case as plot_lines_getter; pick by visualization style.", T_HIST_G)
     }
 }

@@ -35,6 +35,22 @@ let FRAME_POLL_INTERVAL_MS : uint = 100u             // ms between snapshot poll
                                                      // ~1.5 polls/frame at 60fps — still snappy in practice; most
                                                      // wait_for_widget calls complete in 1-2 polls anyway.
 
+// ===== Centralized recording timing =====
+//
+// One knob set for every record_*.das. Drivers used to redeclare these as
+// per-file lets (NARRATE_FRAMES / READ_MS / SETTLE_MS / CLICK_DWELL_MS) with
+// inconsistent values across the corpus. The MP4 migration also dropped the
+// "keep APNG asset under 50 MB" pressure that justified fps=30, so the
+// default now matches the app's native 60 fps.
+//
+// NARRATE_FRAMES is gone — the unified `narrate()` helper derives it from
+// RECORD_FPS * NARRATE_READ_MS / 1000 so only one knob remains.
+
+let public RECORD_FPS : int = 60                     // native MP4 playback target (was 30 in APNG era)
+let public NARRATE_READ_MS : uint = 4500u            // narrative on-screen window — long enough to read with audio muted
+let public SETTLE_MS : uint = 1200u                  // post-move cursor settle
+let public CLICK_DWELL_MS : uint = 1500u             // post-click visual confirmation
+
 struct ImguiApp {
     base_url : string
     feature_path : string
@@ -376,13 +392,33 @@ def public await_quiescent(app : ImguiApp;
 // ===== Command verbs =====
 
 def public click(app : ImguiApp; target : string) : JsonValue? {
-    //! Synthesize a click on ``target`` (``imgui_click`` verb).
+    //! Synthesize a left-click on ``target`` (``imgui_click`` verb).
     return send_imgui_command(app.transport, "imgui_click", JV((target = target)))
+}
+
+def public right_click(app : ImguiApp; target : string) : JsonValue? {
+    //! Synthesize a right-click on ``target`` (``imgui_click`` verb with ``button = 1``).
+    //! Used by popup_context_item / popup_context_window drivers.
+    return send_imgui_command(app.transport, "imgui_click", JV((target = target, button = 1)))
 }
 
 def public set_value(app : ImguiApp; target : string; var value : JsonValue?) : JsonValue? {
     //! Set ``target``'s payload value remotely (``imgui_set`` verb); ``value`` is the JSON form expected by the widget kind.
     return send_imgui_command(app.transport, "imgui_set", JV((target = target, value = value)))
+}
+
+def public resize_window(app : ImguiApp; target : string; w : float; h : float) : JsonValue? {
+    //! Resize the window named by ``target`` to (``w``, ``h``) on the next frame.
+    //! Routes through ``imgui_set_window_size`` (regular ``window`` container);
+    //! the dispatcher feeds ``state.pending_size`` and ``window()`` calls
+    //! ``SetNextWindowSize`` on the next frame. SetNextWindowSizeConstraints
+    //! callbacks (snap/aspect/quantize) reshape the request — used by the
+    //! window_size_constraints recording driver to demonstrate exactly that.
+    //! Named ``resize_window`` (not ``set_window_size``) to avoid the
+    //! overload-resolution collision with imgui_containers_builtin's
+    //! in-frame ``set_window_size(size : float2; cond : ImGuiCond)``.
+    return send_imgui_command(app.transport, "imgui_set_window_size",
+                              JV((target = target, value = JV((w = w, h = h)))))
 }
 
 def public open_widget(app : ImguiApp; target : string) : JsonValue? {
@@ -421,6 +457,33 @@ def public drag_to(app : ImguiApp; source : string; target : string;
 def public focus(app : ImguiApp; target : string) : JsonValue? {
     //! Force keyboard focus to the next render of ``target`` (``imgui_focus`` verb); display-only widgets reply ``Result.err("not focusable")``.
     return send_imgui_command(app.transport, "imgui_focus", JV((target = target)))
+}
+
+def public key_tap(app : ImguiApp; key : int) {
+    //! Synthesize a complete press+release of an ImGuiKey by integer code.
+    //! Pairs ``imgui_key_press`` + ``imgui_key_release`` — neither verb alone
+    //! does both, so calling only press leaves the key stuck (visible in the
+    //! key_hud overlay and as repeating-input bugs in driven widgets).
+    //! Use ``int(ImGuiKey.Tab)`` / ``int(ImGuiKey.Escape)`` / etc. at the call site.
+    post_command(app, "imgui_key_press",   JV((key = key)))
+    post_command(app, "imgui_key_release", JV((key = key)))
+}
+
+// ===== Recording cadence helper =====
+
+def public say(app : ImguiApp; text : string; target : string = ""; read_ms : uint = NARRATE_READ_MS) {
+    //! Pop a narration overlay (``imgui_narrate`` verb), then sleep ``read_ms`` so the
+    //! recorder captures the on-screen window. ``frames`` is derived from
+    //! ``RECORD_FPS * read_ms / 1000`` so a single centralized knob (``NARRATE_READ_MS``)
+    //! controls both the host-side overlay duration AND the recorder dwell — drivers
+    //! used to redeclare ``NARRATE_FRAMES`` + ``READ_MS`` as per-file lets, drifting
+    //! apart over time. Now: one call instead of post+sleep, one knob instead of two.
+    //! Named ``say`` (not ``narrate``) to avoid overload-resolution churn with
+    //! imgui_visual_aids::narrate (the host-side overlay function), which differs
+    //! only in the first arg type (string vs ImguiApp).
+    let frames = int(float(RECORD_FPS) * float(read_ms) / 1000.0f)
+    post_command(app, "imgui_narrate", JV((text = text, target = target, frames = frames)))
+    sleep(read_ms)
 }
 
 def public wait_for_key_idle(app : ImguiApp; timeout_sec : float = DEFAULT_FRAME_WAIT_SEC) : bool {
@@ -603,13 +666,13 @@ def public with_imgui_app_opt(feature_path : string;
 // ===== Recording helper =====
 
 let private RECORD_ASSET_REL = "doc/source/_static/tutorials"
-let private RECORD_FPS_DEFAULT = 30
+let private RECORD_FPS_DEFAULT = RECORD_FPS  // 60 — see widgets/imgui_playwright.das tunables section
 
 def public with_recording_app(feature_path : string;
                               output_apng_basename : string;
                               max_seconds : int;
                               body : block<(app : ImguiApp) : void>) {
-    //! 30 fps form (the common case). Delegates to the 4-arg overload —
+    //! Native-fps form (the common case). Delegates to the 4-arg overload —
     //! daslang's gen2 trailing-block sugar can't see through a default
     //! parameter sitting between the last positional and the block, so
     //! the overload pair keeps the common call site clean.
@@ -644,11 +707,10 @@ def public with_recording_app(feature_path : string;
     //! regardless of caller cwd. Forwards ``-project_root`` from the
     //! driver's own argv (spawn mode only) so the source-repo recording
     //! workflow survives (``skills/recording.md``). ``fps`` defaults to
-    //! 30; pass a smaller value for long-running recordings where file
-    //! size matters more than smoothness (the narrative_layout /
-    //! edit_external tours run at 20 to stay under GitHub's 50 MB asset
-    //! warning). Panics on non-zero exit / readiness or test timeout so
-    //! the recording driver fails loudly.
+    //! ``RECORD_FPS`` (60 — native MP4 playback). The APNG-era 50 MB
+    //! GitHub-warning pressure that justified fps=30 is gone now that
+    //! recordings ship as MP4 (PR #73). Panics on non-zero exit /
+    //! readiness or test timeout so the recording driver fails loudly.
     // Resolve feature_path against dasImgui root (where examples/tutorial/
     // and examples/features/ actually live), NOT the daScript root that
     // resolve_feature_path uses. Same idiom as

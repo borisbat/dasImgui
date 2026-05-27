@@ -54,28 +54,16 @@ def main {
         let vol_x0 = vol_bb.x + (vol_bb.z - vol_bb.x) * 0.10f
         let vol_x1 = vol_bb.x + (vol_bb.z - vol_bb.x) * 0.75f
 
-        //! Pacing rule (LOCKED): frames=180 = 3.0s; sleep=3500u = ~500ms gap.
-
         // ---- Stage 1: slider drag ----
-        post_command(app, "imgui_narrate", JV((
-            text = "VOLUME is a daslang global emitted by the slider macro.",
-            target = T_VOLUME,
-            frames = 180
-        )))
-        sleep(3500u)
+        say(app, "VOLUME is a daslang global emitted by the slider macro.", T_VOLUME)
         var slider_events : array<JsonValue?>
         slider_events |> drag_along(0, (vol_x0, vol_y), (vol_x1, vol_y), 1400)
         post_command(app, "imgui_mouse_play", JV((events = slider_events)))
         sleep(2500u)
 
         // ---- Stage 2: click the bump button ----
-        post_command(app, "imgui_narrate", JV((
-            text = "BUMP_BTN.click_count tracks the bumps.",
-            target = T_BUMP,
-            frames = 180
-        )))
         move_to(app, p_bump)
-        sleep(3500u)
+        say(app, "BUMP_BTN.click_count tracks the bumps.", T_BUMP)
         var bump_events : array<JsonValue?>
         bump_events |> click_at(0, p_bump)
         post_command(app, "imgui_mouse_play", JV((events = bump_events)))

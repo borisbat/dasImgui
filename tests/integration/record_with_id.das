@@ -56,71 +56,40 @@ def main {
         let rps_x0 = rps_bb.x + (rps_bb.z - rps_bb.x) * 0.15f
         let rps_x1 = rps_bb.x + (rps_bb.z - rps_bb.x) * 0.75f
 
-        //! Pacing rule (LOCKED): `frames` is the app's frame counter (60 fps
-        //! under vsync), NOT the recorder's fps. For ~3s readable narrate:
-        //!     frames = 180   →  3.0s visible
-        //!     sleep  = 3500u →  narrate disappears with ~500ms gap before next
-        //! Then ~1500ms result dwell after the action.
-
         // ---- Stage 1: two scopes, same widget identifier ----
-        post_command(app, "imgui_narrate", JV((
-            text = "with_id scopes a render — same SAVE_BTN, two paths.",
-            target = T_SAVE_A,
-            frames = 180
-        )))
         move_to(app, p_save_a)
-        sleep(3500u)
+        say(app, "with_id scopes a render — same SAVE_BTN, two paths.", T_SAVE_A)
         var save_a_events : array<JsonValue?>
         save_a_events |> click_at(0, p_save_a)
         post_command(app, "imgui_mouse_play", JV((events = save_a_events)))
         sleep(1500u)
 
-        post_command(app, "imgui_narrate", JV((
-            text = "section_b path → distinct ImGui hash + own click count slot.",
-            target = T_SAVE_B,
-            frames = 180
-        )))
         move_to(app, p_save_b)
-        sleep(3500u)
+        say(app, "section_b path → distinct ImGui hash + own click count slot.", T_SAVE_B)
         var save_b_events : array<JsonValue?>
         save_b_events |> click_at(0, p_save_b)
         post_command(app, "imgui_mouse_play", JV((events = save_b_events)))
         sleep(1500u)
 
         // ---- Stage 2: nested with_id chain ----
-        post_command(app, "imgui_narrate", JV((
-            text = "Nested with_id — segments join with /.",
-            target = T_NESTED,
-            frames = 200
-        )))
         move_to(app, p_nested)
-        sleep(3500u)
+        say(app, "Nested with_id — segments join with /.", T_NESTED)
         var nested_events : array<JsonValue?>
         nested_events |> click_at(0, p_nested)
         post_command(app, "imgui_mouse_play", JV((events = nested_events)))
         sleep(1500u)
 
         // ---- Stage 3: id= per-call sugar ----
-        post_command(app, "imgui_narrate", JV((
-            text = "id= mangles the ImGui hash; telemetry path unchanged.",
-            target = T_HASHED,
-            frames = 200
-        )))
         move_to(app, p_hashed)
-        sleep(3500u)
+        say(app, "id= mangles the ImGui hash; telemetry path unchanged.", T_HASHED)
         var hashed_events : array<JsonValue?>
         hashed_events |> click_at(0, p_hashed)
         post_command(app, "imgui_mouse_play", JV((events = hashed_events)))
         sleep(1500u)
 
         // ---- Stage 4: path= per-call sugar ----
-        post_command(app, "imgui_narrate", JV((
-            text = "path= replaces the registry path leaf.",
-            target = T_RPS_PATH,
-            frames = 200
-        )))
         move_to(app, p_rps)
-        sleep(3500u)
+        say(app, "path= replaces the registry path leaf.", T_RPS_PATH)
         var rps_events : array<JsonValue?>
         rps_events |> drag_along(0, (rps_x0, rps_y), (rps_x1, rps_y), 1400)
         post_command(app, "imgui_mouse_play", JV((events = rps_events)))

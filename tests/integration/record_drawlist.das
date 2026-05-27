@@ -16,7 +16,7 @@ require daslib/json_boost public
 [export]
 def main {
     with_recording_app("examples/tutorial/drawlist.das",
-                       "drawlist.apng", 30) $(app) {
+                       "drawlist.apng", 40) $(app) {
         let T_WIN   = "DRAW_WIN"
         let T_INTRO = "DRAW_WIN/DRAW_INTRO"
         let T_BAND  = "DRAW_WIN/DRAW_BAND_SLOT"
@@ -27,39 +27,10 @@ def main {
             panic("{T_INTRO} never rendered — wrong app running?")
         }
 
-        post_command(app, "imgui_narrate", JV((
-            text = "Three scope wrappers + shape primitives (8 originals + v2 extras) — the drawlist rail.",
-            target = T_WIN,
-            frames = 180
-        )))
-        sleep(3500u)
-
-        post_command(app, "imgui_narrate", JV((
-            text = "with_window_drawlist — rect / line / circle / triangle / text inside the window.",
-            target = T_BAND,
-            frames = 200
-        )))
-        sleep(3500u)
-
-        post_command(app, "imgui_narrate", JV((
-            text = "Shape extras — gradient rect, ellipse, hexagon (ngon), polyline, bezier curves.",
-            target = T_BAND,
-            frames = 200
-        )))
-        sleep(3500u)
-
-        post_command(app, "imgui_narrate", JV((
-            text = "with_foreground_drawlist — paints over every window (top-left FG ribbon).",
-            target = T_FG,
-            frames = 200
-        )))
-        sleep(3500u)
-
-        post_command(app, "imgui_narrate", JV((
-            text = "with_background_drawlist — full-viewport tint behind everything.",
-            target = T_WIN,
-            frames = 180
-        )))
-        sleep(1500u)
+        say(app, "Three scope wrappers + shape primitives (8 originals + v2 extras) — the drawlist rail.", T_WIN)
+        say(app, "with_window_drawlist — rect / line / circle / triangle / text inside the window.", T_BAND)
+        say(app, "Shape extras — gradient rect, ellipse, hexagon (ngon), polyline, bezier curves.", T_BAND)
+        say(app, "with_foreground_drawlist — paints over every window (top-left FG ribbon).", T_FG)
+        say(app, "with_background_drawlist — full-viewport tint behind everything.", T_WIN)
     }
 }

@@ -16,10 +16,6 @@ require daslib/json_boost public
 //! the cursor settles over the window center and narrate is anchored to it
 //! while the sine-driven middle bar animates across the recording.
 
-let NARRATE_FRAMES = 240        //! 4.0s visible at 60 fps app
-let READ_MS    = 5000u          //! 5s read window before next stage
-let SETTLE_MS  = 1500u          //! 1.5s cursor settle
-
 def widget_bbox(var snap : JsonValue?; ident : string) : float4 {
     var b = snap?["globals"]?[ident]?["bbox"]
     return float4(
@@ -50,35 +46,15 @@ def main {
         sleep(SETTLE_MS)
 
         // ---- Stage 1: progress_bar overview ----
-        post_command(app, "imgui_narrate", JV((
-            text = "progress_bar wraps ImGui::ProgressBar — fraction + size + overlay text. Three calls stacked: static 33%, sine-driven, fixed-width with custom overlay.",
-            target = "DISPLAY_WIN",
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        say(app, "progress_bar wraps ImGui::ProgressBar — fraction + size + overlay text. Three calls stacked: static 33%, sine-driven, fixed-width with custom overlay.", "DISPLAY_WIN")
 
         // ---- Stage 2: middle bar animation ----
-        post_command(app, "imgui_narrate", JV((
-            text = "The middle bar's fraction is driven by sin(phase) — the snapshot's ProgressBarState.fraction follows the visible bar exactly.",
-            target = "DISPLAY_WIN",
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        say(app, "The middle bar's fraction is driven by sin(phase) — the snapshot's ProgressBarState.fraction follows the visible bar exactly.", "DISPLAY_WIN")
 
         // ---- Stage 3: image overview ----
-        post_command(app, "imgui_narrate", JV((
-            text = "image wraps ImGui::Image — uv0/uv1 + tint_col + border_col. Both samples use the ImGui font atlas texture; the second one tints green with a half-alpha border.",
-            target = "DISPLAY_WIN",
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        say(app, "image wraps ImGui::Image — uv0/uv1 + tint_col + border_col. Both samples use the ImGui font atlas texture; the second one tints green with a half-alpha border.", "DISPLAY_WIN")
 
         // ---- Stage 4: snapshot path note ----
-        post_command(app, "imgui_narrate", JV((
-            text = "Inner widgets are anonymous — only DISPLAY_WIN registers a path in the snapshot. The render proves the widgets fired; per-call state lives in the [widget]'s ImageState / ProgressBarState payload.",
-            target = "DISPLAY_WIN",
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        say(app, "Inner widgets are anonymous — only DISPLAY_WIN registers a path in the snapshot. The render proves the widgets fired; per-call state lives in the [widget]'s ImageState / ProgressBarState payload.", "DISPLAY_WIN")
     }
 }

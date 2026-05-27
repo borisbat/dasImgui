@@ -120,6 +120,10 @@ def window(var state : WindowState; text : string; closable : bool;
     }
     state.flags = flags
     if (!closable || state.open) {
+        if (state.pending_size_set) {
+            SetNextWindowSize(ImVec2(state.pending_size.x, state.pending_size.y), ImGuiCond.Always)
+            state.pending_size_set = false
+        }
         var p_open : bool? = null
         if (closable) {
             unsafe {
@@ -745,6 +749,18 @@ def _window_dispatch(var state : WindowState; action : string; payload : string)
         state.pending_open = true
     } elif (action == "close") {
         state.pending_close = true
+    } elif (action == "set_window_size") {
+        // Payload: ``{w, h}`` — both optional, falling back to the current
+        // observed size. Used by record_window_size_constraints to demonstrate
+        // SetNextWindowSizeConstraints callbacks (snap/aspect/quantize) by
+        // requesting odd sizes and watching the constraint reshape them.
+        var perr : string
+        let v = read_json(payload, perr)
+        if (v != null) {
+            state.pending_size = float2(v?["w"] ?? state.size.x,
+                                        v?["h"] ?? state.size.y)
+            state.pending_size_set = true
+        }
     }
 }
 

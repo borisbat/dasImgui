@@ -12,9 +12,6 @@ require daslib/json_boost public
 //! ``examples/tutorial/tree_node.das``. Tours DefaultOpen, nested
 //! tree_nodes, and OpenOnArrow click semantics.
 
-let NARRATE_FRAMES = 240        //! 4.0s visible at 60 fps app
-let READ_MS    = 5000u          //! 5s read window
-let SETTLE_MS  = 1500u          //! 1.5s cursor settle
 let TOGGLE_DWELL_MS = 2200u     //! 2.2s post-toggle dwell
 
 def widget_bbox(var snap : JsonValue?; ident : string) : float4 {
@@ -60,24 +57,14 @@ def main {
         // ---- Stage 1: narrate PHYSICS (DefaultOpen) ----
         move_to(app, p_physics, 900)
         sleep(SETTLE_MS)
-        post_command(app, "imgui_narrate", JV((
-            text = "tree_node(IDENT, (text, flags)) — block-arg container. DefaultOpen flag expanded the chevron from frame 1; opened mirrors TreeNodeEx's return.",
-            target = T_PHYSICS_LEAF,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        say(app, "tree_node(IDENT, (text, flags)) — block-arg container. DefaultOpen flag expanded the chevron from frame 1; opened mirrors TreeNodeEx's return.", T_PHYSICS_LEAF)
 
         // ---- Stage 2: close PHYSICS via imgui_close ----
         post_command(app, "imgui_close", JV((target = T_PHYSICS_PATH)))
         sleep(TOGGLE_DWELL_MS)
         // PHYSICS_GRAVITY is gone now that PHYSICS_TREE is collapsed —
         // narrate against ASSETS_HINT (always present) to mention the gating.
-        post_command(app, "imgui_narrate", JV((
-            text = "imgui_close routes through pending_close — next frame SetNextItemOpen(false) overrides ImGui's stored state. opened flips false; the body block stops running.",
-            target = T_ASSETS_LEAF,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        say(app, "imgui_close routes through pending_close — next frame SetNextItemOpen(false) overrides ImGui's stored state. opened flips false; the body block stops running.", T_ASSETS_LEAF)
         post_command(app, "imgui_open", JV((target = T_PHYSICS_PATH)))
         sleep(1500u)
 
@@ -92,12 +79,7 @@ def main {
             let p_fov = widget_center(snap2, T_FOV_LEAF)
             move_to(app, p_fov, 700)
             sleep(SETTLE_MS)
-            post_command(app, "imgui_narrate", JV((
-                text = "Nested tree_nodes compose freely. Camera subtree's slider registers at TN_WIN/RENDER_TREE/CAMERA_SUBTREE/RENDER_FOV — three-deep path.",
-                target = T_FOV_LEAF,
-                frames = NARRATE_FRAMES
-            )))
-            sleep(READ_MS)
+            say(app, "Nested tree_nodes compose freely. Camera subtree's slider registers at TN_WIN/RENDER_TREE/CAMERA_SUBTREE/RENDER_FOV — three-deep path.", T_FOV_LEAF)
         }
 
         // ---- Stage 4: ASSETS (OpenOnArrow) ----
@@ -111,11 +93,6 @@ def main {
         }
         move_to(app, p_assets, 900)
         sleep(SETTLE_MS)
-        post_command(app, "imgui_narrate", JV((
-            text = "OpenOnArrow flag — only the chevron click toggles; clicking the LABEL doesn't expand. Useful for selectable-row trees where the label is the selection.",
-            target = T_ASSETS_LEAF,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        say(app, "OpenOnArrow flag — only the chevron click toggles; clicking the LABEL doesn't expand. Useful for selectable-row trees where the label is the selection.", T_ASSETS_LEAF)
     }
 }

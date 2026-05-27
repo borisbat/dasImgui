@@ -65,35 +65,19 @@ def main {
         let vol_x0 = vol_bb.x + (vol_bb.z - vol_bb.x) * 0.15f
         let vol_x1 = vol_bb.x + (vol_bb.z - vol_bb.x) * 0.80f
 
-        //! Pacing rule (LOCKED): `frames` is the app's frame counter (60 fps
-        //! under vsync), NOT the recorder's fps. For ~3s readable narrate:
-        //!     frames = 180   →  3.0s visible
-        //!     sleep  = 3500u →  narrate disappears with ~500ms gap before next
-        //! Then ~1500ms result dwell after the action.
-
         // ---- Narrate then act — repeat ----
 
         // Stage 1: slider drag
-        post_command(app, "imgui_narrate", JV((
-            text = "imgui_narrate posts a sticky-note over a target.",
-            target = T_VOLUME,
-            frames = 200
-        )))
         move_to(app, p_volume)
-        sleep(3500u)
+        say(app, "imgui_narrate posts a sticky-note over a target.", T_VOLUME)
         var slider_events : array<JsonValue?>
         slider_events |> drag_along(0, (vol_x0, vol_y), (vol_x1, vol_y), 1400)
         post_command(app, "imgui_mouse_play", JV((events = slider_events)))
         sleep(2500u)
 
         // Stage 2: click the button
-        post_command(app, "imgui_narrate", JV((
-            text = "imgui_mouse_play feeds a scripted timeline of events.",
-            target = T_SAVE,
-            frames = 200
-        )))
         move_to(app, p_save)
-        sleep(3500u)
+        say(app, "imgui_mouse_play feeds a scripted timeline of events.", T_SAVE)
         var save_events : array<JsonValue?>
         save_events |> click_at(0, p_save)
         post_command(app, "imgui_mouse_play", JV((events = save_events)))

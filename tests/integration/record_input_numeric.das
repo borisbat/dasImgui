@@ -13,15 +13,8 @@ require daslib/json_boost public
 //! forms — scalar float, scalar int, vector float3, double — and drives
 //! ``imgui_set`` on each so the on-screen values visibly change during
 //! the narration window.
-//!
-//! Recorder fps = 30 (halved from 60) — input fields don't animate
-//! between events, so 30 fps keeps the file tight without visible
-//! jitter.
 
-let NARRATE_FRAMES = 180        //! 6s visible at the app's 30 fps target
-let READ_MS        = 3500u      //! 3.5s read window per stage
-let SETTLE_MS      = 1200u      //! 1.2s cursor settle
-let SET_DWELL_MS   = 1500u      //! 1.5s post-imgui_set dwell
+let SET_DWELL_MS = 1500u    //! 1.5s post-imgui_set dwell
 
 def widget_bbox(var snap : JsonValue?; ident : string) : float4 {
     var b = snap?["globals"]?[ident]?["bbox"]
@@ -41,7 +34,7 @@ def widget_center(var snap : JsonValue?; ident : string) : tuple<float; float> {
 [export]
 def main {
     with_recording_app("examples/tutorial/input_numeric.das",
-                       "input_numeric.apng", 50, 30) $(app) {
+                       "input_numeric.apng", 50) $(app) {
         let T_FLOAT  = "IN_WIN/I_FLOAT"
         let T_INT    = "IN_WIN/I_INT"
         let T_VEC3   = "IN_WIN/I_VEC3"
@@ -63,48 +56,28 @@ def main {
         // ---- Stage 1: scalar float — narrate AND drive value ----
         post_command(app, "imgui_set", JV((target = T_FLOAT, value = 2.5f)))
         sleep(SET_DWELL_MS)
-        post_command(app, "imgui_narrate", JV((
-            text = "input_float — click to focus, type, Enter to commit. step / step_fast surface +/- buttons; ctrl-click = step_fast.",
-            target = T_FLOAT,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        say(app, "input_float — click to focus, type, Enter to commit. step / step_fast surface +/- buttons; ctrl-click = step_fast.", T_FLOAT)
 
         // ---- Stage 2: scalar int ----
         move_to(app, p_int, 800)
         sleep(SETTLE_MS)
         post_command(app, "imgui_set", JV((target = T_INT, value = 42)))
         sleep(SET_DWELL_MS)
-        post_command(app, "imgui_narrate", JV((
-            text = "input_int — defaults step=1, step_fast=100. Buttons visible by default.",
-            target = T_INT,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        say(app, "input_int — defaults step=1, step_fast=100. Buttons visible by default.", T_INT)
 
         // ---- Stage 3: vector float3 ----
         move_to(app, p_vec3, 800)
         sleep(SETTLE_MS)
         post_command(app, "imgui_set", JV((target = T_VEC3, value = (1.0f, 2.0f, 3.0f))))
         sleep(SET_DWELL_MS)
-        post_command(app, "imgui_narrate", JV((
-            text = "input_float3 — three text fields, no step args. Tab cycles components; Enter commits the row.",
-            target = T_VEC3,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        say(app, "input_float3 — three text fields, no step args. Tab cycles components; Enter commits the row.", T_VEC3)
 
         // ---- Stage 4: double precision ----
         move_to(app, p_double, 800)
         sleep(SETTLE_MS)
         post_command(app, "imgui_set", JV((target = T_DOUBLE, value = 6.283185lf)))
         sleep(SET_DWELL_MS)
-        post_command(app, "imgui_narrate", JV((
-            text = "input_double — same shape as input_float, double precision (default format %.6f). For time / coords past 7 digits.",
-            target = T_DOUBLE,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        say(app, "input_double — same shape as input_float, double precision (default format %.6f). For time / coords past 7 digits.", T_DOUBLE)
 
         // ---- Stage 5: drive all to fresh values to show channel ----
         move_to(app, p_float, 800)
@@ -114,11 +87,6 @@ def main {
         post_command(app, "imgui_set", JV((target = T_VEC3, value = (4.0f, 5.0f, 6.0f))))
         post_command(app, "imgui_set", JV((target = T_DOUBLE, value = 3.141592lf)))
         sleep(SET_DWELL_MS)
-        post_command(app, "imgui_narrate", JV((
-            text = "imgui_set writes state.pending_value; next frame consumes it. Same channel for scalar, vector, double.",
-            target = T_FLOAT,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        say(app, "imgui_set writes state.pending_value; next frame consumes it. Same channel for scalar, vector, double.", T_FLOAT)
     }
 }

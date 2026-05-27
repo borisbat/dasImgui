@@ -42,31 +42,15 @@ def main {
         let p_ping   = widget_center(snap, T_PING)
         let p_volume = widget_center(snap, T_VOLUME)
 
-        //! Pacing rule (LOCKED): `frames` is the app's frame counter (60 fps
-        //! under vsync), NOT the recorder's fps. For ~3s readable narrate:
-        //!     frames = 180   →  3.0s visible
-        //!     sleep  = 3500u →  narrate disappears with ~500ms gap before next
-        //! Then ~1500ms result dwell after the action.
-
         // ---- Stage 1: VOLUME (@live slider, preserved across reload) ----
-        post_command(app, "imgui_narrate", JV((
-            text = "VOLUME is @live — value preserved across reload.",
-            target = T_VOLUME,
-            frames = 200
-        )))
         move_to(app, p_volume)
-        sleep(3500u)
+        say(app, "VOLUME is @live — value preserved across reload.", T_VOLUME)
         post_command(app, "imgui_set", JV((target = T_VOLUME, value = 0.65f)))
-        sleep(1500u)
+        sleep(CLICK_DWELL_MS)
 
         // ---- Stage 2: PING button — ClickState's @live click_count ----
-        post_command(app, "imgui_narrate", JV((
-            text = "PING_BTN.click_count is @live too.",
-            target = T_PING,
-            frames = 200
-        )))
         move_to(app, p_ping)
-        sleep(3500u)
+        say(app, "PING_BTN.click_count is @live too.", T_PING)
         var ping_events : array<JsonValue?>
         ping_events |> click_at(0, p_ping)
         post_command(app, "imgui_mouse_play", JV((events = ping_events)))
@@ -74,30 +58,20 @@ def main {
         var ping_events2 : array<JsonValue?>
         ping_events2 |> click_at(0, p_ping)
         post_command(app, "imgui_mouse_play", JV((events = ping_events2)))
-        sleep(1500u)
+        sleep(CLICK_DWELL_MS)
 
         // ---- Stage 3: custom [live_command] — bump_counter via curl ----
-        post_command(app, "imgui_narrate", JV((
-            text = "bump_counter is a user-defined [live_command].",
-            target = T_PING,
-            frames = 200
-        )))
-        sleep(3500u)
+        say(app, "bump_counter is a user-defined [live_command].", T_PING)
         post_command(app, "bump_counter", JV((by = 1)))
         sleep(800u)
         post_command(app, "bump_counter", JV((by = 5)))
         sleep(800u)
         post_command(app, "bump_counter", JV((by = 1)))
-        sleep(1500u)
+        sleep(CLICK_DWELL_MS)
 
         // ---- Stage 4: reset_counter — same surface, different handler ----
-        post_command(app, "imgui_narrate", JV((
-            text = "reset_counter — same surface, app-defined endpoint.",
-            target = T_PING,
-            frames = 200
-        )))
-        sleep(3500u)
+        say(app, "reset_counter — same surface, app-defined endpoint.", T_PING)
         post_command(app, "reset_counter", null)
-        sleep(1500u)
+        sleep(CLICK_DWELL_MS)
     }
 }

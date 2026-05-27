@@ -14,9 +14,6 @@ require daslib/json_boost public
 //! turn and driving one value via ``imgui_set`` to show the bidirectional
 //! channel.
 
-let NARRATE_FRAMES = 240        //! 4.0s visible at 60 fps app
-let READ_MS        = 5000u      //! 5s read window per stage
-let SETTLE_MS      = 1500u      //! 1.5s cursor settle
 let SET_DWELL_MS   = 2200u      //! 2.2s post-imgui_set dwell
 
 def widget_bbox(var snap : JsonValue?; ident : string) : float4 {
@@ -57,42 +54,26 @@ def main {
         sleep(SETTLE_MS)
 
         // ---- Stage 1: narrate scalar float ----
-        post_command(app, "imgui_narrate", JV((
-            text = "drag_float(IDENT, (text, speed, format)) — click and drag horizontally to scrub. Bounds = (0, 1) clamps; speed = 0.005 means 0.005 units per pixel.",
-            target = T_FLOAT,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        say(app, "drag_float(IDENT, (text, speed, format)) — click and drag horizontally to scrub. Bounds = (0, 1) clamps; speed = 0.005 means 0.005 units per pixel.", T_FLOAT)
 
         // ---- Stage 2: scalar int ----
         move_to(app, p_int, 900)
         sleep(SETTLE_MS)
-        post_command(app, "imgui_narrate", JV((
-            text = "drag_int — same shape, integer steps. format = \"%d\" by default; speed = 1 means one integer per pixel.",
-            target = T_INT,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        post_command(app, "imgui_set", JV((target = T_INT, value = 42)))
+        sleep(SET_DWELL_MS)
+        say(app, "drag_int — same shape, integer steps. format = \"%d\" by default; speed = 1 means one integer per pixel.", T_INT)
 
         // ---- Stage 3: vector float3 ----
         move_to(app, p_vec3, 900)
         sleep(SETTLE_MS)
-        post_command(app, "imgui_narrate", JV((
-            text = "drag_float3 — three components on one row. State carries float3 value; bounds clamp every component.",
-            target = T_VEC3,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        post_command(app, "imgui_set", JV((target = T_VEC3, value = (0.5f, 1.0f, 1.5f))))
+        sleep(SET_DWELL_MS)
+        say(app, "drag_float3 — three components on one row. State carries float3 value; bounds clamp every component.", T_VEC3)
 
         // ---- Stage 4: range pair ----
         move_to(app, p_range, 900)
         sleep(SETTLE_MS)
-        post_command(app, "imgui_narrate", JV((
-            text = "drag_float_range2 — two handles share one bar. value.x = lo, value.y = hi; ImGui enforces lo <= hi each frame.",
-            target = T_RANGE,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        say(app, "drag_float_range2 — two handles share one bar. value.x = lo, value.y = hi; ImGui enforces lo <= hi each frame.", T_RANGE)
 
         // ---- Stage 5: drive from outside via imgui_set ----
         post_command(app, "imgui_set", JV((target = T_FLOAT, value = 0.75f)))
@@ -101,11 +82,6 @@ def main {
         sleep(SET_DWELL_MS)
         move_to(app, p_float, 900)
         sleep(SETTLE_MS)
-        post_command(app, "imgui_narrate", JV((
-            text = "imgui_set writes through state.pending_value; next frame consumes it. Same channel for scalar (number) or range (two-number tuple).",
-            target = T_FLOAT,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        say(app, "imgui_set writes through state.pending_value; next frame consumes it. Same channel for scalar (number) or range (two-number tuple).", T_FLOAT)
     }
 }

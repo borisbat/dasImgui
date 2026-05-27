@@ -50,62 +50,29 @@ def main {
         let p_save    = widget_center(snap, T_SAVE_BTN)
         let p_clear   = widget_center(snap, T_CLEAR_BTN)
 
-        //! Pacing rule (LOCKED): `frames` is the app's frame counter (60 fps
-        //! under vsync), NOT the recorder's fps. For ~3s readable narrate:
-        //!     frames = 180   →  3.0s visible
-        //!     sleep  = 3500u →  narrate disappears with ~500ms gap before next
-        //! Then ~1500ms for the actual interaction (click / drag / dwell).
-
         // ---- Stage 1: tour the docked panels ----
-        post_command(app, "imgui_narrate", JV((
-            text = "ImGui native docking — three dockable panels.",
-            target = T_EXPLORER,
-            frames = 180
-        )))
         move_to(app, p_refresh)
-        sleep(3500u)
+        say(app, "ImGui native docking — three dockable panels.", T_EXPLORER)
 
-        post_command(app, "imgui_narrate", JV((
-            text = "Each panel is a Begin/End window inside the dockspace.",
-            target = T_SOURCE,
-            frames = 180
-        )))
         move_to(app, p_save)
-        sleep(3500u)
+        say(app, "Each panel is a Begin/End window inside the dockspace.", T_SOURCE)
 
-        post_command(app, "imgui_narrate", JV((
-            text = "Tabs are draggable — layout persists via imgui.ini.",
-            target = T_OUTPUT,
-            frames = 180
-        )))
         move_to(app, p_clear)
-        sleep(3500u)
+        say(app, "Tabs are draggable — layout persists via imgui.ini.", T_OUTPUT)
 
         // ---- Stage 2: drive from outside — imgui_undock pops OUTPUT out ----
         // After undocking, ImGui places the floating window wherever imgui.ini
         // remembered (or (0,0) on first run). Pin it to a visible location with
         // imgui_set_window_pos so the demo clearly shows the panel detached.
-        post_command(app, "imgui_narrate", JV((
-            text = "imgui_undock + imgui_set_window_pos — panel floats free.",
-            target = T_OUTPUT,
-            frames = 200
-        )))
-        sleep(800u)
         post_command(app, "imgui_undock", JV((target = T_OUTPUT)))
         post_command(app, "imgui_set_window_pos", JV((
             target = T_OUTPUT,
             value = (x = 580.0f, y = 220.0f, w = 360.0f, h = 220.0f)
         )))
-        sleep(3700u)
+        say(app, "imgui_undock + imgui_set_window_pos — panel floats free.", T_OUTPUT)
 
         // ---- Stage 3: reset the dockspace ----
-        post_command(app, "imgui_narrate", JV((
-            text = "imgui_dock_reset rebuilds the default layout.",
-            target = T_EXPLORER,
-            frames = 180
-        )))
-        sleep(800u)
         post_command(app, "imgui_dock_reset", JV((target = "DOCK_ROOT")))
-        sleep(3000u)
+        say(app, "imgui_dock_reset rebuilds the default layout.", T_EXPLORER)
     }
 }

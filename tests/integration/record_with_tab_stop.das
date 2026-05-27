@@ -12,6 +12,11 @@ require daslib/json_boost public
 //!
 //!     bin/Release/daslang.exe -project_root <dasimgui> \
 //!         <dasimgui>/tests/integration/record_with_tab_stop.das
+//!
+//! Demonstrates with_tab_stop(false) by FOCUSING field A and then
+//! pressing TAB three times: A→B, B skips SKIP and lands on C, C→D.
+//! The viewer sees the active-input glow jump fields visibly — the
+//! whole point of with_tab_stop is that the SKIP field is bypassed.
 
 def widget_bbox(var snap : JsonValue?; ident : string) : float4 {
     var b = snap?["globals"]?[ident]?["bbox"]
@@ -31,7 +36,7 @@ def widget_center(var snap : JsonValue?; ident : string) : tuple<float; float> {
 [export]
 def main {
     with_recording_app("examples/tutorial/with_tab_stop.das",
-                       "with_tab_stop.apng", 30) $(app) {
+                       "with_tab_stop.apng", 50) $(app) {
         let T_A    = "TS_WIN/TS_FIELD_A"
         let T_B    = "TS_WIN/TS_FIELD_B"
         let T_SKIP = "TS_WIN/TS_FIELD_SKIP"
@@ -48,47 +53,36 @@ def main {
         let p_c    = widget_center(snap, T_C)
         let p_d    = widget_center(snap, T_D)
 
-        // ---- Stage 1: TAB visits Field A → B ----
-        post_command(app, "imgui_narrate", JV((
-            text = "Field A — TAB advances to Field B (regular tab-stop).",
-            target = T_A,
-            frames = 180
-        )))
+        // ---- Stage 1: focus Field A ----
         move_to(app, p_a)
-        sleep(3500u)
+        sleep(SETTLE_MS)
+        focus(app, T_A)
+        sleep(CLICK_DWELL_MS)
+        say(app, "Focus on Field A — TAB advances to Field B (regular tab-stop).", T_A)
 
-        post_command(app, "imgui_narrate", JV((
-            text = "Field B — next on the TAB chain.",
-            target = T_B,
-            frames = 180
-        )))
+        // ---- Stage 2: TAB → Field B ----
         move_to(app, p_b)
-        sleep(3500u)
+        sleep(SETTLE_MS)
+        key_tap(app, int(ImGuiKey.Tab))
+        sleep(CLICK_DWELL_MS)
+        say(app, "TAB pressed — Field B is now focused. Both A and B are inside the regular tab chain.", T_B)
 
-        // ---- Stage 2: with_tab_stop(false) — middle field skipped ----
-        post_command(app, "imgui_narrate", JV((
-            text = "Wrapped in with_tab_stop(false) — TAB skips this field.",
-            target = T_SKIP,
-            frames = 200
-        )))
+        // ---- Stage 3: TAB → SKIPS SKIP → lands on C ----
         move_to(app, p_skip)
-        sleep(3500u)
+        sleep(SETTLE_MS)
+        key_tap(app, int(ImGuiKey.Tab))
+        sleep(CLICK_DWELL_MS)
+        say(app, "TAB pressed again — SKIP is wrapped in with_tab_stop(false), so focus jumps past it directly to Field C.", T_SKIP)
 
-        // ---- Stage 3: TAB resumes on Field C → D ----
-        post_command(app, "imgui_narrate", JV((
-            text = "Field C — TAB jumped here, past the wrapped block.",
-            target = T_C,
-            frames = 180
-        )))
+        // ---- Stage 4: TAB → Field D ----
         move_to(app, p_c)
-        sleep(3500u)
+        sleep(SETTLE_MS)
+        say(app, "Field C now has the active-input glow. One more TAB advances to D, completing the cycle past the skipped field.", T_C)
 
-        post_command(app, "imgui_narrate", JV((
-            text = "Field D — tab-stop cycle resumes normally.",
-            target = T_D,
-            frames = 180
-        )))
         move_to(app, p_d)
-        sleep(3500u)
+        sleep(SETTLE_MS)
+        key_tap(app, int(ImGuiKey.Tab))
+        sleep(CLICK_DWELL_MS)
+        say(app, "Field D — tab-stop cycle resumes normally after the wrapped block.", T_D)
     }
 }

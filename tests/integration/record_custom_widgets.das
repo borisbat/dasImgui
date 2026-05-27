@@ -32,7 +32,7 @@ def widget_center(var snap : JsonValue?; ident : string) : tuple<float; float> {
 [export]
 def main {
     with_recording_app("examples/tutorial/custom_widgets.das",
-                       "custom_widgets.apng", 24) $(app) {
+                       "custom_widgets.apng", 45) $(app) {
         // ---- Resolve widget centers from a snapshot ----
         let T_MASTER = "MIXER_WIN/MASTER"
         let T_TREBLE = "MIXER_WIN/TREBLE"
@@ -64,59 +64,33 @@ def main {
         let drag_start_treble = (p_treble._0,              p_treble._1 - r)
         let drag_end_treble   = (p_treble._0 + r * 0.707f, p_treble._1 - r * 0.707f)
 
-        // Pacing rule (LOCKED): `frames` is the app's frame counter (60 fps under
-        // vsync), NOT the recorder's fps.
-        //     frames = 180   →  3.0s visible narrate
-        //     sleep  = 3500u →  narrate disappears with ~500ms gap before next
-        //     sleep  = 1500u →  result dwell after action
-
         // ---- Narrate then act — one beat per knob ----
 
         // Beat 1: drag MASTER from 7 o'clock to 12 — value rises 0 → 0.5
-        post_command(app, "imgui_narrate", JV((
-            text = "ImGui ships no rotary widget. We add one with [widget].",
-            target = T_MASTER,
-            frames = 200
-        )))
         move_to(app, p_master)
-        sleep(3500u)
+        say(app, "ImGui ships no rotary widget. We add one with [widget].", T_MASTER)
         var ev_master : array<JsonValue?>
         ev_master |> drag_along(0, drag_start_master, drag_end_master, 1200)
         post_command(app, "imgui_mouse_play", JV((events = ev_master)))
         sleep(2000u)
 
         // Beat 2: drag TREBLE from 12 to 2 o'clock — value rises 0 → ~0.33
-        post_command(app, "imgui_narrate", JV((
-            text = "State struct matches slider_float — pending_value_finalize Just Works.",
-            target = T_TREBLE,
-            frames = 200
-        )))
         move_to(app, p_treble)
-        sleep(3500u)
+        say(app, "State struct matches slider_float — pending_value_finalize Just Works.", T_TREBLE)
         var ev_treble : array<JsonValue?>
         ev_treble |> drag_along(0, drag_start_treble, drag_end_treble, 1200)
         post_command(app, "imgui_mouse_play", JV((events = ev_treble)))
         sleep(2000u)
 
         // Beat 3: imgui_set BASS — show that the live API path works on custom widgets too
-        post_command(app, "imgui_narrate", JV((
-            text = "imgui_set drives custom widgets the same way — no extra wiring.",
-            target = T_BASS,
-            frames = 200
-        )))
         move_to(app, p_bass)
-        sleep(3500u)
+        say(app, "imgui_set drives custom widgets the same way — no extra wiring.", T_BASS)
         post_command(app, "imgui_set", JV((target = T_BASS, value = -0.5f)))
         sleep(2000u)
 
         // Beat 4: click RESET_BTN — ordinary built-in on the same panel
-        post_command(app, "imgui_narrate", JV((
-            text = "RESET_BTN is an ordinary built-in button — same registry.",
-            target = T_RESET,
-            frames = 200
-        )))
         move_to(app, p_reset)
-        sleep(3500u)
+        say(app, "RESET_BTN is an ordinary built-in button — same registry.", T_RESET)
         var ev_reset : array<JsonValue?>
         ev_reset |> click_at(0, p_reset)
         post_command(app, "imgui_mouse_play", JV((events = ev_reset)))

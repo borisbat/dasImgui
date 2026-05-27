@@ -13,10 +13,6 @@ require daslib/json_boost public
 //!     bin/Release/daslang.exe -project_root <dasimgui> \
 //!         <dasimgui>/tests/integration/record_drag_drop.das
 
-//! Reader pacing locked per skills/recording.md.
-let NARRATE_FRAMES = 240
-let READ_MS    = 5000u
-let SETTLE_MS  = 1500u
 let RESULT_MS  = 2000u
 let TAIL_MS    = 1500u   //! cushion after final narrate so record_stop doesn't cut the last frame
 
@@ -56,22 +52,12 @@ def main {
         // ---- Stage 1: hover SOURCE + narrate ----
         move_to(app, p_source, 900)
         sleep(SETTLE_MS)
-        post_command(app, "imgui_narrate", JV((
-            text = "drag_drop_source attaches to the SOURCE button.",
-            target = T_SOURCE,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        say(app, "drag_drop_source attaches to the SOURCE button.", T_SOURCE)
 
         // ---- Stage 2: hover TARGET + narrate ----
         move_to(app, p_target, 900)
         sleep(SETTLE_MS)
-        post_command(app, "imgui_narrate", JV((
-            text = "drag_drop_target accepts the typed payload.",
-            target = T_TARGET,
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
+        say(app, "drag_drop_target accepts the typed payload.", T_TARGET)
 
         // ---- Stage 3: perform the drag ----
         //! Use drag_along + imgui_mouse_play (not drag_to). drag_to dispatches
@@ -80,11 +66,7 @@ def main {
         //! re-assertion and the press never appears to "hold." Building synth
         //! events and posting via imgui_mouse_play routes through the synth
         //! pipeline (synth_held_buttons + synth_cursor) which IS the drained path.
-        post_command(app, "imgui_narrate", JV((
-            text = "drag from SOURCE bbox to TARGET bbox -- payload travels with the cursor.",
-            target = T_SOURCE,
-            frames = NARRATE_FRAMES
-        )))
+        say(app, "drag from SOURCE bbox to TARGET bbox -- payload travels with the cursor.", T_SOURCE)
         sleep(RESULT_MS)
         var drag_events : array<JsonValue?>
         drag_events |> drag_along(0, p_source, p_target, 1200, 400)

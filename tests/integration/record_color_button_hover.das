@@ -31,7 +31,7 @@ def widget_center(var snap : JsonValue?; ident : string) : tuple<float; float> {
 [export]
 def main {
     with_recording_app("examples/tutorial/color_button_hover.das",
-                       "color_button_hover.apng", 30) $(app) {
+                       "color_button_hover.apng", 40) $(app) {
         let T_RED    = "CBH_WIN/CBH_RED"
         let T_GREEN  = "CBH_WIN/CBH_GREEN"
         let T_BLUE   = "CBH_WIN/CBH_BLUE"
@@ -47,39 +47,19 @@ def main {
         let p_status = widget_center(snap, T_STATUS)
 
         // ---- Stage 1: hover red ----
-        post_command(app, "imgui_narrate", JV((
-            text = "color_button_hover returns true while ImGui considers the swatch hovered.",
-            target = T_RED,
-            frames = 200
-        )))
         move_to(app, p_red)
-        sleep(3500u)
+        say(app, "color_button_hover returns true while ImGui considers the swatch hovered.", T_RED)
 
         // ---- Stage 2: hover green ----
-        post_command(app, "imgui_narrate", JV((
-            text = "Move to a new swatch — the return-bool follows the cursor.",
-            target = T_GREEN,
-            frames = 180
-        )))
         move_to(app, p_green)
-        sleep(3500u)
+        say(app, "Move to a new swatch — the return-bool follows the cursor.", T_GREEN)
 
         // ---- Stage 3: hover blue ----
-        post_command(app, "imgui_narrate", JV((
-            text = "No click bookkeeping — pure hover surface.",
-            target = T_BLUE,
-            frames = 180
-        )))
         move_to(app, p_blue)
-        sleep(3500u)
+        say(app, "No click bookkeeping — pure hover surface.", T_BLUE)
 
         // ---- Stage 4: highlight the status text ----
-        post_command(app, "imgui_narrate", JV((
-            text = "STATE_MESSAGE updates per-frame from each swatch's hover bool.",
-            target = T_STATUS,
-            frames = 200
-        )))
         move_to(app, p_status)
-        sleep(3500u)
+        say(app, "STATE_MESSAGE updates per-frame from each swatch's hover bool.", T_STATUS)
     }
 }

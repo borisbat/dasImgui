@@ -34,49 +34,23 @@ def main {
             panic("{T_USER} never rendered — wrong app running?")
         }
 
-        //! Pacing rule (LOCKED): `frames` is the app's frame counter (60 fps
-        //! under vsync), NOT the recorder's fps. For ~3s readable narrate:
-        //!     frames = 180   →  3.0s visible
-        //!     sleep  = 3500u →  narrate disappears with ~500ms gap before next
-        //! Then ~1500ms result dwell after the action.
-
         // ---- Stage 1: imgui_set on a text input ----
-        post_command(app, "imgui_narrate", JV((
-            text = "imgui_set on USER — string value into the input.",
-            target = T_USER,
-            frames = 200
-        )))
-        sleep(3500u)
+        say(app, "imgui_set on USER — string value into the input.", T_USER)
         post_command(app, "imgui_set", JV((target = T_USER, value = "Alice")))
         sleep(1500u)
 
         // ---- Stage 2: imgui_set on a slider (numeric) ----
-        post_command(app, "imgui_narrate", JV((
-            text = "imgui_set on SPEED — numeric value (queues pending_value).",
-            target = T_SPEED,
-            frames = 200
-        )))
-        sleep(3500u)
+        say(app, "imgui_set on SPEED — numeric value (queues pending_value).", T_SPEED)
         post_command(app, "imgui_set", JV((target = T_SPEED, value = 7)))
         sleep(1500u)
 
         // ---- Stage 3: imgui_set on a combo (selected index) ----
-        post_command(app, "imgui_narrate", JV((
-            text = "imgui_set on PRESET — combo by selected index.",
-            target = T_PRESET,
-            frames = 200
-        )))
-        sleep(3500u)
+        say(app, "imgui_set on PRESET — combo by selected index.", T_PRESET)
         post_command(app, "imgui_set", JV((target = T_PRESET, value = 2)))
         sleep(1500u)
 
         // ---- Stage 4: imgui_click on a button ----
-        post_command(app, "imgui_narrate", JV((
-            text = "imgui_click on RUN_BTN — same path the chrome would fire.",
-            target = T_RUN,
-            frames = 200
-        )))
-        sleep(3500u)
+        say(app, "imgui_click on RUN_BTN — same path the chrome would fire.", T_RUN)
         post_command(app, "imgui_click", JV((target = T_RUN)))
         sleep(800u)
         post_command(app, "imgui_click", JV((target = T_RUN)))
@@ -85,12 +59,7 @@ def main {
         sleep(1500u)
 
         // ---- Stage 5: imgui_open / imgui_close on a popup ----
-        post_command(app, "imgui_narrate", JV((
-            text = "imgui_open / imgui_close — popup open/close from outside.",
-            target = T_RUN,
-            frames = 200
-        )))
-        sleep(3500u)
+        say(app, "imgui_open / imgui_close — popup open/close from outside.", T_RUN)
         post_command(app, "imgui_open", JV((target = T_POPUP)))
         sleep(1700u)
         post_command(app, "imgui_close", JV((target = T_POPUP)))
