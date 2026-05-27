@@ -58,7 +58,7 @@ html_theme_options = {
     'titles_only': False,
 }
 html_logo = '_static/forge-logo.svg'
-html_favicon = 'daslang.ico'
+html_favicon = 'daslang-favicon.svg'
 html_static_path = ['_static']
 # Forge dark retoken — matches daslang.io/doc/ visually. Vendored from
 # daslang's doc/source/_static/custom.css; reconcile against upstream when
