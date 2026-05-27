@@ -157,12 +157,14 @@ def public harness_begin_frame() : bool {
         imgui_headless_advance_dt(g_headless_dt)
         begin_frame()
         g_headless_frame++
+        advance_coroutines()
         return true
     }
     return false if (!live_begin_frame())
     begin_frame()
     ImGui_ImplOpenGL3_NewFrame()
     ImGui_ImplGlfw_NewFrame()
+    advance_coroutines()
     return true
 }
 

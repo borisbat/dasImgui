@@ -36,21 +36,21 @@ def update() {
             text(LEAD, (text = "Font atlas not yet built — wait for first frame."))
         } else {
             text(LEAD, (text = "Three image() calls against the same atlas — varying size, uv, tint."))
-            image(IMG_BASIC, (texture = font_tex,
+            image(IMG_BASIC, (user_texture_id = font_tex,
                               size = float2(128.0f, 128.0f),
                               uv0 = float2(0.0f, 0.0f),
                               uv1 = float2(1.0f, 1.0f),
                               tint_col = float4(1.0f, 1.0f, 1.0f, 1.0f),
                               border_col = float4(0.0f, 0.0f, 0.0f, 0.0f)))
             same_line(GAP)
-            image(IMG_HALF, (texture = font_tex,
+            image(IMG_HALF, (user_texture_id = font_tex,
                              size = float2(96.0f, 96.0f),
                              uv0 = float2(0.0f, 0.0f),
                              uv1 = float2(0.5f, 0.5f),
                              tint_col = float4(1.0f, 0.5f, 0.5f, 1.0f),
                              border_col = float4(0.0f, 0.0f, 0.0f, 0.0f)))
             same_line(GAP2)
-            image(IMG_TINTED, (texture = font_tex,
+            image(IMG_TINTED, (user_texture_id = font_tex,
                                size = float2(64.0f, 64.0f),
                                uv0 = float2(0.0f, 0.0f),
                                uv1 = float2(1.0f, 1.0f),

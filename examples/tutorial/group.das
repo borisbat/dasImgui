@@ -73,6 +73,9 @@ def update() {
             text("Left block")
             checkbox(L_WIRE, (text = "Wireframe"))
             checkbox(L_GRID, (text = "Show grid"))
+            // Narrow the slider so LEFT_GRP leaves enough room for RIGHT_GRP
+            // on the same row at FontGlobalScale 1.4 + 680 px content width.
+            SetNextItemWidth(160.0f)
             slider_int(L_FRAMES, (text = "frame limit"))
         }
         same_line((spacing = 24.0f))

@@ -547,9 +547,13 @@ class WidgetCallMacro : AstCallMacro {
         //
         // Named-tuple args `(name = val, ...)` carry the call's named-arg
         // ergonomic; daslang's square-bracket `[name = val]` form builds an
-        // ExprNamedCall and bypasses call_macro dispatch entirely. Destructure
-        // named tuples into positional args (in source order — matches the
-        // user-facing parameter order).
+        // ExprNamedCall and bypasses call_macro dispatch entirely. We emit
+        // ExprCall (positional) here, but REORDER tuple fields into the
+        // render_fn's argument declaration order and FILL DEFAULTS for any
+        // earlier optional args the user skipped. Without the reorder,
+        // destructuring values positionally would mis-map skipped-earlier
+        // cases — e.g. `same_line((spacing = 24.0f))` would land `24.0f` in
+        // `offset_from_start_x` (first optional), not `spacing`.
         // widgetIdent precedence: user `path=` override → auto-gen
         // `mod:line:col` synthesized at the top → fallback to bareName.
         var widgetIdent = bareName
@@ -566,25 +570,78 @@ class WidgetCallMacro : AstCallMacro {
                                    name := "{string(render_fn._module.name)}::{render_fn_name}")
         newCall.arguments |> push(new ExprVar(at = expr.at, name := bareName))
         newCall.arguments |> push(new ExprConstString(at = expr.at, value := widgetIdent))
+        // Collect user's named-tuple fields into (name → value) map, and
+        // remember the highest user-arg index they touch (so we know how far
+        // to fill defaults).
+        var namedFields : table<string; ExpressionPtr>
+        var hasNamedTuple = false
+        var maxNamedArgIdx = -1
         for (i in range(firstUserArg, length(expr.arguments))) {
             let a = expr.arguments[i]
-            if (a is ExprMakeTuple) {
-                let mt = a as ExprMakeTuple
-                if (length(mt.recordNames) == length(mt.values) && !empty(mt.recordNames)) {
-                    for (j in range(length(mt.recordNames))) {
-                        let recordName = string(mt.recordNames[j])
-                        // Skip init-mapped names (consumed by the global's
-                        // initializer above) and id=/path= (consumed at
-                        // wrap/widget_ident-substitution time).
-                        continue if (!empty(init_arg_to_field(recordName)) ||
-                                     recordName == "id" ||
-                                     recordName == "path")
-                        newCall.arguments |> push(clone_expression(mt.values[j]))
+            if (!(a is ExprMakeTuple)) continue
+            let mt = a as ExprMakeTuple
+            if (length(mt.recordNames) != length(mt.values) || empty(mt.recordNames)) continue
+            hasNamedTuple = true
+            for (j in range(length(mt.recordNames))) {
+                let recordName = string(mt.recordNames[j])
+                continue if (!empty(init_arg_to_field(recordName)) ||
+                             recordName == "id" ||
+                             recordName == "path")
+                namedFields[recordName] = clone_expression(mt.values[j])
+                // Find this name's argument index in render_fn (positions 2..N).
+                for (k in range(2, length(render_fn.arguments))) {
+                    if (render_fn.arguments[k].name == recordName) {
+                        if (k > maxNamedArgIdx) {
+                            maxNamedArgIdx = k
+                        }
+                        break
                     }
-                    continue
                 }
             }
-            newCall.arguments |> push(clone_expression(a))
+        }
+        if (hasNamedTuple && maxNamedArgIdx >= 2) {
+            // Reorder: fill render_fn.arguments[2..maxNamedArgIdx] in order.
+            // Each slot: user-provided value if named, otherwise clone the
+            // arg's default `init` expression.
+            for (k in range(2, maxNamedArgIdx + 1)) {
+                let argName = string(render_fn.arguments[k].name)
+                if (key_exists(namedFields, argName)) {
+                    newCall.arguments |> push(namedFields[argName])
+                } elif (render_fn.arguments[k].init != null) {
+                    newCall.arguments |> push(clone_expression(render_fn.arguments[k].init))
+                } else {
+                    macro_error(prog, expr.at,
+                        "{kind_name}(...): required argument '{argName}' has no default but was skipped by the user's named-tuple call")
+                    return <- default<ExpressionPtr>
+                }
+            }
+            // Any remaining expr.arguments that weren't tuples (positional
+            // after the tuple) still need forwarding — uncommon but possible.
+            for (i in range(firstUserArg, length(expr.arguments))) {
+                let a = expr.arguments[i]
+                if (a is ExprMakeTuple) continue
+                newCall.arguments |> push(clone_expression(a))
+            }
+        } else {
+            // No named-tuple form: keep the original positional forwarding.
+            // Destructure any tuple (e.g. empty-tuple call forms) in source order.
+            for (i in range(firstUserArg, length(expr.arguments))) {
+                let a = expr.arguments[i]
+                if (a is ExprMakeTuple) {
+                    let mt = a as ExprMakeTuple
+                    if (length(mt.recordNames) == length(mt.values) && !empty(mt.recordNames)) {
+                        for (j in range(length(mt.recordNames))) {
+                            let recordName = string(mt.recordNames[j])
+                            continue if (!empty(init_arg_to_field(recordName)) ||
+                                         recordName == "id" ||
+                                         recordName == "path")
+                            newCall.arguments |> push(clone_expression(mt.values[j]))
+                        }
+                        continue
+                    }
+                }
+                newCall.arguments |> push(clone_expression(a))
+            }
         }
         if (idOverridePresent) {
             // Wrap in a void block: PushID(idLit); call(); PopID(). Because

@@ -17,7 +17,7 @@ texture handle for snapshot readability.
                  size = float2(-1.0f, 0.0f),
                  overlay = "33%"))
 
-   image((texture = font_tex,
+   image((user_texture_id = font_tex,
           size = float2(96.0f, 96.0f),
           uv0 = float2(0.0f, 0.0f),
           uv1 = float2(1.0f, 1.0f),

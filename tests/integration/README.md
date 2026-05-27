@@ -166,6 +166,9 @@ gotchas, and visual aid recipes live in
   with `_` are skipped (see `feedback_dastest_underscore_skip`).
 - The harness is `require imgui/imgui_playwright public`, declared in
   `widgets/imgui_playwright.das` and registered via `.das_module`.
-- Feature apps used by `type_text`, `drag`, or other coroutine-based
-  commands MUST call `advance_coroutines()` each frame — see the three
-  `io_synth_*` / `await_quiescent` examples and `save_demo` for the pattern.
+- `harness_begin_frame()` pumps `advance_coroutines()` automatically — feature
+  apps no longer need to call it. `click()`, `right_click()`, `type_text()`,
+  `drag()` and other coroutine-based playwright commands work in every demo
+  that uses the harness API. Hosts that bypass the harness (raw `live_*` +
+  `begin_frame` + `Impl_*_NewFrame` + `NewFrame`) still need the explicit call
+  between `Impl_Glfw_NewFrame` and `NewFrame`.

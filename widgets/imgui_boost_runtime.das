@@ -843,8 +843,7 @@ def private dispatch_post_command_hooks(command : string; target : string) {
 }
 
 def public advance_coroutines() {
-    //! Step every active L1 input coroutine one frame; finished coroutines drop out.
-    //! Must run between ``ImGui_ImplGlfw_NewFrame()`` and ``NewFrame()`` so synthetic events aren't clobbered by the GLFW backend.
+    //! Step every active L1 input coroutine one frame; finished coroutines drop out. ``harness_begin_frame`` calls this automatically — demo code should not call it directly. Exposed for the rare host that doesn't use the harness; in that case must run between ``ImGui_ImplGlfw_NewFrame()`` and ``NewFrame()`` so synthetic events aren't clobbered by the GLFW backend.
     var i = length(g_coroutines)
     while (i > 0) {
         i--
@@ -1308,7 +1307,7 @@ def private dispatch_or_err(action : string; input : JsonValue?) : Result<string
     // the L2 dispatcher's state-mutation rail. resolve_target_bbox works at both
     // path (L2) and hex_id (L1) so this branch handles both target forms.
     if (action == "click") {
-        let button = int(input?["button"] ?? 0)
+        let button = input?["button"] ?? 0
         if (button != 0) {
             let (got, center) = resolve_target_bbox(resolved)
             if (!got) return err("target {resolved} has no bbox this frame (not rendered)", type<string>)
