@@ -35,7 +35,9 @@ class WidgetFunctionMacro : AstFunctionAnnotation {
     //! ``[widget]`` annotation — registers ``def fn(var state : ST, ...)`` as a stateful widget. Auto-emits the state global, injects ``widget_ident``, and installs a per-kind call_macro for dotted-flag parsing.
     def override apply(var func : FunctionPtr; var group : ModuleGroup;
                        args : AnnotationArgumentList; var errors : das_string) : bool {
-        return apply_widget_or_container(func, errors, false)
+        let fwd = args |> find_arg("forward_argument") ?as tBool ?? false
+        let verbatim = args |> find_arg("verbatim_path") ?as tBool ?? false
+        return apply_widget_or_container(func, errors, false, fwd, verbatim)
     }
 }
 
@@ -49,7 +51,9 @@ class ContainerFunctionMacro : AstFunctionAnnotation {
             errors := "[container] requires the last parameter to be `blk : block`"
             return false
         }
-        return apply_widget_or_container(func, errors, true)
+        let fwd = args |> find_arg("forward_argument") ?as tBool ?? false
+        let verbatim = args |> find_arg("verbatim_path") ?as tBool ?? false
+        return apply_widget_or_container(func, errors, true, fwd, verbatim)
     }
 }
 
@@ -110,28 +114,38 @@ class DrawlistPrimFunctionMacro : AstFunctionAnnotation {
 }
 
 def private apply_widget_or_container(var func : FunctionPtr; var errors : das_string;
-                                      is_container : bool) : bool {
+                                      is_container : bool; forward_argument : bool;
+                                      forward_verbatim : bool) : bool {
     if (empty(func.arguments)) {
         errors := "[widget]/[container] requires at least one parameter (state struct)"
         return false
     }
     let kind = string(func.name)
-    let stateArg = func.arguments[0]
-    if (stateArg._type == null || stateArg._type.structType == null) {
-        errors := "[widget]/[container] first parameter must be a struct (state)"
-        return false
+    // forward_argument: arg0 is a plain value forwarded into the render call
+    // (an entity id), not a state struct — skip the struct check and emit no
+    // state global. The path key is synthesized at runtime from arg0 in visit().
+    var stateTypeName = ""
+    var stateStruct : Structure const? = null
+    if (!forward_argument) {
+        let stateArg = func.arguments[0]
+        if (stateArg._type == null || stateArg._type.structType == null) {
+            errors := "[widget]/[container] first parameter must be a struct (state)"
+            return false
+        }
+        stateTypeName = describe(stateArg._type)
+        stateStruct = stateArg._type.structType
     }
-    let stateTypeName = describe(stateArg._type)
-    let stateStruct = stateArg._type.structType
     func.flags.generated = true
-    // Inject widget_ident : string at index 1 (between state and rest).
-    // The user's body code references `widget_ident` literally when
-    // calling widget_finalize / container_finalize — this param makes it in scope.
+    // Inject widget_ident : string. Normally at index 1 (between state/forwarded
+    // value and the rest); for verbatim forward, at index 0 — arg0 (the path
+    // string) IS widget_ident, so there's no separate forwarded param. The body
+    // references `widget_ident` literally for widget_finalize / container_finalize.
+    let identIndex = forward_verbatim ? 0 : 1
     var widthIdentVar = new Variable(at = func.at,
         name := "widget_ident",
         _type <- new TypeDecl(baseType = Type.tString, at = func.at))
     widthIdentVar.flags.generated = true
-    func.arguments |> emplace(widthIdentVar, 1)
+    func.arguments |> emplace(widthIdentVar, identIndex)
     // Wrap the body: prepend widget_prelude(widget_ident) and, for containers,
     // container_path_push(widget_ident). The container path push runs every
     // frame BEFORE the user body so `invoke(blk)` sees self in g_container_path
@@ -165,7 +179,9 @@ def private apply_widget_or_container(var func : FunctionPtr; var errors : das_s
         state_type_name = stateTypeName,
         state_struct = stateStruct,
         render_fn_name = kind,
-        is_container = is_container)
+        is_container = is_container,
+        forward_argument = forward_argument,
+        forward_verbatim = forward_verbatim)
     // Stash the widget def's user-facing args (positions 2..N, after the
     // injected widget_ident at position 1). The indexed-form wrapper
     // generator mirrors this signature for each (kind, IDENT) pair so the
@@ -194,10 +210,15 @@ class WidgetCallMacro : AstCallMacro {
     state_struct : Structure const?
     render_fn_name : string
     is_container : bool
+    forward_argument : bool
+    forward_verbatim : bool
     render_fn_args : array<VariablePtr>
     render_fn : FunctionPtr
 
     def override canVisitArgument(expr : ExprCallMacro?; argIndex : int) : bool {
+        // forward_argument: arg0 is a plain value forwarded into the render
+        // call — resolve it (and everything else) normally before visit().
+        return true if (forward_argument)
         // The first argument is the IDENT (which doesn't yet exist as a
         // global); telling the typer not to pre-resolve it lets us see the
         // raw ExprVar in visit(), parse the dotted-flag chain, emit the
@@ -244,7 +265,164 @@ class WidgetCallMacro : AstCallMacro {
         return true
     }
 
+    def private emit_user_args(prog : ProgramPtr; expr : ExprCallMacro?;
+                               var newCall : ExprCall?; firstUserArg : int;
+                               renderArgStart : int) : bool {
+        // Destructure the user's call args (positions firstUserArg..N) into the
+        // render fn's declaration order, filling defaults for skipped optionals.
+        // `renderArgStart` = first user-facing param index in render_fn (2 after
+        // [state|forwarded-value, widget_ident]; 1 for verbatim forward where
+        // arg0 is consumed as widget_ident with no separate forwarded param).
+        var namedFields : table<string; ExpressionPtr>
+        var hasNamedTuple = false
+        var maxNamedArgIdx = -1
+        for (i in range(firstUserArg, length(expr.arguments))) {
+            let a = expr.arguments[i]
+            if (!(a is ExprMakeTuple)) continue
+            let mt = a as ExprMakeTuple
+            if (length(mt.recordNames) != length(mt.values) || empty(mt.recordNames)) continue
+            hasNamedTuple = true
+            for (j in range(length(mt.recordNames))) {
+                let recordName = string(mt.recordNames[j])
+                continue if (!empty(init_arg_to_field(recordName)) ||
+                             recordName == "id" ||
+                             recordName == "path")
+                namedFields[recordName] = clone_expression(mt.values[j])
+                // Find this name's argument index in render_fn (positions renderArgStart..N).
+                for (k in range(renderArgStart, length(render_fn.arguments))) {
+                    if (render_fn.arguments[k].name == recordName) {
+                        if (k > maxNamedArgIdx) {
+                            maxNamedArgIdx = k
+                        }
+                        break
+                    }
+                }
+            }
+        }
+        if (is_container) {
+            // Containers end in `blk : block`. daslang won't auto-fill mid-
+            // position defaults around a block-as-last-arg (the block misaligns
+            // into the skipped slot — see imgui_containers_builtin.das notes), so
+            // the macro emits a FULLY-explicit positional config list: each config
+            // param [renderArgStart .. last-non-block] takes the named-tuple value
+            // if present, else the next positional arg, else its `init` default —
+            // then the trailing block is appended. Call sites that pass all config
+            // stay byte-identical; the new capability is omitting defaulted config
+            // (e.g. `node(id) {…}` ≡ `node(id, (color = …)) {…}`).
+            if (length(expr.arguments) <= firstUserArg) {
+                macro_error(prog, expr.at, "{kind_name}(...): container requires a body block")
+                return false
+            }
+            let blockIdx = length(expr.arguments) - 1
+            let lastConfig = length(render_fn.arguments) - 2   // exclude trailing blk
+            var positionalConfig : array<ExpressionPtr>
+            for (i in range(firstUserArg, blockIdx)) {
+                let a = expr.arguments[i]
+                continue if (a is ExprMakeTuple)
+                positionalConfig |> push(clone_expression(a))
+            }
+            var posCursor = 0
+            for (k in range(renderArgStart, lastConfig + 1)) {
+                let argName = string(render_fn.arguments[k].name)
+                if (key_exists(namedFields, argName)) {
+                    newCall.arguments |> push(namedFields[argName])
+                } elif (posCursor < length(positionalConfig)) {
+                    newCall.arguments |> push(positionalConfig[posCursor])
+                    posCursor++
+                } elif (render_fn.arguments[k].init != null) {
+                    newCall.arguments |> push(clone_expression(render_fn.arguments[k].init))
+                } else {
+                    macro_error(prog, expr.at,
+                        "{kind_name}(...): required argument '{argName}' has no default and was not provided")
+                    return false
+                }
+            }
+            // Leftover positional config (too-many-args) → append so the typer
+            // surfaces the arity error, matching pre-autofill behavior.
+            while (posCursor < length(positionalConfig)) {
+                newCall.arguments |> push(positionalConfig[posCursor])
+                posCursor++
+            }
+            newCall.arguments |> push(clone_expression(expr.arguments[blockIdx]))
+            return true
+        }
+        if (hasNamedTuple && maxNamedArgIdx >= renderArgStart) {
+            // Reorder: fill render_fn.arguments[renderArgStart..maxNamedArgIdx] in
+            // order. Each slot: user-provided value if named, otherwise clone the
+            // arg's default `init` expression.
+            for (k in range(renderArgStart, maxNamedArgIdx + 1)) {
+                let argName = string(render_fn.arguments[k].name)
+                if (key_exists(namedFields, argName)) {
+                    newCall.arguments |> push(namedFields[argName])
+                } elif (render_fn.arguments[k].init != null) {
+                    newCall.arguments |> push(clone_expression(render_fn.arguments[k].init))
+                } else {
+                    macro_error(prog, expr.at,
+                        "{kind_name}(...): required argument '{argName}' has no default but was skipped by the user's named-tuple call")
+                    return false
+                }
+            }
+            // Any remaining expr.arguments that weren't tuples (positional
+            // after the tuple) still need forwarding — uncommon but possible.
+            for (i in range(firstUserArg, length(expr.arguments))) {
+                let a = expr.arguments[i]
+                if (a is ExprMakeTuple) continue
+                newCall.arguments |> push(clone_expression(a))
+            }
+        } else {
+            // No named-tuple form: keep the original positional forwarding.
+            // Destructure any tuple (e.g. empty-tuple call forms) in source order.
+            for (i in range(firstUserArg, length(expr.arguments))) {
+                let a = expr.arguments[i]
+                if (a is ExprMakeTuple) {
+                    let mt = a as ExprMakeTuple
+                    if (length(mt.recordNames) == length(mt.values) && !empty(mt.recordNames)) {
+                        for (j in range(length(mt.recordNames))) {
+                            let recordName = string(mt.recordNames[j])
+                            continue if (!empty(init_arg_to_field(recordName)) ||
+                                         recordName == "id" ||
+                                         recordName == "path")
+                            newCall.arguments |> push(clone_expression(mt.values[j]))
+                        }
+                        continue
+                    }
+                }
+                newCall.arguments |> push(clone_expression(a))
+            }
+        }
+        return true
+    }
+
+    def private emit_forward_call(prog : ProgramPtr; expr : ExprCallMacro?) : ExpressionPtr {
+        // forward_argument rewrite. Two shapes:
+        //   prefixed (default): kind(VALUE, ...) -> render(VALUE, "{kind}_{VALUE}", ...)
+        //       arg0 (an id) is forwarded as render-param-0 AND drives the runtime
+        //       path key "{kind}_{VALUE}". User args start at render index 2.
+        //   verbatim_path:      kind(NAME, ...)  -> render(NAME, ...)
+        //       arg0 (a string) is consumed as widget_ident verbatim (no separate
+        //       forwarded param, no prefix). User args start at render index 1.
+        if (empty(expr.arguments)) {
+            macro_error(prog, expr.at, "{kind_name}(id, ...): missing forwarded first argument")
+            return <- default<ExpressionPtr>
+        }
+        var newCall = new ExprCall(at = expr.at,
+                                   name := "{render_fn._module.name}::{render_fn_name}")
+        if (forward_verbatim) {
+            newCall.arguments |> push(clone_expression(expr.arguments[0]))   // widget_ident = arg0 verbatim
+            return <- default<ExpressionPtr> if (!emit_user_args(prog, expr, newCall, 1, 1))
+            return <- newCall
+        }
+        newCall.arguments |> push(clone_expression(expr.arguments[0]))       // forwarded value (id)
+        var ident = new ExprStringBuilder(at = expr.at)
+        ident.elements |> push(new ExprConstString(at = expr.at, value := "{kind_name}_"))
+        ident.elements |> push(clone_expression(expr.arguments[0]))
+        newCall.arguments |> push(ident)                                     // widget_ident = "{kind}_{id}"
+        return <- default<ExpressionPtr> if (!emit_user_args(prog, expr, newCall, 1, 2))
+        return <- newCall
+    }
+
     def override visit(prog : ProgramPtr; mod : Module?; var expr : ExprCallMacro?) : ExpressionPtr {
+        return <- emit_forward_call(prog, expr) if (forward_argument)
         // Four call forms:
         //   1. EXPLICIT      kind(IDENT, (...))              — leading ident drives state global
         //   2. AUTO-GEN      kind((...))                     — first arg is a named-tuple; ident synthesized from source location
@@ -567,82 +745,10 @@ class WidgetCallMacro : AstCallMacro {
         // in another loaded module can't shadow the dispatch. render_fn._module
         // is populated by the time visit() runs (post-binding).
         var newCall = new ExprCall(at = expr.at,
-                                   name := "{string(render_fn._module.name)}::{render_fn_name}")
+                                   name := "{render_fn._module.name}::{render_fn_name}")
         newCall.arguments |> push(new ExprVar(at = expr.at, name := bareName))
         newCall.arguments |> push(new ExprConstString(at = expr.at, value := widgetIdent))
-        // Collect user's named-tuple fields into (name → value) map, and
-        // remember the highest user-arg index they touch (so we know how far
-        // to fill defaults).
-        var namedFields : table<string; ExpressionPtr>
-        var hasNamedTuple = false
-        var maxNamedArgIdx = -1
-        for (i in range(firstUserArg, length(expr.arguments))) {
-            let a = expr.arguments[i]
-            if (!(a is ExprMakeTuple)) continue
-            let mt = a as ExprMakeTuple
-            if (length(mt.recordNames) != length(mt.values) || empty(mt.recordNames)) continue
-            hasNamedTuple = true
-            for (j in range(length(mt.recordNames))) {
-                let recordName = string(mt.recordNames[j])
-                continue if (!empty(init_arg_to_field(recordName)) ||
-                             recordName == "id" ||
-                             recordName == "path")
-                namedFields[recordName] = clone_expression(mt.values[j])
-                // Find this name's argument index in render_fn (positions 2..N).
-                for (k in range(2, length(render_fn.arguments))) {
-                    if (render_fn.arguments[k].name == recordName) {
-                        if (k > maxNamedArgIdx) {
-                            maxNamedArgIdx = k
-                        }
-                        break
-                    }
-                }
-            }
-        }
-        if (hasNamedTuple && maxNamedArgIdx >= 2) {
-            // Reorder: fill render_fn.arguments[2..maxNamedArgIdx] in order.
-            // Each slot: user-provided value if named, otherwise clone the
-            // arg's default `init` expression.
-            for (k in range(2, maxNamedArgIdx + 1)) {
-                let argName = string(render_fn.arguments[k].name)
-                if (key_exists(namedFields, argName)) {
-                    newCall.arguments |> push(namedFields[argName])
-                } elif (render_fn.arguments[k].init != null) {
-                    newCall.arguments |> push(clone_expression(render_fn.arguments[k].init))
-                } else {
-                    macro_error(prog, expr.at,
-                        "{kind_name}(...): required argument '{argName}' has no default but was skipped by the user's named-tuple call")
-                    return <- default<ExpressionPtr>
-                }
-            }
-            // Any remaining expr.arguments that weren't tuples (positional
-            // after the tuple) still need forwarding — uncommon but possible.
-            for (i in range(firstUserArg, length(expr.arguments))) {
-                let a = expr.arguments[i]
-                if (a is ExprMakeTuple) continue
-                newCall.arguments |> push(clone_expression(a))
-            }
-        } else {
-            // No named-tuple form: keep the original positional forwarding.
-            // Destructure any tuple (e.g. empty-tuple call forms) in source order.
-            for (i in range(firstUserArg, length(expr.arguments))) {
-                let a = expr.arguments[i]
-                if (a is ExprMakeTuple) {
-                    let mt = a as ExprMakeTuple
-                    if (length(mt.recordNames) == length(mt.values) && !empty(mt.recordNames)) {
-                        for (j in range(length(mt.recordNames))) {
-                            let recordName = string(mt.recordNames[j])
-                            continue if (!empty(init_arg_to_field(recordName)) ||
-                                         recordName == "id" ||
-                                         recordName == "path")
-                            newCall.arguments |> push(clone_expression(mt.values[j]))
-                        }
-                        continue
-                    }
-                }
-                newCall.arguments |> push(clone_expression(a))
-            }
-        }
+        return <- default<ExpressionPtr> if (!emit_user_args(prog, expr, newCall, firstUserArg, 2))
         if (idOverridePresent) {
             // Wrap in a void block: PushID(idLit); call(); PopID(). Because
             // the block evaluates to void, capturing the widget's return
@@ -710,7 +816,7 @@ class WidgetCallMacro : AstCallMacro {
         let kindLit = kind_name
         // Qualify the inner call to the widget impl so the wrapper can't pick
         // up a same-named function in another module.
-        let qualifiedKind = "{string(render_fn._module.name)}::{kind_name}"
+        let qualifiedKind = "{render_fn._module.name}::{kind_name}"
         // Key-type-aware fn-ptr emit. Int and string keys go through parallel
         // register_widget overloads (register_widget / register_widget_str);
         // the per-(kind, IDENT) addr-getter + serializer are typed accordingly
@@ -986,7 +1092,7 @@ class EditExternalCallMacro : AstCallMacro {
         // Rewrite to positional: kind_name(ptr, "<idLit>", ...named args destructured).
         // Qualified with the [edit_widget] impl's home module to dodge collisions.
         var newCall = new ExprCall(at = expr.at,
-                                   name := "{string(render_fn._module.name)}::{kind_name}")
+                                   name := "{render_fn._module.name}::{kind_name}")
         newCall.arguments |> push(clone_expression(expr.arguments[0]))
         newCall.arguments |> push(new ExprConstString(at = expr.at, value := idLit))
         for (i in range(1, length(expr.arguments))) {
