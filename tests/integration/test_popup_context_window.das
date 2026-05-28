@@ -56,6 +56,15 @@ def test_popup_context_window_smoke(t : T?) {
         let new_x = ((new_bbox?["x"] ?? 0.0f) + (new_bbox?["z"] ?? 0.0f)) * 0.5f
         let new_y = ((new_bbox?["y"] ?? 0.0f) + (new_bbox?["w"] ?? 0.0f)) * 0.5f
         post_command(d, "imgui_mouse_pos", JV((x = new_x, y = new_y)))
+        t |> success(wait_for_mouse_idle(d, 4.0f), "cursor teleport to ITEM_NEW drains")
+        // Poll until ImGui's hover state reflects the cursor over ITEM_NEW.
+        // Without this gate, the press fires on the same frame as the teleport
+        // and IsMouseClicked(ITEM_NEW_id) returns false (hover not yet
+        // established), so the menu_item branch never fires.
+        let new_hover = wait_until(d, 60) $(var s) {
+            return s?["globals"]?["MAIN_WIN/CTX/ITEM_NEW"]?["hover"] ?? false
+        }
+        t |> success(new_hover != null, "ITEM_NEW hover established before click")
         post_command(d, "imgui_mouse_click", JV((button = 0, action = "press")))
         post_command(d, "imgui_mouse_click", JV((button = 0, action = "release")))
         t |> success(wait_for_mouse_idle(d, 4.0f), "LMB on ITEM_NEW drains")
@@ -72,6 +81,14 @@ def test_popup_context_window_smoke(t : T?) {
         let quit_x = ((quit_bbox?["x"] ?? 0.0f) + (quit_bbox?["z"] ?? 0.0f)) * 0.5f
         let quit_y = ((quit_bbox?["y"] ?? 0.0f) + (quit_bbox?["w"] ?? 0.0f)) * 0.5f
         post_command(d, "imgui_mouse_pos", JV((x = quit_x, y = quit_y)))
+        t |> success(wait_for_mouse_idle(d, 4.0f), "cursor teleport to ITEM_QUIT drains")
+        // Same hover-settle gate as the first iteration -- without it the
+        // second click races on Ubuntu/macOS where the popup re-opens fast
+        // enough that ITEM_QUIT registers before any hover frame ticks.
+        let quit_hover = wait_until(d, 60) $(var s) {
+            return s?["globals"]?["MAIN_WIN/CTX/ITEM_QUIT"]?["hover"] ?? false
+        }
+        t |> success(quit_hover != null, "ITEM_QUIT hover established before click")
         post_command(d, "imgui_mouse_click", JV((button = 0, action = "press")))
         post_command(d, "imgui_mouse_click", JV((button = 0, action = "release")))
         t |> success(wait_for_mouse_idle(d, 4.0f), "LMB on ITEM_QUIT drains")
