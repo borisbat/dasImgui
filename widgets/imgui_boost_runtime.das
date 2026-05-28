@@ -621,13 +621,19 @@ struct WidgetEntry {
     //! ``read_json``. No per-widget serializer lambda — the addr+ti pair
     //! survives ``g_registry``'s per-frame clear because it's pinned in
     //! the long-lived ``g_widgets`` table.
+    //! Stateless widgets/containers (no state global) instead set the
+    //! ``serialize`` hook + ``serialize_ctx``/``serialize_id``; the payload is
+    //! built lazily at snapshot from those, so per-frame render does zero JSON.
     kind : string                                //! widget kind ("button", "slider_float", ...)
     hex_id : uint                                //! ImGui's GetID() for this widget on this frame
     bbox : float4                                //! packed [x0, y0, x1, y1]
     @optional hover : bool                       //! IsItemHovered() this frame
     @optional active : bool                      //! IsItemActive() this frame
     @optional focus : bool                       //! IsItemFocused() this frame
-    @optional payload : JsonValue?               //! populated by widget_entry_jv from (addr, ti) via sprint_json_at + read_json
+    @optional payload : JsonValue?               //! populated by widget_entry_jv from (addr, ti) via sprint_json_at + read_json, or from the serialize hook below
+    @optional serialize_id : int                 //! id/key passed to `serialize` (stateless lazy-payload hook); JV-skipped at 0
+    serialize_ctx : void?                        //! opaque context passed to `serialize` (e.g. editor handle); JV skips void?
+    serialize : function<(ctx : void?; id : int) : JsonValue?>  //! lazy per-snapshot payload builder for stateless widgets — never called per frame; JV skips functions
 }
 
 def private resolve_meta_addr(meta : WidgetMeta) : void? {
@@ -646,11 +652,14 @@ def private state_payload_jv(state_addr : void?; ti : TypeInfo const?) : JsonVal
 }
 
 def private widget_entry_jv(ident : string; var entry : WidgetEntry) : JsonValue? {
-    // Snapshot blob for a widget rendered this frame. Reads state via
-    // (state_addr, ti) from g_widgets[ident] through state_payload_jv.
+    // Snapshot blob for a widget rendered this frame. Payload source:
+    //   - reflected state via (state_addr, ti) from g_widgets[ident] (stateful), or
+    //   - the entry's lazy `serialize` hook (stateless widgets — built here, not per frame).
     let meta = unsafe(g_widgets?[ident])
     if (meta != null) {
         entry.payload = state_payload_jv(resolve_meta_addr(*meta), meta.ti)
+    } elif (entry.serialize != null) {
+        entry.payload = entry.serialize(entry.serialize_ctx, entry.serialize_id)
     }
     return JV(entry)
 }
