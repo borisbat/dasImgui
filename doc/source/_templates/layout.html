@@ -30,3 +30,11 @@
   {%- include "searchbox.html" %}
 
 {%- endblock %}
+
+{%- block extrahead %}
+{{ super() }}
+<!-- Analytics -->
+<script data-goatcounter="https://borisbat.goatcounter.com/count"
+        data-goatcounter-settings='{"path": function(p){return "/dasimgui"+p}}'
+        async src="//gc.zgo.at/count.js"></script>
+{%- endblock %}
