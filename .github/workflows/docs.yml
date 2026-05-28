@@ -130,6 +130,16 @@ jobs:
             exit 1
           fi
 
+      - name: "Uncategorized-gate: every function must belong to a named group"
+        working-directory: ${{ github.workspace }}/daslang-src/modules/dasImgui
+        run: |
+          set -eux
+          if grep -rl '^Uncategorized$' doc/source/stdlib/generated/; then
+            echo "ERROR: Found 'Uncategorized' sections in generated docs."
+            echo "Add the function(s) to a group_by_regex() in utils/imgui2rst.das."
+            exit 1
+          fi
+
       - name: "Build Sphinx HTML"
         working-directory: ${{ github.workspace }}/daslang-src/modules/dasImgui
         run: |
