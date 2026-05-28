@@ -1,8 +1,13 @@
 # dasImgui
 
+[![tests](https://github.com/borisbat/dasImgui/actions/workflows/tests.yml/badge.svg)](https://github.com/borisbat/dasImgui/actions/workflows/tests.yml)
+[![docs](https://github.com/borisbat/dasImgui/actions/workflows/docs.yml/badge.svg)](https://github.com/borisbat/dasImgui/actions/workflows/docs.yml)
+[![docs site](https://img.shields.io/badge/docs-live-blue)](https://borisbat.github.io/dasImgui)
+![license](https://img.shields.io/badge/license-MIT-blue)
+
 [Dear ImGui](https://github.com/ocornut/imgui) bindings for [daslang](https://dascript.org/).
 
-Provides the `imgui` and `imgui_app` modules for building GUI applications with daslang.
+Provides the `imgui` binding, the v2 `widgets/` macro layer (`[widget]`/`[container]`/`with_*`), and the `imgui_harness` runtime for building GUI applications with daslang.
 
 ## Install
 
@@ -45,36 +50,10 @@ cmake --build modules/dasImgui/_build --config Release
 
 ## Usage
 
-The smallest embedding, using the gen1 ``imgui_app`` harness:
-
-```das
-options gen2
-
-require imgui_app
-require imgui/imgui_boost
-require glfw/glfw_boost
-
-[export]
-def main() {
-    imgui_app("My App") <| $() {
-        NewFrame()
-        if (Begin("Hello", null, ImGuiWindowFlags.None)) {
-            Text("Hello from daslang!")
-        }
-        End()
-        Render()
-    }
-}
-```
-
-For real applications, use the v2 boost surface — block-arg `window(...)`
-containers, auto-emitted state structs, live-reload, and a JSON-driven
-command surface. See the [dasImgui tutorials](doc/source/tutorials/index.rst)
+The canonical pattern uses `imgui/imgui_harness` — it hides the GLFW/GL backend
+boilerplate behind five helpers, re-exports the backend-agnostic v2 stack, and
+supports `--headless` for tests and CI. See the [dasImgui tutorials](https://borisbat.github.io/dasImgui/tutorials/index.html)
 starting at `boost_basics` for a complete walkthrough.
-
-For examples and tests, use `imgui/imgui_harness` — it hides the GLFW/GL
-backend boilerplate behind five helpers and re-exports the backend-agnostic
-v2 stack, so the test file is purely widget logic:
 
 ```das
 options gen2
@@ -130,15 +109,18 @@ daslang.exe -project_root . my_app.das
 
 | Module | Require | Description |
 |--------|---------|-------------|
-| `imgui` | `require imgui/imgui_boost` | Core Dear ImGui bindings |
-| `imgui_app` | `require imgui_app` | GLFW + OpenGL3 application runtime |
-| `imgui_app_headless` | (private, used by harness) | Display-less ImGui backend (CPU font atlas, no GLFW, no GL) for `--headless` runs |
-| `imgui_harness` | `require imgui/imgui_harness` | Canonical wrapper for examples/tests — hides GLFW/GL boilerplate, re-exports the backend-agnostic v2 stack, dispatches windowed vs `--headless` at runtime |
+| `imgui_harness` | `require imgui/imgui_harness` | Canonical wrapper for apps/examples/tests — hides GLFW/GL boilerplate, re-exports the backend-agnostic v2 stack, dispatches windowed vs `--headless` at runtime |
+| `imgui` | `require imgui` | Core Dear ImGui bindings (raw surface; most code goes through the v2 `widgets/` macro layer rather than calling these directly) |
+| `imgui_app` | (used by harness) | GLFW + OpenGL3 application runtime |
+| `imgui_app_headless` | (used by harness) | Display-less ImGui backend (CPU font atlas, no GLFW, no GL) for `--headless` runs |
 
 ## Examples
 
-- `example/imgui_demo.das` — full ImGui demo window
-- `example/imgui_opengl2.das` — minimal OpenGL example
+- `examples/features/with_indent.das` — smallest single-file harness example (drives [test_with_indent.das](tests/integration/test_with_indent.das))
+- `examples/features/` — 90+ small focused demos, one widget/helper per file
+- `examples/imgui_demo/imgui_demo.das` — full Dear ImGui demo port (90+ scenes)
+- `examples/tutorial/` — annotated step-by-step tutorials matching the [docs site](https://borisbat.github.io/dasImgui/tutorials/index.html)
+- `examples/save_demo/` — save/load round-trip demo
 
 ## imgui version
 
@@ -146,7 +128,9 @@ v1.90.6-docking (fetched via CMake FetchContent at build time).
 
 ## Documentation
 
-Local build (HTML site under `doc/_build/html/`):
+Published at https://borisbat.github.io/dasImgui (built by `.github/workflows/docs.yml` on push to master).
+
+Local build:
 
 ```bash
 daslang.exe utils/imgui2rst.das -- --detail_output doc/source/stdlib/generated
@@ -163,12 +147,7 @@ inputs are `doc/source/conf.py`, `daslang.py`, `index.rst`, the section
 landings (`sec_*.rst`), `external_types.rst`, `handmade/module-*.rst`,
 `tutorials/`, and the emitter itself (`utils/imgui2rst.das`).
 
-Re-run `utils/imgui2rst.das` whenever a public `//!` comment changes. The
-forthcoming `.github/workflows/docs.yml` CI gate will verify no `// stub`
-placeholders remain in `handmade/` and that Sphinx builds clean under `-W`.
-
-The published site (once gh-pages is wired) will be linked from the main
-[daslang documentation](https://dascript.org/).
+Re-run `utils/imgui2rst.das` whenever a public `//!` comment changes. CI runs `-W` (warnings-as-errors); the local `--keep-going` invocation is enough for spot-checking.
 
 ## License
 

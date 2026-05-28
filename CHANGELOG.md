@@ -1,6 +1,33 @@
 # Changelog
 
-## Unreleased
+All notable changes to dasImgui are documented in this file. Format based on
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+
+## [Unreleased]
+
+### Added
+- Live docs site at https://borisbat.github.io/dasImgui
+- GitHub repo link + daspkg install snippet on the docs landing page (`doc/source/index.rst`)
+- "Edit on GitHub" header link on every docs page (via `sphinx_rtd_theme.html_context` in `doc/source/conf.py`)
+- `skills/migration.md` skill file covering the v1->v2 API migration recipe
+- CI / docs / license badges on README
+- `CHANGELOG.md` (this file) — Keep-a-Changelog format, retroactively documents the v2.0 stabilization
+
+### Changed
+- `IMGUI001` / `IMGUI002` lint messages in `widgets/imgui_lint.das` now point at `skills/migration.md` for the v1->v2 mapping table
+- README "Usage" example now shows only the canonical `imgui_harness` path; the dead gen1 `imgui_app(name) <| $() { ... }` example is removed (it would IMGUI001/IMGUI002-violate against the current lint)
+- README "Examples" section paths fixed (`examples/` plural, dropped nonexistent `imgui_opengl2.das`, added `features/with_indent.das` + `tutorial/`)
+- README "Documentation" section no longer says gh-pages is "forthcoming"
+- README "Modules" table reordered — `imgui/imgui_harness` is now the canonical first entry; the dead `imgui/imgui_boost` row is gone
+- `CLAUDE.md` adds a `Skill files (REQUIRED)` table mirroring the daslang pattern; indexes `skills/recording.md` and the new `skills/migration.md`
+
+## [2.0] - 2026-05-15
+
+The 2.0 line stabilizes the v2 boost-macro surface. `widgets/imgui_lint.das`
+is default-on, rejecting raw `imgui::*` calls (IMGUI002) and any reference
+to the dead `imgui_boost` v1 module (IMGUI001). All in-tree examples and
+tests migrated to the v2 surface; the per-file `_allow_imgui_legacy` escape
+is scaffolding only.
 
 ### Changed
 
@@ -191,3 +218,59 @@
   Verified per-file: `compile_check` + `lint` + `format_file` clean,
   headless smoke (60 frames) exit 0, windowed smoke (5 s timeout-killed)
   ran. Full dastest integration: 111/111 PASS (unchanged).
+
+### Additional PRs shipped during v2.0 (one-line summaries)
+
+The entries above are the in-depth narratives Boris kept while building toward
+v2.0. The following merged PRs also shipped in the same window and aren't
+otherwise captured in this file:
+
+- **#38 — CI: resurrect headless tests workflow.** `tests.yml` runs on every push/PR via headless dastest; xvfb dependency dropped.
+- **#39 — `daslang-theme` style preset.** dasImgui colors match daslang.io docs.
+- **#40 — `imgui_demo`: columns + applog.** Columns demo + ExampleAppConsole-style log scene ported.
+- **#41 — `imgui_demo`: port-and-recording pass.** Initial recording rail for every imgui_demo scene.
+- **#42 — HDPI theme scaling.** `--imgui-content-scale` flag + automatic per-monitor DPI handling.
+- **#43 — One-shell recording driver model.** `with_recording_app` spawns daslang-live in-process; replaces the two-shell pattern.
+- **#44 — Recording cmdline + config fixes.** Driver scripts consume `-project_root` from their own argv and forward to the spawned host.
+- **#45 — `imgui_demo` app-small scenes.** auto-resize, constrained-resize, simple-overlay, long-text, window-titles, layout, property-editor, fullscreen.
+- **#46 — `imgui_demo` widgets sweep.** Widgets section fully ported.
+- **#47 — `imgui_demo` inputs sweep.** Inputs/Sliders section fully ported.
+- **#48 — Drawlist rail.** `with_window_drawlist` / `with_foreground_drawlist` / `with_background_drawlist` block-arg containers + 8 drawlist primitive helpers.
+- **#49 — `imgui_demo` banner with daslang.io link.** Banner widget links to docs site.
+- **#50 — `layout.das` raw-imgui sweep.** Plus `tree_node_open` primitive + 11 `ALLOWED_IMGUI` additions.
+- **#51 — `imgui_demo` PR-C three apps.** Custom-rendering, Documents, Dockspace.
+- **#52 — `imgui_demo` PR-D tables.** 24 sub-sections, ~2900 das lines.
+- **#54 — `imgui_narrate` scoring cascade.** Overlay picks placement via scored cascade (above/below/left/right of `target.bbox`).
+- **#55 — `imgui_demo` tier-A.** Selectables polish.
+- **#56 — `imgui_demo` tier-B tabs.**
+- **#57 — `imgui_demo` tier-B rest.** Tree-table demos.
+- **#58 — `imgui_demo` tier-C status flags.**
+- **#59 — `imgui_demo` color picker.** Full Color-edit/picker surface via `edit_color3` / `edit_color4` `[edit_widget]` macros.
+- **#60 — `imgui_demo` data types.** Full numeric type matrix on `slider_*` / `input_*`.
+- **#61 — `imgui_demo` phase-3 bundle.** Plots, Tooltips, Trees in one pass.
+- **#62 — `imgui_demo` menubar.** `main_menu_bar` / `menu` / `menu_item` containers; header-bbox capture for `menu` and `tab_item`.
+- **#63 — `imgui_demo` help/config/winopts.** About / style-editor / metrics / debug-log demos wrapped.
+- **#64 — Int/enum unification sweep.** `enum E` accepts at `int` API surfaces without explicit cast where the macro emits `int(value)`.
+- **#65 — Recording tutorials batch 1.** First tutorial RST pages with embedded recordings.
+- **#66 — Features backfill phase 2.** 13 additional `examples/features/*.das` drivers + smokes.
+- **#67 — Container tutorials phase 3.** Block-arg `popup_*` / `tab_bar` / `tab_item` containers polished; tutorial recording pass.
+- **#68 — Macro emit qualify + fnptr getters.** `_::clone` / `_::finalize` qualification for cross-module generic dispatch; function-pointer accessor generators.
+- **#69 — Widget meta `addr` / `typeinfo` pivot.** `[widget]` macros generate state via `typeinfo` instead of legacy `safe_addr` boilerplate.
+- **#70 — Real-glyph logo + favicon.** Replaces SVG placeholder.
+- **#72 — Widget tutorial: drag/slider.**
+- **#73 — APNG → MP4 migration.** Tutorial videos shipped as H.264 MP4 (`-c:v libx264 -crf 23 -pix_fmt yuv420p`); APNG is gitignored.
+- **#74 — Widget tutorial: input numeric/text.**
+- **#75 — Widget tutorial: toggles/dropdown.**
+- **#76 — Widget tutorial: color/buttons.**
+- **#77 — Widget tutorial: final batch.**
+- **#78 — Playwright Windows libhv throttle.** Client paces under the 16-POST-per-subprocess IOCP limit on `windows-latest`.
+- **#79 — Universal recording-quality sweep.** Consistent fps + pacing constants across all `record_*.das` drivers; long captures bumped to `fps=20`.
+- **#80 — Parallel integration-test worker port indexing.** Workers share `DEFAULT_LIVE_PORT + worker_index` so `--isolated-mode-threads N` runs don't collide.
+- **#81 — Integration tests PR-1 (high priority).** `list_clipper`, `input_text_callback`, `text_filter`, `data_table`, `table_set_bg_color`.
+- **#82 — Integration tests PR-2 (med+low).** `edit_collapsing_header`, `popup_context_window`, `tree_node_open_manual`, `log_to_text`, `align_text_to_frame_padding`, `narrate_placement`, `imgui_synth_keys`, `imgui_synth_mouse`.
+- **#83 — Coroutine pump + demos + favicon.** `harness` auto-pumps `advance_coroutines()` per frame so playwright `click`/`right_click`/`type_text`/`drag` drain reliably; per-tutorial demo fixes.
+- **#84 — 15-API backfill.** 7 new feature demos + 7 integration tests covering `set_window_size`, `set_keyboard_focus_here`/`set_item_default_focus`, `set_scroll_here_y`, `table_header`/`table_angled_headers_row`, `edit_tab_item`, `open_popup_on_item_click`, and 7 visual-aid live commands.
+- **#85 — Full re-record sweep after #83.** All 47 tutorial MP4s regenerated to reflect the post-PR-#83 runtime (macro fix layout corrections, coroutine pump fix).
+
+[Unreleased]: https://github.com/borisbat/dasImgui/compare/v2.0...HEAD
+[2.0]: https://github.com/borisbat/dasImgui/releases/tag/v2.0

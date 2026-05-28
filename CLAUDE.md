@@ -22,6 +22,15 @@ Develop in **your local dasImgui checkout**, NOT inside `<daslang>/modules/dasIm
 - `require` only resolves **siblings** of the calling file's directory and the registered native-paths above. **No `..`/absolute-from-root forms.** Files that need to require both `imgui/*` and a sibling module like `about` must live in the sibling's directory.
 - If a sibling name collides with an `imgui::` builtin (`ShowAboutWindow`, `ShowStyleEditor`, …), **qualify with the module name** at the call site: `about::ShowAboutWindow()`, `style_editor::ShowStyleEditor()`.
 
+## Skill files (REQUIRED)
+
+Task-specific instructions live under `skills/`. Read the relevant file(s) before performing the corresponding task.
+
+| Skill file | Read BEFORE... |
+|---|---|
+| `skills/recording.md` | Writing/editing any `tests/integration/record_*.das` driver — pacing constants, two-shell vs one-shell workflow, menu-bbox quirks, APNG→MP4 conversion |
+| `skills/migration.md` | Migrating any v1 daslang+imgui code (`require imgui/imgui_boost`, `imgui_app(...) <\| $() {...}`, raw `NewFrame()`/`Begin()`/etc.) to dasImgui v2. Read when you hit IMGUI001 / IMGUI002 in compile output |
+
 ## Build
 
 CMake-based. Three shared-module targets (`dasModuleImgui`, `imguiApp`, `imguiAppHeadless`):

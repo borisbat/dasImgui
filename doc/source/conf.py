@@ -60,6 +60,14 @@ html_theme_options = {
 html_logo = '_static/forge-logo.svg'
 html_favicon = 'daslang-favicon.svg'
 html_static_path = ['_static']
+# sphinx_rtd_theme reads this and adds an "Edit on GitHub" link to every page header.
+html_context = {
+    'display_github': True,
+    'github_user': 'borisbat',
+    'github_repo': 'dasImgui',
+    'github_version': 'master',
+    'conf_py_path': '/doc/source/',
+}
 # Forge dark retoken — matches daslang.io/doc/ visually. Vendored from
 # daslang's doc/source/_static/custom.css; reconcile against upstream when
 # the daslang docs theme evolves.

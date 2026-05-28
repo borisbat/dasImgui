@@ -10,6 +10,32 @@ dasImgui is the daslang binding for `Dear ImGui <https://github.com/ocornut/imgu
 including the boost macro layer, live-reload integration, and a Playwright-style
 testing harness.
 
+**Source code**: https://github.com/borisbat/dasImgui
+
+**Issues**: https://github.com/borisbat/dasImgui/issues
+
+Install
+=======
+
+Via daspkg:
+
+.. code-block:: bash
+
+   daslang utils/daspkg/main.das -- install github.com/borisbat/dasImgui
+
+Or add to your project's ``.das_package``:
+
+.. code-block:: das
+
+   [export]
+   def dependencies(version : string) {
+       require_package("github.com/borisbat/dasImgui")
+   }
+
+Then run ``daspkg install``.
+
+----
+
 This site documents the **v2.0** surface. The legacy ``daslib/imgui_boost`` (v1)
 is not documented here; v1 users pin to the older daspkg release.
 
