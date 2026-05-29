@@ -6,6 +6,8 @@ All notable changes to dasImgui are documented in this file. Format based on
 ## [Unreleased]
 
 ### Added
+- `imgui_mouse_click_at` live command (`widgets/imgui_live_core.das`) — atomic click at `(x, y)`: travel → press → release as one self-contained synth timeline, with a `button` arg (`0`=left, `1`=right, `2`=middle) and optional `travel_ms`. Callers no longer hand-build a `click_at` event array for `imgui_mouse_play`; one round-trip can't interleave with real input mid-gesture.
+- `set_user_control` live command (`widgets/imgui_live_core.das`) — `{enabled:false}` makes `imgui_synth_tick` clear the GLFW backend's queued mouse/keyboard each frame (via `GetIO().ClearEventsQueue()`) so ONLY synth IO drives the UI, with no real-input bleed-through racing the synth cursor; `{enabled:true}` releases synth ownership (stops playback, releases held buttons/keys, clears `synth_cursor_owned`) and hands control back. Defaults on — zero behavior change when never called. Public getter `user_control_enabled()`.
 - Live docs site at https://borisbat.github.io/dasImgui
 - GitHub repo link + daspkg install snippet on the docs landing page (`doc/source/index.rst`)
 - "Edit on GitHub" header link on every docs page (via `sphinx_rtd_theme.html_context` in `doc/source/conf.py`)
