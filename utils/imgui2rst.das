@@ -160,7 +160,7 @@ def document_module_imgui_live(root : string) {
     var groups <- array<DocGroup>(
         group_by_regex("Lifecycle",           mod, %regex~^(live_imgui_init|live_imgui_shutdown|live_imgui_.*)$%%),
         group_by_regex("Synth IO drivers",    mod, %regex~^(synth_|imgui_mouse_|imgui_key_|imgui_synth_|get_synth_|warn_if_synth_|reset_synth_).*%%),
-        group_by_regex("User input control",  mod, %regex~^(set_user_control|user_control_enabled)$%%),
+        group_by_regex("User input control",  mod, %regex~^(set_user_control.*|user_control_enabled)$%%),
         group_by_regex("Event timelines",     mod, %regex~^(MouseEventWire|KeyEventWire|sort_mouse_play_events|sort_key_play_events|.*_play)$%%),
         group_by_regex("Override hooks",      mod, %regex~^(apply_synth_io_override|effective_cursor_pos|effective_synth_click)$%%),
         group_by_regex("Status / introspection", mod, %regex~^(.*_status|.*Status).*%%),

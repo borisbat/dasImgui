@@ -151,10 +151,13 @@ def private dasimgui_module_root() : string {
     return dir_name(get_this_module_dir())
 }
 
-def private resolve_feature_path(path : string) : string {
+def private resolve_feature_path(path : string; feature_root : string; feature_prefix : string) : string {
     if (is_absolute(path)) return path
-    // Strip the `modules/dasImgui/` prefix and resolve under the runtime
-    // module root so tests find feature files regardless of layout.
+    // Caller-supplied root/prefix first — lets another package (e.g. dasImguiNodeEditor)
+    // resolve its own feature files under its own module root via `with_imgui_app`.
+    if (feature_prefix != "" && path |> starts_with(feature_prefix)) return path_join(feature_root, slice(path, length(feature_prefix)))
+    // Then dasImgui's own layout: strip `modules/dasImgui/` and resolve under the
+    // runtime module root so tests find feature files regardless of layout.
     let prefix = "modules/dasImgui/"
     if (path |> starts_with(prefix)) return path_join(dasimgui_module_root(), slice(path, length(prefix)))
     return path_join(get_das_root(), path)
@@ -616,9 +619,28 @@ def private playwright_worker_index() : int {
 
 def public with_imgui_app(feature_path : string;
                           body : block<(app : ImguiApp) : void>) {
-    //! Spawn ``daslang-live <feature_path>``; runs ``body`` while alive, then
-    //! POSTs ``/shutdown`` and drains stdout. Panics on non-zero exit code,
-    //! ready-timeout, or test-timeout so the surrounding ``[test]`` fails.
+    //! Spawn ``daslang-live <feature_path>`` with the dasImgui module loaded; runs
+    //! ``body`` while alive, then POSTs ``/shutdown`` and drains stdout. Panics on
+    //! non-zero exit code, ready-timeout, or test-timeout so the surrounding
+    //! ``[test]`` fails. The common case — for a feature whose ``require`` chain
+    //! needs ONLY dasImgui. Delegates to the 5-arg overload with no extra modules.
+    let no_extra : array<string>
+    with_imgui_app(feature_path, no_extra, "", "", body)
+}
+
+def public with_imgui_app(feature_path : string;
+                          extra_module_roots : array<string>;
+                          feature_root : string;
+                          feature_prefix : string;
+                          body : block<(app : ImguiApp) : void>) {
+    //! Full form — spawn ``daslang-live`` for a feature whose ``require`` chain
+    //! needs dasImgui PLUS the modules at ``extra_module_roots`` (each gets its own
+    //! ``-load_module``, appended after dasImgui's so dependency order holds). A
+    //! relative ``feature_path`` starting with ``feature_prefix`` resolves under
+    //! ``feature_root`` (pass ``""``/``""`` to use dasImgui's default resolution).
+    //! This is how another package (e.g. dasImguiNodeEditor) drives its own app
+    //! without duplicating the spawn/port/headless/ready/shutdown machinery — the
+    //! extra-module config is threaded through args, not module globals.
     //!
     //! Port is always DEFAULT_LIVE_PORT + worker_index — sequential runs (no
     //! --worker-index in argv) get 9090; dastest's isolated mode brands each
@@ -631,16 +653,24 @@ def public with_imgui_app(feature_path : string;
     let port = DEFAULT_LIVE_PORT + playwright_worker_index()
     let ready_timeout_sec = DEFAULT_READY_TIMEOUT_SEC
     let test_timeout_sec = DEFAULT_TEST_TIMEOUT_SEC
-    let app_path = resolve_feature_path(feature_path)
+    let app_path = resolve_feature_path(feature_path, feature_root, feature_prefix)
     // -load_module points the spawned daslang-live at the dasImgui module so
     // the feature's `require imgui/...` chain resolves regardless of layout.
     // In CI dasImgui is in the standard module search path so this is a
-    // harmless duplicate; locally it's load-bearing.
+    // harmless duplicate; locally it's load-bearing. Extra roots follow, so a
+    // dependent module (e.g. node-editor, which requires dasImgui) loads after it.
     //
     // --live-port pins the spawned daslang-live's HTTP API to the same port
     // playwright's base_url targets, so daslang-live's single-instance-lock
     // keys off the same port playwright dials.
-    var argv <- [exe, "-load_module", dasimgui_module_root(), "--live-port={port}", app_path]
+    var argv <- [exe, "-load_module", dasimgui_module_root()]
+    argv |> reserve(length(argv) + length(extra_module_roots) * 2)
+    for (root in extra_module_roots) {
+        argv |> push("-load_module")
+        argv |> push(root)
+    }
+    argv |> push("--live-port={port}")
+    argv |> push(app_path)
     if (playwright_wants_headless()) {
         argv |> push("--")
         argv |> push("--headless")
