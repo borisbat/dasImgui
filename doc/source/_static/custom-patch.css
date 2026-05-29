@@ -4,7 +4,7 @@
  * Drop next to custom.css and load AFTER it:
  *   html_css_files = ['custom.css', 'custom-patch.css']
  *
- * Covers gaps G1–G11 documented in SPHINX_AUDIT.md.
+ * Covers theme gaps labelled G1–G11 inline below.
  * ────────────────────────────────────────────────────────────────── */
 
 /* G1 — bare links, no permanent underline */

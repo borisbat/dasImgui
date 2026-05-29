@@ -25,7 +25,7 @@ require imgui/imgui_visual_aids
 require imgui/imgui_widgets_builtin
 
 
-def document_module_imgui_boost_v2(root : string) {
+def document_module_imgui_boost_v2() {
     var mod = find_module("imgui_boost_v2")
     var groups <- array<DocGroup>(
         group_by_regex("Container macros",       mod, %regex~^(window|child|group|tab_bar|tab_item|menu_bar|menu|popup|modal|tree_node|collapsing_header)$%%),
@@ -38,7 +38,7 @@ def document_module_imgui_boost_v2(root : string) {
     document("Boost macro layer — DSL for declarative widget composition", mod, "imgui_boost_v2.rst", groups)
 }
 
-def document_module_imgui_boost_runtime(root : string) {
+def document_module_imgui_boost_runtime() {
     var mod = find_module("imgui_boost_runtime")
     var groups <- array<DocGroup>(
         group_by_regex("Widget state types",      mod, %regex~.*State(Float|Int|Float2|Float3|Float4|Int2|Int3|Int4)?$%%),
@@ -55,7 +55,7 @@ def document_module_imgui_boost_runtime(root : string) {
     document("Boost runtime — widget state structs, registry, and dispatcher", mod, "imgui_boost_runtime.rst", groups)
 }
 
-def document_module_imgui_widgets_builtin(root : string) {
+def document_module_imgui_widgets_builtin() {
     var mod = find_module("imgui_widgets_builtin")
     var groups <- array<DocGroup>(
         group_by_regex("Buttons",         mod, %regex~^(button|small_button|arrow_button|image_button|invisible_button|checkbox|radio_button)$%%),
@@ -75,7 +75,7 @@ def document_module_imgui_widgets_builtin(root : string) {
     document("Built-in widgets — inputs, selection, color, plots, output", mod, "imgui_widgets_builtin.rst", groups)
 }
 
-def document_module_imgui_containers_builtin(root : string) {
+def document_module_imgui_containers_builtin() {
     var mod = find_module("imgui_containers_builtin")
     var groups <- array<DocGroup>(
         group_by_regex("Windows",       mod, %regex~^(window|child|group|child_scroll_reenter|set_window_size|viewport_center|is_mouse_pos_valid)$%%),
@@ -89,7 +89,7 @@ def document_module_imgui_containers_builtin(root : string) {
     document("Built-in containers — windows, child regions, tabs, menus, popups", mod, "imgui_containers_builtin.rst", groups)
 }
 
-def document_module_imgui_id_builtin(root : string) {
+def document_module_imgui_id_builtin() {
     var mod = find_module("imgui_id_builtin")
     var groups <- array<DocGroup>(
         group_by_regex("ID stack",      mod, %regex~^(push_id|pop_id|with_id|with_path)$%%),
@@ -99,7 +99,7 @@ def document_module_imgui_id_builtin(root : string) {
     document("ID stack — push/pop, scoped, hashing", mod, "imgui_id_builtin.rst", groups)
 }
 
-def document_module_imgui_layout_builtin(root : string) {
+def document_module_imgui_layout_builtin() {
     var mod = find_module("imgui_layout_builtin")
     var groups <- array<DocGroup>(
         group_by_regex("Splits",        mod, %regex~^split_.*%%),
@@ -113,7 +113,7 @@ def document_module_imgui_layout_builtin(root : string) {
     document("Layout helpers — splits, columns, docking, spacing", mod, "imgui_layout_builtin.rst", groups)
 }
 
-def document_module_imgui_style_builtin(root : string) {
+def document_module_imgui_style_builtin() {
     var mod = find_module("imgui_style_builtin")
     var groups <- array<DocGroup>(
         group_by_regex("Style scope",   mod, %regex~^(with_style|with_color|with_var)$%%),
@@ -124,7 +124,7 @@ def document_module_imgui_style_builtin(root : string) {
     document("Style helpers — colors, vars, push/pop, themes", mod, "imgui_style_builtin.rst", groups)
 }
 
-def document_module_imgui_visual_aids(root : string) {
+def document_module_imgui_visual_aids() {
     var mod = find_module("imgui_visual_aids")
     var groups <- array<DocGroup>(
         group_by_regex("Highlight overlay", mod, %regex~^(imgui_highlight|imgui_auto_highlight|highlight|paint_highlight).*%%),
@@ -140,7 +140,7 @@ def document_module_imgui_visual_aids(root : string) {
     document("Visual aids — tutorial-mode overlays, mouse trail, narration, key HUD", mod, "imgui_visual_aids.rst", groups)
 }
 
-def document_module_imgui_playwright(root : string) {
+def document_module_imgui_playwright() {
     var mod = find_module("imgui_playwright")
     var groups <- array<DocGroup>(
         group_by_regex("App lifecycle",     mod, %regex~^(with_imgui_app|launch_imgui_app|shutdown|with_recording_app).*%%),
@@ -155,7 +155,7 @@ def document_module_imgui_playwright(root : string) {
     document("Playwright — block-form test harness for daslang-live + dasImgui apps", mod, "imgui_playwright.rst", groups)
 }
 
-def document_module_imgui_live(root : string) {
+def document_module_imgui_live() {
     var mod = [find_module("imgui_live"), find_module("imgui_live_core")]
     var groups <- array<DocGroup>(
         group_by_regex("Lifecycle",           mod, %regex~^(live_imgui_init|live_imgui_shutdown|live_imgui_.*)$%%),
@@ -170,7 +170,7 @@ def document_module_imgui_live(root : string) {
               mod, "imgui_live.rst", groups)
 }
 
-def document_module_imgui_transport(root : string) {
+def document_module_imgui_transport() {
     var mod = find_module("imgui_transport")
     var groups <- array<DocGroup>(
         group_by_regex("Transport construction", mod, %regex~^(live_api_transport|make_transport|with_transport)$%%),
@@ -201,17 +201,16 @@ def main {
         topic_root = "{dasimgui_doc}/generated"
         handmade_root = dasimgui_doc
 
-        let root = topic_root
-        document_module_imgui_boost_v2(root)
-        document_module_imgui_boost_runtime(root)
-        document_module_imgui_widgets_builtin(root)
-        document_module_imgui_containers_builtin(root)
-        document_module_imgui_id_builtin(root)
-        document_module_imgui_layout_builtin(root)
-        document_module_imgui_style_builtin(root)
-        document_module_imgui_visual_aids(root)
-        document_module_imgui_playwright(root)
-        document_module_imgui_live(root)
-        document_module_imgui_transport(root)
+        document_module_imgui_boost_v2()
+        document_module_imgui_boost_runtime()
+        document_module_imgui_widgets_builtin()
+        document_module_imgui_containers_builtin()
+        document_module_imgui_id_builtin()
+        document_module_imgui_layout_builtin()
+        document_module_imgui_style_builtin()
+        document_module_imgui_visual_aids()
+        document_module_imgui_playwright()
+        document_module_imgui_live()
+        document_module_imgui_transport()
     }
 }
