@@ -59,6 +59,21 @@ DAS_MOD_API void das_imgui_synth_input_char ( uint32_t cp ) {
     ImGui::GetIO().AddInputCharacter(cp);
 }
 
+// Detach (false) / reattach (true) the GLFW backend's input callbacks for the
+// current-context window, so when imgui_live_core disables user control real
+// mouse/keyboard stop reaching ImGui AT THE SOURCE (no callbacks fire) — closing
+// the race a per-frame event-queue clear can't win. Synth IO uses io.Add*Event
+// directly and is unaffected. No-op when there is no current GLFW window (headless).
+// Caller toggles only on a state change, honoring ImGui_ImplGlfw's
+// InstalledCallbacks invariant (Install asserts when already installed, and
+// vice-versa). Must run on the render/main thread — glfwSet*Callback requires it.
+DAS_MOD_API void das_imgui_set_real_input_callbacks ( bool enabled ) {
+    GLFWwindow * w = glfwGetCurrentContext();
+    if ( !w ) return;
+    if ( enabled ) ImGui_ImplGlfw_InstallCallbacks(w);
+    else ImGui_ImplGlfw_RestoreCallbacks(w);
+}
+
 // making custom builtin module
 class Module_imgui_app : public Module {
     ModuleLibrary lib;
@@ -97,6 +112,10 @@ public:
             SideEffects::worstDefault, "ImGui_ImplGlfw_Shutdown");
         addExtern<DAS_BIND_FUN(ImGui_ImplGlfw_NewFrame)>(*this,lib,"ImGui_ImplGlfw_NewFrame",
             SideEffects::worstDefault, "ImGui_ImplGlfw_NewFrame");
+        // Detach/reattach the backend's GLFW input callbacks at runtime — used by
+        // imgui_live_core to suppress real input AT THE SOURCE when user control is off.
+        addExtern<DAS_BIND_FUN(das_imgui_set_real_input_callbacks)>(*this,lib,"imgui_set_real_input_callbacks",
+            SideEffects::worstDefault, "das_imgui_set_real_input_callbacks");
         addExtern<DAS_BIND_FUN(ImGui_ImplGlfw_MouseButtonCallback)>(*this,lib,"ImGui_ImplGlfw_MouseButtonCallback",
             SideEffects::worstDefault, "ImGui_ImplGlfw_MouseButtonCallback");
         addExtern<DAS_BIND_FUN(ImGui_ImplGlfw_ScrollCallback)>(*this,lib,"ImGui_ImplGlfw_ScrollCallback",
@@ -148,6 +167,7 @@ public:
         tw << "DAS_MOD_API void das_imgui_synth_mouse_wheel ( float dx, float dy );\n";
         tw << "DAS_MOD_API void das_imgui_synth_key ( int key, bool down );\n";
         tw << "DAS_MOD_API void das_imgui_synth_input_char ( uint32_t cp );\n";
+        tw << "DAS_MOD_API void das_imgui_set_real_input_callbacks ( bool enabled );\n";
         return ModuleAotType::cpp;
     }
 };

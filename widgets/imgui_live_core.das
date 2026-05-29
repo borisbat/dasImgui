@@ -9,7 +9,7 @@ module imgui_live_core shared public
 // per-frame imgui_synth_tick. Re-exported by imgui_live.
 
 require imgui public
-require imgui_app
+require imgui_app           // imgui_set_real_input_callbacks — detach/reattach GLFW input at source
 require daslib/json public
 require daslib/json_boost public
 require daslib/utf8_utils
@@ -55,10 +55,15 @@ var public synth_click_action : int   = 0    // 1 = press, 0 = release
 var public synth_click_t      : float = -1.0
 var private synth_held_buttons : table<int>
 
-// When false (set via the `set_user_control` live command), imgui_synth_tick drops
-// the GLFW backend's per-frame input queue so ONLY synth IO drives the UI — the real
-// mouse/keyboard can't bleed through and race the synth timeline.
+// When false (set via the `set_user_control` live command), imgui_synth_tick detaches
+// the GLFW backend's input callbacks (and drops any queued input) so ONLY synth IO
+// drives the UI — the real mouse/keyboard can't reach ImGui and race the synth timeline.
 var private g_user_control : bool = true
+// Tracks whether the backend's GLFW input callbacks are currently attached, so
+// imgui_synth_tick toggles them only on a g_user_control transition (matching
+// ImGui_ImplGlfw's InstalledCallbacks invariant). True at startup: the windowed
+// host installs them via ImGui_ImplGlfw_InitForOpenGL(window, true).
+var private g_input_callbacks_installed : bool = true
 
 def private synth_cursor_pos(x, y : float) {
     mouse_cursor_x = x
@@ -297,11 +302,13 @@ struct UserControlArgs {
     @optional enabled : bool = true
 }
 
-[live_command(description="Toggle real user input. When disabled, imgui_synth_tick drops the GLFW backend's queued mouse/keyboard each frame so ONLY synth IO (imgui_mouse_*/imgui_key_*) drives the UI — no real-input bleed-through racing the synth timeline. Re-enable to hand control back. Requires apply_synth_io_override() in the loop. Args: enabled (bool)")]
-def set_user_control(input : JsonValue?) : JsonValue? {
-    let args = from_JV(input, type<UserControlArgs>)
-    g_user_control = args.enabled
-    if (args.enabled) {
+def public set_user_control_enabled(enabled : bool) {
+    //! Programmatic form of the `set_user_control` live command — toggle whether real
+    //! mouse/keyboard reach the UI. The actual GLFW-callback detach/reattach (source-level
+    //! suppression) happens on the next `imgui_synth_tick` transition, so this is safe to
+    //! call off the render thread.
+    g_user_control = enabled
+    if (enabled) {
         // Hand control back: synth must fully let go. `synth_cursor_owned` is
         // sticky, so imgui_synth_tick keeps re-asserting the synth cursor pos
         // every frame and the real mouse can't move it. Stop any playback,
@@ -322,6 +329,12 @@ def set_user_control(input : JsonValue?) : JsonValue? {
         var io & = unsafe(GetIO())
         io |> ClearInputKeys()
     }
+}
+
+[live_command(description="Toggle real user input. When disabled, imgui_synth_tick detaches the GLFW backend's input callbacks (and drops queued input) so ONLY synth IO (imgui_mouse_*/imgui_key_*) drives the UI — no real-input bleed-through racing the synth timeline. Re-enable to hand control back. Requires apply_synth_io_override() in the loop. Args: enabled (bool)")]
+def set_user_control(input : JsonValue?) : JsonValue? {
+    let args = from_JV(input, type<UserControlArgs>)
+    set_user_control_enabled(args.enabled)
     return JV((user_control = g_user_control))
 }
 
@@ -768,6 +781,20 @@ var private g_synth_warned_no_override : bool = false
 def public imgui_synth_tick() {
     //! Per-frame entry point — advance synth mouse/key timelines and re-assert held state. Call between the backend's ``*_NewFrame()`` and ``ImGui::NewFrame()``; no-op when no synth command has fired.
     g_synth_tick_run_count++
+    // Real-input suppression, applied at the GLFW SOURCE. We run here (not in the
+    // set_user_control command handler) because glfwSet*Callback must run on the
+    // render/main thread, and this tick does. On a g_user_control transition,
+    // detach/reattach the backend's input callbacks so real mouse/keyboard never
+    // reach ImGui's event queue at all — synth IO uses io.Add*Event directly and is
+    // unaffected. This closes the race a per-frame queue clear can't win (Windows
+    // dispatches some button messages outside the top-of-frame poll, e.g. during the
+    // vsync swap), which let real clicks occasionally still select. No-op in headless
+    // (no current GLFW window). The ClearEventsQueue below stays as belt-and-suspenders
+    // for whatever was queued on the transition frame itself.
+    if (g_user_control != g_input_callbacks_installed) {
+        imgui_set_real_input_callbacks(g_user_control)
+        g_input_callbacks_installed = g_user_control
+    }
     if (!g_user_control) {
         // Real input suppressed: drop everything the GLFW backend queued this frame
         // (mouse pos from ImGui_ImplGlfw_NewFrame, buttons/keys/char from the poll
