@@ -313,9 +313,12 @@ def set_user_control(input : JsonValue?) : JsonValue? {
         release_held_keys()
         synth_cursor_owned = false
     } else {
-        // Take over: release any real keys latched now — their release events
-        // would otherwise be dropped by the per-frame queue clear, leaving a
-        // stuck key. Synth-held keys (our own table) are re-asserted next tick.
+        // Take over: reset any real keys/mouse buttons latched right now —
+        // otherwise their release events get dropped by the per-frame queue
+        // clear, leaving ImGui with stuck input. ClearInputKeys() in imgui
+        // 1.90.6 also zeroes MouseDown[]/MousePos (imgui.cpp:1478), so this one
+        // call covers buttons too. Synth-held keys (our own table) re-assert
+        // next tick.
         var io & = unsafe(GetIO())
         io |> ClearInputKeys()
     }
