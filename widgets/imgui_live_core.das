@@ -55,6 +55,11 @@ var public synth_click_action : int   = 0    // 1 = press, 0 = release
 var public synth_click_t      : float = -1.0
 var private synth_held_buttons : table<int>
 
+// When false (set via the `set_user_control` live command), imgui_synth_tick drops
+// the GLFW backend's per-frame input queue so ONLY synth IO drives the UI — the real
+// mouse/keyboard can't bleed through and race the synth timeline.
+var private g_user_control : bool = true
+
 def private synth_cursor_pos(x, y : float) {
     mouse_cursor_x = x
     mouse_cursor_y = y
@@ -171,6 +176,30 @@ def imgui_mouse_move_to(input : JsonValue?) : JsonValue? {
     return JV((duration_ms = args.duration_ms))
 }
 
+struct MouseClickAtArgs {
+    x : float = 0.0
+    y : float = 0.0
+    @optional button    : int = 0
+    @optional travel_ms : int = 250
+}
+
+[live_command(description="Atomic click: travel to (x,y) then press+release `button` (0=left,1=right,2=middle) as one self-contained timeline via ImGui bypass — no separate move/click round-trips to interleave with real input. Args: x, y, button?, travel_ms?")]
+def imgui_mouse_click_at(input : JsonValue?) : JsonValue? {
+    let args = from_JV(input, type<MouseClickAtArgs>)
+    let travel = max(1, args.travel_ms)
+    reset_mouse_timeline()
+    mouse_timeline |> reserve(5)
+    mouse_timeline |> push(MouseEvent(t_ms = 0,            kind = MEKind.move,   x = mouse_cursor_x,   y = mouse_cursor_y))
+    mouse_timeline |> push(MouseEvent(t_ms = travel,       kind = MEKind.move,   x = args.x,           y = args.y))
+    mouse_timeline |> push(MouseEvent(t_ms = travel + 200, kind = MEKind.button, button = args.button, action = 1))
+    mouse_timeline |> push(MouseEvent(t_ms = travel + 300, kind = MEKind.button, button = args.button, action = 0))
+    mouse_timeline |> push(MouseEvent(t_ms = travel + 500, kind = MEKind.move,   x = args.x,           y = args.y))
+    mouse_play_start = get_uptime()
+    mouse_playing    = true
+    warn_if_synth_tick_missing("imgui_mouse_click_at")
+    return JV((x = args.x, y = args.y, button = args.button, queued = length(mouse_timeline)))
+}
+
 struct MouseEventWire {
     @optional t_ms   : int    = 0
     kind             : string = "move"
@@ -262,6 +291,40 @@ def imgui_mouse_status(input : JsonValue?) : JsonValue? {
         held_count   = length(synth_held_buttons),
         cursor_owned = synth_cursor_owned
     ))
+}
+
+struct UserControlArgs {
+    @optional enabled : bool = true
+}
+
+[live_command(description="Toggle real user input. When disabled, imgui_synth_tick drops the GLFW backend's queued mouse/keyboard each frame so ONLY synth IO (imgui_mouse_*/imgui_key_*) drives the UI — no real-input bleed-through racing the synth timeline. Re-enable to hand control back. Requires apply_synth_io_override() in the loop. Args: enabled (bool)")]
+def set_user_control(input : JsonValue?) : JsonValue? {
+    let args = from_JV(input, type<UserControlArgs>)
+    g_user_control = args.enabled
+    if (args.enabled) {
+        // Hand control back: synth must fully let go. `synth_cursor_owned` is
+        // sticky, so imgui_synth_tick keeps re-asserting the synth cursor pos
+        // every frame and the real mouse can't move it. Stop any playback,
+        // release held inputs, then drop ownership (release_* re-arm it, so
+        // clear last).
+        reset_mouse_timeline()
+        release_held_buttons()
+        reset_key_timeline()
+        release_held_keys()
+        synth_cursor_owned = false
+    } else {
+        // Take over: release any real keys latched now — their release events
+        // would otherwise be dropped by the per-frame queue clear, leaving a
+        // stuck key. Synth-held keys (our own table) are re-asserted next tick.
+        var io & = unsafe(GetIO())
+        io |> ClearInputKeys()
+    }
+    return JV((user_control = g_user_control))
+}
+
+def public user_control_enabled() : bool {
+    //! False when ``set_user_control`` has disabled real input — :ref:`imgui_synth_tick <function-imgui_live_core_imgui_synth_tick>` is dropping the backend input queue each frame so synth fully owns IO.
+    return g_user_control
 }
 
 def private advance_mouse_timeline() {
@@ -702,6 +765,14 @@ var private g_synth_warned_no_override : bool = false
 def public imgui_synth_tick() {
     //! Per-frame entry point — advance synth mouse/key timelines and re-assert held state. Call between the backend's ``*_NewFrame()`` and ``ImGui::NewFrame()``; no-op when no synth command has fired.
     g_synth_tick_run_count++
+    if (!g_user_control) {
+        // Real input suppressed: drop everything the GLFW backend queued this frame
+        // (mouse pos from ImGui_ImplGlfw_NewFrame, buttons/keys/char from the poll
+        // callbacks) BEFORE the synth timeline re-queues its own events below, so
+        // NewFrame() drains synth-only. Toggled by the `set_user_control` command.
+        var io & = unsafe(GetIO())
+        io |> ClearEventsQueue()
+    }
     advance_mouse_timeline()
     advance_key_timeline()
     let synth_armed = synth_cursor_owned || !empty(synth_held_keys) || !empty(synth_held_buttons)
