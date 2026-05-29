@@ -820,6 +820,20 @@ def public imgui_synth_tick() {
     }
 }
 
+[before_reload]
+def reattach_real_input_before_reload() {
+    // Live reload reuses the ImGui context (live_imgui_init skips InitForOpenGL on
+    // reload) but resets module globals — the new program starts with g_user_control
+    // and g_input_callbacks_installed back at their `true` defaults. If real input was
+    // detached at reload time, the callbacks would stay restored while the new program
+    // believes they're installed → real input permanently dead until restart. Re-attach
+    // now so the handoff state matches the post-reload defaults (installed + enabled).
+    if (!g_input_callbacks_installed) {
+        imgui_set_real_input_callbacks(true)
+        g_input_callbacks_installed = true
+    }
+}
+
 def public synth_tick_run_count() : int {
     //! Number of times :ref:`imgui_synth_tick <function-imgui_live_core_imgui_synth_tick>` has run this process. Zero means ``apply_synth_io_override()`` has never fired — any queued synth event will silently no-op.
     return g_synth_tick_run_count
