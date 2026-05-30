@@ -46,8 +46,8 @@ require imgui/imgui_visual_aids
 // DRIVE (when running live):
 //   curl -X POST -d '{"name":"imgui_snapshot"}'                                                       localhost:9090/command
 //   curl -X POST -d '{"name":"imgui_click","args":{"target":"STATE_WIN/SAVE_BTN"}}'                    localhost:9090/command
-//   curl -X POST -d '{"name":"imgui_set","args":{"target":"STATE_WIN/SPEED","value":7}}'               localhost:9090/command
-//   curl -X POST -d '{"name":"imgui_set","args":{"target":"STATE_WIN/STATUS_TEXT","value":"saved"}}'   localhost:9090/command
+//   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"STATE_WIN/SPEED","value":7}}'               localhost:9090/command
+//   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"STATE_WIN/STATUS_TEXT","value":"saved"}}'   localhost:9090/command
 // =============================================================================
 
 [export]
@@ -106,7 +106,7 @@ def update() {
 
         // ---- text_show: app-side value mirror ----
         // text_show is the read-only mirror of text_input. The state's
-        // .value string is what gets displayed; imgui_set can drive it
+        // .value string is what gets displayed; imgui_force_set can drive it
         // from outside, and the snapshot exposes it under the standard
         // payload.value field — so integration tests can assert against
         // computed status strings the same way they assert slider values.
@@ -114,7 +114,7 @@ def update() {
         text_show(STATUS_TEXT)
 
         // The bump button writes a computed string into STATUS_TEXT.value.
-        // Both `:= "..."` (clone-string) and external imgui_set work; the
+        // Both `:= "..."` (clone-string) and external imgui_force_set work; the
         // snapshot reflects whichever ran most recently.
         if (button(BUMP_STATUS, (text = "bump status"))) {
             STATUS_TEXT.value := "saved at frame {get_uptime()}"

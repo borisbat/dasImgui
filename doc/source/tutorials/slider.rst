@@ -109,16 +109,16 @@ display it above the slider.
 Driving from outside
 ====================
 
-Every slider exposes the same telemetry channel — ``imgui_set`` writes
+Every slider exposes the same telemetry channel — ``imgui_force_set`` writes
 ``state.pending_value`` which the next frame consumes:
 
 .. code-block:: bash
 
    # Scalar:
-   curl -X POST -d '{"name":"imgui_set","args":{"target":"SLIDER_WIN/S_FLOAT","value":0.8}}' \
+   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"SLIDER_WIN/S_FLOAT","value":0.8}}' \
         localhost:9090/command
    # Vector — one number per component:
-   curl -X POST -d '{"name":"imgui_set","args":{"target":"SLIDER_WIN/S_VEC3","value":[1.0,2.0,3.0]}}' \
+   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"SLIDER_WIN/S_VEC3","value":[1.0,2.0,3.0]}}' \
         localhost:9090/command
 
 The dispatcher (``[widget_dispatch]`` on ``SliderStateFloat`` and
@@ -162,7 +162,7 @@ See :ref:`tutorial_edit_external_tour`.
 
    Features-side demo: ``examples/features/inputs_slider.das`` /
    ``examples/features/edit_vsliders.das`` — every slider in one window,
-   useful for ``imgui_set`` smoke testing.
+   useful for ``imgui_force_set`` smoke testing.
 
    Sibling tutorial: :ref:`tutorial_drag`.
 

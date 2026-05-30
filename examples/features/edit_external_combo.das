@@ -10,7 +10,7 @@ require daslib/safe_addr
 //          C-string-pointers Combo overload (no per-frame zero-separated
 //          buffer packing — daslang `string` already carries the trailing
 //          null). Payload is {value: N} where N is the selected index.
-// DRIVE:   curl -X POST -d '{"name":"imgui_set","args":{"target":"MAIN_WIN/COMBO_THEME","value":2}}' \
+// DRIVE:   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"MAIN_WIN/COMBO_THEME","value":2}}' \
 //              localhost:9090/command
 // STANDALONE: daslang.exe modules/dasImgui/examples/features/edit_external_combo.das
 // HEADLESS:   daslang.exe modules/dasImgui/examples/features/edit_external_combo.das -- --headless --headless-frames=60

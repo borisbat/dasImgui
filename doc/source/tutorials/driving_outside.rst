@@ -8,11 +8,12 @@ Every boost widget that previous tutorials wrote registers a path in
 the telemetry tree (``DRIVE_WIN/USER``, ``DRIVE_WIN/SPEED``,
 ``DRIVE_WIN/RUN_BTN`` ...). That path is **also** an HTTP endpoint:
 the boost layer ships ``[live_command]`` handlers (``imgui_snapshot``,
-``imgui_set``, ``imgui_click``, ``imgui_open``, ``imgui_close``,
-``imgui_focus``) that look up the target in the registry and queue the
-matching pending field on the widget's state struct. Next frame, the
-render function consumes the pending field and ImGui sees the effect
-as if a real input device drove it.
+``imgui_force_set``, ``imgui_click``, ``imgui_open``, ``imgui_close``,
+``imgui_focus``) that look up the target in the registry. ``imgui_click``
+fires a **real synthetic mouse click** at the widget's center;
+``imgui_force_set`` / ``imgui_open`` / ``imgui_close`` write the matching
+field on the widget's state struct directly. Either way ImGui sees the
+effect as if a real input device — or an external editor — drove it.
 
 This tutorial flips the point of view: instead of writing the daslang
 side, write the **driver** — a curl / Python / Bash script that issues
@@ -21,8 +22,9 @@ user could perform via mouse/keyboard has a curl equivalent, and the
 two surfaces use one in-memory model.
 
 Source: ``examples/tutorial/driving_outside.das`` — a small target app
-exposing five widget kinds. The recording is **driven entirely by
-JSON commands** — no synthesized mouse moves into widget centers.
+exposing five widget kinds. The recording is **driven entirely by JSON
+commands**: value writes and container toggles mutate state directly
+(no mouse), while ``imgui_click`` fires a real synthetic click.
 
 ************
 Walkthrough
@@ -42,22 +44,26 @@ Walkthrough
 The command surface
 ===================
 
-Three dispatch levels, in order of decreasing abstraction:
+Two kinds of command — **faithful input** (does what a user does) and
+**bypass** (does what a user can't):
 
-* **L1 — synth IO**: ``imgui_mouse_pos``, ``imgui_mouse_button``,
-  ``imgui_mouse_play``, ``imgui_key_press``, ``imgui_key_type``. The
-  driver pretends to be a mouse or keyboard, feeding events into the
-  ImGui input queue. Used by ``imgui_playwright`` for cursor-visible
-  recordings.
-* **L2 — semantic actions on registered widgets**: ``imgui_click``,
-  ``imgui_focus``. The framework looks up the widget by path and
-  queues ``state.pending_click = true`` (or the equivalent). Whatever
-  the widget's render function would do on a real click happens next
-  frame. No bbox lookup, no cursor motion.
-* **L3 — value writes**: ``imgui_set``. Same lookup, queues
-  ``state.has_pending = true`` + ``state.pending_value = ...``. The
-  render function consumes the pending value and submits it to ImGui
-  on the next frame.
+* **Raw synth IO** (faithful): ``imgui_mouse_pos``,
+  ``imgui_mouse_button``, ``imgui_mouse_play``, ``imgui_key_press``,
+  ``imgui_key_type``. The driver pretends to be a mouse or keyboard,
+  feeding events into the ImGui input queue. Used by ``imgui_playwright``
+  for cursor-visible recordings.
+* **Click a widget by name** (faithful): ``imgui_click``,
+  ``imgui_focus``. ``imgui_click`` resolves the widget by path (or
+  hex_id), warps to its center, and presses/releases through ImGui's
+  own input path — a real click, so the widget behaves exactly as a
+  user click would (it errors if the target isn't rendered this frame).
+  ``imgui_focus`` forces keyboard focus. No trajectory to script, but
+  the widget must be on screen.
+* **Write a value directly** (bypass): ``imgui_force_set``. The
+  framework looks up the widget and queues ``state.has_pending = true``
+  + ``state.pending_value = ...``; the render function submits it next
+  frame. Does what a click can't — an exact value, an off-screen or
+  inactive widget.
 
 Plus the read side and the container channel:
 
@@ -67,10 +73,11 @@ Plus the read side and the container channel:
   ``state.pending_close`` on container widgets (popups, closable
   windows, tabs, tree nodes).
 
-Always L2/L3 first — they're race-free under the framework's
-per-frame consumption rule. Drop to L1 only when there's no L2
-counterpart (drag along a custom trajectory, paste a long string into
-a focused input, sustain a chord, ...).
+Prefer ``imgui_click`` for clicks and ``imgui_force_set`` for values —
+the first is a faithful click, the second a deterministic value write.
+Drop to raw synth IO only when there's no higher-level counterpart
+(drag along a custom trajectory, paste a long string into a focused
+input, sustain a chord, ...).
 
 imgui_snapshot — read the world
 ===============================
@@ -120,29 +127,29 @@ Use it to:
 * check ``payload`` for current state (test assertions);
 * read ``hex_id`` for fallback dispatch when the path isn't stable.
 
-imgui_set — value writes
-========================
+imgui_force_set — value writes
+==============================
 
-``imgui_set`` is the universal value-write endpoint — slider, checkbox,
+``imgui_force_set`` is the universal value-write endpoint — slider, checkbox,
 combo, color, text input, dock-window position. Type-dispatched on the
 value's JSON shape:
 
 .. code-block:: bash
 
    # string into a text input
-   curl -X POST -d '{"name":"imgui_set","args":{"target":"DRIVE_WIN/USER","value":"Alice"}}' \
+   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"DRIVE_WIN/USER","value":"Alice"}}' \
         localhost:9090/command
 
    # int into a slider
-   curl -X POST -d '{"name":"imgui_set","args":{"target":"DRIVE_WIN/SPEED","value":7}}' \
+   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"DRIVE_WIN/SPEED","value":7}}' \
         localhost:9090/command
 
    # int into a combo (selected index)
-   curl -X POST -d '{"name":"imgui_set","args":{"target":"DRIVE_WIN/PRESET","value":2}}' \
+   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"DRIVE_WIN/PRESET","value":2}}' \
         localhost:9090/command
 
    # array-of-floats into a color picker
-   curl -X POST -d '{"name":"imgui_set","args":{"target":"DRIVE_WIN/TINT","value":[0.2,0.7,0.4]}}' \
+   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"DRIVE_WIN/TINT","value":[0.2,0.7,0.4]}}' \
         localhost:9090/command
 
 Under the hood: the registered dispatcher for the widget's state struct
@@ -154,20 +161,23 @@ its own ``UpdateValue`` path.
 imgui_click — fire a click
 ==========================
 
-``imgui_click`` doesn't synthesize a mouse event — it sets
-``state.pending_click = true`` on the registered ``ClickState`` (or its
-equivalent on selectable / menu_item):
+``imgui_click`` is a **real synthetic mouse click**: it resolves the
+target to its on-screen bbox, warps the cursor to the center, and
+presses then releases the button across one frame — through ImGui's own
+input path, so the widget can't tell it apart from a hardware click:
 
 .. code-block:: bash
 
    curl -X POST -d '{"name":"imgui_click","args":{"target":"DRIVE_WIN/RUN_BTN"}}' \
         localhost:9090/command
 
-The button's render function returns ``true`` next frame just like a
-real click would, the ``click_count`` increments, the daslang side
-sees both the inline ``if (button(...))`` and ``RUN_BTN.clicked /
-RUN_BTN.click_count`` as expected. No mouse position has to land on
-the button.
+The button's render function returns ``true``, ``click_count``
+increments, and the daslang side sees both the inline ``if
+(button(...))`` and ``RUN_BTN.clicked / RUN_BTN.click_count`` as
+expected. Pass ``"button": 1`` for a right-click (context menus), ``2``
+for middle. Because it's a real click, the target must be rendered this
+frame — clicking an unrendered widget returns an error (use
+``imgui_force_set`` to drive a widget that isn't on screen).
 
 imgui_open / imgui_close — containers
 =====================================
@@ -197,13 +207,16 @@ Every command runs the same path:
 2. Routes by ``name`` to the registered ``[live_command]`` handler.
 3. Handler looks up ``target`` in the registry's path map (or hex_id
    reverse map).
-4. Mutates the matching state struct's pending field; returns
-   ``{"ok": true, ...}`` on the HTTP response.
-5. **Next frame** the script's ``update()`` runs; the widget's render
-   function sees the pending flag, applies it, ImGui responds, the
-   updated state is observable from the next ``imgui_snapshot``.
+4. Either spawns a synthetic-input coroutine (``imgui_click`` — warp +
+   press/release over a frame) or mutates the matching state struct's
+   pending field (``imgui_force_set`` / ``imgui_open`` / ``imgui_close``);
+   returns ``{"ok": true, ...}`` on the HTTP response.
+5. **Over the next frame(s)** the script's ``update()`` runs; ImGui
+   processes the synthetic input, or the render function applies the
+   pending field, and the updated state is observable from the next
+   ``imgui_snapshot``.
 
-So **commands are one-frame-delayed by design** — there's no
+So **commands settle over the next frame or two by design** — there's no
 ambiguity about which frame's state corresponds to a given response.
 For test harnesses that need to read the result, the canonical pattern
 is: command, then ``await_quiescent`` (waits a frame), then
@@ -227,21 +240,21 @@ A complete drive sequence for this tutorial's app:
    curl -X POST -d '{"name":"imgui_snapshot"}' localhost:9090/command
 
    # Write each widget kind
-   curl -X POST -d '{"name":"imgui_set","args":{"target":"DRIVE_WIN/USER","value":"Alice"}}' \
+   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"DRIVE_WIN/USER","value":"Alice"}}' \
         localhost:9090/command
-   curl -X POST -d '{"name":"imgui_set","args":{"target":"DRIVE_WIN/SPEED","value":7}}' \
+   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"DRIVE_WIN/SPEED","value":7}}' \
         localhost:9090/command
-   curl -X POST -d '{"name":"imgui_set","args":{"target":"DRIVE_WIN/PRESET","value":2}}' \
+   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"DRIVE_WIN/PRESET","value":2}}' \
         localhost:9090/command
    curl -X POST -d '{"name":"imgui_click","args":{"target":"DRIVE_WIN/RUN_BTN"}}' \
         localhost:9090/command
    curl -X POST -d '{"name":"imgui_open","args":{"target":"DRIVE_WIN/STATUS_POPUP"}}' \
         localhost:9090/command
 
-The recording at the top of this page runs this exact sequence — no
-mouse moves, just JSON commands. Every effect you see in the APNG is
-the result of an ``imgui_set`` / ``imgui_click`` / ``imgui_open``
-flowing through the state-struct pending channel.
+The recording at the top of this page runs this exact sequence — just
+JSON commands. The value writes and container toggles flow through the
+state-struct pending channel with no mouse motion; the ``imgui_click``
+is a real synthetic click at the button's center.
 
 Next steps
 ==========
@@ -256,8 +269,8 @@ trail, cursor sprite, narrate, key HUD, focus rect — all
    Full source: :download:`examples/tutorial/driving_outside.das <../../../examples/tutorial/driving_outside.das>`
 
    Richer reference: ``examples/features/io_synth_text.das`` —
-   ``imgui_key_type`` chains a coroutine that pushes one ``AddInputCharactersUTF8``
-   per frame; the L1 keyboard layer in action.
+   ``imgui_key_type`` streams ``text`` as synthetic key + char events through the
+   key timeline; the synthetic keyboard layer in action.
 
    Snapshot contract: ``imgui_boost_runtime.das``'s
    ``g_serializers`` per-kind payload definitions.

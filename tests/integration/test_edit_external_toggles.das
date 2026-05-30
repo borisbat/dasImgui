@@ -26,12 +26,12 @@ def test_edit_external_toggles_smoke(t : T?) {
                          "{ident} registered")
         }
 
-        set_value(d, "MAIN_WIN/CB_GATE", JV(true))
+        force_set_value(d, "MAIN_WIN/CB_GATE", JV(true))
         t |> success(wait_for_bool_value(d, "MAIN_WIN/CB_GATE", "value", true, 300),
                      "edit_checkbox write true round-trips")
 
         // edit_checkbox_flags writes back the full int mask.
-        set_value(d, "MAIN_WIN/CBF_BIT0", JV(7))
+        force_set_value(d, "MAIN_WIN/CBF_BIT0", JV(7))
         t |> success(wait_for_int_value(d, "MAIN_WIN/CBF_BIT0", "value", 7, 300),
                      "edit_checkbox_flags write 7 round-trips")
     }

@@ -9,9 +9,9 @@ require imgui/imgui_harness
 // DRIVE:   curl -X POST -d '{"name":"imgui_snapshot"}' localhost:9090/command
 //          curl -X POST -d '{"name":"imgui_click","args":{"target":"MAIN_WIN/SAVE_BTN"}}' \
 //               localhost:9090/command
-//          curl -X POST -d '{"name":"imgui_set","args":{"target":"MAIN_WIN/OPT_A","value":true}}' \
+//          curl -X POST -d '{"name":"imgui_force_set","args":{"target":"MAIN_WIN/OPT_A","value":true}}' \
 //               localhost:9090/command
-//          curl -X POST -d '{"name":"imgui_set","args":{"target":"MAIN_WIN/DIFFICULTY","value":2}}' \
+//          curl -X POST -d '{"name":"imgui_force_set","args":{"target":"MAIN_WIN/DIFFICULTY","value":2}}' \
 //               localhost:9090/command
 // STANDALONE: daslang.exe modules/dasImgui/examples/features/triggers.das
 // HEADLESS:   daslang.exe modules/dasImgui/examples/features/triggers.das -- --headless --headless-frames=60

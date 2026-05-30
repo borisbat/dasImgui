@@ -13,7 +13,7 @@ require daslib/json_boost public
 //!     bin/Release/daslang.exe -project_root <dasimgui> \
 //!         <dasimgui>/tests/integration/record_driving_outside.das
 //!
-//! Every action is performed via L2/L3 live commands (imgui_set /
+//! Every action is performed via L2/L3 live commands (imgui_force_set /
 //! imgui_click / imgui_open / imgui_close) — no mouse moves into widget
 //! centers, since the whole point is to demonstrate the "no input device
 //! required" programming model.
@@ -34,19 +34,19 @@ def main {
             panic("{T_USER} never rendered — wrong app running?")
         }
 
-        // ---- Stage 1: imgui_set on a text input ----
-        say(app, "imgui_set on USER — string value into the input.", T_USER)
-        post_command(app, "imgui_set", JV((target = T_USER, value = "Alice")))
+        // ---- Stage 1: imgui_force_set on a text input ----
+        say(app, "imgui_force_set on USER — string value into the input.", T_USER)
+        post_command(app, "imgui_force_set", JV((target = T_USER, value = "Alice")))
         sleep(1500u)
 
-        // ---- Stage 2: imgui_set on a slider (numeric) ----
-        say(app, "imgui_set on SPEED — numeric value (queues pending_value).", T_SPEED)
-        post_command(app, "imgui_set", JV((target = T_SPEED, value = 7)))
+        // ---- Stage 2: imgui_force_set on a slider (numeric) ----
+        say(app, "imgui_force_set on SPEED — numeric value (queues pending_value).", T_SPEED)
+        post_command(app, "imgui_force_set", JV((target = T_SPEED, value = 7)))
         sleep(1500u)
 
-        // ---- Stage 3: imgui_set on a combo (selected index) ----
-        say(app, "imgui_set on PRESET — combo by selected index.", T_PRESET)
-        post_command(app, "imgui_set", JV((target = T_PRESET, value = 2)))
+        // ---- Stage 3: imgui_force_set on a combo (selected index) ----
+        say(app, "imgui_force_set on PRESET — combo by selected index.", T_PRESET)
+        post_command(app, "imgui_force_set", JV((target = T_PRESET, value = 2)))
         sleep(1500u)
 
         // ---- Stage 4: imgui_click on a button ----

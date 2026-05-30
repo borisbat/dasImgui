@@ -6,11 +6,11 @@ require imgui/imgui_harness
 // FEATURE: list_box — unified [container] for BeginListBox/EndListBox. The
 //          legacy items-array `[widget] def list_box` was dropped; the modern
 //          form is block-arg + user-emitted Selectable rows. Click writes
-//          state.value; imgui_set steers it from the test harness.
+//          state.value; imgui_force_set steers it from the test harness.
 // SHOWS:   list_box scope with Selectable-driven selection state, custom
 //          row rendering (icons in front of names), and dynamic content
 //          (filterable item list).
-// DRIVE:   curl -X POST -d '{"name":"imgui_set","args":{"target":"MAIN_WIN/LANG","value":3}}' \
+// DRIVE:   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"MAIN_WIN/LANG","value":3}}' \
 //               localhost:9090/command
 // STANDALONE: daslang.exe modules/dasImgui/examples/features/list_box.das
 // HEADLESS:   daslang.exe modules/dasImgui/examples/features/list_box.das -- --headless --headless-frames=60
@@ -55,7 +55,7 @@ def update() {
             picked = LANG_NAMES[LANG.value]
         }
         text("Picked: {picked} (idx {LANG.value})")
-        text("imgui_set value=N steers next-frame selection.")
+        text("imgui_force_set value=N steers next-frame selection.")
     }
 
     harness_end_frame()

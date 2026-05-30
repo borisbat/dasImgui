@@ -11,9 +11,9 @@ require daslib/json_boost public
 //! Driver script: record ``slider.apng`` against
 //! ``examples/tutorial/slider.das``. Tours four slider forms — scalar
 //! float, scalar int, vector float3, and vertical orientation — and
-//! drives one value via ``imgui_set`` to show the bidirectional channel.
+//! drives one value via ``imgui_force_set`` to show the bidirectional channel.
 
-let SET_DWELL_MS   = 2200u      //! 2.2s post-imgui_set dwell
+let SET_DWELL_MS   = 2200u      //! 2.2s post-imgui_force_set dwell
 
 def widget_bbox(var snap : JsonValue?; ident : string) : float4 {
     var b = snap?["globals"]?[ident]?["bbox"]
@@ -59,7 +59,7 @@ def main {
         move_to(app, p_int, 900)
         sleep(SETTLE_MS)
         say(app, "slider_int — same shape, integer steps. format = \"%d%%\" prints a percent suffix on the label.", T_INT)
-        post_command(app, "imgui_set", JV((target = T_INT, value = 7)))
+        post_command(app, "imgui_force_set", JV((target = T_INT, value = 7)))
         sleep(CLICK_DWELL_MS)
 
         // ---- Stage 3: vector float3 ----
@@ -71,16 +71,16 @@ def main {
         move_to(app, p_vmid, 900)
         sleep(SETTLE_MS)
         say(app, "vslider_float — same SliderStateFloat, vertical track. size = (width, height) specifies pixel geometry; everything else is identical.", T_VMID)
-        post_command(app, "imgui_set", JV((target = T_VMID, value = 0.75f)))
+        post_command(app, "imgui_force_set", JV((target = T_VMID, value = 0.75f)))
         sleep(CLICK_DWELL_MS)
 
-        // ---- Stage 5: drive from outside via imgui_set ----
-        post_command(app, "imgui_set", JV((target = T_FLOAT, value = 0.8f)))
+        // ---- Stage 5: drive from outside via imgui_force_set ----
+        post_command(app, "imgui_force_set", JV((target = T_FLOAT, value = 0.8f)))
         sleep(SET_DWELL_MS)
-        post_command(app, "imgui_set", JV((target = T_VEC3, value = (0.6f, -0.3f, 0.9f))))
+        post_command(app, "imgui_force_set", JV((target = T_VEC3, value = (0.6f, -0.3f, 0.9f))))
         sleep(SET_DWELL_MS)
         move_to(app, p_float, 900)
         sleep(SETTLE_MS)
-        say(app, "imgui_set writes state.pending_value; next frame consumes it. Same channel for scalar (number) or vector (per-component array).", T_FLOAT)
+        say(app, "imgui_force_set writes state.pending_value; next frame consumes it. Same channel for scalar (number) or vector (per-component array).", T_FLOAT)
     }
 }

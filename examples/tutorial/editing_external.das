@@ -43,7 +43,7 @@ require daslib/safe_addr
 // LIVE:       daslang-live modules/dasImgui/examples/tutorial/editing_external.das
 //
 // DRIVE (when running live):
-//   curl -X POST -d '{"name":"imgui_set","args":{"target":"EDITOR_WIN/VOL_SLIDER","value":0.8}}' \
+//   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"EDITOR_WIN/VOL_SLIDER","value":0.8}}' \
 //        localhost:9090/command
 //   curl -X POST -d '{"name":"imgui_snapshot"}' localhost:9090/command \
 //        | jq '.globals."EDITOR_WIN/VOL_SLIDER".payload.value'

@@ -129,7 +129,7 @@ index; the loop tags each row's ``selected`` from it:
 
 The ``ClickState`` rows carry only edge-trigger info — no per-row
 toggle persistence. The list_box's ``state.value`` is the single
-source of truth, so ``imgui_set`` on the list_box target works the
+source of truth, so ``imgui_force_set`` on the list_box target works the
 same as a combo.
 
 Driving from outside
@@ -138,13 +138,13 @@ Driving from outside
 .. code-block:: bash
 
    # combo / combo_getter — int value (the chosen index)
-   curl -X POST -d '{"name":"imgui_set","args":{"target":"DS_WIN/D_FRUIT","value":2}}' \
+   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"DS_WIN/D_FRUIT","value":2}}' \
         localhost:9090/command
    # list_box single-select — int value (the chosen row)
-   curl -X POST -d '{"name":"imgui_set","args":{"target":"DS_WIN/D_SHIRT","value":3}}' \
+   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"DS_WIN/D_SHIRT","value":3}}' \
         localhost:9090/command
    # selectable multi-select — bool per row (use the indexed IDENT)
-   curl -X POST -d '{"name":"imgui_set","args":{"target":"DS_WIN/D_TAG[0]","value":true}}' \
+   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"DS_WIN/D_TAG[0]","value":true}}' \
         localhost:9090/command
 
 When to use which
@@ -169,7 +169,7 @@ combo or list_box.
    Full source: :download:`examples/tutorial/dropdown_select.das <../../../examples/tutorial/dropdown_select.das>`
 
    Features-side demo: ``examples/features/inputs_choice.das`` —
-   combo + list_box in one window for ``imgui_set`` smoke testing.
+   combo + list_box in one window for ``imgui_force_set`` smoke testing.
 
    Sibling tutorials: :ref:`tutorial_toggles`,
    :ref:`tutorial_selectable_hover` (hover-only variant of

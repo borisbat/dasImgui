@@ -11,9 +11,9 @@ require imgui/imgui_harness
 // DRIVE:   curl -X POST -d '{"name":"imgui_snapshot"}' localhost:9090/command
 //          curl -X POST -d '{"name":"imgui_click","args":{"target":"MAIN_WIN/SAVE_BTN"}}' \
 //               localhost:9090/command
-//          curl -X POST -d '{"name":"imgui_set","args":{"target":"MAIN_WIN/SPEED","value":7}}' \
+//          curl -X POST -d '{"name":"imgui_force_set","args":{"target":"MAIN_WIN/SPEED","value":7}}' \
 //               localhost:9090/command
-//          curl -X POST -d '{"name":"imgui_set","args":{"target":"MAIN_WIN/VOLUME","value":0.5}}' \
+//          curl -X POST -d '{"name":"imgui_force_set","args":{"target":"MAIN_WIN/VOLUME","value":0.5}}' \
 //               localhost:9090/command
 // STANDALONE: daslang.exe modules/dasImgui/examples/features/foundation.das
 // LIVE:       daslang-live modules/dasImgui/examples/features/foundation.das

@@ -8,9 +8,9 @@ require imgui/imgui_harness
 //          unified onto BeginListBox/EndListBox in the boost scope-wrappers
 //          pass; body emits per-item Selectables, click writes state.value.
 // SHOWS:   combo (items-array sugar) / list_box (block-arg + Selectable)
-// DRIVE:   curl -X POST -d '{"name":"imgui_set","args":{"target":"MAIN_WIN/FRUIT","value":2}}' \
+// DRIVE:   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"MAIN_WIN/FRUIT","value":2}}' \
 //               localhost:9090/command
-//          curl -X POST -d '{"name":"imgui_set","args":{"target":"MAIN_WIN/SHIRT_SIZE","value":1}}' \
+//          curl -X POST -d '{"name":"imgui_force_set","args":{"target":"MAIN_WIN/SHIRT_SIZE","value":1}}' \
 //               localhost:9090/command
 // STANDALONE: daslang.exe modules/dasImgui/examples/features/inputs_choice.das
 // HEADLESS:   daslang.exe modules/dasImgui/examples/features/inputs_choice.das -- --headless --headless-frames=60
@@ -68,7 +68,7 @@ def update() {
         text("shirt size index = {SHIRT_SIZE.value}")
 
         spacing()
-        text("imgui_set with target=MAIN_WIN/FRUIT, value=N jumps to N-th item next frame")
+        text("imgui_force_set with target=MAIN_WIN/FRUIT, value=N jumps to N-th item next frame")
     }
 
     harness_end_frame()

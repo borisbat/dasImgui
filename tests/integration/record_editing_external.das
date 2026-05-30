@@ -17,10 +17,10 @@ require daslib/json_boost public
 //!   1. edit_slider_float -- drag along bbox
 //!   2. edit_input_int -- focus + key_type
 //!   3. edit_checkbox -- click
-//!   4. edit_drag_float3 -- imgui_set vector
-//!   5. edit_color_edit3 -- imgui_set float3
-//!   6. edit_combo -- imgui_set int
-//!   7. edit_slider_angle -- imgui_set radians
+//!   4. edit_drag_float3 -- imgui_force_set vector
+//!   5. edit_color_edit3 -- imgui_force_set float3
+//!   6. edit_combo -- imgui_force_set int
+//!   7. edit_slider_angle -- imgui_force_set radians
 
 let RESULT_MS  = 2000u
 let TAIL_MS    = 1500u
@@ -94,34 +94,34 @@ def main {
         post_command(app, "imgui_mouse_play", JV((events = check_events)))
         sleep(RESULT_MS)
 
-        // ---- Stage 4: edit_drag_float3 via imgui_set ----
+        // ---- Stage 4: edit_drag_float3 via imgui_force_set ----
         move_to(app, p_pos, 900)
         sleep(SETTLE_MS)
-        say(app, "edit_drag_float3 -- vector write via imgui_set + unsafe(reinterpret).", "EDITOR_WIN/POS_DRAG")
-        post_command(app, "imgui_set", JV((target = "EDITOR_WIN/POS_DRAG",
+        say(app, "edit_drag_float3 -- vector write via imgui_force_set + unsafe(reinterpret).", "EDITOR_WIN/POS_DRAG")
+        post_command(app, "imgui_force_set", JV((target = "EDITOR_WIN/POS_DRAG",
                                            value = float3(1.5f, 2.5f, 3.5f))))
         sleep(RESULT_MS)
 
-        // ---- Stage 5: edit_color_edit3 via imgui_set ----
+        // ---- Stage 5: edit_color_edit3 via imgui_force_set ----
         move_to(app, p_color, 900)
         sleep(SETTLE_MS)
         say(app, "edit_color_edit3 -- float3 round-trips into the swatch.", "EDITOR_WIN/ACCENT_COLOR")
-        post_command(app, "imgui_set", JV((target = "EDITOR_WIN/ACCENT_COLOR",
+        post_command(app, "imgui_force_set", JV((target = "EDITOR_WIN/ACCENT_COLOR",
                                            value = float3(0.35f, 0.70f, 0.90f))))
         sleep(RESULT_MS)
 
-        // ---- Stage 6: edit_combo via imgui_set ----
+        // ---- Stage 6: edit_combo via imgui_force_set ----
         move_to(app, p_combo, 900)
         sleep(SETTLE_MS)
         say(app, "edit_combo -- pick a preset by index (popup item bboxes need a click first).", "EDITOR_WIN/QUALITY_COMBO")
-        post_command(app, "imgui_set", JV((target = "EDITOR_WIN/QUALITY_COMBO", value = 2)))
+        post_command(app, "imgui_force_set", JV((target = "EDITOR_WIN/QUALITY_COMBO", value = 2)))
         sleep(RESULT_MS)
 
-        // ---- Stage 7: edit_slider_angle via imgui_set ----
+        // ---- Stage 7: edit_slider_angle via imgui_force_set ----
         move_to(app, p_angle, 900)
         sleep(SETTLE_MS)
         say(app, "edit_slider_angle -- radians under the hood; UI shows degrees.", "EDITOR_WIN/ANGLE_SLIDER")
-        post_command(app, "imgui_set", JV((target = "EDITOR_WIN/ANGLE_SLIDER", value = 1.0f)))
+        post_command(app, "imgui_force_set", JV((target = "EDITOR_WIN/ANGLE_SLIDER", value = 1.0f)))
         sleep(RESULT_MS)
         sleep(TAIL_MS)
     }

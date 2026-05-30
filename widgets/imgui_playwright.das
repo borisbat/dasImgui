@@ -89,6 +89,7 @@ def public move_to(app : ImguiApp; pos : tuple<float; float>; duration_ms : int 
         JV((t_ms = duration_ms + 300, kind = "move", x = pos._0,        y = pos._1))
     ]
     post_command(app, "imgui_mouse_play", JV((events = events)))
+    unsafe { delete events; }
     last_cursor_x = pos._0
     last_cursor_y = pos._1
 }
@@ -196,7 +197,7 @@ def public get_text(app : ImguiApp; uri : string) : string {
 }
 
 def private post_signal(app : ImguiApp; uri : string) {
-    POST("{app.base_url}{uri}", "", {"Content-Type" => "application/json"}) $(resp) {
+    POST("{app.base_url}{uri}", "", {"Content-Type" => "application/json"}) $(_resp) {
         // intentionally drop the response — caller polled /status to confirm
     }
 }
@@ -405,9 +406,9 @@ def public right_click(app : ImguiApp; target : string) : JsonValue? {
     return send_imgui_command(app.transport, "imgui_click", JV((target = target, button = 1)))
 }
 
-def public set_value(app : ImguiApp; target : string; var value : JsonValue?) : JsonValue? {
-    //! Set ``target``'s payload value remotely (``imgui_set`` verb); ``value`` is the JSON form expected by the widget kind.
-    return send_imgui_command(app.transport, "imgui_set", JV((target = target, value = value)))
+def public force_set_value(app : ImguiApp; target : string; var value : JsonValue?) : JsonValue? {
+    //! Set ``target``'s payload value remotely (``imgui_force_set`` verb); ``value`` is the JSON form expected by the widget kind.
+    return send_imgui_command(app.transport, "imgui_force_set", JV((target = target, value = value)))
 }
 
 def public resize_window(app : ImguiApp; target : string; w : float; h : float) : JsonValue? {
@@ -437,9 +438,32 @@ def public close_widget(app : ImguiApp; target : string) : JsonValue? {
 def public drag(app : ImguiApp; target : string;
                 dx : float; dy : float;
                 steps : int = 4; button : int = 0) : JsonValue? {
-    //! Synthesize an L1 mouse-drag on ``target``'s bbox center: press → ``steps`` interpolated moves → release. Settles in ``steps + 2`` frames.
-    return send_imgui_command(app.transport, "imgui_drag",
-                              JV((target = target, dx = dx, dy = dy, steps = steps, button = button)))
+    //! Synthesize a mouse-drag on ``target``'s bbox center: warp → press → drag to
+    //! ``center+(dx,dy)`` → release, composed as an ``imgui_mouse_play`` timeline. Resolves
+    //! the bbox client-side from a fresh snapshot. Returns ``{ok, value=target}`` (``ok=false``
+    //! when the target isn't in the snapshot, isn't rendered this frame, or the command post
+    //! fails — a stale/unrendered widget would otherwise drag from a defaulted (0,0) bbox).
+    //! ``steps`` scales the drag duration.
+    var snap = snapshot(app)
+    if (!(snap |> widget_exists(target))) return JV((ok = false, error = "drag target unresolved: {target}"))
+    if (!(snap |> widget_rendered(target))) return JV((ok = false, error = "drag target not rendered this frame: {target}"))
+    let bb = snap?["globals"]?[target]?["bbox"]
+    let cx = ((bb?["x"] ?? 0.0f) + (bb?["z"] ?? 0.0f)) * 0.5f
+    let cy = ((bb?["y"] ?? 0.0f) + (bb?["w"] ?? 0.0f)) * 0.5f
+    let ex = cx + dx
+    let ey = cy + dy
+    let drag_ms = (steps > 0 ? steps : 1) * 32
+    var events <- [
+        JV((t_ms = 0,             kind = "move",   x = cx, y = cy)),
+        JV((t_ms = 80,            kind = "button", button = button, action = "press")),
+        JV((t_ms = 80 + drag_ms,  kind = "move",   x = ex, y = ey)),
+        JV((t_ms = 180 + drag_ms, kind = "button", button = button, action = "release")),
+        JV((t_ms = 280 + drag_ms, kind = "move",   x = ex, y = ey))
+    ]
+    let resp = post_command(app, "imgui_mouse_play", JV((events = events)))
+    unsafe { delete events; }
+    if (resp == null) return JV((ok = false, error = "drag post failed: {target}"))
+    return JV((ok = true, value = target))
 }
 
 def public drag_to(app : ImguiApp; source : string; target : string;
@@ -526,15 +550,21 @@ def public await_probe(app : ImguiApp; until : string = "quiescent") : JsonValue
 def public type_text(app : ImguiApp; target : string; text : string;
                      focus_max_frames : int = 120;
                      duration_s : float = 0.0f) : JsonValue? {
-    //! Auto-focus ``target``, wait up to ``focus_max_frames`` for focus to settle, then synthesize UTF-8 chars via L1 ``AddInputCharactersUTF8``.
-    //! ``duration_s > 0`` paces typing over wall-clock (server: ``total_frames = int(duration_s * 60)``); default 0 keeps the 1-char/frame rate.
+    //! Auto-focus ``target``, wait up to ``focus_max_frames`` for focus to settle, then stream
+    //! ``text`` as synthetic key+char events via ``imgui_key_type`` (into whichever widget holds
+    //! focus). Returns ``{ok, value=target}`` (``ok=false`` on empty text or if focus never settles). ``duration_s > 0``
+    //! paces typing over wall-clock; default uses ``imgui_key_type``'s per-char cadence.
+    if (empty(text)) return JV((ok = false, error = "missing text"))
     focus(app, target)
-    wait_until(app, focus_max_frames) $(var snap) {
+    let focused = wait_until(app, focus_max_frames) $(var snap) {
         return snap?["globals"]?[target]?["focus"] ?? false
     }
-    let total_frames = duration_s > 0.0f ? int(duration_s * 60.0f) : 0
-    return send_imgui_command(app.transport, "imgui_type_text",
-        JV((target = target, text = text, total_frames = total_frames)))
+    if (focused == null) return JV((ok = false, error = "focus never settled: {target}"))
+    var args = (duration_s > 0.0f) ? JV((text = text, total_duration_s = duration_s)) : JV((text = text))
+    let resp = post_command(app, "imgui_key_type", args)
+    unsafe { delete args; }
+    if (resp == null) return JV((ok = false, error = "type post failed: {target}"))
+    return JV((ok = true, value = target))
 }
 
 def public pause(app : ImguiApp) : void {
@@ -553,9 +583,9 @@ def public unpause(app : ImguiApp) : void {
 
 def public with_paused(app : ImguiApp; body : block<() : void>) {
     //! Scope: ``pause`` the host, invoke ``body``, ``unpause``. Body observes a frozen
-    //! world — coroutines spawned by ``imgui_drag`` / ``imgui_type_text`` sit unadvanced
-    //! until unpause, so ``imgui_await`` reports ``pending_coroutines >= 1`` deterministically
-    //! even in headless mode where the per-frame advance otherwise races the next HTTP POST.
+    //! world — coroutines spawned by ``imgui_click`` sit unadvanced until unpause, so
+    //! ``imgui_await`` reports ``pending_coroutines >= 1`` deterministically even in
+    //! headless mode where the per-frame advance otherwise races the next HTTP POST.
     pause(app)
     body |> invoke()
     unpause(app)

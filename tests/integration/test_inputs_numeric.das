@@ -9,7 +9,7 @@ require daslib/json public
 require daslib/json_boost public
 
 //! Integration smoke for Phase 0b.2 Input* numeric widgets — every scalar
-//! and vector kind including double, driven through `imgui_set` via the
+//! and vector kind including double, driven through `imgui_force_set` via the
 //! playwright-style harness. Float comparisons use exact equality because
 //! the harness pipes JSON-encoded values through with full float precision
 //! (no rounding) and ImGui's Input* doesn't quantize to display format.
@@ -29,44 +29,44 @@ def test_inputs_numeric_smoke(t : T?) {
         t |> success(mass0?["payload"] != null, "MASS.payload present")
 
         // ----- Float scalar -----
-        set_value(d, "MAIN_WIN/MASS", JV(12.5f))
+        force_set_value(d, "MAIN_WIN/MASS", JV(12.5f))
         t |> success(wait_for_payload_value(d, "MAIN_WIN/MASS", "value", 12.5f, 300),
-                     "imgui_set steers MASS.value to 12.5")
+                     "imgui_force_set steers MASS.value to 12.5")
 
         // ----- Double scalar -----
-        set_value(d, "MAIN_WIN/EPOCH_SEC", JV(1700000000.5lf))
+        force_set_value(d, "MAIN_WIN/EPOCH_SEC", JV(1700000000.5lf))
         t |> success(wait_for_payload_value(d, "MAIN_WIN/EPOCH_SEC", "value", 1700000000.5lf, 300),
-                     "imgui_set steers EPOCH_SEC.value to 1.7e9")
+                     "imgui_force_set steers EPOCH_SEC.value to 1.7e9")
 
         // ----- Float vectors -----
-        set_value(d, "MAIN_WIN/POS_XY", JV(float2(10.0f, -3.5f)))
+        force_set_value(d, "MAIN_WIN/POS_XY", JV(float2(10.0f, -3.5f)))
         t |> success(wait_for_payload_value(d, "MAIN_WIN/POS_XY", "value", float2(10.0f, -3.5f), 300),
-                     "imgui_set steers POS_XY to (10, -3.5)")
+                     "imgui_force_set steers POS_XY to (10, -3.5)")
 
-        set_value(d, "MAIN_WIN/VEL_XYZ", JV(float3(1.0f, 2.0f, 3.0f)))
+        force_set_value(d, "MAIN_WIN/VEL_XYZ", JV(float3(1.0f, 2.0f, 3.0f)))
         t |> success(wait_for_payload_value(d, "MAIN_WIN/VEL_XYZ", "value", float3(1.0f, 2.0f, 3.0f), 300),
-                     "imgui_set steers VEL_XYZ to (1, 2, 3)")
+                     "imgui_force_set steers VEL_XYZ to (1, 2, 3)")
 
-        set_value(d, "MAIN_WIN/QUAT_XYZW", JV(float4(0.0f, 0.0f, 0.0f, 1.0f)))
+        force_set_value(d, "MAIN_WIN/QUAT_XYZW", JV(float4(0.0f, 0.0f, 0.0f, 1.0f)))
         t |> success(wait_for_payload_value(d, "MAIN_WIN/QUAT_XYZW", "value", float4(0.0f, 0.0f, 0.0f, 1.0f), 300),
-                     "imgui_set steers QUAT_XYZW to identity quaternion")
+                     "imgui_force_set steers QUAT_XYZW to identity quaternion")
 
         // ----- Int scalar + vectors -----
-        set_value(d, "MAIN_WIN/LEVEL", JV(42))
+        force_set_value(d, "MAIN_WIN/LEVEL", JV(42))
         t |> success(wait_for_int_value(d, "MAIN_WIN/LEVEL", "value", 42, 300),
-                     "imgui_set steers LEVEL.value to 42")
+                     "imgui_force_set steers LEVEL.value to 42")
 
-        set_value(d, "MAIN_WIN/GRID_XY", JV(int2(8, 16)))
+        force_set_value(d, "MAIN_WIN/GRID_XY", JV(int2(8, 16)))
         t |> success(wait_for_payload_value(d, "MAIN_WIN/GRID_XY", "value", int2(8, 16), 300),
-                     "imgui_set steers GRID_XY to (8, 16)")
+                     "imgui_force_set steers GRID_XY to (8, 16)")
 
-        set_value(d, "MAIN_WIN/BLOCK_XYZ", JV(int3(2, 4, 8)))
+        force_set_value(d, "MAIN_WIN/BLOCK_XYZ", JV(int3(2, 4, 8)))
         t |> success(wait_for_payload_value(d, "MAIN_WIN/BLOCK_XYZ", "value", int3(2, 4, 8), 300),
-                     "imgui_set steers BLOCK_XYZ to (2, 4, 8)")
+                     "imgui_force_set steers BLOCK_XYZ to (2, 4, 8)")
 
-        set_value(d, "MAIN_WIN/VIEWPORT_LTRB", JV(int4(0, 0, 1920, 1080)))
+        force_set_value(d, "MAIN_WIN/VIEWPORT_LTRB", JV(int4(0, 0, 1920, 1080)))
         t |> success(wait_for_payload_value(d, "MAIN_WIN/VIEWPORT_LTRB", "value", int4(0, 0, 1920, 1080), 300),
-                     "imgui_set steers VIEWPORT_LTRB to FullHD frame")
+                     "imgui_force_set steers VIEWPORT_LTRB to FullHD frame")
 
         // ----- Snapshot envelope -----
         var snap_final = snapshot(d)

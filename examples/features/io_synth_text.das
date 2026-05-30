@@ -3,15 +3,13 @@ options gen2
 require imgui/imgui_harness
 
 // =============================================================================
-// FEATURE: io_synth_text — Phase 2.2 L1 keyboard input synthesis.
-// SHOWS:   imgui_type_text live_command — coroutine pushes one
-//          AddInputCharactersUTF8 per frame to whichever widget holds
-//          keyboard focus. The example auto-focuses DEMO_INPUT on first
-//          render via SetKeyboardFocusHere(0), then chars stream in.
-//          Phase 2.4 will add a `target`-driven focus action so callers can
-//          aim type_text at any widget without owning the focus dance.
-// DRIVE:   curl -X POST -d '{"name":"imgui_type_text","args":{"target":"MAIN_WIN/DEMO_INPUT","text":"hello"}}' \
-//              localhost:9090/command
+// FEATURE: io_synth_text — keyboard input synthesis target.
+// SHOWS:   A text input filled by synthetic keystrokes. The playwright `type_text`
+//          helper focuses the target, then streams the text via `imgui_key_type`
+//          (key+char events on the owned synth primitives) into the focused widget.
+//          The example also auto-focuses DEMO_INPUT on first render via
+//          SetKeyboardFocusHere(0), so a bare imgui_key_type lands without a focus step.
+// DRIVE:   curl -X POST -d '{"name":"imgui_key_type","args":{"text":"hello"}}' localhost:9090/command
 //          curl -X POST -d '{"name":"imgui_snapshot"}' localhost:9090/command \
 //              | jq '.globals."MAIN_WIN/DEMO_INPUT".payload.value'
 // STANDALONE: daslang.exe modules/dasImgui/examples/features/io_synth_text.das
@@ -36,7 +34,7 @@ def update() {
     SetNextWindowSize(ImVec2(720.0, 220.0), ImGuiCond.Always)
     window(MAIN_WIN, (text = "io_synth_text — phase 2.2", closable = false,
                       flags = ImGuiWindowFlags.None)) {
-        text("L1 keyboard: imgui_type_text streams chars one frame each.")
+        text("Synthetic keyboard: imgui_key_type streams key+char events.")
         text("DEMO_INPUT auto-focused on first render via SetKeyboardFocusHere.")
         if (!auto_focused) {
             SetKeyboardFocusHere(0)

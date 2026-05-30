@@ -11,7 +11,7 @@ require daslib/json_boost public
 //! Integration smoke for indexed-form widgets per API_REWORK §4.4. Drives
 //! `examples/features/inputs_indexed.das` — int-keyed CHANNEL_VOL and
 //! string-keyed TRACK_VOL — and asserts the snapshot's globals contain
-//! distinct path keys for each subscript, that imgui_set lands per-key
+//! distinct path keys for each subscript, that imgui_force_set lands per-key
 //! without bleeding across keys, and that the dispatch surface treats
 //! "MIX_WIN/CHANNEL_VOL[3]" as a normal target string.
 
@@ -43,10 +43,10 @@ def test_inputs_indexed_smoke(t : T?) {
             t |> equal(entry?["kind"] ?? "", "slider_float", "[{name}].kind == 'slider_float'")
         }
 
-        // ----- imgui_set lands on the right key (cross-key isolation) -----
-        set_value(d, "MIX_WIN/CHANNEL_VOL[2]", JV(0.123f))
+        // ----- imgui_force_set lands on the right key (cross-key isolation) -----
+        force_set_value(d, "MIX_WIN/CHANNEL_VOL[2]", JV(0.123f))
         t |> success(wait_for_payload_value(d, "MIX_WIN/CHANNEL_VOL[2]", "value", 0.123f, 300),
-                     "imgui_set MIX_WIN/CHANNEL_VOL[2]=0.123 lands")
+                     "imgui_force_set MIX_WIN/CHANNEL_VOL[2]=0.123 lands")
         var snap_after_set = snapshot(d)
         // Other keys must be untouched.
         let v0 = widget_payload_field(snap_after_set, "MIX_WIN/CHANNEL_VOL[0]", "value")
@@ -55,9 +55,9 @@ def test_inputs_indexed_smoke(t : T?) {
         t |> equal(v3 ?? -1.0f, 0.5f, "MIX_WIN/CHANNEL_VOL[3].value still 0.5 (init default)")
 
         // ----- String-keyed isolation -----
-        set_value(d, "MIX_WIN/TRACK_VOL[lead]", JV(0.95f))
+        force_set_value(d, "MIX_WIN/TRACK_VOL[lead]", JV(0.95f))
         t |> success(wait_for_payload_value(d, "MIX_WIN/TRACK_VOL[lead]", "value", 0.95f, 300),
-                     "imgui_set MIX_WIN/TRACK_VOL[lead]=0.95 lands")
+                     "imgui_force_set MIX_WIN/TRACK_VOL[lead]=0.95 lands")
         var snap_after_str = snapshot(d)
         let bass_v = widget_payload_field(snap_after_str, "MIX_WIN/TRACK_VOL[bass]", "value")
         t |> equal(bass_v ?? -1.0f, 0.7f, "MIX_WIN/TRACK_VOL[bass].value still 0.7 (init default)")

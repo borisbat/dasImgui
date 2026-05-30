@@ -12,7 +12,7 @@ require daslib/safe_addr
 //          unsafe(addr(struct.field)) for struct-field access. Required
 //          `id="…"` literal at the call site keys the telemetry path —
 //          missing id fails at compile time.
-// DRIVE:   curl -X POST -d '{"name":"imgui_set","args":{"target":"MAIN_WIN/SLIDER_F","value":0.9}}' \
+// DRIVE:   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"MAIN_WIN/SLIDER_F","value":0.9}}' \
 //              localhost:9090/command
 //          curl -X POST -d '{"name":"imgui_snapshot"}' localhost:9090/command \
 //              | jq '.globals."MAIN_WIN/SLIDER_F".payload.value'
@@ -42,7 +42,7 @@ def update() {
     SetNextWindowSize(ImVec2(720.0, 420.0), ImGuiCond.Always)
     window(MAIN_WIN, (text = "edit_* scalars", closable = false,
                       flags = ImGuiWindowFlags.None)) {
-        text(LEAD, (text = "Each row reads/writes through safe_addr(global). imgui_set updates the pointee directly."))
+        text(LEAD, (text = "Each row reads/writes through safe_addr(global). imgui_force_set updates the pointee directly."))
         edit_slider_float(safe_addr(g_slider_f), (id = "SLIDER_F",
                                                   text = "slider float",
                                                   v_min = 0.0f, v_max = 1.0f))

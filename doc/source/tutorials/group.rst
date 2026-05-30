@@ -144,7 +144,7 @@ The group itself isn't open/close-driveable (nothing to open). Its
 
 .. code-block:: bash
 
-   curl -X POST -d '{"name":"imgui_set","args":{"target":"GRP_WIN/ROW_GRP/ROW_SPEED","value":0.75}}' \
+   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"GRP_WIN/ROW_GRP/ROW_SPEED","value":0.75}}' \
         localhost:9090/command
    curl -X POST -d '{"name":"imgui_click","args":{"target":"GRP_WIN/ROW_GRP/ROW_RESET"}}' \
         localhost:9090/command

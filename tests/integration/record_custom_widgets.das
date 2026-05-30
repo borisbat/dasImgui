@@ -82,10 +82,10 @@ def main {
         post_command(app, "imgui_mouse_play", JV((events = ev_treble)))
         sleep(2000u)
 
-        // Beat 3: imgui_set BASS — show that the live API path works on custom widgets too
+        // Beat 3: imgui_force_set BASS — show that the live API path works on custom widgets too
         move_to(app, p_bass)
-        say(app, "imgui_set drives custom widgets the same way — no extra wiring.", T_BASS)
-        post_command(app, "imgui_set", JV((target = T_BASS, value = -0.5f)))
+        say(app, "imgui_force_set drives custom widgets the same way — no extra wiring.", T_BASS)
+        post_command(app, "imgui_force_set", JV((target = T_BASS, value = -0.5f)))
         sleep(2000u)
 
         // Beat 4: click RESET_BTN — ordinary built-in on the same panel

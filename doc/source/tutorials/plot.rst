@@ -113,7 +113,7 @@ Driving from outside
 ====================
 
 PlotState exposes ``title`` + ``samples`` in the snapshot payload —
-no ``imgui_set`` channel (the samples are caller-pushed). Snapshot
+no ``imgui_force_set`` channel (the samples are caller-pushed). Snapshot
 probes are the right tool:
 
 .. code-block:: bash

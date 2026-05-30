@@ -35,14 +35,14 @@ Seven external-pointer widgets, each editing a ``var private`` global:
 * ``edit_checkbox(safe_addr(g_enabled), (id = "ENABLED_CHECK", text =
   "Enabled"))`` — driven by a click.
 * ``edit_drag_float3(safe_addr(g_pos), (id = "POS_DRAG", ...))`` —
-  driven by ``imgui_set`` with a ``float3`` value.
+  driven by ``imgui_force_set`` with a ``float3`` value.
 * ``edit_color_edit3(safe_addr(g_accent), (id = "ACCENT_COLOR", ...))``
-  — driven by ``imgui_set`` with a ``float3`` value (RGB).
+  — driven by ``imgui_force_set`` with a ``float3`` value (RGB).
 * ``edit_combo(safe_addr(g_quality_idx), (id = "QUALITY_COMBO",
-  items <- g_qualities))`` — driven by ``imgui_set`` with an ``int``
+  items <- g_qualities))`` — driven by ``imgui_force_set`` with an ``int``
   index.
 * ``edit_slider_angle(safe_addr(g_angle), (id = "ANGLE_SLIDER", ...))``
-  — driven by ``imgui_set`` with a radian value (UI displays degrees).
+  — driven by ``imgui_force_set`` with a radian value (UI displays degrees).
 
 Each widget's read-only sibling under the ``// Readout`` separator
 shows the underlying ``var private`` value updating live with each
@@ -82,7 +82,7 @@ Live (with reload):
 
    daslang-live modules/dasImgui/examples/tutorial/editing_external.das
 
-Drive the widgets from outside via ``imgui_set`` / ``imgui_focus`` /
+Drive the widgets from outside via ``imgui_force_set`` / ``imgui_focus`` /
 ``imgui_key_type`` / ``imgui_mouse_play`` -- the recorded APNG above
 exercises every shape via
 ``tests/integration/record_editing_external.das``.
@@ -97,7 +97,7 @@ exercises every shape via
    path that ``edit_*`` widgets register under.
 
    :ref:`Driving outside <tutorial_driving_outside>` — the
-   ``imgui_set`` / ``imgui_mouse_play`` / ``imgui_key_type`` verbs
+   ``imgui_force_set`` / ``imgui_mouse_play`` / ``imgui_key_type`` verbs
    used by the recording driver above.
 
    :ref:`Recording <tutorial_recording>` — the two-shell driver setup.

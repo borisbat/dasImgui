@@ -18,6 +18,7 @@ require live/live_commands
 require live_host
 require math
 require strings
+require imgui/imgui_boost_runtime
 require imgui/imgui_live_core public
 require imgui/imgui_theme_daslang
 
@@ -120,4 +121,14 @@ def private restore_imgui_ctx() {
             SetCurrentContext(live_imgui_ctx)
         }
     }
+}
+
+[init]
+def private wire_glfw_real_input_toggle() {
+    // boost owns set_user_control + the synth tick but is backend-agnostic. It
+    // exposes register_real_input_toggle so a backend can suppress real input at
+    // the source. Here the windowed GLFW backend (native imgui_app) fills it, so
+    // set_user_control(false) detaches the GLFW input callbacks. Non-GLFW hosts
+    // simply never register, and user control then governs only synth ownership.
+    register_real_input_toggle(@@(enabled : bool) { imgui_set_real_input_callbacks(enabled); })
 }

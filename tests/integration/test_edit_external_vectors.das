@@ -26,9 +26,9 @@ def test_edit_external_vectors_smoke(t : T?) {
                          "{ident} registered")
         }
 
-        // imgui_set on a float3 — write {x,y,z} and verify the snapshot
+        // imgui_force_set on a float3 — write {x,y,z} and verify the snapshot
         // reports back the same components.
-        set_value(d, "MAIN_WIN/SF3", JV((x = 0.7f, y = 0.8f, z = 0.9f)))
+        force_set_value(d, "MAIN_WIN/SF3", JV((x = 0.7f, y = 0.8f, z = 0.9f)))
         let after = wait_until(d, 300) $(var s) {
             let xv = widget_payload_field(s, "MAIN_WIN/SF3", "value")
             return xv != null && xv?["x"] != null

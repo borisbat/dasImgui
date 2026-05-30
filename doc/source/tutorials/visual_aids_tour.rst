@@ -148,7 +148,7 @@ command's target:
 .. code-block:: das
 
    imgui_auto_highlight_on_command = true
-   // any imgui_click / imgui_set / imgui_open ... now flashes its target
+   // any imgui_click / imgui_force_set / imgui_open ... now flashes its target
 
 Useful when debugging "why didn't my curl do anything" — turn it on,
 fire the command, and either see a highlight flash (command reached

@@ -7,9 +7,9 @@ require imgui/imgui_harness
 // SHOWS:   input_float / input_float2/3/4
 //          input_int   / input_int2/3/4
 //          input_double
-// DRIVE:   curl -X POST -d '{"name":"imgui_set","args":{"target":"MAIN_WIN/MASS","value":12.5}}' \
+// DRIVE:   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"MAIN_WIN/MASS","value":12.5}}' \
 //               localhost:9090/command
-//          curl -X POST -d '{"name":"imgui_set","args":{"target":"MAIN_WIN/VEL_XYZ","value":[1.0,2.0,3.0]}}' \
+//          curl -X POST -d '{"name":"imgui_force_set","args":{"target":"MAIN_WIN/VEL_XYZ","value":[1.0,2.0,3.0]}}' \
 //               localhost:9090/command
 // STANDALONE: daslang.exe modules/dasImgui/examples/features/inputs_numeric.das
 // HEADLESS:   daslang.exe modules/dasImgui/examples/features/inputs_numeric.das -- --headless --headless-frames=60

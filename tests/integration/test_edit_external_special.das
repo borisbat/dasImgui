@@ -19,8 +19,8 @@ def test_edit_external_special_smoke(t : T?) {
         t |> success(snap != null, "ANGLE renders")
         if (snap == null) return
 
-        // imgui_set radians; verify round-trip.
-        set_value(d, "MAIN_WIN/ANGLE", JV(1.5707f))
+        // imgui_force_set radians; verify round-trip.
+        force_set_value(d, "MAIN_WIN/ANGLE", JV(1.5707f))
         let after = wait_until(d, 300) $(var s) {
             let v = widget_payload_field(s, "MAIN_WIN/ANGLE", "value") ?? 0.0
             return v > 1.5 && v < 1.6

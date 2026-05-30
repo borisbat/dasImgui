@@ -12,7 +12,7 @@ require math
 //          the slider displays + edits DEGREES via ImGui's internal
 //          conversion. Useful for rotation editors backed by quaternion /
 //          matrix math storage on the daslang side.
-// DRIVE:   curl -X POST -d '{"name":"imgui_set","args":{"target":"MAIN_WIN/ANGLE","value":1.5707}}' \
+// DRIVE:   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"MAIN_WIN/ANGLE","value":1.5707}}' \
 //              localhost:9090/command
 //          # → sets g_angle_rad to ~π/2 (90° on the slider).
 // STANDALONE: daslang.exe modules/dasImgui/examples/features/edit_external_special.das

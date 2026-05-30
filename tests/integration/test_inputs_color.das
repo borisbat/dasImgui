@@ -9,7 +9,7 @@ require daslib/json public
 require daslib/json_boost public
 
 //! Integration smoke for Phase 0b.2 Color* widgets — every editor / picker
-//! / swatch kind, driven through `imgui_set` (RGB / RGBA) and `imgui_click`
+//! / swatch kind, driven through `imgui_force_set` (RGB / RGBA) and `imgui_click`
 //! (color_button) via the playwright-style harness.
 
 let COLOR_FEATURE = "modules/dasImgui/examples/features/inputs_color.das"
@@ -27,22 +27,22 @@ def test_inputs_color_smoke(t : T?) {
         t |> success(tint0?["payload"] != null, "TINT_RGB.payload present")
 
         // ----- Editors — float3 / float4 -----
-        set_value(d, "MAIN_WIN/TINT_RGB", JV(float3(0.2f, 0.5f, 0.9f)))
+        force_set_value(d, "MAIN_WIN/TINT_RGB", JV(float3(0.2f, 0.5f, 0.9f)))
         t |> success(wait_for_payload_value(d, "MAIN_WIN/TINT_RGB", "value", float3(0.2f, 0.5f, 0.9f), 300),
-                     "imgui_set steers TINT_RGB to (0.2, 0.5, 0.9)")
+                     "imgui_force_set steers TINT_RGB to (0.2, 0.5, 0.9)")
 
-        set_value(d, "MAIN_WIN/BG_COLOR", JV(float4(0.1f, 0.2f, 0.3f, 0.4f)))
+        force_set_value(d, "MAIN_WIN/BG_COLOR", JV(float4(0.1f, 0.2f, 0.3f, 0.4f)))
         t |> success(wait_for_payload_value(d, "MAIN_WIN/BG_COLOR", "value", float4(0.1f, 0.2f, 0.3f, 0.4f), 300),
-                     "imgui_set steers BG_COLOR to (0.1, 0.2, 0.3, 0.4)")
+                     "imgui_force_set steers BG_COLOR to (0.1, 0.2, 0.3, 0.4)")
 
         // ----- Pickers — same JSON shape as editors -----
-        set_value(d, "MAIN_WIN/SUN_RGB", JV(float3(1.0f, 0.95f, 0.8f)))
+        force_set_value(d, "MAIN_WIN/SUN_RGB", JV(float3(1.0f, 0.95f, 0.8f)))
         t |> success(wait_for_payload_value(d, "MAIN_WIN/SUN_RGB", "value", float3(1.0f, 0.95f, 0.8f), 300),
-                     "imgui_set steers SUN_RGB to warm white")
+                     "imgui_force_set steers SUN_RGB to warm white")
 
-        set_value(d, "MAIN_WIN/SHIRT_COLOR", JV(float4(0.7f, 0.1f, 0.1f, 1.0f)))
+        force_set_value(d, "MAIN_WIN/SHIRT_COLOR", JV(float4(0.7f, 0.1f, 0.1f, 1.0f)))
         t |> success(wait_for_payload_value(d, "MAIN_WIN/SHIRT_COLOR", "value", float4(0.7f, 0.1f, 0.1f, 1.0f), 300),
-                     "imgui_set steers SHIRT_COLOR to maroon (with ref_col)")
+                     "imgui_force_set steers SHIRT_COLOR to maroon (with ref_col)")
 
         // ----- ColorButton swatches — fire-on-click via imgui_click -----
         var red_before = find_widget(snap0, "MAIN_WIN/PALETTE_RED")

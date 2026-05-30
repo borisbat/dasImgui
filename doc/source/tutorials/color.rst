@@ -119,10 +119,10 @@ Driving from outside
 .. code-block:: bash
 
    # RGB editor / picker — 3-element value
-   curl -X POST -d '{"name":"imgui_set","args":{"target":"CO_WIN/CO_EDIT3","value":[1.0,0.5,0.0]}}' \
+   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"CO_WIN/CO_EDIT3","value":[1.0,0.5,0.0]}}' \
         localhost:9090/command
    # RGBA editor / picker — 4-element value
-   curl -X POST -d '{"name":"imgui_set","args":{"target":"CO_WIN/CO_EDIT4","value":[0.2,0.4,0.9,0.6]}}' \
+   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"CO_WIN/CO_EDIT4","value":[0.2,0.4,0.9,0.6]}}' \
         localhost:9090/command
    # color_button — click trigger
    curl -X POST -d '{"name":"imgui_click","args":{"target":"CO_WIN/CO_SWATCH"}}' \

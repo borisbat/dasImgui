@@ -30,91 +30,90 @@ require strings
 
 struct ClickState {
     @live click_count : int                      //! cumulative across reloads
-    @optional pending_click : bool               //! queued by imgui_click L2; consumed next frame
     @optional clicked : bool                     //! true on the frame the button fired
 }
 
 struct SliderStateFloat {
     @live value : float                          //! preserved across reload
     @live bounds : tuple<float; float>           //! (min, max)
-    @optional has_pending : bool                 //! imgui_set L3 sets; render fn consumes
-    @optional pending_value : float              //! next-frame value queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set L3 sets; render fn consumes
+    @optional pending_value : float              //! next-frame value queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the widget fired
 }
 
 struct SliderStateFloat2 {
     @live value : float2                         //! preserved across reload
     @live bounds : tuple<float; float>           //! (min, max) applied to every component
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : float2             //! next-frame value queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : float2             //! next-frame value queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the widget fired
 }
 
 struct SliderStateFloat3 {
     @live value : float3                         //! preserved across reload
     @live bounds : tuple<float; float>           //! (min, max) applied to every component
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : float3             //! next-frame value queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : float3             //! next-frame value queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the widget fired
 }
 
 struct SliderStateFloat4 {
     @live value : float4                         //! preserved across reload
     @live bounds : tuple<float; float>           //! (min, max) applied to every component
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : float4             //! next-frame value queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : float4             //! next-frame value queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the widget fired
 }
 
 struct SliderStateInt {
     @live value : int                            //! preserved across reload
     @live bounds : tuple<int; int>               //! (min, max)
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : int                //! next-frame value queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : int                //! next-frame value queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the widget fired
 }
 
 struct SliderStateInt2 {
     @live value : int2                           //! preserved across reload
     @live bounds : tuple<int; int>               //! (min, max) applied to every component
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : int2               //! next-frame value queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : int2               //! next-frame value queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the widget fired
 }
 
 struct SliderStateInt3 {
     @live value : int3                           //! preserved across reload
     @live bounds : tuple<int; int>               //! (min, max) applied to every component
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : int3               //! next-frame value queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : int3               //! next-frame value queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the widget fired
 }
 
 struct SliderStateInt4 {
     @live value : int4                           //! preserved across reload
     @live bounds : tuple<int; int>               //! (min, max) applied to every component
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : int4               //! next-frame value queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : int4               //! next-frame value queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the widget fired
 }
 
 struct ToggleState {
     //! Shared across Checkbox / RadioButton (bool form) / Selectable / MenuItem.
-    //! `pending_toggle` + `pending_value` let imgui_set steer the next frame's
+    //! `pending_toggle` + `pending_value` let imgui_force_set steer the next frame's
     //! value deterministically; the renderer consumes-then-clears.
     @live value : bool                               //! current toggle state; preserved across reload
-    @optional pending_toggle : bool                  //! imgui_set L3 sets; consumed next frame
-    @optional pending_value : bool                   //! next-frame value queued by imgui_set
+    @optional pending_toggle : bool                  //! imgui_force_set L3 sets; consumed next frame
+    @optional pending_value : bool                   //! next-frame value queued by imgui_force_set
     @optional changed : bool                         //! true on the frame the widget fired
 }
 
 struct RadioIntState {
     //! Backs RadioButton(int form). `value` is the currently-selected button
     //! id; the widget def takes the per-call `v_button` and writes value=v_button
-    //! when the user clicks. `imgui_set {"value":N}` steers the selection.
+    //! when the user clicks. `imgui_force_set {"value":N}` steers the selection.
     @live value : int                                //! currently-selected button id
-    @optional pending_set : bool                     //! imgui_set queued; consumed next frame
-    @optional pending_value : int                    //! next-frame selection queued by imgui_set
+    @optional pending_set : bool                     //! imgui_force_set queued; consumed next frame
+    @optional pending_value : int                    //! next-frame selection queued by imgui_force_set
     @optional changed : bool                         //! true on the frame the selection changed
 }
 
@@ -124,79 +123,79 @@ struct RadioIntState {
 // at the call site — globals can't apply struct field defaults (they're
 // zero-init), and string defaults trip the uninit-safety check. `pending_value`
 // matches `value`'s type so the generic `drag_set_finalize` helper in
-// imgui_widgets_builtin can capture state and steer it from imgui_set.
+// imgui_widgets_builtin can capture state and steer it from imgui_force_set.
 
 struct DragStateFloat {
     @live value : float                          //! preserved across reload
     @live bounds : tuple<float; float>           //! (min, max); zero-init = unclamped
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : float              //! next-frame value queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : float              //! next-frame value queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the widget fired
 }
 
 struct DragStateFloat2 {
     @live value : float2                         //! preserved across reload
     @live bounds : tuple<float; float>           //! (min, max); zero-init = unclamped
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : float2             //! next-frame value queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : float2             //! next-frame value queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the widget fired
 }
 
 struct DragStateFloat3 {
     @live value : float3                         //! preserved across reload
     @live bounds : tuple<float; float>           //! (min, max); zero-init = unclamped
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : float3             //! next-frame value queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : float3             //! next-frame value queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the widget fired
 }
 
 struct DragStateFloat4 {
     @live value : float4                         //! preserved across reload
     @live bounds : tuple<float; float>           //! (min, max); zero-init = unclamped
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : float4             //! next-frame value queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : float4             //! next-frame value queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the widget fired
 }
 
 struct DragStateInt {
     @live value : int                            //! preserved across reload
     @live bounds : tuple<int; int>               //! (min, max); zero-init = unclamped
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : int                //! next-frame value queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : int                //! next-frame value queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the widget fired
 }
 
 struct DragStateInt2 {
     @live value : int2                           //! preserved across reload
     @live bounds : tuple<int; int>               //! (min, max); zero-init = unclamped
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : int2               //! next-frame value queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : int2               //! next-frame value queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the widget fired
 }
 
 struct DragStateInt3 {
     @live value : int3                           //! preserved across reload
     @live bounds : tuple<int; int>               //! (min, max); zero-init = unclamped
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : int3               //! next-frame value queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : int3               //! next-frame value queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the widget fired
 }
 
 struct DragStateInt4 {
     @live value : int4                           //! preserved across reload
     @live bounds : tuple<int; int>               //! (min, max); zero-init = unclamped
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : int4               //! next-frame value queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : int4               //! next-frame value queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the widget fired
 }
 
 struct DragStateRangeFloat {
     //! `value.x` = current_min, `value.y` = current_max. Bounds clamp both.
-    //! `imgui_set {"value":[lo,hi]}` writes the whole range atomically.
+    //! `imgui_force_set {"value":[lo,hi]}` writes the whole range atomically.
     @live value : float2                         //! (current_min, current_max); preserved across reload
     @live bounds : tuple<float; float>           //! (min, max) clamp applied to both endpoints
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : float2             //! next-frame range queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : float2             //! next-frame range queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the range changed
 }
 
@@ -204,8 +203,8 @@ struct DragStateRangeInt {
     //! `value.x` = current_min, `value.y` = current_max.
     @live value : int2                           //! (current_min, current_max); preserved across reload
     @live bounds : tuple<int; int>               //! (min, max) clamp applied to both endpoints
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : int2               //! next-frame range queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : int2               //! next-frame range queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the range changed
 }
 
@@ -216,64 +215,64 @@ struct DragStateRangeInt {
 
 struct InputStateFloat {
     @live value : float                          //! preserved across reload
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : float              //! next-frame value queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : float              //! next-frame value queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the widget fired
 }
 
 struct InputStateFloat2 {
     @live value : float2                         //! preserved across reload
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : float2             //! next-frame value queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : float2             //! next-frame value queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the widget fired
 }
 
 struct InputStateFloat3 {
     @live value : float3                         //! preserved across reload
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : float3             //! next-frame value queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : float3             //! next-frame value queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the widget fired
 }
 
 struct InputStateFloat4 {
     @live value : float4                         //! preserved across reload
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : float4             //! next-frame value queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : float4             //! next-frame value queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the widget fired
 }
 
 struct InputStateInt {
     @live value : int                            //! preserved across reload
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : int                //! next-frame value queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : int                //! next-frame value queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the widget fired
 }
 
 struct InputStateInt2 {
     @live value : int2                           //! preserved across reload
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : int2               //! next-frame value queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : int2               //! next-frame value queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the widget fired
 }
 
 struct InputStateInt3 {
     @live value : int3                           //! preserved across reload
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : int3               //! next-frame value queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : int3               //! next-frame value queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the widget fired
 }
 
 struct InputStateInt4 {
     @live value : int4                           //! preserved across reload
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : int4               //! next-frame value queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : int4               //! next-frame value queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the widget fired
 }
 
 struct InputStateDouble {
     @live value : double                         //! preserved across reload
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : double             //! next-frame value queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : double             //! next-frame value queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the widget fired
 }
 
@@ -286,19 +285,19 @@ struct InputStateDouble {
 
 struct ColorState3 {
     @live value : float3                         //! RGB in [0..1]
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : float3             //! next-frame RGB queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : float3             //! next-frame RGB queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the color changed
 }
 
 struct ColorState4 {
     @live value : float4                         //! RGBA in [0..1]
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : float4             //! next-frame RGBA queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : float4             //! next-frame RGBA queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the color changed
 }
 
-// Choice family. `value` is the selected item index; `imgui_set {"value":N}`
+// Choice family. `value` is the selected item index; `imgui_force_set {"value":N}`
 // steers the next-frame selection. The user passes `items : array<string>`
 // per-frame; combo/list_box marshal it C-side without a shim:
 //   - combo packs a zero-separated `array<uint8>` (kept on state for capacity
@@ -311,16 +310,16 @@ struct ColorState4 {
 
 struct ComboState {
     @live value : int = -1                       //! selected index, -1 = none
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : int                //! next-frame selection queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : int                //! next-frame selection queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the selection changed
     @optional items_buf : array<uint8>           //! transient zero-separated buffer; rebuilt each frame
 }
 
 struct ListBoxState {
     @live value : int = -1                       //! selected index, -1 = none
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : int                //! next-frame selection queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : int                //! next-frame selection queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the selection changed
 }
 
@@ -332,8 +331,8 @@ struct ListBoxState {
 struct InputTextState {
     @live value : string = ""                             //! current text content (clone of buffer)
     @live capacity : int = 256                            //! working buffer size in bytes (incl. trailing null)
-    @optional has_pending : bool                          //! imgui_set queued; consumed next frame
-    @optional pending_value : string = ""                 //! next-frame text queued by imgui_set
+    @optional has_pending : bool                          //! imgui_force_set queued; consumed next frame
+    @optional pending_value : string = ""                 //! next-frame text queued by imgui_force_set
     @optional changed : bool                              //! true on the frame the text changed
     @optional buffer : array<uint8>                       //! working buffer; mirrors `value`, allocated to capacity on first frame / post-reload
 }
@@ -345,9 +344,9 @@ struct TextShowState {
     //! or programmatically (`STATUS.value = compute_status()`). The
     //! standard serializer surfaces `value` for telemetry / playwright
     //! `expect_value(app, STATUS, "saved")`. Tests can also drive the
-    //! value externally via `imgui_set` — the dispatcher writes
+    //! value externally via `imgui_force_set` — the dispatcher writes
     //! `state.value` directly.
-    @live value : string = ""                          //! displayed text; settable via call-site initializer or imgui_set
+    @live value : string = ""                          //! displayed text; settable via call-site initializer or imgui_force_set
 }
 
 struct PlotState {
@@ -442,6 +441,8 @@ struct WindowState {
     @optional pending_close : bool            //! imgui_close queued; applied next frame
     @optional pending_size : float2           //! imgui_set_window_size queued — applied via SetNextWindowSize next frame
     @optional pending_size_set : bool         //! gates pending_size (so (0,0) is a valid request, not a sentinel)
+    @optional pending_scroll : float2         //! imgui_click scroll-into-view queued — applied via SetNextWindowScroll next frame
+    @optional pending_scroll_set : bool       //! gates pending_scroll (so (0,0) is a valid request, not a sentinel)
 }
 
 struct ChildState {
@@ -723,9 +724,9 @@ let private LAZY_EDIT_WIDGET_MODULE = "<edit_widget>"
 // when the target string is "0x..." but not in g_id_to_path. Cleared at the
 // top of begin_frame() alongside g_registry.
 //
-// `g_coroutines` holds in-flight L1 input coroutines (imgui_drag, imgui_type_text).
-// Each [async] command spawns one Coroutine (iterator<bool>); the runtime
-// advances the array one step per frame in begin_frame() via advance_coroutines.
+// `g_coroutines` holds in-flight synth coroutines (e.g. imgui_click's press/
+// release). Each [async] command spawns one Coroutine (iterator<bool>); the
+// runtime advances the array one step per frame in begin_frame() via advance_coroutines.
 
 var private g_id_to_path : table<uint; string>
 var private g_id_to_bbox : table<uint; float4>
@@ -1220,10 +1221,12 @@ typedef KindDispatcher = function<(state_addr : void?; action : string; payload 
 
 //! Dispatch is keyed by the state's runtime ``TypeInfo.hash`` — one dispatcher
 //! per state-struct type covers every widget kind that uses that struct (e.g.
-//! the single ClickState dispatcher fires for ``button``/``small_button``/
-//! ``arrow_button``/...). Non-Structure ti (scalar pointee from ``[edit_widget]``)
-//! that don't have a registered dispatcher fall back to the generic
-//! ``sscan_json_at(state_addr, *ti)`` write-through in ``dispatch_or_err``.
+//! the single ToggleState dispatcher fires for ``checkbox``/``radio_button``/
+//! ``selectable``/``menu_item``). ClickState carries no dispatcher: an
+//! ``imgui_click`` is a real synthetic mouse click handled before any lookup.
+//! Non-Structure ti (scalar pointee from ``[edit_widget]``) that don't have a
+//! registered dispatcher fall back to the generic ``sscan_json_at(state_addr,
+//! *ti)`` write-through in ``dispatch_or_err``.
 var private g_dispatchers : table<uint64; KindDispatcher>
 
 def public register_widget_dispatch_for_type(ti : TypeInfo const?; dispatcher : KindDispatcher) {
@@ -1292,7 +1295,7 @@ def private extract_string_field(obj : JsonValue?; name : string) : string {
     return v.value as _string
 }
 
-def private widget_meta_jv(path_key : string; meta : WidgetMeta) : JsonValue? {
+def private widget_meta_jv(_path_key : string; meta : WidgetMeta) : JsonValue? {
     // Snapshot blob for a widget registered but not rendered this frame: rendered=false, state payload only. State payload is built from (addr, ti) via sprint_json_at + read_json — no per-widget serializer function.
     return JV((kind = meta.kind, rendered = false, payload = state_payload_jv(resolve_meta_addr(meta), meta.ti)))
 }
@@ -1320,7 +1323,7 @@ def private io_jv() : JsonValue? {
 }
 
 [live_command(description = "Snapshot of all registered widgets, with per-frame state joined when rendered")]
-def imgui_snapshot(input : JsonValue?) : JsonValue? {
+def imgui_snapshot(_input : JsonValue?) : JsonValue? {
     //! Live-command: return ``{frame, globals, io}`` — every registered widget joined with its per-frame entry when rendered.
     var globals : table<string; JsonValue?>
     // Walk long-lived registry first — covers unrendered widgets too.
@@ -1372,32 +1375,462 @@ def private classify_target(target : string) : tuple<int; string> {
     return (0, target)
 }
 
-[async]
-def private click_at_coro(center : float2; button : int) : void {
+// ===== Synthetic input core (boost-owned) =====
+//
+// Low-level synth mouse/keyboard + the per-frame tick + real-input control.
+// Modeled on Dear ImGui's imgui_test_engine: synth input is persistent state
+// (cursor pos + button mask + held keys) re-asserted as io.Add*Event every
+// frame while owned. The animated "over-frames" timeline playback lives in
+// imgui_live_core and registers its per-frame advance + stop here (boost never
+// requires live; live requires boost and plugs in via these hooks). Real input
+// is suppressed by detaching the GLFW backend callbacks at source.
+
+var public synth_cursor_owned : bool = false   //! true once any synth IO fired; overlays render against the synth cursor
+var private mouse_cursor_x : float = 0.0
+var private mouse_cursor_y : float = 0.0
+var public synth_buttons_mask : int = 0        //! held mouse-button bitmask (bit b => button b down); mirrors imgui_test_engine MouseButtonsValue
+var public synth_click_button : int = -1       //! last synth-clicked button (visual_aids click flash)
+var public synth_click_action : int = 0        //! 1 press / 0 release
+var public synth_click_t : float = -1.0
+// FIFO serialization for click coroutines: each click claims a ticket at dispatch time (issue
+// order) and waits until it's the one being served. Keeps back-to-back clicks driving the button
+// strictly in the order their commands were issued, regardless of how the per-frame command drain
+// batches them or in what order the reverse-order coroutine advance resumes them.
+var private g_click_ticket_next    : int = 0   // next ticket to hand out (bumped at dispatch, just before spawn)
+var private g_click_ticket_serving : int = 0   // ticket currently allowed to drive the button
+
+var public synth_held_keys : table<int>        //! currently-held ImGuiKey values (visual_aids keycap HUD)
+var public synth_last_keycode : int = 0        //! last ImGuiKey synth-pressed; 0 = none
+var public synth_last_keycode_t : float = -1.0
+var public synth_last_codepoint : uint = 0u
+var public synth_last_codepoint_t : float = -1.0
+
+var private g_user_control : bool = true
+var private g_input_callbacks_installed : bool = true
+
+// imgui_live_core registers its timeline advance / reset here.
+var private g_synth_frame_hooks : table<string; function<() : void>>
+var private g_synth_stop_hooks  : table<string; function<() : void>>
+
+def public register_synth_frame_hook(name : string; hook : function<() : void>) {
+    //! Register a per-frame synth callback invoked by :ref:`imgui_synth_tick <function-imgui_boost_runtime_imgui_synth_tick>` (imgui_live_core's timeline playback uses this).
+    g_synth_frame_hooks[name] = hook
+}
+
+def public register_synth_stop_hook(name : string; hook : function<() : void>) {
+    //! Register a callback invoked when control is handed back to the user (``set_user_control(true)``) — stop in-flight playback.
+    g_synth_stop_hooks[name] = hook
+}
+
+// The windowed GLFW backend (imgui_live.das, the daslang side of native imgui_app)
+// fills this so set_user_control can detach real input AT THE SOURCE. Null on a
+// non-GLFW host — user control then governs only synth cursor ownership.
+var private g_real_input_toggle : function<(enabled : bool) : void>
+
+def public register_real_input_toggle(hook : function<(enabled : bool) : void>) {
+    //! Register the backend's real-input enable/disable callback. :ref:`imgui_synth_tick <function-imgui_boost_runtime_imgui_synth_tick>` invokes it on a ``set_user_control`` transition (the GLFW backend wires ``imgui_set_real_input_callbacks``).
+    g_real_input_toggle = hook
+}
+
+def public get_synth_cursor() : tuple<bool; float; float> {
+    //! Current synth cursor as ``(owned, x, y)``; ``owned`` means overlays should render against this instead of ``GetMousePos()``.
+    return (synth_cursor_owned, mouse_cursor_x, mouse_cursor_y)
+}
+
+def public get_synth_keys() : tuple<bool; uint; float> {
+    //! Synth-key state as ``(any_held, last_codepoint, last_codepoint_t)``.
+    return (!empty(synth_held_keys), synth_last_codepoint, synth_last_codepoint_t)
+}
+
+// --- mouse primitives ---
+
+def public synth_mouse_move(x, y : float) {
+    //! Teleport the synth cursor to ``(x, y)`` and take ownership (the real cursor can't move it until ``set_user_control(true)`` hands back).
+    mouse_cursor_x = x
+    mouse_cursor_y = y
+    synth_cursor_owned = true
     var io & = unsafe(GetIO())
-    io |> AddMousePosEvent(center.x, center.y)
-    io |> AddMouseButtonEvent(button, true)
+    io |> AddMousePosEvent(x, y)
+}
+
+def public synth_mouse_button(button : int; action : int) {
+    //! Press (``action==1``) / release synth mouse ``button``. Emits the cursor pos immediately before the button so ImGui records ``MouseClickedPos`` at the synth coords and ``IsItemHovered()`` passes.
+    var io & = unsafe(GetIO())
+    if (synth_cursor_owned) {
+        io |> AddMousePosEvent(mouse_cursor_x, mouse_cursor_y)
+    }
+    io |> AddMouseButtonEvent(button, action == 1)
+    if (action == 1) {
+        synth_buttons_mask |= (1 << button)
+    } else {
+        synth_buttons_mask &= ~(1 << button)
+    }
+    synth_click_button = button
+    synth_click_action = action
+    synth_click_t      = get_uptime()
+    synth_cursor_owned = true
+}
+
+def public synth_mouse_wheel(dx, dy : float) {
+    //! Synthetic mouse wheel; takes cursor ownership.
+    var io & = unsafe(GetIO())
+    io |> AddMouseWheelEvent(dx, dy)
+    synth_cursor_owned = true
+}
+
+def public release_held_buttons() {
+    //! Release every currently-held synth mouse button.
+    for (b in range(0, 5)) {
+        if ((synth_buttons_mask & (1 << b)) != 0) {
+            synth_mouse_button(b, 0)
+        }
+    }
+}
+
+// --- keyboard primitives ---
+
+def private as_imgui_key(key : int) : ImGuiKey {
+    // AddKeyEvent wants ImGuiKey; the synth timeline + held-set store keys as int.
+    // No int→enum ctor in daslang, so reinterpret (same width).
+    return unsafe(reinterpret<ImGuiKey>(key))
+}
+
+def private mod_alias_for_side_key(key : int) : int {
+    // ImGui's IsKeyDown(ImGuiMod_Ctrl) / io.KeyCtrl / Shortcut() consult the alias key —
+    // emitting only the side key leaves the alias unset (mirrors imgui_test_engine).
+    if (key == int(ImGuiKey.LeftCtrl)  || key == int(ImGuiKey.RightCtrl)) return int(ImGuiKey.ImGuiMod_Ctrl)
+    if (key == int(ImGuiKey.LeftShift) || key == int(ImGuiKey.RightShift)) return int(ImGuiKey.ImGuiMod_Shift)
+    if (key == int(ImGuiKey.LeftAlt)   || key == int(ImGuiKey.RightAlt)) return int(ImGuiKey.ImGuiMod_Alt)
+    if (key == int(ImGuiKey.LeftSuper) || key == int(ImGuiKey.RightSuper)) return int(ImGuiKey.ImGuiMod_Super)
+    return 0
+}
+
+def public synth_key_press(key : int) {
+    //! Press synth ``key`` (ImGuiKey int); auto-pairs the ``ImGuiMod_*`` alias for side-mod keys so ``Shortcut()`` routing sees the chord.
+    var io & = unsafe(GetIO())
+    io |> AddKeyEvent(as_imgui_key(key), true)
+    synth_held_keys |> insert(key)
+    let mod_alias = mod_alias_for_side_key(key)
+    if (mod_alias != 0) {
+        io |> AddKeyEvent(as_imgui_key(mod_alias), true)
+        synth_held_keys |> insert(mod_alias)
+    }
+    synth_last_keycode   = key
+    synth_last_keycode_t = get_uptime()
+}
+
+def public synth_key_release(key : int) {
+    //! Release synth ``key`` (and its mod alias).
+    var io & = unsafe(GetIO())
+    io |> AddKeyEvent(as_imgui_key(key), false)
+    synth_held_keys |> erase(key)
+    let mod_alias = mod_alias_for_side_key(key)
+    if (mod_alias != 0) {
+        io |> AddKeyEvent(as_imgui_key(mod_alias), false)
+        synth_held_keys |> erase(mod_alias)
+    }
+}
+
+def public synth_char(codepoint : uint) {
+    //! Push a synthetic Unicode character to the focused widget.
+    var io & = unsafe(GetIO())
+    io |> AddInputCharacter(codepoint)
+    synth_last_codepoint   = codepoint
+    synth_last_codepoint_t = get_uptime()
+}
+
+def public release_held_keys() {
+    //! Release every currently-held synth key.
+    if (empty(synth_held_keys)) return
+    var held : array<int>
+    held |> reserve(length(synth_held_keys))
+    for (k in keys(synth_held_keys)) {
+        held |> push(k)
+    }
+    for (k in held) {
+        synth_key_release(k)
+    }
+}
+
+// --- user control (real-input detach) ---
+
+def public user_control_enabled() : bool {
+    //! False when ``set_user_control`` has disabled real input — :ref:`imgui_synth_tick <function-imgui_boost_runtime_imgui_synth_tick>` drops the backend input queue each frame so synth fully owns IO.
+    return g_user_control
+}
+
+def public set_user_control_enabled(enabled : bool) {
+    //! Toggle whether real mouse/keyboard reach the UI. The GLFW-callback detach/reattach happens on the next ``imgui_synth_tick`` (must run on the render thread), so this is safe to call off-thread.
+    g_user_control = enabled
+    if (enabled) {
+        // Hand control back: stop in-flight synth playback (live's timelines, via
+        // the stop-hooks), release our held inputs, drop ownership last (release_*
+        // re-arm it, so clear after).
+        for (h in values(g_synth_stop_hooks)) {
+            invoke(h)
+        }
+        release_held_buttons()
+        release_held_keys()
+        synth_cursor_owned = false
+    } else {
+        // Take over: clear keys/buttons latched right now so their release events
+        // aren't dropped by the per-frame queue clear, leaving ImGui with stuck
+        // input. ClearInputKeys() (imgui 1.90.6) also zeroes MouseDown[]/MousePos.
+        var io & = unsafe(GetIO())
+        io |> ClearInputKeys()
+    }
+}
+
+[before_reload]
+def reattach_real_input_before_reload() {
+    // Live reload reuses the ImGui context but resets module globals to their
+    // `true` defaults. If real input was detached at reload, the callbacks would
+    // stay removed while the new program thinks they're installed → real input
+    // permanently dead. Re-attach so the handoff matches the post-reload defaults.
+    if (!g_input_callbacks_installed) {
+        if (g_real_input_toggle != null) {
+            invoke(g_real_input_toggle, true)
+        }
+        g_input_callbacks_installed = true
+    }
+}
+
+def public imgui_synth_tick() {
+    //! Per-frame synth entry point — call between the backend's ``*_NewFrame()`` and ``ImGui::NewFrame()``. Detaches/reattaches real input on a user-control transition, advances registered timelines, and re-asserts held synth state (idempotent — ImGui dedupes same-state events). No-op when nothing is armed. ``harness_new_frame`` calls this for you.
+    // Real-input suppression at the GLFW source: glfwSet*Callback must run on the
+    // render thread, which this does. On a g_user_control transition, detach/reattach
+    // the backend's input callbacks so real mouse/keyboard never reach ImGui's queue;
+    // synth uses io.Add*Event directly and is unaffected.
+    if (g_user_control != g_input_callbacks_installed) {
+        if (g_real_input_toggle != null) {
+            invoke(g_real_input_toggle, g_user_control)
+        }
+        g_input_callbacks_installed = g_user_control
+        if (!g_user_control) {
+            // One-shot on take-over: drop real input queued before the detach took
+            // effect. After this, the detached GLFW callbacks keep real buttons/keys
+            // out, and the synth-pos re-assert below overrides the real cursor pos
+            // that ImGui_ImplGlfw_NewFrame still polls each frame. We deliberately do
+            // NOT clear every frame — that would also wipe synth events emitted
+            // earlier this frame (e.g. the click coroutine's release), leaving ImGui
+            // with a stuck button.
+            var io & = unsafe(GetIO())
+            io |> ClearEventsQueue()
+        }
+    }
+    // Advance the live-side timeline playback (mouse/key), which calls the synth_* primitives above.
+    for (h in values(g_synth_frame_hooks)) {
+        invoke(h)
+    }
+    let synth_armed = synth_cursor_owned || !empty(synth_held_keys) || synth_buttons_mask != 0
+    return if (!synth_armed)
+    // Re-assert held state every frame (imgui_test_engine model). Idempotent.
+    var io & = unsafe(GetIO())
+    if (synth_cursor_owned) {
+        io |> AddMousePosEvent(mouse_cursor_x, mouse_cursor_y)
+    }
+    for (b in range(0, 5)) {
+        if ((synth_buttons_mask & (1 << b)) != 0) {
+            io |> AddMouseButtonEvent(b, true)
+        }
+    }
+    for (k in keys(synth_held_keys)) {
+        io |> AddKeyEvent(as_imgui_key(k), true)
+    }
+}
+
+// Scroll `target` into its top-level window's viewport before clicking — a real user scrolls a
+// below-the-fold widget on-screen first (imgui_test_engine ScrollToItem). Queues the window's
+// pending_scroll; returns the applied vertical delta (0 = visible / not a windowed path / no room).
+def private scroll_target_into_view(target : string) : float {
+    let slash = find(target, "/")
+    if (slash < 0) return 0.0f                        // bare window / hex_id: first segment IS the window
+    let win_name = slice(target, 0, slash)
+    let meta = unsafe(g_widgets?[win_name])
+    if (meta == null || meta.kind != "window" || meta.state_addr == null) return 0.0f
+    let r = widget_rect(target)
+    if (!r._0) return 0.0f
+    let bb = r._1                                     // (x0=left, y0=top, x1=right, y1=bottom)
+    var ws = unsafe(reinterpret<WindowState? -const>(meta.state_addr))
+    if (ws == null) return 0.0f
+    let visible_top = ws.pos.y + GetFrameHeight()     // content top, below the title bar
+    let visible_bottom = ws.pos.y + ws.size.y
+    let margin = GetTextLineHeight()
+    var delta = 0.0f
+    if (bb.w > visible_bottom) {                      // bottom edge below the fold → scroll down
+        delta = (bb.w - visible_bottom) + margin
+    } elif (bb.y < visible_top) {                     // top edge above the fold → scroll up
+        delta = -((visible_top - bb.y) + margin)
+    } else {
+        return 0.0f                                   // already fully visible
+    }
+    let new_y = clamp(ws.scroll.y + delta, 0.0f, ws.scroll_max.y)
+    let applied = new_y - ws.scroll.y
+    if (abs(applied) < 1.0f) return 0.0f              // already at the needed scroll (e.g. clamped)
+    ws.pending_scroll = float2(ws.scroll.x, new_y)
+    ws.pending_scroll_set = true
+    return applied
+}
+
+[async]
+def private click_at_coro(center : float2; scrolled : bool; button : int; ticket : int) : void {
+    // Real synthetic click via the owned synth primitives (imgui_test_engine model):
+    // [scroll queued by dispatch] → move → settle hover one frame → reset the double-click
+    // timer → press → hold a frame → release. `center` is the post-scroll position (dispatch
+    // shifted it by the queued scroll delta), so when `scrolled` we yield one frame first to
+    // let the window apply SetNextWindowScroll. The hover-settle frame is load-bearing: tab
+    // bars (TabItemButton) register the press only once HoveredId is set from a prior frame's
+    // mouse pos — a real user always hovers before clicking, so the synthetic path must too.
+    //
+    // FIFO-serialize against any in-flight click: wait until this click's ticket is the one being
+    // served. imgui_test_engine runs one test coroutine, so its MouseClick calls are inherently
+    // sequential; dasImgui spawns a coroutine per imgui_click and the per-frame command drain can
+    // batch two into one frame — without ordering, the reverse-order advance runs them LIFO,
+    // either firing a menu-item click before the right-click that opens the menu, or merging two
+    // same-target presses into one button-down (one click registered instead of two). The NEXT
+    // click's own move+settle below supplies the frame gap that separates the two press/release
+    // cycles, so no extra hold frame is needed after release.
+    while (g_click_ticket_serving != ticket) {
+        await_next_frame()
+    }
+    if (scrolled) await_next_frame()
+    synth_mouse_move(center.x, center.y)
     await_next_frame()
-    io |> AddMouseButtonEvent(button, false)
+    unsafe {
+        var io & = GetIO()
+        io.MouseClickedTime[button] = -3.40282347e+38lf  // -FLT_MAX: never auto-double-click
+    }
+    synth_mouse_button(button, 1)
+    await_next_frame()
+    synth_mouse_button(button, 0)
+    g_click_ticket_serving++
+}
+
+// --- immediate synth live_commands (transport calls these; live adds the animated forms) ---
+
+struct MousePosArgs {
+    x : float = 0.0
+    y : float = 0.0
+}
+
+[live_command(description="Teleport synthetic cursor (ImGui bypass). Args: x, y")]
+def imgui_mouse_pos(input : JsonValue?) : JsonValue? {
+    //! Live-command: teleport the synth cursor to ``(x, y)`` and take ownership.
+    let args = from_JV(input, type<MousePosArgs>)
+    synth_mouse_move(args.x, args.y)
+    return JV((x = args.x, y = args.y))
+}
+
+struct MouseClickArgs {
+    @optional button : int    = 0
+    action           : string = "press"
+}
+
+[live_command(description="Synthetic mouse button (ImGui bypass). Args: button (0/1/2), action (press|release)")]
+def imgui_mouse_click(input : JsonValue?) : JsonValue? {
+    //! Live-command: press/release a synth mouse button at the current synth cursor.
+    let args = from_JV(input, type<MouseClickArgs>)
+    var act : int
+    if (args.action == "press") {
+        act = 1
+    } elif (args.action == "release") {
+        act = 0
+    } else {
+        return JV((error = "invalid action; expected \"press\" or \"release\"", action = args.action))
+    }
+    synth_mouse_button(args.button, act)
+    return JV((button = args.button, action = args.action))
+}
+
+struct MouseScrollArgs {
+    x : float = 0.0
+    y : float = 0.0
+}
+
+[live_command(description="Synthetic mouse scroll (ImGui bypass). Args: x, y (offsets)")]
+def imgui_mouse_scroll(input : JsonValue?) : JsonValue? {
+    //! Live-command: synthetic mouse wheel.
+    let args = from_JV(input, type<MouseScrollArgs>)
+    synth_mouse_wheel(args.x, args.y)
+    return JV((x = args.x, y = args.y))
+}
+
+struct KeyPressArgs {
+    key : int = 0   // ImGuiKey value (cast to int over the wire)
+}
+
+[live_command(description="Synthetic key press (ImGui bypass). Args: key (ImGuiKey int)")]
+def imgui_key_press(input : JsonValue?) : JsonValue? {
+    //! Live-command: press a synth key (ImGuiKey int); auto-pairs the mod alias.
+    let args = from_JV(input, type<KeyPressArgs>)
+    return JV((error = "missing key")) if (args.key == 0)
+    synth_key_press(args.key)
+    return JV((key = args.key, action = "press"))
+}
+
+[live_command(description="Synthetic key release (ImGui bypass). Args: key (ImGuiKey int)")]
+def imgui_key_release(input : JsonValue?) : JsonValue? {
+    //! Live-command: release a synth key (ImGuiKey int).
+    let args = from_JV(input, type<KeyPressArgs>)
+    return JV((error = "missing key")) if (args.key == 0)
+    synth_key_release(args.key)
+    return JV((key = args.key, action = "release"))
+}
+
+struct KeyCharArgs {
+    codepoint : uint = 0u
+}
+
+[live_command(description="Synthetic Unicode char (ImGui bypass). Args: codepoint")]
+def imgui_key_char(input : JsonValue?) : JsonValue? {
+    //! Live-command: push a synthetic Unicode character to the focused widget.
+    let args = from_JV(input, type<KeyCharArgs>)
+    return JV((error = "missing codepoint")) if (args.codepoint == 0u)
+    synth_char(args.codepoint)
+    return JV((codepoint = args.codepoint))
+}
+
+struct UserControlArgs {
+    @optional enabled : bool = true
+}
+
+[live_command(description="Toggle real user input. When disabled, the synth tick detaches the GLFW backend's input callbacks (and drops queued input) so ONLY synth IO drives the UI — no real-input bleed racing the synth timeline. Re-enable to hand control back. Args: enabled (bool)")]
+def set_user_control(input : JsonValue?) : JsonValue? {
+    //! Live-command: enable/disable real mouse+keyboard reaching the UI.
+    let args = from_JV(input, type<UserControlArgs>)
+    set_user_control_enabled(args.enabled)
+    return JV((user_control = g_user_control))
 }
 
 def private dispatch_or_err(action : string; input : JsonValue?) : Result<string, string> {
     let target = extract_string_field(input, "target")
     let (level, resolved) = classify_target(target)
     if (level == 0) return err("unresolvable target: {target}", type<string>)
-    // Click with non-zero button (right-click / middle-click) always goes through
-    // the L1 mouse-event path: popups (popup_context_item / popup_context_window)
-    // and IsItemClicked(N>0) checks respond to real io.AddMouseButtonEvent, not
-    // the L2 dispatcher's state-mutation rail. resolve_target_bbox works at both
-    // path (L2) and hex_id (L1) so this branch handles both target forms.
+    // A click is a real synthetic mouse click: warp to the widget center, press and
+    // release across one frame (click_at_coro), driving ImGui's own input path. Every
+    // widget then behaves exactly as under a real click — buttons fire, checkbox /
+    // selectable / menu_item toggle and auto-close their popup, popup_context_* and
+    // IsItemClicked(N) all respond. No per-widget programmatic rail. resolve_target_bbox
+    // resolves both L2 (path) and L1 (hex_id) targets, so this handles every click form.
     if (action == "click") {
         let button = input?["button"] ?? 0
-        if (button != 0) {
-            let (got, center) = resolve_target_bbox(resolved)
-            if (!got) return err("target {resolved} has no bbox this frame (not rendered)", type<string>)
-            spawn_coroutine(click_at_coro(center, button))
-            return ok("L1:{resolved}:btn{button}", type<string>)
-        }
+        let (got, center) = resolve_target_bbox(resolved)
+        if (!got) return err("target {resolved} has no bbox this frame (not rendered)", type<string>)
+        // Scroll a below-the-fold target into view first. Scroll is a pure vertical content
+        // translation, so the post-scroll center is the current center shifted up by the applied
+        // delta — computed here (registry is populated mid-dispatch) because the coroutine can't
+        // read the freshly-cleared registry when it advances in begin_frame.
+        let scroll_dy = scroll_target_into_view(resolved)
+        let target_center = float2(center.x, center.y - scroll_dy)
+        // Claim the FIFO ticket here (issue order), AFTER every early-return above — a ticket with
+        // no coroutine to serve it would stall g_click_ticket_serving and hang all later clicks.
+        let my_ticket = g_click_ticket_next
+        g_click_ticket_next++
+        spawn_coroutine(click_at_coro(target_center, scroll_dy != 0.0f, button, my_ticket))
+        // Return the clean resolved target (path or hex_id), not a synthetic tag:
+        // the post-command auto-highlight hook resolves it via widget_rect, and
+        // tests assert the resolved path. Same value for every button.
+        return ok(resolved, type<string>)
     }
     if (level == 2) {
         if (action == "focus") {
@@ -1437,26 +1870,29 @@ def private dispatch_or_err(action : string; input : JsonValue?) : Result<string
         }
         return ok(resolved, type<string>)
     }
-    if (action != "click") return err("L1 hex_id fallback only supports 'click', got '{action}'", type<string>)
-    let hid = parse_hex_id(resolved)
-    if (!key_exists(g_id_to_bbox, hid)) return err("hex_id {resolved} not seen this frame (no bbox to click)", type<string>)
-    let bb = g_id_to_bbox[hid]
-    let center = float2((bb.x + bb.z) * 0.5f, (bb.y + bb.w) * 0.5f)
-    spawn_coroutine(click_at_coro(center, 0))
-    return ok("L1:{resolved}", type<string>)
+    // L1 hex_id targets (the dispatcher never rendered them) support clicks only,
+    // which the click branch above already handled; no rail exists for other actions.
+    return err("L1 hex_id target {resolved} supports 'click' only, got '{action}'", type<string>)
 }
 
-[live_command(description = "Queue an L2 click on a widget identified by 'target'")]
+[live_command(description = "Real synthetic mouse click on the widget identified by 'target' (optional 'button')")]
 def imgui_click(input : JsonValue?) : JsonValue? {
-    //! Live-command: dispatch a ``click`` to the widget named by ``input["target"]``; resolves path or ``0x...`` hex_id.
+    //! Live-command: a real synthetic mouse click on the widget named by ``input["target"]``
+    //! (resolves path or ``0x...`` hex_id; optional ``input["button"]`` — 0 left / 1 right / 2 middle).
+    //! Faithful — warps to the widget center and presses/releases through ImGui's own input path,
+    //! so the widget behaves exactly as under a real click (errors if the target isn't rendered).
+    //! To set an exact value a click can't reach, use ``imgui_force_set``.
     let r = dispatch_or_err("click", input)
     if (r._is_ok) dispatch_post_command_hooks("click", r._value)
     return with_await(input, r)
 }
 
-[live_command(description = "Queue an L3 value set on a widget ('target' name + 'value')")]
-def imgui_set(input : JsonValue?) : JsonValue? {
-    //! Live-command: steer the next-frame value of ``input["target"]`` to ``input["value"]``.
+[live_command(description = "Force a widget's value directly, bypassing input ('target' name + 'value')")]
+def imgui_force_set(input : JsonValue?) : JsonValue? {
+    //! Live-command: force the next-frame value of ``input["target"]`` to ``input["value"]``.
+    //! A BYPASS — writes state directly, doing what a user couldn't (exact value, off-screen
+    //! or inactive widget). For a faithful interaction prefer ``imgui_click`` /
+    //! ``imgui_mouse_play`` / ``imgui_key_type``; reach for this only when the value itself is the goal.
     let r = dispatch_or_err("set", input)
     if (r._is_ok) dispatch_post_command_hooks("set", r._value)
     return with_await(input, r)
@@ -1571,29 +2007,6 @@ def imgui_await(input : JsonValue?) : JsonValue? {
     return with_await(input, ok(result, type<string>))
 }
 
-// ===== Phase 2.2 — L1 IO synthesis (coroutine-driven) =====
-//
-// drag/type_text push raw ImGuiIO events through `[async]` coroutines that
-// yield one event per frame. The widget consumes them on subsequent frames
-// like any other input. Targets resolve via the same path/hex_id rails the
-// L2 dispatchers use. `target` for type_text is informational until Phase
-// 2.4 wires the focus arm; chars go to whichever widget already holds focus.
-
-struct DragArgs {
-    @optional target : string = ""               //! widget path or 0x... hex_id where the drag starts
-    @optional dx : float = 0.0f                  //! horizontal pixel delta from start to end
-    @optional dy : float = 0.0f                  //! vertical pixel delta from start to end
-    @optional steps : int = 4                    //! interpolation steps (one mouse move per frame)
-    @optional button : int = 0                   //! ImGuiMouseButton index (0=Left, 1=Right, 2=Middle)
-}
-
-struct TypeTextArgs {
-    @optional target           : string = ""     //! informational target path (chars go to whichever widget holds focus)
-    @optional text             : string = ""     //! ASCII text to push one char at a time
-    @optional per_char_frames  : int    = 1      //! frames between consecutive chars
-    @optional total_frames     : int    = 0      //! when >0, overrides per_char_frames so the typing fits this frame budget
-}
-
 def private parse_hex_id(s : string) : uint {
     // Parse "0x..." / "0X..." → uint; 0u on failure (matches ImGui's "no widget" sentinel).
     let n = length(s)
@@ -1623,59 +2036,4 @@ def private resolve_target_bbox(target : string) : tuple<bool; float2> {
     if (!r._0) return (false, float2(0.0f, 0.0f))
     let bb = r._1
     return (true, float2((bb.x + bb.z) * 0.5f, (bb.y + bb.w) * 0.5f))
-}
-
-[async]
-def private drag_coro(start : float2; endp : float2; steps : int; button : int) : void {
-    var io & = unsafe(GetIO())
-    io |> AddMousePosEvent(start.x, start.y)
-    io |> AddMouseButtonEvent(button, true)
-    await_next_frame()
-    for (i in range(1, steps + 1)) {
-        let t = float(i) / float(steps)
-        let p = start + (endp - start) * t
-        io |> AddMousePosEvent(p.x, p.y)
-        await_next_frame()
-    }
-    io |> AddMouseButtonEvent(button, false)
-}
-
-[async]
-def private type_text_coro(text : string; per_char_frames : int) : void {
-    // L1 keyboard input: one ASCII char every per_char_frames frames via AddInputCharactersUTF8. ASCII only — multi-byte sequences would split.
-    var io & = unsafe(GetIO())
-    let n = length(text)
-    let gap = max(1, per_char_frames)
-    for (i in range(n)) {
-        io |> AddInputCharactersUTF8(slice(text, i, i + 1))
-        for (_ in range(gap)) {
-            await_next_frame()
-        }
-    }
-}
-
-[live_command(description = "L1 drag: synthesize mouse-press → N moves → release at target widget bbox center")]
-def imgui_drag(input : JsonValue?) : JsonValue? {
-    //! Live-command: spawn an L1 drag coroutine — press at ``target`` bbox center, walk ``(dx,dy)`` over ``steps`` frames, release.
-    let args = from_JV(input, default<DragArgs>)
-    let (found, start) = resolve_target_bbox(args.target)
-    if (!found) return with_await(input, err("drag target unresolved: {args.target}", type<string>))
-    let endp = start + float2(args.dx, args.dy)
-    spawn_coroutine(drag_coro(start, endp, max(args.steps, 1), args.button))
-    dispatch_post_command_hooks("drag", args.target)
-    return with_await(input, ok(args.target, type<string>))
-}
-
-[live_command(description = "L1 keyboard: push UTF-8 chars to the focused widget. Args: text, per_char_frames (default 1) | total_frames (preferred for fixed-duration typing)")]
-def imgui_type_text(input : JsonValue?) : JsonValue? {
-    //! Live-command: spawn an L1 typing coroutine that pushes ``text`` to whichever widget currently holds focus.
-    let args = from_JV(input, default<TypeTextArgs>)
-    if (empty(args.text)) return with_await(input, err("missing 'text'", type<string>))
-    var gap = max(1, args.per_char_frames)
-    if (args.total_frames > 0) {
-        gap = max(1, args.total_frames / length(args.text))
-    }
-    spawn_coroutine(type_text_coro(args.text, gap))
-    if (!empty(args.target)) dispatch_post_command_hooks("type_text", args.target)
-    return with_await(input, ok(args.target, type<string>))
 }

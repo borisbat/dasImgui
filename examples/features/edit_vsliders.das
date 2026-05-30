@@ -10,7 +10,7 @@ require daslib/safe_addr
 //          the per-call `size` parameter sets the column's pixel dimensions
 //          (typical 40x200 for an audio-mixer style fader). Use `same_line`
 //          between calls to lay multiple vsliders side-by-side.
-// DRIVE:   curl -X POST -d '{"name":"imgui_set","args":{"target":"MAIN_WIN/VSLIDE_F1","value":0.8}}' \
+// DRIVE:   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"MAIN_WIN/VSLIDE_F1","value":0.8}}' \
 //              localhost:9090/command
 // STANDALONE: daslang.exe modules/dasImgui/examples/features/edit_vsliders.das
 // HEADLESS:   daslang.exe modules/dasImgui/examples/features/edit_vsliders.das -- --headless --headless-frames=60

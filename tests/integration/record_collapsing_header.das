@@ -79,7 +79,7 @@ def main {
         // ---- Stage 2: drive VOLUME slider inside the closable section ----
         move_to(app, p_closable, 900)
         sleep(SETTLE_MS)
-        set_value(app, T_CLOSABLE_LEAF, JV(72))
+        force_set_value(app, T_CLOSABLE_LEAF, JV(72))
         sleep(CLICK_DWELL_MS)
         say(app, "VOLUME slider set to 72 inside CLOSABLE_CH — closable=true adds an X-button on the right of the header strip that flips state.open=false.", T_CLOSABLE_LEAF)
 

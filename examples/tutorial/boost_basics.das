@@ -28,7 +28,7 @@ require imgui/imgui_visual_aids
 //
 // DRIVE (when running live):
 //   curl -X POST -d '{"name":"imgui_snapshot"}' localhost:9090/command
-//   curl -X POST -d '{"name":"imgui_set","args":{"target":"BASICS_WIN/VOLUME","value":0.75}}' \
+//   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"BASICS_WIN/VOLUME","value":0.75}}' \
 //        localhost:9090/command
 //   curl -X POST -d '{"name":"imgui_click","args":{"target":"BASICS_WIN/BUMP_BTN"}}' \
 //        localhost:9090/command

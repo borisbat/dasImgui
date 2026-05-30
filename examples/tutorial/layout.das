@@ -35,9 +35,9 @@ require imgui/imgui_visual_aids
 // LIVE:       daslang-live modules/dasImgui/examples/tutorial/layout.das
 //
 // DRIVE (when running live):
-//   curl -X POST -d '{"name":"imgui_set","args":{"target":"LAYOUT_WIN/SPLIT_VERT/SPLIT_MAIN","value":0.7}}' localhost:9090/command
-//   curl -X POST -d '{"name":"imgui_set","args":{"target":"LAYOUT_WIN/SPLIT_VERT","value":0.4}}'           localhost:9090/command
-//   curl -X POST -d '{"name":"imgui_set","args":{"target":"LAYOUT_WIN/SIDEBAR","value":220.0}}'            localhost:9090/command
+//   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"LAYOUT_WIN/SPLIT_VERT/SPLIT_MAIN","value":0.7}}' localhost:9090/command
+//   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"LAYOUT_WIN/SPLIT_VERT","value":0.4}}'           localhost:9090/command
+//   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"LAYOUT_WIN/SIDEBAR","value":220.0}}'            localhost:9090/command
 //
 // Note: the boost ``window(LAYOUT_WIN, ...)`` wrapper pushes the window's
 // name as a path prefix on every nested widget, so live targets are

@@ -107,7 +107,7 @@ text_show — the app-driven mirror
 ``text_show`` is the read-only counterpart to ``text_input`` —
 ``state.value`` is what the widget renders, and the value can be
 written by the app (``STATUS_TEXT.value := "..."``) **or** by an
-external driver (``imgui_set`` with a string value). Either way the
+external driver (``imgui_force_set`` with a string value). Either way the
 snapshot exposes the current value under the standard
 ``payload.value`` field, so integration tests can assert on computed
 status strings the same way they assert slider values:
@@ -145,15 +145,15 @@ The snapshot exposes the state structs as JSON:
    #     "STATE_WIN/STATUS_TEXT": { "kind": "text_show", "payload": {"value": "saved at frame 12.3"}, ... }
    #   }
 
-Drivers go through the same registry — ``imgui_set`` looks up the
+Drivers go through the same registry — ``imgui_force_set`` looks up the
 target, queues the pending value on the matching state struct, and
 the renderer consumes it next frame:
 
 .. code-block:: bash
 
-   curl -X POST -d '{"name":"imgui_set","args":{"target":"STATE_WIN/SPEED","value":7}}' \
+   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"STATE_WIN/SPEED","value":7}}' \
         localhost:9090/command
-   curl -X POST -d '{"name":"imgui_set","args":{"target":"STATE_WIN/STATUS_TEXT","value":"hello"}}' \
+   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"STATE_WIN/STATUS_TEXT","value":"hello"}}' \
         localhost:9090/command
    curl -X POST -d '{"name":"imgui_click","args":{"target":"STATE_WIN/SAVE_BTN"}}' \
         localhost:9090/command

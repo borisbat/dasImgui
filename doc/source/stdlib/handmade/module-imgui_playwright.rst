@@ -10,7 +10,7 @@ never collide.
 
 Locators (``find_widget``, ``widget_exists``, ``widget_payload_field``,
 ``widget_rendered``) resolve via the same path keys the boost registry
-uses; actions (``click``, ``type_text``, ``set_value``, ``drag``, ``focus``,
+uses; actions (``click``, ``type_text``, ``force_set_value``, ``drag``, ``focus``,
 ``open_widget``, ``close_widget``, ``reload``) post to the live-command
 surface in :ref:`imgui_boost_runtime <stdlib_imgui_boost_runtime>` and apply
 the matching ``AwaitModifiers``. Polling helpers (``wait_until``,

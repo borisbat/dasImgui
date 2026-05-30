@@ -109,11 +109,11 @@ target-bbox automatically:
    drag_to(app, "MAIN_WIN/SOURCE_BTN", "MAIN_WIN/TARGET_BTN", steps = 8)
 
 It reads both bboxes from a fresh snapshot, computes ``(dx, dy) =
-target_center - source_center``, and dispatches the L1 ``imgui_drag``
-coroutine — press at the source, ``steps`` interpolated moves, release
-at the target. ImGui's drag state machine activates around the second
-or third move (depending on ``io.MouseDragThreshold``) and resolves on
-release.
+target_center - source_center``, and composes an ``imgui_mouse_play``
+timeline — warp to the source, press, ``steps``-scaled interpolated
+moves to the target, release. ImGui's drag state machine activates around
+the second or third move (depending on ``io.MouseDragThreshold``) and
+resolves on release.
 
 The lower-level ``drag(app, target, dx, dy, steps)`` is available when
 you want absolute offsets — useful for testing drag-without-drop or

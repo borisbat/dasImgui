@@ -1119,8 +1119,8 @@ class EditExternalCallMacro : AstCallMacro {
 //   def <name>(var state : T; action : string; payload : string) { ... }
 // keyed by the FIRST PARAMETER'S STRUCT TYPE (T), not by the function name.
 // One ``[widget_dispatch]`` per state struct covers every widget kind whose
-// state is that struct — e.g. the single ClickState dispatcher fires for
-// ``button``/``small_button``/``arrow_button``/.... Macro emits:
+// state is that struct — e.g. the single ToggleState dispatcher fires for
+// ``checkbox``/``radio_button``/``selectable``/``menu_item``. Macro emits:
 //   - a type-erased wrapper that casts ``state_addr : void?`` to ``T?`` and
 //     delegates to the user body, and
 //   - an init registration via

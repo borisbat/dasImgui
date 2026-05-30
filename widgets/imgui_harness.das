@@ -14,9 +14,9 @@ module imgui_harness shared public
 //!
 //! Hides the GLFW/OpenGL backend boilerplate behind five helpers
 //! (``harness_init`` / ``harness_begin_frame`` / ``harness_new_frame`` /
-//! ``harness_end_frame`` / ``harness_shutdown``, plus optional
-//! ``harness_apply_synth_io``). Examples ``require imgui_harness`` and never
-//! touch GLFW/GL symbols directly.
+//! ``harness_end_frame`` / ``harness_shutdown``). ``harness_new_frame`` runs the
+//! boost synth tick automatically, so synthetic input works with no opt-in.
+//! Examples ``require imgui_harness`` and never touch GLFW/GL symbols directly.
 //!
 //! Mode dispatch (windowed vs headless) is internal. Pass ``--headless`` after
 //! the daslang ``--`` separator to run without a window:
@@ -168,18 +168,12 @@ def public harness_begin_frame() : bool {
     return true
 }
 
-def public harness_apply_synth_io() {
-    //! Optional — call between ``harness_begin_frame`` and ``harness_new_frame``
-    //! when the test drives synthetic IO via the ``imgui_*`` ``[live_command]``
-    //! family (``imgui_mouse_play``, ``imgui_key_chord``, …). Windowed:
-    //! re-asserts synth pos so it wins the GLFW backend's per-frame poll race.
-    //! Headless: drains the same synth timeline (no backend to race with, but
-    //! held state still needs the per-frame tick).
-    apply_synth_io_override()
-}
-
 def public harness_new_frame() {
-    //! ``ImGui::NewFrame()``. Identical in both modes.
+    //! Runs the boost synth tick — so synthetic mouse/keyboard and ``set_user_control``
+    //! work on every harness app with no opt-in — then ``ImGui::NewFrame()``. The tick
+    //! sits between the backend's ``*_NewFrame()`` (in ``harness_begin_frame``) and
+    //! ``NewFrame()`` here, the slot synthetic input must drain in. Both modes.
+    imgui_synth_tick()
     NewFrame()
 }
 

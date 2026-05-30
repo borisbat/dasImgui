@@ -7,9 +7,9 @@ require imgui/imgui_harness
 // SHOWS:   slider_float / slider_float2/3/4
 //          slider_int   / slider_int2/3/4
 //          vslider_float / vslider_int
-// DRIVE:   curl -X POST -d '{"name":"imgui_set","args":{"target":"MAIN_WIN/GAIN","value":0.7}}' \
+// DRIVE:   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"MAIN_WIN/GAIN","value":0.7}}' \
 //               localhost:9090/command
-//          curl -X POST -d '{"name":"imgui_set","args":{"target":"MAIN_WIN/WAVE_RGB","value":[0.1,0.5,0.9]}}' \
+//          curl -X POST -d '{"name":"imgui_force_set","args":{"target":"MAIN_WIN/WAVE_RGB","value":[0.1,0.5,0.9]}}' \
 //               localhost:9090/command
 // STANDALONE: daslang.exe modules/dasImgui/examples/features/inputs_slider.das
 // HEADLESS:   daslang.exe modules/dasImgui/examples/features/inputs_slider.das -- --headless --headless-frames=60

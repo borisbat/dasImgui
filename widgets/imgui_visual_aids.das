@@ -68,8 +68,8 @@ var public cursor_sprite_radius             : float = 9.0f
 var public cursor_sprite_outline_thickness  : float = 2.0f
 var public cursor_sprite_inner_radius       : float = 2.5f
 
-// Click flash — expanding ring drawn at the cursor when imgui_live's synth
-// driver fires a button press. The overlay is the recording's proof-of-click
+// Click flash — expanding ring drawn at the cursor when imgui_boost_runtime's
+// synth driver fires a button press. The overlay is the recording's proof-of-click
 // — useful when the widget's own hover/active visuals don't fire for a
 // synthetic click (e.g. because the backend's per-frame poll fights over
 // io.MousePos with our synth state).
@@ -99,7 +99,7 @@ var public imgui_auto_highlight_on_command : bool = false
     //! When true, every accepted imgui_* command auto-flashes its target with ``auto_highlight_color`` for ``auto_highlight_frames`` ticks.
 
 // Keycap / modifier HUD — bottom-center keycap pops + modifier-strip below.
-// Reads `synth_last_codepoint` / `synth_last_keycode` from imgui_live to
+// Reads `synth_last_codepoint` / `synth_last_keycode` from imgui_boost_runtime to
 // detect each new synth key event and pop a new keycap. Modifier strip
 // lights up directly from `IsKeyDown(ImGuiKey_*)` so it reacts to BOTH
 // synth events AND real hardware keys.
@@ -200,7 +200,7 @@ def public cursor_sprite(enabled : bool) {
 }
 
 def public apply_synth_io_override() {
-    //! Per-frame synth IO entry point — call between the backend's ``NewFrame`` and ImGui's ``NewFrame``. Drives :ref:`imgui_synth_tick <function-imgui_live_core_imgui_synth_tick>`.
+    //! Per-frame synth IO entry point — call between the backend's ``NewFrame`` and ImGui's ``NewFrame``. Drives :ref:`imgui_synth_tick <function-imgui_boost_runtime_imgui_synth_tick>`.
     imgui_synth_tick()
 }
 
@@ -241,7 +241,7 @@ def private paint_highlights {
 
 def private effective_cursor_pos() : float2 {
     // Synth cursor when active, else real ImGui cursor — backend poll may overwrite io.MousePos.
-    let (active, sx, sy) = imgui_live::get_synth_cursor()
+    let (active, sx, sy) = imgui_boost_runtime::get_synth_cursor()
     return float2(sx, sy) if (active)
     return GetMousePos()
 }
@@ -495,7 +495,7 @@ def private paint_cursor_sprite {
 
 def private effective_synth_click() : tuple<int; float> {
     // (action, t) for last synth click — action: 1=press, 0=release.
-    return (imgui_live::synth_click_action, imgui_live::synth_click_t)
+    return (imgui_boost_runtime::synth_click_action, imgui_boost_runtime::synth_click_t)
 }
 
 def private paint_click_flash {
@@ -543,14 +543,14 @@ def private glyph_for_imgui_key(kc : int) : string {
 def private paint_key_hud {
     return if (!key_hud_enabled)
 
-    // 1) Pull new synth events from imgui_live into traces. Codepoint takes
+    // 1) Pull new synth events from imgui_boost_runtime into traces. Codepoint takes
     //    priority: a typed char already includes the visible glyph;
     //    modifier-only keystrokes fall through to the keycode branch.
     let now = get_uptime()
-    let cp_t = imgui_live::synth_last_codepoint_t
-    let cp   = imgui_live::synth_last_codepoint
-    let kc_t = imgui_live::synth_last_keycode_t
-    let kc   = imgui_live::synth_last_keycode
+    let cp_t = imgui_boost_runtime::synth_last_codepoint_t
+    let cp   = imgui_boost_runtime::synth_last_codepoint
+    let kc_t = imgui_boost_runtime::synth_last_keycode_t
+    let kc   = imgui_boost_runtime::synth_last_keycode
     if (cp_t > g_last_seen_codepoint_t && cp != 0u) {
         g_keycap_traces |> push(KeycapTrace(glyph = glyph_for_codepoint(cp), t_pushed = now))
         g_last_seen_codepoint_t = cp_t
@@ -682,7 +682,7 @@ def private paint_all {
     paint_key_hud()
 }
 
-def private on_command(command : string; target : string) {
+def private on_command(_command : string; target : string) {
     if (imgui_auto_highlight_on_command && !empty(target)) {
         highlight(target, auto_highlight_frames, auto_highlight_color)
     }

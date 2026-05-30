@@ -25,7 +25,7 @@ struct DefaultsState {
     @live caption : string = "default-label"
     @live color : float3 = float3(0.5f, 0.6f, 0.7f)
     @live mode : ImGuiButtonFlags = ImGuiButtonFlags.MouseButtonRight
-    @optional pending_bump : bool                                       // imgui_set L3 -> bump count next frame
+    @optional pending_bump : bool                                       // imgui_force_set L3 -> bump count next frame
     @optional has_pending : bool
 }
 

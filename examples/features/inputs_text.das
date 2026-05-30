@@ -12,13 +12,13 @@ require math
 //          `combo_getter` exercises the same trampoline pattern for combos.
 // SHOWS:   input_text / input_text_with_hint / input_text_multiline /
 //          input_text_growable / combo_getter
-// DRIVE:   curl -X POST -d '{"name":"imgui_set","args":{"target":"MAIN_WIN/NAME","value":"hello"}}' \
+// DRIVE:   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"MAIN_WIN/NAME","value":"hello"}}' \
 //               localhost:9090/command
-//          curl -X POST -d '{"name":"imgui_set","args":{"target":"MAIN_WIN/BIO","value":"line\nbreak"}}' \
+//          curl -X POST -d '{"name":"imgui_force_set","args":{"target":"MAIN_WIN/BIO","value":"line\nbreak"}}' \
 //               localhost:9090/command
-//          curl -X POST -d '{"name":"imgui_set","args":{"target":"MAIN_WIN/GROW","value":"............................................................"}}' \
+//          curl -X POST -d '{"name":"imgui_force_set","args":{"target":"MAIN_WIN/GROW","value":"............................................................"}}' \
 //               localhost:9090/command   (forces a CallbackResize past 256B)
-//          curl -X POST -d '{"name":"imgui_set","args":{"target":"MAIN_WIN/FONT","value":2}}' \
+//          curl -X POST -d '{"name":"imgui_force_set","args":{"target":"MAIN_WIN/FONT","value":2}}' \
 //               localhost:9090/command   (combo_getter index)
 // STANDALONE: daslang.exe modules/dasImgui/examples/features/inputs_text.das
 // HEADLESS:   daslang.exe modules/dasImgui/examples/features/inputs_text.das -- --headless --headless-frames=60
@@ -79,8 +79,8 @@ def update() {
         text("font index = {FONT.value} ('{FONTS[clamp(FONT.value, 0, length(FONTS) - 1)]}')")
 
         spacing()
-        text("imgui_set with target=MAIN_WIN/NAME (or EMAIL/BIO/GROW) + string value writes the buffer")
-        text("imgui_set with target=MAIN_WIN/FONT + int value picks the dropdown row")
+        text("imgui_force_set with target=MAIN_WIN/NAME (or EMAIL/BIO/GROW) + string value writes the buffer")
+        text("imgui_force_set with target=MAIN_WIN/FONT + int value picks the dropdown row")
     }
 
     harness_end_frame()

@@ -32,7 +32,7 @@ require imgui/imgui_visual_aids
 // `*p_open = false` — bidir-bound.
 //
 // Use this when a SECOND UI surface (a checkbox row, a menu toggle,
-// imgui_set on the external bool) needs to drive the same visibility
+// imgui_force_set on the external bool) needs to drive the same visibility
 // flag the X writes. `tab_item`'s internal `state.open` isn't exposed
 // for write outside the widget, so a shared external bool is the
 // canonical pattern.
@@ -46,7 +46,7 @@ require imgui/imgui_visual_aids
 // LIVE:       daslang-live modules/dasImgui/examples/tutorial/edit_tab_item.das
 //
 // DRIVE (when running live):
-//   curl -X POST -d '{"name":"imgui_set","args":{"target":"ET_WIN/ET_BAR/ET_TAB_A","value":false}}' \
+//   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"ET_WIN/ET_BAR/ET_TAB_A","value":false}}' \
 //        localhost:9090/command
 // =============================================================================
 

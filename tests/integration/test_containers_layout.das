@@ -49,12 +49,12 @@ def test_containers_layout_smoke(t : T?) {
         t |> equal(find_widget(snap0, "LAYOUT_WIN/MAIN_BAR/FILE_MENU")?["kind"] ?? "",
                    "menu", "menu registers under menu_bar's path")
 
-        // ----- imgui_set steers a leaf nested inside tree_node -----
-        set_value(d, "LAYOUT_WIN/MAIN_TABS/SETTINGS_TAB/PHYSICS_TREE/GRAVITY", JV(12.5f))
+        // ----- imgui_force_set steers a leaf nested inside tree_node -----
+        force_set_value(d, "LAYOUT_WIN/MAIN_TABS/SETTINGS_TAB/PHYSICS_TREE/GRAVITY", JV(12.5f))
         t |> success(wait_for_payload_value(d,
                         "LAYOUT_WIN/MAIN_TABS/SETTINGS_TAB/PHYSICS_TREE/GRAVITY",
                         "value", 12.5f, 300),
-                     "imgui_set on 5-deep nested leaf works")
+                     "imgui_force_set on 5-deep nested leaf works")
 
         // ----- collapsing_header path key -----
         t |> equal(find_widget(snap0, "LAYOUT_WIN/LOG_HEADER")?["kind"] ?? "",

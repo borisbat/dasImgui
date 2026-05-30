@@ -27,16 +27,16 @@ def test_edit_vsliders_smoke(t : T?) {
                          "{ident} registered")
         }
 
-        // imgui_set on edit_vslider_float — float pointee round-trips.
-        set_value(d, "MAIN_WIN/VSLIDE_F1", JV(0.875f))
+        // imgui_force_set on edit_vslider_float — float pointee round-trips.
+        force_set_value(d, "MAIN_WIN/VSLIDE_F1", JV(0.875f))
         let after_f = wait_until(d, 300) $(var s) {
             let v = double(widget_payload_field(s, "MAIN_WIN/VSLIDE_F1", "value") ?? 0.0)
             return v > 0.87lf && v < 0.88lf
         }
         t |> success(after_f != null, "edit_vslider_float write 0.875 round-trips")
 
-        // imgui_set on edit_vslider_int — int pointee round-trips.
-        set_value(d, "MAIN_WIN/VSLIDE_I2", JV(88))
+        // imgui_force_set on edit_vslider_int — int pointee round-trips.
+        force_set_value(d, "MAIN_WIN/VSLIDE_I2", JV(88))
         t |> success(wait_for_int_value(d, "MAIN_WIN/VSLIDE_I2", "value", 88, 300),
                      "edit_vslider_int write 88 round-trips")
     }

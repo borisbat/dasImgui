@@ -32,7 +32,7 @@ require strings
 // ImGui core ships no rotary control; here we add one. The knob:
 //   - is a single [widget] def at module scope, ~30 lines including drawlist
 //   - plugs into pending_value_finalize unchanged — same state-struct
-//     convention as slider_float, so imgui_set / imgui_snapshot just work
+//     convention as slider_float, so imgui_force_set / imgui_snapshot just work
 //   - uses the canonical InvisibleButton + DrawList pattern for the body
 //
 // Read alongside :ref:`tutorial_widgets_tour` for the built-in catalog.
@@ -41,8 +41,8 @@ require strings
 // LIVE:       daslang-live modules/dasImgui/examples/tutorial/custom_widgets.das
 //
 // DRIVE (when running live):
-//   curl -X POST -d '{"name":"imgui_set","args":{"target":"MIXER_WIN/MASTER","value":0.75}}'   localhost:9090/command
-//   curl -X POST -d '{"name":"imgui_set","args":{"target":"MIXER_WIN/TREBLE","value":-0.3}}'   localhost:9090/command
+//   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"MIXER_WIN/MASTER","value":0.75}}'   localhost:9090/command
+//   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"MIXER_WIN/TREBLE","value":-0.3}}'   localhost:9090/command
 //   curl -X POST -d '{"name":"imgui_click","args":{"target":"MIXER_WIN/RESET_BTN"}}'           localhost:9090/command
 // =============================================================================
 
@@ -52,8 +52,8 @@ require strings
 struct VolumeKnobState {
     @live value : float                   //! current knob value, preserved across reload
     @live bounds : tuple<float; float>    //! (min, max) — set per-frame at the call site
-    @optional has_pending : bool          //! imgui_set queued; consumed next frame
-    @optional pending_value : float       //! next-frame value queued by imgui_set
+    @optional has_pending : bool          //! imgui_force_set queued; consumed next frame
+    @optional pending_value : float       //! next-frame value queued by imgui_force_set
     @optional changed : bool              //! true on the frame the widget fired
 }
 
@@ -62,7 +62,7 @@ struct VolumeKnobState {
 //! pass it to ``pending_value_finalize`` at the bottom.
 [widget]
 def knob(var state : VolumeKnobState; text : string) : bool {
-    // 1. Drain imgui_set: any pending dispatcher-side update lands here.
+    // 1. Drain imgui_force_set: any pending dispatcher-side update lands here.
     if (state.has_pending) {
         state.value = state.pending_value
         state.has_pending = false
@@ -133,7 +133,7 @@ def knob(var state : VolumeKnobState; text : string) : bool {
     let val_pos = ImVec2(center.x - val_size.x * 0.5f, p.y + 94.0f)
     *GetWindowDrawList() |> AddText(val_pos, rgba(170u, 170u, 180u, 255u), val_str)
 
-    // 6. Wire up serializer + imgui_set dispatcher. Same call any slider makes.
+    // 6. Wire up serializer + imgui_force_set dispatcher. Same call any slider makes.
     pending_value_finalize(widget_ident, "knob", state)
     return changed
 }

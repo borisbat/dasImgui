@@ -94,9 +94,9 @@ Every helper's state struct is targetable by name. Drag without a mouse:
 
 .. code-block:: bash
 
-   curl -X POST -d '{"name":"imgui_set","args":{"target":"SIDEBAR","value":260.0}}' \
+   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"SIDEBAR","value":260.0}}' \
         localhost:9090/command
-   curl -X POST -d '{"name":"imgui_set","args":{"target":"SPLIT_MAIN","value":0.6}}' \
+   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"SPLIT_MAIN","value":0.6}}' \
         localhost:9090/command
 
 ``value`` is the same type the user would set by dragging — pixels for

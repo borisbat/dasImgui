@@ -30,16 +30,16 @@ require imgui/imgui_visual_aids
 //                                                state.value = v_button — the
 //                                                canonical "pick one of N".
 //
-// All three accept imgui_set: checkbox / radio_button take bool, radio_button_int
+// All three accept imgui_force_set: checkbox / radio_button take bool, radio_button_int
 // takes int (the v_button to select).
 //
 // STANDALONE: daslang.exe modules/dasImgui/examples/tutorial/toggles.das
 // LIVE:       daslang-live modules/dasImgui/examples/tutorial/toggles.das
 //
 // DRIVE (when running live):
-//   curl -X POST -d '{"name":"imgui_set","args":{"target":"TG_WIN/T_CHECK","value":true}}' \
+//   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"TG_WIN/T_CHECK","value":true}}' \
 //        localhost:9090/command
-//   curl -X POST -d '{"name":"imgui_set","args":{"target":"TG_WIN/T_MODE","value":2}}' \
+//   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"TG_WIN/T_MODE","value":2}}' \
 //        localhost:9090/command
 // =============================================================================
 

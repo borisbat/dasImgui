@@ -25,7 +25,7 @@ def test_edit_external_combo_smoke(t : T?) {
         let idx0 = widget_payload_field(snap, "MAIN_WIN/COMBO_THEME", "value") ?? 0
         t |> equal(idx0, 1, "initial selected idx = 1 ('Dark')")
 
-        set_value(d, "MAIN_WIN/COMBO_THEME", JV(3))
+        force_set_value(d, "MAIN_WIN/COMBO_THEME", JV(3))
         t |> success(wait_for_int_value(d, "MAIN_WIN/COMBO_THEME", "value", 3, 300),
                      "edit_combo write idx=3 round-trips")
     }

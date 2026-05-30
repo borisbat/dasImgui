@@ -35,9 +35,9 @@ require strings
 // LIVE:       daslang-live modules/dasImgui/examples/tutorial/input_text.das
 //
 // DRIVE (when running live):
-//   curl -X POST -d '{"name":"imgui_set","args":{"target":"IT_WIN/IT_NAME","value":"hello"}}' \
+//   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"IT_WIN/IT_NAME","value":"hello"}}' \
 //        localhost:9090/command
-//   curl -X POST -d '{"name":"imgui_set","args":{"target":"IT_WIN/IT_BIO","value":"line1\nline2"}}' \
+//   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"IT_WIN/IT_BIO","value":"line1\nline2"}}' \
 //        localhost:9090/command
 // =============================================================================
 

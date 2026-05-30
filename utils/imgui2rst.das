@@ -46,7 +46,8 @@ def document_module_imgui_boost_runtime() {
         group_by_regex("Path machinery",          mod, %regex~^(container_path_push|container_path_pop|widget_path_key|container_path_key|active_widget_path)$%%),
         group_by_regex("Coroutines",              mod, %regex~^(advance_coroutines|spawn_coroutine)$%%),
         group_by_regex("Window control",          mod, %regex~^imgui_(dock|undock|dock_reset|set_window_pos|set_window_size)$%%),
-        group_by_regex("Live commands",           mod, %regex~^imgui_(snapshot|click|set|open|close|focus|await|drag|type_text)$%%),
+        group_by_regex("Live commands",           mod, %regex~^imgui_(snapshot|click|force_set|open|close|focus|await|mouse_pos|mouse_click|mouse_scroll|key_press|key_release|key_char)$%%),
+        group_by_regex("Synthetic input",         mod, %regex~^(synth_mouse_move|synth_mouse_button|synth_mouse_wheel|synth_key_press|synth_key_release|synth_char|release_held_buttons|release_held_keys|get_synth_cursor|get_synth_keys|imgui_synth_tick|user_control_enabled|set_user_control_enabled|set_user_control|register_real_input_toggle|register_synth_frame_hook|register_synth_stop_hook)$%%),
         group_by_regex("Snapshot transform",      mod, %regex~^(push_snapshot_item_transform|pop_snapshot_item_transform|capture_item_bbox)$%%),
         group_by_regex("Await modifiers",         mod, %regex~^(AwaitModifiers|AwaitArgs|AwaitResult|with_await)$%%),
         group_by_regex("JSON serialization",      mod, %regex~^(widget_entry_jv|state_jv|to_JV|from_JV|JV|serialize).*%%),
@@ -146,7 +147,7 @@ def document_module_imgui_playwright() {
     var groups <- array<DocGroup>(
         group_by_regex("App lifecycle",     mod, %regex~^(with_imgui_app|launch_imgui_app|shutdown|with_recording_app).*%%),
         group_by_regex("Locators / queries", mod, %regex~^(find_widget|widget_exists|widget_payload_field|widget_rendered|get_text)$%%),
-        group_by_regex("Actions",           mod, %regex~^(click|click_at|right_click|type_text|key_tap|set_value|drag|drag_along|drag_to|focus|open_widget|close_widget|reload|move_to|reset_cursor_pos|resize_window|say)$%%),
+        group_by_regex("Actions",           mod, %regex~^(click|click_at|right_click|type_text|key_tap|force_set_value|drag|drag_along|drag_to|focus|open_widget|close_widget|reload|move_to|reset_cursor_pos|resize_window|say)$%%),
         group_by_regex("Snapshots",         mod, %regex~^(snapshot|expect_value|expect_render).*%%),
         group_by_regex("Polling / await",   mod, %regex~^(wait_until.*|wait_for_.*|await_quiescent|await_probe)$%%),
         group_by_regex("Pause control",     mod, %regex~^(pause|unpause|with_paused)$%%),

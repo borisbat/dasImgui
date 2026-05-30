@@ -22,7 +22,6 @@ def init() {
 [export]
 def update() {
     if (!harness_begin_frame()) return
-    harness_apply_synth_io()
     harness_new_frame()
     app_custom_rendering::ShowExampleAppCustomRendering()
     harness_end_frame()

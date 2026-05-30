@@ -11,7 +11,7 @@ require daslib/json_boost public
 //! Integration smoke for `input_text_callback` — InputText with a user
 //! callback lambda fired on CallbackCompletion (TAB) and similar events.
 //! Verifies the widget registers as input_text_callback kind and value
-//! round-trips via set_value. Actual TAB-completion firing is exercised
+//! round-trips via force_set_value. Actual TAB-completion firing is exercised
 //! as an optional second [test] that may flake on slow CI; main smoke is
 //! kind + round-trip.
 
@@ -36,12 +36,12 @@ def test_input_text_callback_smoke(t : T?) {
         t |> success(widget_exists(snap, "MAIN_WIN/SEP"),  "SEP registers")
         t |> success(widget_exists(snap, "MAIN_WIN/STATIC"), "STATIC registers")
 
-        // Round-trip via imgui_set dispatcher (inherited from input_text family).
-        set_value(d, "MAIN_WIN/CMD", JV("he"))
+        // Round-trip via imgui_force_set dispatcher (inherited from input_text family).
+        force_set_value(d, "MAIN_WIN/CMD", JV("he"))
         t |> success(wait_for_string_value(d, "MAIN_WIN/CMD", "value", "he", 300),
-                     "imgui_set steers CMD.value to 'he'")
-        set_value(d, "MAIN_WIN/CMD", JV("hello"))
+                     "imgui_force_set steers CMD.value to 'he'")
+        force_set_value(d, "MAIN_WIN/CMD", JV("hello"))
         t |> success(wait_for_string_value(d, "MAIN_WIN/CMD", "value", "hello", 300),
-                     "imgui_set re-steers CMD.value to 'hello'")
+                     "imgui_force_set re-steers CMD.value to 'hello'")
     }
 }

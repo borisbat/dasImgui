@@ -36,9 +36,9 @@ require imgui/imgui_visual_aids
 // LIVE:       daslang-live modules/dasImgui/examples/tutorial/slider.das
 //
 // DRIVE (when running live):
-//   curl -X POST -d '{"name":"imgui_set","args":{"target":"SLIDER_WIN/S_FLOAT","value":0.8}}' \
+//   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"SLIDER_WIN/S_FLOAT","value":0.8}}' \
 //        localhost:9090/command
-//   curl -X POST -d '{"name":"imgui_set","args":{"target":"SLIDER_WIN/S_VEC3","value":[1.0,2.0,3.0]}}' \
+//   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"SLIDER_WIN/S_VEC3","value":[1.0,2.0,3.0]}}' \
 //        localhost:9090/command
 // =============================================================================
 

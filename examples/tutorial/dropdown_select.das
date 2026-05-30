@@ -38,11 +38,11 @@ require imgui/imgui_visual_aids
 // LIVE:       daslang-live modules/dasImgui/examples/tutorial/dropdown_select.das
 //
 // DRIVE (when running live):
-//   curl -X POST -d '{"name":"imgui_set","args":{"target":"DS_WIN/D_FRUIT","value":2}}' \
+//   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"DS_WIN/D_FRUIT","value":2}}' \
 //        localhost:9090/command
-//   curl -X POST -d '{"name":"imgui_set","args":{"target":"DS_WIN/D_FONT","value":1}}' \
+//   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"DS_WIN/D_FONT","value":1}}' \
 //        localhost:9090/command
-//   curl -X POST -d '{"name":"imgui_set","args":{"target":"DS_WIN/D_SHIRT","value":3}}' \
+//   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"DS_WIN/D_SHIRT","value":3}}' \
 //        localhost:9090/command
 // =============================================================================
 

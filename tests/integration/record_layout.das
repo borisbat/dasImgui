@@ -60,7 +60,7 @@ def main {
         // dock_left itself has bbox=(0,0,0,0). Cursor moves into the sidebar.
         move_to(app, p_explore)
         say(app, "dock_left fixes a sidebar to the left edge.", T_EXPLORE_BTN)
-        post_command(app, "imgui_set", JV((target = T_SIDEBAR, value = 260.0f)))
+        post_command(app, "imgui_force_set", JV((target = T_SIDEBAR, value = 260.0f)))
         sleep(CLICK_DWELL_MS)
 
         // ---- Stage 2: horizontal splitter (split_h on top half) ----
@@ -70,7 +70,7 @@ def main {
         let p_file_a_now = snap != null ? widget_center(snap, T_FILE_A_BTN) : p_file_a
         move_to(app, p_file_a_now)
         say(app, "split_h slices the top into left + right.", T_FILE_A_BTN)
-        post_command(app, "imgui_set", JV((target = T_SPLIT_MAIN, value = 0.6f)))
+        post_command(app, "imgui_force_set", JV((target = T_SPLIT_MAIN, value = 0.6f)))
         sleep(CLICK_DWELL_MS)
 
         // ---- Stage 3: vertical splitter ----
@@ -79,7 +79,7 @@ def main {
         let p_clear_now = snap != null ? widget_center(snap, T_CLEAR_BTN) : p_clear
         move_to(app, p_clear_now)
         say(app, "split_v splits top from bottom.", T_CLEAR_BTN)
-        post_command(app, "imgui_set", JV((target = T_SPLIT_VERT, value = 0.45f)))
+        post_command(app, "imgui_force_set", JV((target = T_SPLIT_VERT, value = 0.45f)))
         sleep(CLICK_DWELL_MS)
 
         // ---- Stage 4: click inside sidebar ----

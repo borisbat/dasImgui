@@ -8,10 +8,11 @@ mix ``@live`` fields (preserved across hot-reload) and ``@optional`` fields
 <struct-imgui_boost_runtime-WidgetEntry>`, not the per-kind structs, so each
 state struct stays small.
 
-The live-command surface (``imgui_snapshot``, ``imgui_click``, ``imgui_set``,
-``imgui_open``, ``imgui_close``, ``imgui_focus``, ``imgui_await``,
-``imgui_drag``, ``imgui_type_text``) is the wire-protocol that
-``imgui_playwright`` and external test harnesses drive. Commands resolve
+The live-command surface (``imgui_snapshot``, ``imgui_click``, ``imgui_force_set``,
+``imgui_open``, ``imgui_close``, ``imgui_focus``, ``imgui_await``) is the
+wire-protocol that ``imgui_playwright`` and external test harnesses drive.
+(Multi-frame drag/type live in ``imgui_live_core``'s ``imgui_mouse_play`` /
+``imgui_key_type`` timelines, which playwright composes.) Commands resolve
 targets via the registry's path key (e.g. ``MAIN_WIN/SETTINGS_TAB/RPS``) or
 raw ``0x<hex_id>``; results carry an :ref:`AwaitResult
 <struct-imgui_boost_runtime-AwaitResult>` whose ``await_*`` modifiers tell

@@ -16,8 +16,8 @@ require daslib/json_boost public
 //!   2. text_show(IDENT) form starts empty; pressing the bump button
 //!      writes "bumped at frame N" via direct daslang mutation; snapshot
 //!      reflects the write next frame.
-//!   3. imgui_set on a text_show target round-trips: write "remote" via
-//!      imgui_set, snapshot returns "remote".
+//!   3. imgui_force_set on a text_show target round-trips: write "remote" via
+//!      imgui_force_set, snapshot returns "remote".
 
 let OUTPUT_TEXT_FEATURE = "modules/dasImgui/examples/features/output_text.das"
 
@@ -44,9 +44,9 @@ def test_output_text_smoke(t : T?) {
         t |> success(snap_after_bump != null,
                      "STATUS_LINE picks up daslang-side write after bump")
 
-        // Gate 3: imgui_set on a text_show round-trips.
-        set_value(d, "MAIN_WIN/STATUS_LINE", JV("remote"))
+        // Gate 3: imgui_force_set on a text_show round-trips.
+        force_set_value(d, "MAIN_WIN/STATUS_LINE", JV("remote"))
         t |> success(wait_for_string_value(d, "MAIN_WIN/STATUS_LINE", "value", "remote", 300),
-                     "imgui_set writes 'remote' to STATUS_LINE.value")
+                     "imgui_force_set writes 'remote' to STATUS_LINE.value")
     }
 }

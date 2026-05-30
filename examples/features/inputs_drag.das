@@ -8,11 +8,11 @@ require imgui/imgui_harness
 //          DragInt / DragInt2 / DragInt3 / DragInt4
 //          DragFloatRange2 / DragIntRange2
 // DRIVE:   curl -X POST -d '{"name":"imgui_snapshot"}' localhost:9090/command
-//          curl -X POST -d '{"name":"imgui_set","args":{"target":"MAIN_WIN/OPACITY","value":0.5}}' \
+//          curl -X POST -d '{"name":"imgui_force_set","args":{"target":"MAIN_WIN/OPACITY","value":0.5}}' \
 //               localhost:9090/command
-//          curl -X POST -d '{"name":"imgui_set","args":{"target":"MAIN_WIN/SCALE_XY","value":[2.0, 1.5]}}' \
+//          curl -X POST -d '{"name":"imgui_force_set","args":{"target":"MAIN_WIN/SCALE_XY","value":[2.0, 1.5]}}' \
 //               localhost:9090/command
-//          curl -X POST -d '{"name":"imgui_set","args":{"target":"MAIN_WIN/PRICE","value":[5, 12]}}' \
+//          curl -X POST -d '{"name":"imgui_force_set","args":{"target":"MAIN_WIN/PRICE","value":[5, 12]}}' \
 //               localhost:9090/command
 // STANDALONE: daslang.exe modules/dasImgui/examples/features/inputs_drag.das
 // HEADLESS:   daslang.exe modules/dasImgui/examples/features/inputs_drag.das -- --headless --headless-frames=60

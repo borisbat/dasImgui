@@ -89,9 +89,9 @@ def main {
 
         move_to(app, p_b_limit, 700)
         sleep(SETTLE_MS)
-        set_value(app, T_B_LIMIT, JV(120))
+        force_set_value(app, T_B_LIMIT, JV(120))
         sleep(CLICK_DWELL_MS)
-        say(app, "Frame-limit slider set to 120 via imgui_set — the AutoResizeY child grows/shrinks to accommodate body width, not height.", T_B_LIMIT)
+        say(app, "Frame-limit slider set to 120 via imgui_force_set — the AutoResizeY child grows/shrinks to accommodate body width, not height.", T_B_LIMIT)
 
         // ---- Stage 4: horizontal scroll on SCROLL_C ----
         move_to(app, p_c, 900)

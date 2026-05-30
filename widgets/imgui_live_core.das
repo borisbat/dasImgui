@@ -5,11 +5,13 @@ options no_unused_function_arguments = false
 
 module imgui_live_core shared public
 
-// Synthetic IO bypass driver for ImGui — mouse + keyboard timelines + the
-// per-frame imgui_synth_tick. Re-exported by imgui_live.
+// Animated synthetic-IO timelines (mouse + keyboard playback over frames). The
+// immediate synth primitives, the per-frame tick, and user-control live in
+// imgui_boost_runtime; this module registers its timeline advance with boost's
+// synth-frame hook. Re-exported by imgui_live.
 
 require imgui public
-require imgui_app           // imgui_set_real_input_callbacks — detach/reattach GLFW input at source
+require imgui/imgui_boost_runtime public   // synth primitives + tick + hook registration (live requires boost, never the reverse)
 require daslib/json public
 require daslib/json_boost public
 require daslib/utf8_utils
@@ -41,127 +43,19 @@ var private mouse_timeline   : array<MouseEvent>
 var private mouse_play_start : float = 0.0
 var private mouse_play_idx   : int   = 0
 var private mouse_playing    : bool  = false
-var private mouse_cursor_x   : float = 0.0
-var private mouse_cursor_y   : float = 0.0
-// Sticky: any synth event in this session flips this and arms the tick.
-var public synth_cursor_owned : bool = false
 // Cached waypoint for between-move interpolation. -1 = no prior move consumed.
 var private last_move_x : float = 0.0
 var private last_move_y : float = 0.0
 var private last_move_t : int   = -1
-// Last synthesized click — consumed by visual_aids paint_click_flash.
-var public synth_click_button : int   = -1
-var public synth_click_action : int   = 0    // 1 = press, 0 = release
-var public synth_click_t      : float = -1.0
-var private synth_held_buttons : table<int>
-
-// When false (set via the `set_user_control` live command), imgui_synth_tick detaches
-// the GLFW backend's input callbacks (and drops any queued input) so ONLY synth IO
-// drives the UI — the real mouse/keyboard can't reach ImGui and race the synth timeline.
-var private g_user_control : bool = true
-// Tracks whether the backend's GLFW input callbacks are currently attached, so
-// imgui_synth_tick toggles them only on a g_user_control transition (matching
-// ImGui_ImplGlfw's InstalledCallbacks invariant). True at startup: the windowed
-// host installs them via ImGui_ImplGlfw_InitForOpenGL(window, true).
-var private g_input_callbacks_installed : bool = true
-
-def private synth_cursor_pos(x, y : float) {
-    mouse_cursor_x = x
-    mouse_cursor_y = y
-    synth_cursor_owned = true
-    imgui_synth_mouse_pos(x, y)
-}
-
-def private synth_mouse_button(button, action : int) {
-    // Emit cursor pos immediately before the button event so ImGui's
-    // UpdateMouseInputs records `io.MouseClickedPos` at the synth coords
-    // — without this prefix, the backend's earlier `AddMousePosEvent(real)`
-    // would be the most-recently-drained pos when MouseClicked latches,
-    // and IsItemHovered() at the synth widget would test false.
-    if (synth_cursor_owned) {
-        imgui_synth_mouse_pos(mouse_cursor_x, mouse_cursor_y)
-    }
-    imgui_synth_mouse_button(button, action == 1)
-    if (action == 1) {
-        synth_held_buttons |> insert(button)
-    } else {
-        synth_held_buttons |> erase(button)
-    }
-    synth_click_button = button
-    synth_click_action = action
-    synth_click_t      = get_uptime()
-    synth_cursor_owned = true
-}
-
-def private release_held_buttons() {
-    if (empty(synth_held_buttons)) return
-    var held : array<int>
-    held |> reserve(length(synth_held_buttons))
-    for (b in keys(synth_held_buttons)) {
-        held |> push(b)
-    }
-    for (b in held) {
-        synth_mouse_button(b, 0)
-    }
-}
-
-def public get_synth_cursor() : tuple<bool; float; float> {
-    //! Current synth cursor as ``(owned, x, y)``; ``owned=true`` means visual_aids overlays should render against this position instead of ``GetMousePos()``.
-    return (synth_cursor_owned, mouse_cursor_x, mouse_cursor_y)
-}
 
 def private reset_mouse_timeline() {
     mouse_timeline |> clear()
     mouse_play_idx = 0
     mouse_playing  = false
-    last_move_x = mouse_cursor_x
-    last_move_y = mouse_cursor_y
+    let cur = get_synth_cursor()
+    last_move_x = cur._1
+    last_move_y = cur._2
     last_move_t = -1
-}
-
-struct MousePosArgs {
-    x : float = 0.0
-    y : float = 0.0
-}
-
-[live_command(description="Teleport synthetic cursor via ImGui bypass. Args: x, y")]
-def imgui_mouse_pos(input : JsonValue?) : JsonValue? {
-    let args = from_JV(input, type<MousePosArgs>)
-    synth_cursor_pos(args.x, args.y)
-    return JV((x = args.x, y = args.y))
-}
-
-struct MouseClickArgs {
-    @optional button : int    = 0
-    action           : string = "press"
-}
-
-[live_command(description="Synthetic mouse button via ImGui bypass. Args: button (0/1/2), action (press|release)")]
-def imgui_mouse_click(input : JsonValue?) : JsonValue? {
-    let args = from_JV(input, type<MouseClickArgs>)
-    var act : int
-    if (args.action == "press") {
-        act = 1
-    } elif (args.action == "release") {
-        act = 0
-    } else {
-        return JV((error = "invalid action; expected \"press\" or \"release\"", action = args.action))
-    }
-    synth_mouse_button(args.button, act)
-    return JV((button = args.button, action = args.action))
-}
-
-struct MouseScrollArgs {
-    x : float = 0.0
-    y : float = 0.0
-}
-
-[live_command(description="Synthetic mouse scroll via ImGui bypass. Args: x, y (offsets)")]
-def imgui_mouse_scroll(input : JsonValue?) : JsonValue? {
-    let args = from_JV(input, type<MouseScrollArgs>)
-    imgui_synth_mouse_wheel(args.x, args.y)
-    synth_cursor_owned = true
-    return JV((x = args.x, y = args.y))
 }
 
 struct MouseMoveToArgs {
@@ -174,7 +68,8 @@ struct MouseMoveToArgs {
 def imgui_mouse_move_to(input : JsonValue?) : JsonValue? {
     let args = from_JV(input, type<MouseMoveToArgs>)
     reset_mouse_timeline()
-    mouse_timeline |> push(MouseEvent(t_ms = 0, kind = MEKind.move, x = mouse_cursor_x, y = mouse_cursor_y))
+    let cur = get_synth_cursor()
+    mouse_timeline |> push(MouseEvent(t_ms = 0, kind = MEKind.move, x = cur._1, y = cur._2))
     mouse_timeline |> push(MouseEvent(t_ms = max(1, args.duration_ms), kind = MEKind.move, x = args.x, y = args.y))
     mouse_play_start = get_uptime()
     mouse_playing    = true
@@ -194,14 +89,14 @@ def imgui_mouse_click_at(input : JsonValue?) : JsonValue? {
     let travel = max(1, args.travel_ms)
     reset_mouse_timeline()
     mouse_timeline |> reserve(5)
-    mouse_timeline |> push(MouseEvent(t_ms = 0,            kind = MEKind.move,   x = mouse_cursor_x,   y = mouse_cursor_y))
+    let cur = get_synth_cursor()
+    mouse_timeline |> push(MouseEvent(t_ms = 0,            kind = MEKind.move,   x = cur._1,           y = cur._2))
     mouse_timeline |> push(MouseEvent(t_ms = travel,       kind = MEKind.move,   x = args.x,           y = args.y))
     mouse_timeline |> push(MouseEvent(t_ms = travel + 200, kind = MEKind.button, button = args.button, action = 1))
     mouse_timeline |> push(MouseEvent(t_ms = travel + 300, kind = MEKind.button, button = args.button, action = 0))
     mouse_timeline |> push(MouseEvent(t_ms = travel + 500, kind = MEKind.move,   x = args.x,           y = args.y))
     mouse_play_start = get_uptime()
     mouse_playing    = true
-    warn_if_synth_tick_missing("imgui_mouse_click_at")
     return JV((x = args.x, y = args.y, button = args.button, queued = length(mouse_timeline)))
 }
 
@@ -259,14 +154,18 @@ def imgui_mouse_play(input : JsonValue?) : JsonValue? {
     }
     mouse_play_start = get_uptime()
     mouse_playing    = true
-    warn_if_synth_tick_missing("imgui_mouse_play")
     return JV((queued = length(mouse_timeline)))
 }
 
 [live_command(description="Stop synthetic mouse playback (ImGui bypass) and release any held buttons.")]
 def imgui_mouse_stop(input : JsonValue?) : JsonValue? {
     let was_playing = mouse_playing
-    let released    = length(synth_held_buttons)
+    var released = 0
+    for (b in range(0, 5)) {
+        if ((synth_buttons_mask & (1 << b)) != 0) {
+            released++
+        }
+    }
     release_held_buttons()
     reset_mouse_timeline()
     return JV((stopped = was_playing, released = released))
@@ -286,61 +185,23 @@ struct MouseStatusResult {
 [live_command(description="ImGui-bypass mouse playback status.")]
 def imgui_mouse_status(input : JsonValue?) : JsonValue? {
     let elapsed = mouse_playing ? int((get_uptime() - mouse_play_start) * 1000.0) : 0
+    let cur = get_synth_cursor()
+    var held = 0
+    for (b in range(0, 5)) {
+        if ((synth_buttons_mask & (1 << b)) != 0) {
+            held++
+        }
+    }
     return JV(MouseStatusResult(
         playing      = mouse_playing,
         elapsed_ms   = elapsed,
-        cursor_x     = mouse_cursor_x,
-        cursor_y     = mouse_cursor_y,
+        cursor_x     = cur._1,
+        cursor_y     = cur._2,
         queue_idx    = mouse_play_idx,
         queue_total  = length(mouse_timeline),
-        held_count   = length(synth_held_buttons),
-        cursor_owned = synth_cursor_owned
+        held_count   = held,
+        cursor_owned = cur._0
     ))
-}
-
-struct UserControlArgs {
-    @optional enabled : bool = true
-}
-
-def public set_user_control_enabled(enabled : bool) {
-    //! Programmatic form of the `set_user_control` live command — toggle whether real
-    //! mouse/keyboard reach the UI. The actual GLFW-callback detach/reattach (source-level
-    //! suppression) happens on the next `imgui_synth_tick` transition, so this is safe to
-    //! call off the render thread.
-    g_user_control = enabled
-    if (enabled) {
-        // Hand control back: synth must fully let go. `synth_cursor_owned` is
-        // sticky, so imgui_synth_tick keeps re-asserting the synth cursor pos
-        // every frame and the real mouse can't move it. Stop any playback,
-        // release held inputs, then drop ownership (release_* re-arm it, so
-        // clear last).
-        reset_mouse_timeline()
-        release_held_buttons()
-        reset_key_timeline()
-        release_held_keys()
-        synth_cursor_owned = false
-    } else {
-        // Take over: reset any real keys/mouse buttons latched right now —
-        // otherwise their release events get dropped by the per-frame queue
-        // clear, leaving ImGui with stuck input. ClearInputKeys() in imgui
-        // 1.90.6 also zeroes MouseDown[]/MousePos (imgui.cpp:1478), so this one
-        // call covers buttons too. Synth-held keys (our own table) re-assert
-        // next tick.
-        var io & = unsafe(GetIO())
-        io |> ClearInputKeys()
-    }
-}
-
-[live_command(description="Toggle real user input. When disabled, imgui_synth_tick detaches the GLFW backend's input callbacks (and drops queued input) so ONLY synth IO (imgui_mouse_*/imgui_key_*) drives the UI — no real-input bleed-through racing the synth timeline. Re-enable to hand control back. Requires apply_synth_io_override() in the loop. Args: enabled (bool)")]
-def set_user_control(input : JsonValue?) : JsonValue? {
-    let args = from_JV(input, type<UserControlArgs>)
-    set_user_control_enabled(args.enabled)
-    return JV((user_control = g_user_control))
-}
-
-def public user_control_enabled() : bool {
-    //! False when ``set_user_control`` has disabled real input — :ref:`imgui_synth_tick <function-imgui_live_core_imgui_synth_tick>` is dropping the backend input queue each frame so synth fully owns IO.
-    return g_user_control
 }
 
 def private advance_mouse_timeline() {
@@ -350,14 +211,14 @@ def private advance_mouse_timeline() {
         let ev = mouse_timeline[mouse_play_idx]
         break if (ev.t_ms > now_ms)
         if (ev.kind == MEKind.move) {
-            synth_cursor_pos(ev.x, ev.y)
+            synth_mouse_move(ev.x, ev.y)
             last_move_x = ev.x
             last_move_y = ev.y
             last_move_t = ev.t_ms
         } elif (ev.kind == MEKind.button) {
             synth_mouse_button(ev.button, ev.action)
         } elif (ev.kind == MEKind.scroll) {
-            imgui_synth_mouse_wheel(ev.x, ev.y)
+            synth_mouse_wheel(ev.x, ev.y)
         }
         mouse_play_idx++
     }
@@ -380,7 +241,7 @@ def private advance_mouse_timeline() {
                 if (alpha > 1.0) { alpha = 1.0; }
                 let x = last_move_x + (nm.x - last_move_x) * alpha
                 let y = last_move_y + (nm.y - last_move_y) * alpha
-                synth_cursor_pos(x, y)
+                synth_mouse_move(x, y)
             }
         }
     }
@@ -412,73 +273,10 @@ var private key_play_start : float = 0.0
 var private key_play_idx   : int   = 0
 var private key_playing    : bool  = false
 
-// Public state read by visual_aids' keycap HUD. Keyed by ImGuiKey.
-var public synth_held_keys        : table<int>        //! set of currently-held ImGuiKey values
-var public synth_last_keycode     : int   = 0         //! last ImGuiKey synth-pressed; 0 = none
-var public synth_last_keycode_t   : float = -1.0
-var public synth_last_codepoint   : uint  = 0u
-var public synth_last_codepoint_t : float = -1.0
-
-def private mod_alias_for_side_key(key : int) : int {
-    // Return ImGuiMod_* alias for a side-mod key (LeftCtrl → ImGuiMod_Ctrl) or 0.
-    // ImGui's IsKeyDown(ImGuiMod_Ctrl) / io.KeyCtrl / Shortcut() consult the alias key —
-    // emitting only the side key leaves the alias unset.
-    if (key == int(ImGuiKey.LeftCtrl)  || key == int(ImGuiKey.RightCtrl)) return int(ImGuiKey.ImGuiMod_Ctrl)
-    if (key == int(ImGuiKey.LeftShift) || key == int(ImGuiKey.RightShift)) return int(ImGuiKey.ImGuiMod_Shift)
-    if (key == int(ImGuiKey.LeftAlt)   || key == int(ImGuiKey.RightAlt)) return int(ImGuiKey.ImGuiMod_Alt)
-    if (key == int(ImGuiKey.LeftSuper) || key == int(ImGuiKey.RightSuper)) return int(ImGuiKey.ImGuiMod_Super)
-    return 0
-}
-
-def private synth_key_press(key : int) {
-    imgui_synth_key(key, true)
-    synth_held_keys |> insert(key)
-    let mod_alias = mod_alias_for_side_key(key)
-    if (mod_alias != 0) {
-        imgui_synth_key(mod_alias, true)
-        synth_held_keys |> insert(mod_alias)
-    }
-    synth_last_keycode   = key
-    synth_last_keycode_t = get_uptime()
-}
-
-def private synth_key_release(key : int) {
-    imgui_synth_key(key, false)
-    synth_held_keys |> erase(key)
-    let mod_alias = mod_alias_for_side_key(key)
-    if (mod_alias != 0) {
-        imgui_synth_key(mod_alias, false)
-        synth_held_keys |> erase(mod_alias)
-    }
-}
-
-def private synth_char(codepoint : uint) {
-    imgui_synth_input_char(codepoint)
-    synth_last_codepoint   = codepoint
-    synth_last_codepoint_t = get_uptime()
-}
-
-def public get_synth_keys() : tuple<bool; uint; float> {
-    //! Current synth-key state as ``(active, last_codepoint, last_codepoint_t)``; visual_aids polls this each frame to detect newly-landed codepoints.
-    return (key_playing, synth_last_codepoint, synth_last_codepoint_t)
-}
-
 def private reset_key_timeline() {
     key_timeline |> clear()
     key_play_idx = 0
     key_playing  = false
-}
-
-def private release_held_keys() {
-    if (empty(synth_held_keys)) return
-    var held : array<int>
-    held |> reserve(length(synth_held_keys))
-    for (k in keys(synth_held_keys)) {
-        held |> push(k)
-    }
-    for (k in held) {
-        synth_key_release(k)
-    }
 }
 
 // --- ASCII translation tables (resolve to ImGuiKey values) ---
@@ -541,38 +339,6 @@ def private base_key_ascii(c : int) : int {
     return 0
 }
 
-struct KeyPressArgs {
-    key : int = 0   // ImGuiKey value (cast to int over the wire)
-}
-
-[live_command(description="Synthetic key press via ImGui bypass. Args: key (ImGuiKey int)")]
-def imgui_key_press(input : JsonValue?) : JsonValue? {
-    let args = from_JV(input, type<KeyPressArgs>)
-    return JV((error = "missing key")) if (args.key == 0)
-    synth_key_press(args.key)
-    return JV((key = args.key, action = "press"))
-}
-
-[live_command(description="Synthetic key release via ImGui bypass. Args: key (ImGuiKey int)")]
-def imgui_key_release(input : JsonValue?) : JsonValue? {
-    let args = from_JV(input, type<KeyPressArgs>)
-    return JV((error = "missing key")) if (args.key == 0)
-    synth_key_release(args.key)
-    return JV((key = args.key, action = "release"))
-}
-
-struct KeyCharArgs {
-    codepoint : uint = 0u
-}
-
-[live_command(description="Synthetic Unicode char via ImGui bypass. Args: codepoint")]
-def imgui_key_char(input : JsonValue?) : JsonValue? {
-    let args = from_JV(input, type<KeyCharArgs>)
-    return JV((error = "missing codepoint")) if (args.codepoint == 0u)
-    synth_char(args.codepoint)
-    return JV((codepoint = args.codepoint))
-}
-
 struct KeyTypeArgs {
     text                       : string = ""
     @optional total_duration_s : float  = 0.0
@@ -618,7 +384,6 @@ def imgui_key_type(input : JsonValue?) : JsonValue? {
     }
     key_play_start = get_uptime()
     key_playing    = true
-    warn_if_synth_tick_missing("imgui_key_type")
     return JV((queued = length(key_timeline), per_char_ms = per_char_ms, chars = n_chars))
 }
 
@@ -665,7 +430,6 @@ def imgui_key_chord(input : JsonValue?) : JsonValue? {
     }
     key_play_start = get_uptime()
     key_playing    = true
-    warn_if_synth_tick_missing("imgui_key_chord")
     return JV((queued = length(key_timeline)))
 }
 
@@ -709,7 +473,6 @@ def imgui_key_play(input : JsonValue?) : JsonValue? {
     }
     key_play_start = get_uptime()
     key_playing    = true
-    warn_if_synth_tick_missing("imgui_key_play")
     return JV((queued = length(key_timeline)))
 }
 
@@ -767,95 +530,26 @@ def private advance_key_timeline() {
 }
 
 // ---------------------------------------------------------------------------
-// Per-frame entry point
+// Hook registration — plug the timeline playback into boost's per-frame tick.
 // ---------------------------------------------------------------------------
+//
+// The immediate primitives + the tick + user-control live in imgui_boost_runtime.
+// boost's imgui_synth_tick invokes our advance each frame and our stop on
+// set_user_control(true). advance_*_timeline call boost's synth_* primitives.
 
-// One-shot trap detector: a tutorial author that never calls
-// apply_synth_io_override() in update() will get cursor sprites, trails,
-// and synth clicks that silently no-op. Synth-event-queueing live_commands
-// call warn_if_synth_tick_missing() so the first such command logs a
-// single LOG_WARNING pointing at the fix.
-var private g_synth_tick_run_count : int = 0
-var private g_synth_warned_no_override : bool = false
-
-def public imgui_synth_tick() {
-    //! Per-frame entry point — advance synth mouse/key timelines and re-assert held state. Call between the backend's ``*_NewFrame()`` and ``ImGui::NewFrame()``; no-op when no synth command has fired.
-    g_synth_tick_run_count++
-    // Real-input suppression, applied at the GLFW SOURCE. We run here (not in the
-    // set_user_control command handler) because glfwSet*Callback must run on the
-    // render/main thread, and this tick does. On a g_user_control transition,
-    // detach/reattach the backend's input callbacks so real mouse/keyboard never
-    // reach ImGui's event queue at all — synth IO uses io.Add*Event directly and is
-    // unaffected. This closes the race a per-frame queue clear can't win (Windows
-    // dispatches some button messages outside the top-of-frame poll, e.g. during the
-    // vsync swap), which let real clicks occasionally still select. No-op in headless
-    // (no current GLFW window). The ClearEventsQueue below stays as belt-and-suspenders
-    // for whatever was queued on the transition frame itself.
-    if (g_user_control != g_input_callbacks_installed) {
-        imgui_set_real_input_callbacks(g_user_control)
-        g_input_callbacks_installed = g_user_control
-    }
-    if (!g_user_control) {
-        // Real input suppressed: drop everything the GLFW backend queued this frame
-        // (mouse pos from ImGui_ImplGlfw_NewFrame, buttons/keys/char from the poll
-        // callbacks) BEFORE the synth timeline re-queues its own events below, so
-        // NewFrame() drains synth-only. Toggled by the `set_user_control` command.
-        var io & = unsafe(GetIO())
-        io |> ClearEventsQueue()
-    }
+def private advance_synth_timelines() {
     advance_mouse_timeline()
     advance_key_timeline()
-    let synth_armed = synth_cursor_owned || !empty(synth_held_keys) || !empty(synth_held_buttons)
-    return if (!synth_armed)
-    // Re-assert held state. Idempotent for ImGui — repeated AddKeyEvent /
-    // AddMouseButtonEvent with the same state are dedupe'd on the drain.
-    if (synth_cursor_owned) {
-        imgui_synth_mouse_pos(mouse_cursor_x, mouse_cursor_y)
-    }
-    for (b in keys(synth_held_buttons)) {
-        imgui_synth_mouse_button(b, true)
-    }
-    for (k in keys(synth_held_keys)) {
-        imgui_synth_key(k, true)
-    }
 }
 
-[before_reload]
-def reattach_real_input_before_reload() {
-    // Live reload reuses the ImGui context (live_imgui_init skips InitForOpenGL on
-    // reload) but resets module globals — the new program starts with g_user_control
-    // and g_input_callbacks_installed back at their `true` defaults. If real input was
-    // detached at reload time, the callbacks would stay restored while the new program
-    // believes they're installed → real input permanently dead until restart. Re-attach
-    // now so the handoff state matches the post-reload defaults (installed + enabled).
-    if (!g_input_callbacks_installed) {
-        imgui_set_real_input_callbacks(true)
-        g_input_callbacks_installed = true
-    }
+def private stop_synth_timelines() {
+    reset_mouse_timeline()
+    reset_key_timeline()
 }
 
-def public synth_tick_run_count() : int {
-    //! Number of times :ref:`imgui_synth_tick <function-imgui_live_core_imgui_synth_tick>` has run this process. Zero means ``apply_synth_io_override()`` has never fired — any queued synth event will silently no-op.
-    return g_synth_tick_run_count
-}
-
-def public synth_warned_no_override() : bool {
-    //! True iff the no-override warning has been emitted this process. One-shot — only the first synth command on a process that hasn't ticked flips this.
-    return g_synth_warned_no_override
-}
-
-def public warn_if_synth_tick_missing(cmd : string) {
-    //! Emit a one-shot ``LOG_WARNING`` if ``cmd`` queued synth events before :ref:`imgui_synth_tick <function-imgui_live_core_imgui_synth_tick>` has ever run. Called from every synth-event-queueing live_command to surface the boost_basics-style trap (tutorial author forgot ``apply_synth_io_override()`` in ``update()``).
-    return if (g_synth_warned_no_override || g_synth_tick_run_count > 0)
-    g_synth_warned_no_override = true
-    to_log(LOG_WARNING,
-        "{cmd}: synth events queued but apply_synth_io_override() has never run. " +
-        "Call apply_synth_io_override() between ImGui_Impl*_NewFrame() and ImGui::NewFrame() in your update() loop. " +
-        "Without it the synth timeline never drains — cursor sprite, mouse trail, and synth clicks will silently no-op.")
-}
-
-def public reset_synth_warning_state() {
-    //! Reset the one-shot tick-counter and warned flag. Intended for tests that re-exercise the trap detector within a single process.
-    g_synth_tick_run_count = 0
-    g_synth_warned_no_override = false
+[init]
+def private register_timeline_hooks() {
+    // [init] — register this module's per-frame timeline advance + stop-on-handback with boost's synth tick.
+    register_synth_frame_hook("imgui_live_core", @@ advance_synth_timelines)
+    register_synth_stop_hook("imgui_live_core", @@ stop_synth_timelines)
 }

@@ -29,9 +29,9 @@ def test_app_small_auto_resize_smoke(t : T?) {
 
         // Drive value to 5 and verify the new line count via the per-line
         // text state count.
-        set_value(d, "SMALL_AUTO_WIN/SMALL_AUTO_SLIDER", JV(5))
+        force_set_value(d, "SMALL_AUTO_WIN/SMALL_AUTO_SLIDER", JV(5))
         t |> success(wait_for_int_value(d, "SMALL_AUTO_WIN/SMALL_AUTO_SLIDER",
                                         "value", 5, 300),
-                     "imgui_set drops the slider to 5")
+                     "imgui_force_set drops the slider to 5")
     }
 }

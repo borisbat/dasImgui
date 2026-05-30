@@ -37,7 +37,6 @@ def main {
         let T_CHECK_B = "ET_WIN/ET_CHECK_B"
         let T_CHECK_C = "ET_WIN/ET_CHECK_C"
         let T_TAB_A   = "ET_WIN/ET_BAR/ET_TAB_A"
-        let T_TAB_B   = "ET_WIN/ET_BAR/ET_TAB_B"
 
         var snap = wait_for_widget(app, T_TAB_A, 10.0f)
         if (snap == null) {
@@ -51,23 +50,23 @@ def main {
         sleep(SETTLE_MS)
 
         // ---- Stage 1: external checkbox hides a tab ----
-        post_command(app, "imgui_set", JV((target = T_CHECK_B, value = false)))
+        post_command(app, "imgui_force_set", JV((target = T_CHECK_B, value = false)))
         sleep(CLICK_DWELL_MS)
         say(app, "edit_tab_item — caller owns the visibility bool. Setting g_tab_b_open = false (via the external checkbox) hides the beta tab entirely — no chrome, no body.", T_CHECK_B)
 
         // ---- Stage 2: re-enable, then hide gamma instead ----
-        post_command(app, "imgui_set", JV((target = T_CHECK_B, value = true)))
+        post_command(app, "imgui_force_set", JV((target = T_CHECK_B, value = true)))
         sleep(CLICK_DWELL_MS)
-        post_command(app, "imgui_set", JV((target = T_CHECK_C, value = false)))
+        post_command(app, "imgui_force_set", JV((target = T_CHECK_C, value = false)))
         sleep(CLICK_DWELL_MS)
         move_to(app, p_check_b, 800)
         sleep(SETTLE_MS)
         say(app, "Bidir-bound — the X close button on each tab header writes the SAME bool. Use this when a second UI surface needs to drive tab visibility; `tab_item`'s internal state.open isn't exposed for write.", T_CHECK_C)
 
         // ---- Stage 3: restore all tabs ----
-        post_command(app, "imgui_set", JV((target = T_CHECK_A, value = true)))
-        post_command(app, "imgui_set", JV((target = T_CHECK_B, value = true)))
-        post_command(app, "imgui_set", JV((target = T_CHECK_C, value = true)))
+        post_command(app, "imgui_force_set", JV((target = T_CHECK_A, value = true)))
+        post_command(app, "imgui_force_set", JV((target = T_CHECK_B, value = true)))
+        post_command(app, "imgui_force_set", JV((target = T_CHECK_C, value = true)))
         sleep(CLICK_DWELL_MS)
         say(app, "All three tabs restored. Same channel writes from external bool or X button — caller stays the source of truth.", T_TAB_A)
     }

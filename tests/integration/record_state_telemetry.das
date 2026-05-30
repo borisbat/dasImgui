@@ -62,15 +62,15 @@ def main {
 
         // ---- Stage 2: dotted flags steer the emitted global ----
         say(app, "Dotted flags: SPEED.PUBLIC, VOLUME.NOTLIVE.", T_SPEED)
-        // imgui_set drives the slider values without simulating a drag.
-        post_command(app, "imgui_set", JV((target = T_SPEED, value = 7)))
+        // imgui_force_set drives the slider values without simulating a drag.
+        post_command(app, "imgui_force_set", JV((target = T_SPEED, value = 7)))
         sleep(900u)
-        post_command(app, "imgui_set", JV((target = T_VOLUME, value = 0.65f)))
+        post_command(app, "imgui_force_set", JV((target = T_VOLUME, value = 0.65f)))
         sleep(1500u)
 
-        // ---- Stage 3: text_show + imgui_set drives the value from outside ----
+        // ---- Stage 3: text_show + imgui_force_set drives the value from outside ----
         say(app, "text_show — app-side value mirrored into the snapshot.", T_STATUS)
-        post_command(app, "imgui_set", JV((target = T_STATUS, value = "set from outside")))
+        post_command(app, "imgui_force_set", JV((target = T_STATUS, value = "set from outside")))
         sleep(1500u)
 
         // ---- Stage 4: bump rewrites STATUS from inside the app ----

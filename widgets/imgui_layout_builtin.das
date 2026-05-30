@@ -28,7 +28,7 @@ require math
 //!     the call via SameLine.
 //!
 //! Reusing `SliderStateFloat` means the existing `pending_value_finalize`
-//! dispatcher handles `imgui_set` remote control with no per-kind boilerplate.
+//! dispatcher handles `imgui_force_set` remote control with no per-kind boilerplate.
 //! The `kind` string distinguishes telemetry; the state shape is identical.
 
 let private HANDLE_PX = 4.0f
