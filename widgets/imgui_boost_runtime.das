@@ -1634,9 +1634,13 @@ def public imgui_synth_tick() {
 [async]
 def private click_at_coro(center : float2; button : int) : void {
     // A real synthetic click via the owned synth primitives (imgui_test_engine model):
-    // move → reset the double-click timer → press → hold a frame → release. The tick
-    // re-asserts the held button each frame, so the press survives to the release.
+    // move → settle hover one frame → reset the double-click timer → press → hold a
+    // frame → release. The tick re-asserts pos+button each frame. The hover-settle frame
+    // is load-bearing: tab bars (TabItemButton) register the press only once HoveredId is
+    // established from a prior frame's mouse pos — a real user always hovers before
+    // clicking, so the synthetic path must too (matches imgui_test_engine MouseMove→MouseClick).
     synth_mouse_move(center.x, center.y)
+    await_next_frame()
     unsafe {
         var io & = GetIO()
         io.MouseClickedTime[button] = -3.40282347e+38lf  // -FLT_MAX: never auto-double-click
