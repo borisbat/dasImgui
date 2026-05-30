@@ -200,7 +200,7 @@ def public cursor_sprite(enabled : bool) {
 }
 
 def public apply_synth_io_override() {
-    //! Per-frame synth IO entry point — call between the backend's ``NewFrame`` and ImGui's ``NewFrame``. Drives :ref:`imgui_synth_tick <function-imgui_live_core_imgui_synth_tick>`.
+    //! Per-frame synth IO entry point — call between the backend's ``NewFrame`` and ImGui's ``NewFrame``. Drives :ref:`imgui_synth_tick <function-imgui_boost_runtime_imgui_synth_tick>`.
     imgui_synth_tick()
 }
 

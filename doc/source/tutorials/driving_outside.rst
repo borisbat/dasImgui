@@ -128,7 +128,7 @@ Use it to:
 * read ``hex_id`` for fallback dispatch when the path isn't stable.
 
 imgui_force_set — value writes
-========================
+==============================
 
 ``imgui_force_set`` is the universal value-write endpoint — slider, checkbox,
 combo, color, text input, dock-window position. Type-dispatched on the
@@ -269,8 +269,8 @@ trail, cursor sprite, narrate, key HUD, focus rect — all
    Full source: :download:`examples/tutorial/driving_outside.das <../../../examples/tutorial/driving_outside.das>`
 
    Richer reference: ``examples/features/io_synth_text.das`` —
-   ``imgui_key_type`` chains a coroutine that pushes one ``AddInputCharactersUTF8``
-   per frame; the L1 keyboard layer in action.
+   ``imgui_key_type`` streams ``text`` as synthetic key + char events through the
+   key timeline; the synthetic keyboard layer in action.
 
    Snapshot contract: ``imgui_boost_runtime.das``'s
    ``g_serializers`` per-kind payload definitions.

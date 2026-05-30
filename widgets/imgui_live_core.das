@@ -548,8 +548,8 @@ def private stop_synth_timelines() {
 }
 
 [init]
-def register_timeline_hooks() {
-    //! ``[init]`` — register this module's per-frame timeline advance + stop-on-handback with boost's synth tick.
+def private register_timeline_hooks() {
+    // [init] — register this module's per-frame timeline advance + stop-on-handback with boost's synth tick.
     register_synth_frame_hook("imgui_live_core", @@ advance_synth_timelines)
     register_synth_stop_hook("imgui_live_core", @@ stop_synth_timelines)
 }

@@ -37,7 +37,6 @@ def main {
         let T_CHECK_B = "ET_WIN/ET_CHECK_B"
         let T_CHECK_C = "ET_WIN/ET_CHECK_C"
         let T_TAB_A   = "ET_WIN/ET_BAR/ET_TAB_A"
-        let T_TAB_B   = "ET_WIN/ET_BAR/ET_TAB_B"
 
         var snap = wait_for_widget(app, T_TAB_A, 10.0f)
         if (snap == null) {

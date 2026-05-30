@@ -196,7 +196,7 @@ def public get_text(app : ImguiApp; uri : string) : string {
 }
 
 def private post_signal(app : ImguiApp; uri : string) {
-    POST("{app.base_url}{uri}", "", {"Content-Type" => "application/json"}) $(resp) {
+    POST("{app.base_url}{uri}", "", {"Content-Type" => "application/json"}) $(_resp) {
         // intentionally drop the response — caller polled /status to confirm
     }
 }

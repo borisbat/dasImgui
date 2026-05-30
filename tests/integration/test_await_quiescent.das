@@ -60,7 +60,7 @@ def test_imgui_await(t : T?) {
         }
 
         // Gate 3: poll until quiescent.
-        let settled = wait_until(d, 300) $(snap) {
+        let settled = wait_until(d, 300) $(_snap) {
             let probe = await_probe(d)
             return probe?["value"]?["quiescent"] ?? false
         }
