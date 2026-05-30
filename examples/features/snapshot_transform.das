@@ -32,10 +32,10 @@ def update() {
         // No active transform — screen-native bbox, no canvas_bbox.
         button(PLAIN_BTN, (text = "plain"))
         // Active transform — interior widget reports screen-space bbox + canvas_bbox.
-        set_snapshot_item_transform(XFORM_SCALE, XFORM_OFFSET)
+        push_snapshot_item_transform(XFORM_SCALE, XFORM_OFFSET)
         button(XFORM_BTN, (text = "xform"))
-        clear_snapshot_item_transform()
-        // Cleared — back to screen-native, no canvas_bbox.
+        pop_snapshot_item_transform()
+        // Popped — back to screen-native, no canvas_bbox.
         button(AFTER_BTN, (text = "after"))
     }
     harness_end_frame()

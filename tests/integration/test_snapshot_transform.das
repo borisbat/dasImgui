@@ -8,14 +8,14 @@ require imgui/imgui_playwright public
 require daslib/json public
 require daslib/json_boost public
 
-//! Contract test for the snapshot item-transform hook (set/clear_snapshot_item_transform).
+//! Contract test for the snapshot item-transform stack (push/pop_snapshot_item_transform).
 //! Drives examples/features/snapshot_transform.das, which wraps ONE button in a known
 //! synthetic affine (scale (2,3), offset (100,50)) with plain buttons before it and
-//! after the clear. Asserts:
+//! after the pop. Asserts:
 //!   - the transformed button reports bbox = canvas_bbox*scale + offset (the captured
 //!     local rect mapped to screen), with canvas_bbox carrying the local rect;
-//!   - widgets with no active transform (before, and after clear) report a screen-native
-//!     bbox and NO canvas_bbox — i.e. clear restores the default behavior.
+//!   - widgets with no active transform (before the push, and after the pop) report a
+//!     screen-native bbox and NO canvas_bbox — i.e. the pop restores the default.
 
 let FEATURE = "modules/dasImgui/examples/features/snapshot_transform.das"
 
@@ -52,9 +52,9 @@ def test_snapshot_transform(t : T?) {
         t |> success(near(bz, lz * 2.0f + 100.0f, 0.5f), "bbox.z == local.z*2 + 100")
         t |> success(near(bw, lw * 3.0f + 50.0f, 0.5f), "bbox.w == local.w*3 + 50")
 
-        // ---- after clear: screen-native again, no canvas_bbox ----
-        t |> success(widget_exists(snap, "MAIN_WIN/AFTER_BTN"), "after-clear button present")
+        // ---- after pop: screen-native again, no canvas_bbox ----
+        t |> success(widget_exists(snap, "MAIN_WIN/AFTER_BTN"), "after-pop button present")
         let after_cbb = find_widget(snap, "MAIN_WIN/AFTER_BTN")?["canvas_bbox"]?["z"] ?? -1.0f
-        t |> success(after_cbb < 0.0f, "after-clear button carries no canvas_bbox (clear restored identity)")
+        t |> success(after_cbb < 0.0f, "after-pop button carries no canvas_bbox (pop restored identity)")
     }
 }

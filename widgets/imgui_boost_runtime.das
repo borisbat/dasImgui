@@ -1049,44 +1049,49 @@ def private check_unique_render(path_key : string; kind : string) {
     g_rendered_this_frame |> insert(path_key)
 }
 
-// ===== Snapshot item-transform (for transformed canvases, e.g. node-editor) =====
+// ===== Snapshot item-transform stack (for transformed canvases, e.g. node-editor) =====
 //
 // A custom canvas (imgui-node-editor's ImGuiEx::Canvas) remaps ImGui's coordinate
 // frame to canvas-local while active, so GetItemRectMin/Max — which widget_finalize
 // captures — returns canvas-local coords for any widget rendered inside it. To keep
-// the snapshot uniformly SCREEN-space, such a canvas sets an affine item-transform
-// here for the duration of its block; widget_finalize then maps each captured rect
-// to screen (bbox) and records the original local rect (canvas_bbox). Identity by
-// default, so non-canvas widgets are unaffected.
-var private g_item_xform_active : bool = false
-var private g_item_xform_scale  : float2 = float2(1.0, 1.0)
-var private g_item_xform_offset : float2 = float2(0.0, 0.0)
+// the snapshot uniformly SCREEN-space, such a canvas pushes an affine item-transform
+// for the duration of its block; widget_finalize maps each captured rect to screen
+// (bbox) and records the original local rect (canvas_bbox). It's a STACK so canvases
+// nest like every other imgui scope (PushID/PushClipRect): each entry is the absolute
+// local→screen affine for that canvas — the editor's CanvasToScreen is already
+// absolute, so a push sets the innermost mapping and a pop restores the enclosing one,
+// no composition needed here. Empty stack = identity, so non-canvas widgets are
+// unaffected.
+struct private ItemXform {
+    scale  : float2
+    offset : float2
+}
+var private g_item_xform_stack : array<ItemXform>
 
-def public set_snapshot_item_transform(scale : float2; offset : float2) {
-    //! Activate a `screen = local * scale + offset` mapping applied to every widget's
-    //! captured item rect until `clear_snapshot_item_transform()`. A custom canvas
-    //! (e.g. `node_editor`) sets this so interior widgets report screen-space `bbox`
-    //! plus a `canvas_bbox` carrying the original local rect.
-    g_item_xform_active = true
-    g_item_xform_scale = scale
-    g_item_xform_offset = offset
+def public push_snapshot_item_transform(scale : float2; offset : float2) {
+    //! Push a `screen = local * scale + offset` mapping applied to every widget's
+    //! captured item rect until the matching `pop_snapshot_item_transform()`. A custom
+    //! canvas (e.g. `node_editor`) pushes this so interior widgets report screen-space
+    //! `bbox` plus a `canvas_bbox` carrying the original local rect. Nestable.
+    g_item_xform_stack |> push(ItemXform(scale = scale, offset = offset))
 }
 
-def public clear_snapshot_item_transform() {
-    //! Restore the identity item-transform (the default — widgets captured directly
-    //! in screen space).
-    g_item_xform_active = false
-    g_item_xform_scale = float2(1.0, 1.0)
-    g_item_xform_offset = float2(0.0, 0.0)
+def public pop_snapshot_item_transform() {
+    //! Pop the innermost item-transform pushed by `push_snapshot_item_transform`,
+    //! restoring the enclosing canvas's mapping (or identity at the outermost level).
+    if (!empty(g_item_xform_stack)) {
+        g_item_xform_stack |> pop()
+    }
 }
 
 def private item_xform_screen(local : float4) : float4 {
-    // Map a captured local item rect to screen via the active affine transform.
+    // Map a captured local item rect to screen via the innermost (top-of-stack) affine.
+    let top = g_item_xform_stack[length(g_item_xform_stack) - 1]
     return float4(
-        local.x * g_item_xform_scale.x + g_item_xform_offset.x,
-        local.y * g_item_xform_scale.y + g_item_xform_offset.y,
-        local.z * g_item_xform_scale.x + g_item_xform_offset.x,
-        local.w * g_item_xform_scale.y + g_item_xform_offset.y)
+        local.x * top.scale.x + top.offset.x,
+        local.y * top.scale.y + top.offset.y,
+        local.z * top.scale.x + top.offset.x,
+        local.w * top.scale.y + top.offset.y)
 }
 
 def public widget_finalize(widget_ident : string;
@@ -1103,7 +1108,7 @@ def public widget_finalize(widget_ident : string;
     let rmin = GetItemRectMin()
     let rmax = GetItemRectMax()
     let local_bbox = float4(rmin.x, rmin.y, rmax.x, rmax.y)
-    if (g_item_xform_active) {
+    if (!empty(g_item_xform_stack)) {
         // Inside a transformed canvas: expose screen-space, and keep the local rect as
         // canvas_bbox only when the transform actually moved it — an identity mapping
         // would make canvas_bbox a redundant copy of bbox.
