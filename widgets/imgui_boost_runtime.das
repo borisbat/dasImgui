@@ -626,7 +626,8 @@ struct WidgetEntry {
     //! built lazily at snapshot from those, so per-frame render does zero JSON.
     kind : string                                //! widget kind ("button", "slider_float", ...)
     hex_id : uint                                //! ImGui's GetID() for this widget on this frame
-    bbox : float4                                //! packed [x0, y0, x1, y1]
+    bbox : float4                                //! packed [x0, y0, x1, y1] — ALWAYS screen-space
+    @optional canvas_bbox : float4               //! packed [x0,y0,x1,y1] in a transformed canvas's LOCAL space. Emitted ONLY when the widget was captured under a non-identity snapshot item-transform (e.g. inside a node-editor canvas) — `bbox` is then its screen-space mapping. Absent for the common case where the widget is already screen-space.
     @optional hover : bool                       //! IsItemHovered() this frame
     @optional active : bool                      //! IsItemActive() this frame
     @optional focus : bool                       //! IsItemFocused() this frame
@@ -821,6 +822,12 @@ def begin_frame() {
     if (!empty(g_container_path)) {
         g_container_path |> clear()
         g_container_path_str = ""
+    }
+    // Defensive: a transformed canvas balances push/pop within a frame, but a missed pop
+    // (e.g. a panic in the block) would otherwise leave the transform active for every
+    // later frame and corrupt unrelated widget bboxes. Reset like the other per-frame state.
+    if (!empty(g_item_xform_stack)) {
+        g_item_xform_stack |> clear()
     }
 }
 
@@ -1048,6 +1055,74 @@ def private check_unique_render(path_key : string; kind : string) {
     g_rendered_this_frame |> insert(path_key)
 }
 
+// ===== Snapshot item-transform stack (for transformed canvases, e.g. node-editor) =====
+//
+// A custom canvas (imgui-node-editor's ImGuiEx::Canvas) remaps ImGui's coordinate
+// frame to canvas-local while active, so GetItemRectMin/Max — which widget_finalize
+// captures — returns canvas-local coords for any widget rendered inside it. To keep
+// the snapshot uniformly SCREEN-space, such a canvas pushes an affine item-transform
+// for the duration of its block; widget_finalize maps each captured rect to screen
+// (bbox) and records the original local rect (canvas_bbox). It's a STACK so canvases
+// nest like every other imgui scope (PushID/PushClipRect): each entry is the absolute
+// local→screen affine for that canvas — the editor's CanvasToScreen is already
+// absolute, so a push sets the innermost mapping and a pop restores the enclosing one,
+// no composition needed here. Empty stack = identity, so non-canvas widgets are
+// unaffected.
+struct private ItemXform {
+    scale  : float2
+    offset : float2
+}
+var private g_item_xform_stack : array<ItemXform>
+
+def public push_snapshot_item_transform(scale : float2; offset : float2) {
+    //! Push a `screen = local * scale + offset` mapping applied to every widget's
+    //! captured item rect until the matching `pop_snapshot_item_transform()`. A custom
+    //! canvas (e.g. `node_editor`) pushes this so interior widgets report screen-space
+    //! `bbox` plus a `canvas_bbox` carrying the original local rect. Nestable.
+    g_item_xform_stack |> push(ItemXform(scale = scale, offset = offset))
+}
+
+def public pop_snapshot_item_transform() {
+    //! Pop the innermost item-transform pushed by `push_snapshot_item_transform`,
+    //! restoring the enclosing canvas's mapping (or identity at the outermost level).
+    if (!empty(g_item_xform_stack)) {
+        g_item_xform_stack |> pop()
+    }
+}
+
+def private item_xform_screen(local : float4) : float4 {
+    // Map a captured local item rect to screen via the innermost (top-of-stack) affine.
+    let top = g_item_xform_stack[length(g_item_xform_stack) - 1]
+    return float4(
+        local.x * top.scale.x + top.offset.x,
+        local.y * top.scale.y + top.offset.y,
+        local.z * top.scale.x + top.offset.x,
+        local.w * top.scale.y + top.offset.y)
+}
+
+def public capture_item_bbox(var entry : WidgetEntry; local : float4) {
+    //! Record a captured imgui item rect into `entry`: `bbox` mapped to screen via the
+    //! active snapshot item-transform, plus `canvas_bbox` carrying the original local rect
+    //! when the transform actually moved it. The single capture chokepoint for both leaf
+    //! widgets (`widget_finalize`) and container headers, so every entry stays consistent
+    //! under a transformed canvas. The (0,0,0,0) sentinel (a headerless container) is left
+    //! untouched — never mapped to a phantom rect at the transform offset.
+    if (local.x == 0.0f && local.y == 0.0f && local.z == 0.0f && local.w == 0.0f) {
+        entry.bbox = local
+        return
+    }
+    if (empty(g_item_xform_stack)) {
+        entry.bbox = local
+        return
+    }
+    let screen = item_xform_screen(local)
+    entry.bbox = screen
+    if (screen.x != local.x || screen.y != local.y ||
+        screen.z != local.z || screen.w != local.w) {
+        entry.canvas_bbox = local
+    }
+}
+
 def public widget_finalize(widget_ident : string;
                            kind : string;
                            var entry : WidgetEntry;
@@ -1061,7 +1136,7 @@ def public widget_finalize(widget_ident : string;
     entry.hex_id = GetID(widget_ident)
     let rmin = GetItemRectMin()
     let rmax = GetItemRectMax()
-    entry.bbox = float4(rmin.x, rmin.y, rmax.x, rmax.y)
+    capture_item_bbox(entry, float4(rmin.x, rmin.y, rmax.x, rmax.y))
     entry.hover = IsItemHovered(ImGuiHoveredFlags.None)
     entry.active = IsItemActive()
     entry.focus = IsItemFocused()

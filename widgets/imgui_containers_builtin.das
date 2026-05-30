@@ -48,7 +48,7 @@ def private open_close_finalize(widget_ident : string; kind : string; var state 
                                 bbox : float4 = float4(0.0f, 0.0f, 0.0f, 0.0f)) {
     //! Container finalize for state with ``pending_open`` / ``pending_close``. Dispatch routes through ``g_dispatchers`` keyed by ``ST``'s ``TypeInfo.hash`` to the ``[widget_dispatch] def _(var state : ST; …)`` body below.
     var entry : WidgetEntry
-    entry.bbox = bbox
+    capture_item_bbox(entry, bbox)
     unsafe {
         container_finalize(widget_ident, kind, entry,
                            addr(state),
@@ -60,7 +60,7 @@ def public stateless_finalize(widget_ident : string; kind : string; var state : 
                               bbox : float4 = float4(0.0f, 0.0f, 0.0f, 0.0f)) {
     //! Container finalize for stateless containers (no dispatcher actions). Snapshot rail still reflects state for telemetry; no ``[widget_dispatch]`` is registered for ``ST``, so ``g_dispatchers[(*ti).hash]`` is absent and ``dispatch_or_err`` silently returns ok if a stray action ever targets one (Structure-with-no-dispatcher = display-only).
     var entry : WidgetEntry
-    entry.bbox = bbox
+    capture_item_bbox(entry, bbox)
     unsafe {
         container_finalize(widget_ident, kind, entry,
                            addr(state),
@@ -71,7 +71,9 @@ def public stateless_finalize(widget_ident : string; kind : string; var state : 
 def private current_item_bbox() : float4 {
     //! Snapshot ``GetItemRectMin/Max`` for the "last item" — meaningful for
     //! containers whose Begin* call emits a clickable header into the parent
-    //! (``menu`` / ``tab_item``). Returns (0,0,0,0)-shaped float4 directly.
+    //! (``menu`` / ``tab_item``). Returns the captured rect in its native space; the
+    //! finalizers route it through ``capture_item_bbox``, which maps it to screen (and
+    //! records ``canvas_bbox``) when a snapshot item-transform is active.
     let rmin = GetItemRectMin()
     let rmax = GetItemRectMax()
     return float4(rmin.x, rmin.y, rmax.x, rmax.y)
