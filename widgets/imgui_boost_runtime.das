@@ -6,7 +6,6 @@ options no_unused_function_arguments = false
 module imgui_boost_runtime shared
 
 require imgui public
-require imgui_app           // synth IO natives (imgui_synth_*) + imgui_set_real_input_callbacks
 require live/live_vars public
 require live/live_commands
 require live_host public
@@ -1415,6 +1414,16 @@ def public register_synth_stop_hook(name : string; hook : function<() : void>) {
     g_synth_stop_hooks[name] = hook
 }
 
+// The windowed GLFW backend (imgui_live.das, the daslang side of native imgui_app)
+// fills this so set_user_control can detach real input AT THE SOURCE. Null on a
+// non-GLFW host — user control then governs only synth cursor ownership.
+var private g_real_input_toggle : function<(enabled : bool) : void>
+
+def public register_real_input_toggle(hook : function<(enabled : bool) : void>) {
+    //! Register the backend's real-input enable/disable callback. :ref:`imgui_synth_tick <function-imgui_boost_runtime_imgui_synth_tick>` invokes it on a ``set_user_control`` transition (the GLFW backend wires ``imgui_set_real_input_callbacks``).
+    g_real_input_toggle = hook
+}
+
 def public get_synth_cursor() : tuple<bool; float; float> {
     //! Current synth cursor as ``(owned, x, y)``; ``owned`` means overlays should render against this instead of ``GetMousePos()``.
     return (synth_cursor_owned, mouse_cursor_x, mouse_cursor_y)
@@ -1432,15 +1441,17 @@ def public synth_mouse_move(x, y : float) {
     mouse_cursor_x = x
     mouse_cursor_y = y
     synth_cursor_owned = true
-    imgui_synth_mouse_pos(x, y)
+    var io & = unsafe(GetIO())
+    io |> AddMousePosEvent(x, y)
 }
 
 def public synth_mouse_button(button : int; action : int) {
     //! Press (``action==1``) / release synth mouse ``button``. Emits the cursor pos immediately before the button so ImGui records ``MouseClickedPos`` at the synth coords and ``IsItemHovered()`` passes.
+    var io & = unsafe(GetIO())
     if (synth_cursor_owned) {
-        imgui_synth_mouse_pos(mouse_cursor_x, mouse_cursor_y)
+        io |> AddMousePosEvent(mouse_cursor_x, mouse_cursor_y)
     }
-    imgui_synth_mouse_button(button, action == 1)
+    io |> AddMouseButtonEvent(button, action == 1)
     if (action == 1) {
         synth_buttons_mask |= (1 << button)
     } else {
@@ -1454,7 +1465,8 @@ def public synth_mouse_button(button : int; action : int) {
 
 def public synth_mouse_wheel(dx, dy : float) {
     //! Synthetic mouse wheel; takes cursor ownership.
-    imgui_synth_mouse_wheel(dx, dy)
+    var io & = unsafe(GetIO())
+    io |> AddMouseWheelEvent(dx, dy)
     synth_cursor_owned = true
 }
 
@@ -1469,6 +1481,12 @@ def public release_held_buttons() {
 
 // --- keyboard primitives ---
 
+def private as_imgui_key(key : int) : ImGuiKey {
+    // AddKeyEvent wants ImGuiKey; the synth timeline + held-set store keys as int.
+    // No int→enum ctor in daslang, so reinterpret (same width).
+    return unsafe(reinterpret<ImGuiKey>(key))
+}
+
 def private mod_alias_for_side_key(key : int) : int {
     // ImGui's IsKeyDown(ImGuiMod_Ctrl) / io.KeyCtrl / Shortcut() consult the alias key —
     // emitting only the side key leaves the alias unset (mirrors imgui_test_engine).
@@ -1481,11 +1499,12 @@ def private mod_alias_for_side_key(key : int) : int {
 
 def public synth_key_press(key : int) {
     //! Press synth ``key`` (ImGuiKey int); auto-pairs the ``ImGuiMod_*`` alias for side-mod keys so ``Shortcut()`` routing sees the chord.
-    imgui_synth_key(key, true)
+    var io & = unsafe(GetIO())
+    io |> AddKeyEvent(as_imgui_key(key), true)
     synth_held_keys |> insert(key)
     let mod_alias = mod_alias_for_side_key(key)
     if (mod_alias != 0) {
-        imgui_synth_key(mod_alias, true)
+        io |> AddKeyEvent(as_imgui_key(mod_alias), true)
         synth_held_keys |> insert(mod_alias)
     }
     synth_last_keycode   = key
@@ -1494,18 +1513,20 @@ def public synth_key_press(key : int) {
 
 def public synth_key_release(key : int) {
     //! Release synth ``key`` (and its mod alias).
-    imgui_synth_key(key, false)
+    var io & = unsafe(GetIO())
+    io |> AddKeyEvent(as_imgui_key(key), false)
     synth_held_keys |> erase(key)
     let mod_alias = mod_alias_for_side_key(key)
     if (mod_alias != 0) {
-        imgui_synth_key(mod_alias, false)
+        io |> AddKeyEvent(as_imgui_key(mod_alias), false)
         synth_held_keys |> erase(mod_alias)
     }
 }
 
 def public synth_char(codepoint : uint) {
     //! Push a synthetic Unicode character to the focused widget.
-    imgui_synth_input_char(codepoint)
+    var io & = unsafe(GetIO())
+    io |> AddInputCharacter(codepoint)
     synth_last_codepoint   = codepoint
     synth_last_codepoint_t = get_uptime()
 }
@@ -1559,7 +1580,9 @@ def reattach_real_input_before_reload() {
     // stay removed while the new program thinks they're installed → real input
     // permanently dead. Re-attach so the handoff matches the post-reload defaults.
     if (!g_input_callbacks_installed) {
-        imgui_set_real_input_callbacks(true)
+        if (g_real_input_toggle != null) {
+            invoke(g_real_input_toggle, true)
+        }
         g_input_callbacks_installed = true
     }
 }
@@ -1571,7 +1594,9 @@ def public imgui_synth_tick() {
     // the backend's input callbacks so real mouse/keyboard never reach ImGui's queue;
     // synth uses io.Add*Event directly and is unaffected.
     if (g_user_control != g_input_callbacks_installed) {
-        imgui_set_real_input_callbacks(g_user_control)
+        if (g_real_input_toggle != null) {
+            invoke(g_real_input_toggle, g_user_control)
+        }
         g_input_callbacks_installed = g_user_control
         if (!g_user_control) {
             // One-shot on take-over: drop real input queued before the detach took
@@ -1592,16 +1617,17 @@ def public imgui_synth_tick() {
     let synth_armed = synth_cursor_owned || !empty(synth_held_keys) || synth_buttons_mask != 0
     return if (!synth_armed)
     // Re-assert held state every frame (imgui_test_engine model). Idempotent.
+    var io & = unsafe(GetIO())
     if (synth_cursor_owned) {
-        imgui_synth_mouse_pos(mouse_cursor_x, mouse_cursor_y)
+        io |> AddMousePosEvent(mouse_cursor_x, mouse_cursor_y)
     }
     for (b in range(0, 5)) {
         if ((synth_buttons_mask & (1 << b)) != 0) {
-            imgui_synth_mouse_button(b, true)
+            io |> AddMouseButtonEvent(b, true)
         }
     }
     for (k in keys(synth_held_keys)) {
-        imgui_synth_key(k, true)
+        io |> AddKeyEvent(as_imgui_key(k), true)
     }
 }
 
