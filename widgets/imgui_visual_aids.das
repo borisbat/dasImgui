@@ -543,7 +543,7 @@ def private glyph_for_imgui_key(kc : int) : string {
 def private paint_key_hud {
     return if (!key_hud_enabled)
 
-    // 1) Pull new synth events from imgui_live into traces. Codepoint takes
+    // 1) Pull new synth events from imgui_boost_runtime into traces. Codepoint takes
     //    priority: a typed char already includes the visible glyph;
     //    modifier-only keystrokes fall through to the keycode branch.
     let now = get_uptime()
