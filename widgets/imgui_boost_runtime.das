@@ -1104,9 +1104,15 @@ def public widget_finalize(widget_ident : string;
     let rmax = GetItemRectMax()
     let local_bbox = float4(rmin.x, rmin.y, rmax.x, rmax.y)
     if (g_item_xform_active) {
-        // Inside a transformed canvas: keep the local rect, expose screen-space.
-        entry.canvas_bbox = local_bbox
-        entry.bbox = item_xform_screen(local_bbox)
+        // Inside a transformed canvas: expose screen-space, and keep the local rect as
+        // canvas_bbox only when the transform actually moved it — an identity mapping
+        // would make canvas_bbox a redundant copy of bbox.
+        let screen_bbox = item_xform_screen(local_bbox)
+        entry.bbox = screen_bbox
+        if (screen_bbox.x != local_bbox.x || screen_bbox.y != local_bbox.y ||
+            screen_bbox.z != local_bbox.z || screen_bbox.w != local_bbox.w) {
+            entry.canvas_bbox = local_bbox
+        }
     } else {
         entry.bbox = local_bbox
     }
