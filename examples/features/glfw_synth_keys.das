@@ -30,7 +30,6 @@ def init() {
 [export]
 def update() {
     if (!harness_begin_frame()) return
-    harness_apply_synth_io()
     harness_new_frame()
 
     SetNextWindowPos(ImVec2(40.0, 40.0), ImGuiCond.Always)

@@ -26,7 +26,6 @@ def init() {
 [export]
 def update() {
     if (!harness_begin_frame()) return
-    harness_apply_synth_io()
     harness_new_frame()
 
     // Anchored window so SYNTH_BTN's bbox is stable across runs.

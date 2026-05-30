@@ -52,7 +52,6 @@ def private grid_pos(r : int; c : int) : float2 {
 [export]
 def update() {
     if (!harness_begin_frame()) return
-    harness_apply_synth_io()
     harness_new_frame()
 
     SetNextWindowPos(ImVec2(0.0f, 0.0f), ImGuiCond.Always)

@@ -241,7 +241,7 @@ def private paint_highlights {
 
 def private effective_cursor_pos() : float2 {
     // Synth cursor when active, else real ImGui cursor — backend poll may overwrite io.MousePos.
-    let (active, sx, sy) = imgui_live::get_synth_cursor()
+    let (active, sx, sy) = imgui_boost_runtime::get_synth_cursor()
     return float2(sx, sy) if (active)
     return GetMousePos()
 }
@@ -495,7 +495,7 @@ def private paint_cursor_sprite {
 
 def private effective_synth_click() : tuple<int; float> {
     // (action, t) for last synth click — action: 1=press, 0=release.
-    return (imgui_live::synth_click_action, imgui_live::synth_click_t)
+    return (imgui_boost_runtime::synth_click_action, imgui_boost_runtime::synth_click_t)
 }
 
 def private paint_click_flash {
@@ -547,10 +547,10 @@ def private paint_key_hud {
     //    priority: a typed char already includes the visible glyph;
     //    modifier-only keystrokes fall through to the keycode branch.
     let now = get_uptime()
-    let cp_t = imgui_live::synth_last_codepoint_t
-    let cp   = imgui_live::synth_last_codepoint
-    let kc_t = imgui_live::synth_last_keycode_t
-    let kc   = imgui_live::synth_last_keycode
+    let cp_t = imgui_boost_runtime::synth_last_codepoint_t
+    let cp   = imgui_boost_runtime::synth_last_codepoint
+    let kc_t = imgui_boost_runtime::synth_last_keycode_t
+    let kc   = imgui_boost_runtime::synth_last_keycode
     if (cp_t > g_last_seen_codepoint_t && cp != 0u) {
         g_keycap_traces |> push(KeycapTrace(glyph = glyph_for_codepoint(cp), t_pushed = now))
         g_last_seen_codepoint_t = cp_t
