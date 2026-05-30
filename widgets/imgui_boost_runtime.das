@@ -441,6 +441,8 @@ struct WindowState {
     @optional pending_close : bool            //! imgui_close queued; applied next frame
     @optional pending_size : float2           //! imgui_set_window_size queued — applied via SetNextWindowSize next frame
     @optional pending_size_set : bool         //! gates pending_size (so (0,0) is a valid request, not a sentinel)
+    @optional pending_scroll : float2         //! imgui_click scroll-into-view queued — applied via SetNextWindowScroll next frame
+    @optional pending_scroll_set : bool       //! gates pending_scroll (so (0,0) is a valid request, not a sentinel)
 }
 
 struct ChildState {
@@ -1293,7 +1295,7 @@ def private extract_string_field(obj : JsonValue?; name : string) : string {
     return v.value as _string
 }
 
-def private widget_meta_jv(path_key : string; meta : WidgetMeta) : JsonValue? {
+def private widget_meta_jv(_path_key : string; meta : WidgetMeta) : JsonValue? {
     // Snapshot blob for a widget registered but not rendered this frame: rendered=false, state payload only. State payload is built from (addr, ti) via sprint_json_at + read_json — no per-widget serializer function.
     return JV((kind = meta.kind, rendered = false, payload = state_payload_jv(resolve_meta_addr(meta), meta.ti)))
 }
@@ -1321,7 +1323,7 @@ def private io_jv() : JsonValue? {
 }
 
 [live_command(description = "Snapshot of all registered widgets, with per-frame state joined when rendered")]
-def imgui_snapshot(input : JsonValue?) : JsonValue? {
+def imgui_snapshot(_input : JsonValue?) : JsonValue? {
     //! Live-command: return ``{frame, globals, io}`` — every registered widget joined with its per-frame entry when rendered.
     var globals : table<string; JsonValue?>
     // Walk long-lived registry first — covers unrendered widgets too.
@@ -1631,14 +1633,49 @@ def public imgui_synth_tick() {
     }
 }
 
+// Scroll `target` into its top-level window's viewport before clicking — a real user scrolls a
+// below-the-fold widget on-screen first (imgui_test_engine ScrollToItem). Queues the window's
+// pending_scroll; returns the applied vertical delta (0 = visible / not a windowed path / no room).
+def private scroll_target_into_view(target : string) : float {
+    let slash = find(target, "/")
+    if (slash < 0) return 0.0f                        // bare window / hex_id: first segment IS the window
+    let win_name = slice(target, 0, slash)
+    let meta = unsafe(g_widgets?[win_name])
+    if (meta == null || meta.kind != "window" || meta.state_addr == null) return 0.0f
+    let r = widget_rect(target)
+    if (!r._0) return 0.0f
+    let bb = r._1                                     // (x0=left, y0=top, x1=right, y1=bottom)
+    var ws = unsafe(reinterpret<WindowState? -const>(meta.state_addr))
+    if (ws == null) return 0.0f
+    let visible_top = ws.pos.y + GetFrameHeight()     // content top, below the title bar
+    let visible_bottom = ws.pos.y + ws.size.y
+    let margin = GetTextLineHeight()
+    var delta = 0.0f
+    if (bb.w > visible_bottom) {                      // bottom edge below the fold → scroll down
+        delta = (bb.w - visible_bottom) + margin
+    } elif (bb.y < visible_top) {                     // top edge above the fold → scroll up
+        delta = -((visible_top - bb.y) + margin)
+    } else {
+        return 0.0f                                   // already fully visible
+    }
+    let new_y = clamp(ws.scroll.y + delta, 0.0f, ws.scroll_max.y)
+    let applied = new_y - ws.scroll.y
+    if (abs(applied) < 1.0f) return 0.0f              // already at the needed scroll (e.g. clamped)
+    ws.pending_scroll = float2(ws.scroll.x, new_y)
+    ws.pending_scroll_set = true
+    return applied
+}
+
 [async]
-def private click_at_coro(center : float2; button : int) : void {
-    // A real synthetic click via the owned synth primitives (imgui_test_engine model):
-    // move → settle hover one frame → reset the double-click timer → press → hold a
-    // frame → release. The tick re-asserts pos+button each frame. The hover-settle frame
-    // is load-bearing: tab bars (TabItemButton) register the press only once HoveredId is
-    // established from a prior frame's mouse pos — a real user always hovers before
-    // clicking, so the synthetic path must too (matches imgui_test_engine MouseMove→MouseClick).
+def private click_at_coro(center : float2; scrolled : bool; button : int) : void {
+    // Real synthetic click via the owned synth primitives (imgui_test_engine model):
+    // [scroll queued by dispatch] → move → settle hover one frame → reset the double-click
+    // timer → press → hold a frame → release. `center` is the post-scroll position (dispatch
+    // shifted it by the queued scroll delta), so when `scrolled` we yield one frame first to
+    // let the window apply SetNextWindowScroll. The hover-settle frame is load-bearing: tab
+    // bars (TabItemButton) register the press only once HoveredId is set from a prior frame's
+    // mouse pos — a real user always hovers before clicking, so the synthetic path must too.
+    if (scrolled) await_next_frame()
     synth_mouse_move(center.x, center.y)
     await_next_frame()
     unsafe {
@@ -1760,7 +1797,13 @@ def private dispatch_or_err(action : string; input : JsonValue?) : Result<string
         let button = input?["button"] ?? 0
         let (got, center) = resolve_target_bbox(resolved)
         if (!got) return err("target {resolved} has no bbox this frame (not rendered)", type<string>)
-        spawn_coroutine(click_at_coro(center, button))
+        // Scroll a below-the-fold target into view first. Scroll is a pure vertical content
+        // translation, so the post-scroll center is the current center shifted up by the applied
+        // delta — computed here (registry is populated mid-dispatch) because the coroutine can't
+        // read the freshly-cleared registry when it advances in begin_frame.
+        let scroll_dy = scroll_target_into_view(resolved)
+        let target_center = float2(center.x, center.y - scroll_dy)
+        spawn_coroutine(click_at_coro(target_center, scroll_dy != 0.0f, button))
         // Return the clean resolved target (path or hex_id), not a synthetic tag:
         // the post-command auto-highlight hook resolves it via widget_rect, and
         // tests assert the resolved path. Same value for every button.

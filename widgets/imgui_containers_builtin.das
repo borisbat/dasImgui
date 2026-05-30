@@ -126,6 +126,10 @@ def window(var state : WindowState; text : string; closable : bool;
             SetNextWindowSize(ImVec2(state.pending_size.x, state.pending_size.y), ImGuiCond.Always)
             state.pending_size_set = false
         }
+        if (state.pending_scroll_set) {
+            SetNextWindowScroll(ImVec2(state.pending_scroll.x, state.pending_scroll.y))
+            state.pending_scroll_set = false
+        }
         var p_open : bool? = null
         if (closable) {
             unsafe {
