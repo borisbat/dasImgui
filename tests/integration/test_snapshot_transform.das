@@ -52,14 +52,18 @@ def test_snapshot_transform(t : T?) {
         t |> success(near(bz, lz * 2.0f + 100.0f, 0.5f), "bbox.z == local.z*2 + 100")
         t |> success(near(bw, lw * 3.0f + 50.0f, 0.5f), "bbox.w == local.w*3 + 50")
 
-        // ---- a CONTAINER header under the transform is also screen-space ----
-        // tab_item captures its header via current_item_bbox(); offset.x = 100 and
-        // local.x >= 0, so a transformed header has bbox.x >= 100. Without the
-        // current_item_bbox transform it would be raw window-local (< 100).
+        // ---- a CONTAINER header under the transform is also screen-space + canvas_bbox ----
+        // tab_item captures its header via current_item_bbox(), routed through the same
+        // capture_item_bbox chokepoint as leaf widgets — so it gets the screen-mapped bbox
+        // AND a canvas_bbox, identical to the contract for leaf widgets.
         t |> success(widget_exists(snap, "MAIN_WIN/XFORM_TABS/XFORM_TAB"),
                      "tab_item header present under transform")
-        let tab_bx = find_widget(snap, "MAIN_WIN/XFORM_TABS/XFORM_TAB")?["bbox"]?["x"] ?? 0.0f
-        t |> success(tab_bx >= 100.0f, "tab_item header bbox.x carries the transform offset (got {tab_bx})")
+        let tab = find_widget(snap, "MAIN_WIN/XFORM_TABS/XFORM_TAB")
+        let tcx = tab?["canvas_bbox"]?["x"] ?? -1.0f
+        t |> success(tcx >= 0.0f, "tab_item header carries canvas_bbox under transform")
+        let tbx = tab?["bbox"]?["x"] ?? 0.0f
+        t |> success(near(tbx, tcx * 2.0f + 100.0f, 0.5f),
+                     "tab_item header bbox.x == canvas_bbox.x*2 + 100 (screen-mapped)")
 
         // ---- after pop: screen-native again, no canvas_bbox ----
         t |> success(widget_exists(snap, "MAIN_WIN/AFTER_BTN"), "after-pop button present")

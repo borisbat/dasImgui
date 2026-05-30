@@ -47,7 +47,7 @@ def document_module_imgui_boost_runtime() {
         group_by_regex("Coroutines",              mod, %regex~^(advance_coroutines|spawn_coroutine)$%%),
         group_by_regex("Window control",          mod, %regex~^imgui_(dock|undock|dock_reset|set_window_pos|set_window_size)$%%),
         group_by_regex("Live commands",           mod, %regex~^imgui_(snapshot|click|set|open|close|focus|await|drag|type_text)$%%),
-        group_by_regex("Snapshot transform",      mod, %regex~^(push_snapshot_item_transform|pop_snapshot_item_transform|snapshot_item_screen)$%%),
+        group_by_regex("Snapshot transform",      mod, %regex~^(push_snapshot_item_transform|pop_snapshot_item_transform|capture_item_bbox)$%%),
         group_by_regex("Await modifiers",         mod, %regex~^(AwaitModifiers|AwaitArgs|AwaitResult|with_await)$%%),
         group_by_regex("JSON serialization",      mod, %regex~^(widget_entry_jv|state_jv|to_JV|from_JV|JV|serialize).*%%),
         hide_group(group_by_regex("Finalizers",   mod, %regex~^.*_finalize$%%)),

@@ -1100,12 +1100,27 @@ def private item_xform_screen(local : float4) : float4 {
         local.w * top.scale.y + top.offset.y)
 }
 
-def public snapshot_item_screen(local : float4) : float4 {
-    //! Map a captured (canvas-local) item rect to screen via the active item-transform
-    //! stack; identity when no transform is active. Any bbox-capture site that reads
-    //! imgui's current item rect (e.g. container headers) routes through this so the
-    //! snapshot stays uniformly screen-space, consistent with leaf widgets.
-    return empty(g_item_xform_stack) ? local : item_xform_screen(local)
+def public capture_item_bbox(var entry : WidgetEntry; local : float4) {
+    //! Record a captured imgui item rect into `entry`: `bbox` mapped to screen via the
+    //! active snapshot item-transform, plus `canvas_bbox` carrying the original local rect
+    //! when the transform actually moved it. The single capture chokepoint for both leaf
+    //! widgets (`widget_finalize`) and container headers, so every entry stays consistent
+    //! under a transformed canvas. The (0,0,0,0) sentinel (a headerless container) is left
+    //! untouched — never mapped to a phantom rect at the transform offset.
+    if (local.x == 0.0f && local.y == 0.0f && local.z == 0.0f && local.w == 0.0f) {
+        entry.bbox = local
+        return
+    }
+    if (empty(g_item_xform_stack)) {
+        entry.bbox = local
+        return
+    }
+    let screen = item_xform_screen(local)
+    entry.bbox = screen
+    if (screen.x != local.x || screen.y != local.y ||
+        screen.z != local.z || screen.w != local.w) {
+        entry.canvas_bbox = local
+    }
 }
 
 def public widget_finalize(widget_ident : string;
@@ -1121,20 +1136,7 @@ def public widget_finalize(widget_ident : string;
     entry.hex_id = GetID(widget_ident)
     let rmin = GetItemRectMin()
     let rmax = GetItemRectMax()
-    let local_bbox = float4(rmin.x, rmin.y, rmax.x, rmax.y)
-    if (!empty(g_item_xform_stack)) {
-        // Inside a transformed canvas: expose screen-space, and keep the local rect as
-        // canvas_bbox only when the transform actually moved it — an identity mapping
-        // would make canvas_bbox a redundant copy of bbox.
-        let screen_bbox = item_xform_screen(local_bbox)
-        entry.bbox = screen_bbox
-        if (screen_bbox.x != local_bbox.x || screen_bbox.y != local_bbox.y ||
-            screen_bbox.z != local_bbox.z || screen_bbox.w != local_bbox.w) {
-            entry.canvas_bbox = local_bbox
-        }
-    } else {
-        entry.bbox = local_bbox
-    }
+    capture_item_bbox(entry, float4(rmin.x, rmin.y, rmax.x, rmax.y))
     entry.hover = IsItemHovered(ImGuiHoveredFlags.None)
     entry.active = IsItemActive()
     entry.focus = IsItemFocused()
