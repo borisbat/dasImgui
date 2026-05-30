@@ -626,7 +626,8 @@ struct WidgetEntry {
     //! built lazily at snapshot from those, so per-frame render does zero JSON.
     kind : string                                //! widget kind ("button", "slider_float", ...)
     hex_id : uint                                //! ImGui's GetID() for this widget on this frame
-    bbox : float4                                //! packed [x0, y0, x1, y1]
+    bbox : float4                                //! packed [x0, y0, x1, y1] — ALWAYS screen-space
+    @optional canvas_bbox : float4               //! packed [x0,y0,x1,y1] in a transformed canvas's LOCAL space. Emitted ONLY when the widget was captured under a non-identity snapshot item-transform (e.g. inside a node-editor canvas) — `bbox` is then its screen-space mapping. Absent for the common case where the widget is already screen-space.
     @optional hover : bool                       //! IsItemHovered() this frame
     @optional active : bool                      //! IsItemActive() this frame
     @optional focus : bool                       //! IsItemFocused() this frame
@@ -1048,6 +1049,46 @@ def private check_unique_render(path_key : string; kind : string) {
     g_rendered_this_frame |> insert(path_key)
 }
 
+// ===== Snapshot item-transform (for transformed canvases, e.g. node-editor) =====
+//
+// A custom canvas (imgui-node-editor's ImGuiEx::Canvas) remaps ImGui's coordinate
+// frame to canvas-local while active, so GetItemRectMin/Max — which widget_finalize
+// captures — returns canvas-local coords for any widget rendered inside it. To keep
+// the snapshot uniformly SCREEN-space, such a canvas sets an affine item-transform
+// here for the duration of its block; widget_finalize then maps each captured rect
+// to screen (bbox) and records the original local rect (canvas_bbox). Identity by
+// default, so non-canvas widgets are unaffected.
+var private g_item_xform_active : bool = false
+var private g_item_xform_scale  : float2 = float2(1.0, 1.0)
+var private g_item_xform_offset : float2 = float2(0.0, 0.0)
+
+def public set_snapshot_item_transform(scale : float2; offset : float2) {
+    //! Activate a `screen = local * scale + offset` mapping applied to every widget's
+    //! captured item rect until `clear_snapshot_item_transform()`. A custom canvas
+    //! (e.g. `node_editor`) sets this so interior widgets report screen-space `bbox`
+    //! plus a `canvas_bbox` carrying the original local rect.
+    g_item_xform_active = true
+    g_item_xform_scale = scale
+    g_item_xform_offset = offset
+}
+
+def public clear_snapshot_item_transform() {
+    //! Restore the identity item-transform (the default — widgets captured directly
+    //! in screen space).
+    g_item_xform_active = false
+    g_item_xform_scale = float2(1.0, 1.0)
+    g_item_xform_offset = float2(0.0, 0.0)
+}
+
+def private item_xform_screen(local : float4) : float4 {
+    // Map a captured local item rect to screen via the active affine transform.
+    return float4(
+        local.x * g_item_xform_scale.x + g_item_xform_offset.x,
+        local.y * g_item_xform_scale.y + g_item_xform_offset.y,
+        local.z * g_item_xform_scale.x + g_item_xform_offset.x,
+        local.w * g_item_xform_scale.y + g_item_xform_offset.y)
+}
+
 def public widget_finalize(widget_ident : string;
                            kind : string;
                            var entry : WidgetEntry;
@@ -1061,7 +1102,14 @@ def public widget_finalize(widget_ident : string;
     entry.hex_id = GetID(widget_ident)
     let rmin = GetItemRectMin()
     let rmax = GetItemRectMax()
-    entry.bbox = float4(rmin.x, rmin.y, rmax.x, rmax.y)
+    let local_bbox = float4(rmin.x, rmin.y, rmax.x, rmax.y)
+    if (g_item_xform_active) {
+        // Inside a transformed canvas: keep the local rect, expose screen-space.
+        entry.canvas_bbox = local_bbox
+        entry.bbox = item_xform_screen(local_bbox)
+    } else {
+        entry.bbox = local_bbox
+    }
     entry.hover = IsItemHovered(ImGuiHoveredFlags.None)
     entry.active = IsItemActive()
     entry.focus = IsItemFocused()
