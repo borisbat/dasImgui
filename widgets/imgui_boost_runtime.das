@@ -1392,6 +1392,7 @@ var public synth_buttons_mask : int = 0        //! held mouse-button bitmask (bi
 var public synth_click_button : int = -1       //! last synth-clicked button (visual_aids click flash)
 var public synth_click_action : int = 0        //! 1 press / 0 release
 var public synth_click_t : float = -1.0
+var private g_synth_mouse_busy : bool = false  // serialization gate: one click coroutine drives the button at a time
 
 var public synth_held_keys : table<int>        //! currently-held ImGuiKey values (visual_aids keycap HUD)
 var public synth_last_keycode : int = 0        //! last ImGuiKey synth-pressed; 0 = none
@@ -1565,6 +1566,7 @@ def public set_user_control_enabled(enabled : bool) {
         }
         release_held_buttons()
         release_held_keys()
+        g_synth_mouse_busy = false   // a mid-flight click coroutine must not leave the gate stuck
         synth_cursor_owned = false
     } else {
         // Take over: clear keys/buttons latched right now so their release events
@@ -1675,6 +1677,18 @@ def private click_at_coro(center : float2; scrolled : bool; button : int) : void
     // let the window apply SetNextWindowScroll. The hover-settle frame is load-bearing: tab
     // bars (TabItemButton) register the press only once HoveredId is set from a prior frame's
     // mouse pos — a real user always hovers before clicking, so the synthetic path must too.
+    //
+    // Serialize against any in-flight click. imgui_test_engine runs one test coroutine, so its
+    // MouseClick calls are inherently sequential; dasImgui spawns a coroutine per imgui_click,
+    // so two back-to-back clicks whose commands land in the same frame's queue drain (a timing
+    // race — passes when the server ticks many frames between the two POSTs, fails when it
+    // doesn't, e.g. macOS CI) would otherwise interleave press/release into ONE merged
+    // button-down → one click registered instead of two. Gate so the next click waits for the
+    // prior to fully release and for ImGui's NewFrame to process the up before pressing.
+    while (g_synth_mouse_busy) {
+        await_next_frame()
+    }
+    g_synth_mouse_busy = true
     if (scrolled) await_next_frame()
     synth_mouse_move(center.x, center.y)
     await_next_frame()
@@ -1685,6 +1699,8 @@ def private click_at_coro(center : float2; scrolled : bool; button : int) : void
     synth_mouse_button(button, 1)
     await_next_frame()
     synth_mouse_button(button, 0)
+    await_next_frame()                                   // let ImGui consume the release before the gate frees
+    g_synth_mouse_busy = false
 }
 
 // --- immediate synth live_commands (transport calls these; live adds the animated forms) ---
