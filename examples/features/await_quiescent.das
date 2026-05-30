@@ -10,7 +10,7 @@ require imgui/imgui_harness
 //          modifier `await={frames:N}` surfaces in the response wrap.
 // DRIVE:   curl -X POST -d '{"name":"imgui_await"}' localhost:9090/command \
 //              | jq '.value'
-//          curl -X POST -d '{"name":"imgui_drag","args":{"target":"MAIN_WIN/DEMO_SLIDER","dx":80,"steps":6,"await":{"await_frames":3}}}' \
+//          curl -X POST -d '{"name":"imgui_click","args":{"target":"MAIN_WIN/DEMO_SLIDER","await":{"await_frames":3}}}' \
 //              localhost:9090/command           # response carries await_frames=3
 // STANDALONE: daslang.exe modules/dasImgui/examples/features/await_quiescent.das
 // HEADLESS:   daslang.exe modules/dasImgui/examples/features/await_quiescent.das -- --headless --headless-frames=60

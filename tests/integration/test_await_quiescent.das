@@ -20,7 +20,7 @@ require daslib/json_boost public
 //! Gates:
 //!   1. With nothing happening, imgui_await reports `quiescent: true` and
 //!      `pending_coroutines: 0`.
-//!   2. After spawning a long drag coroutine via imgui_drag, imgui_await
+//!   2. After spawning a click coroutine via imgui_click, imgui_await
 //!      reports `quiescent: false` AND `pending_coroutines >= 1`.
 //!   3. After polling until quiescent, the value re-flips to `true` and
 //!      pending_coroutines drops to 0.
@@ -45,18 +45,18 @@ def test_imgui_await(t : T?) {
         t |> equal(idle?["value"]?["pending_coroutines"] ?? -1, 0,
                    "idle: pending_coroutines = 0")
 
-        // Gate 2: long drag → coroutine in flight; await says not quiescent.
-        // In headless mode the loop runs at multi-kHz (no vsync), so a 30-step
-        // drag finishes in microseconds — faster than the next HTTP round-trip.
+        // Gate 2: click → coroutine in flight; await says not quiescent.
+        // In headless mode the loop runs at multi-kHz (no vsync), so the click
+        // coroutine finishes in microseconds — faster than the next HTTP round-trip.
         // with_paused freezes update() (and thus advance_coroutines) so the
         // spawned coroutine sits in g_coroutines until we observe it.
         with_paused(d) {
-            let dr = drag(d, "MAIN_WIN/DEMO_SLIDER", 100.0f, 0.0f, 30)
-            t |> equal(dr?["ok"] ?? false, true, "drag dispatched")
+            let dr = click(d, "MAIN_WIN/DEMO_SLIDER")
+            t |> equal(dr?["ok"] ?? false, true, "click dispatched")
             let busy = await_probe(d)
             t |> success((busy?["value"]?["pending_coroutines"] ?? 0) >= 1 ||
                          !(busy?["value"]?["quiescent"] ?? true),
-                         "during drag: not quiescent OR pending_coroutines>=1")
+                         "during click: not quiescent OR pending_coroutines>=1")
         }
 
         // Gate 3: poll until quiescent.
@@ -67,11 +67,8 @@ def test_imgui_await(t : T?) {
         t |> success(settled != null, "post-drag: quiescent recovers")
 
         // Gate 4: per-command await modifier surfaces in response wrap.
-        let resp = post_command(d, "imgui_drag", JV((
+        let resp = post_command(d, "imgui_click", JV((
             target = "MAIN_WIN/DEMO_SLIDER",
-            dx = 10.0f,
-            dy = 0.0f,
-            steps = 2,
             await = JV((await_frames = 7))
         )))
         t |> equal(resp?["await_frames"] ?? -1, 7,

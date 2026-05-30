@@ -3,14 +3,13 @@ options gen2
 require imgui/imgui_harness
 
 // =============================================================================
-// FEATURE: io_synth_drag — Phase 2.2 L1 mouse-drag synthesis.
-// SHOWS:   imgui_drag live_command — coroutine-driven AddMousePosEvent +
-//          AddMouseButtonEvent stream resolves the target via g_registry,
-//          presses at bbox center, walks N interpolated steps, releases.
-//          During the drag, snapshot.io.active_widget binds to DEMO_SLIDER
-//          and the slider value moves; both observable through imgui_snapshot.
-// DRIVE:   curl -X POST -d '{"name":"imgui_drag","args":{"target":"MAIN_WIN/DEMO_SLIDER","dx":120.0,"dy":0.0,"steps":8}}' \
-//              localhost:9090/command
+// FEATURE: io_synth_drag — mouse-drag synthesis target.
+// SHOWS:   A slider driven by a synthetic drag. The playwright `drag` helper
+//          resolves the target's bbox center and composes an `imgui_mouse_play`
+//          timeline (warp → press → drag → release) on the owned synth primitives;
+//          the slider value moves, observable through imgui_snapshot.
+// DRIVE:   # playwright: drag(d, "MAIN_WIN/DEMO_SLIDER", 120.0, 0.0, 8)
+//          # or imgui_mouse_play with an explicit (t_ms,kind,x,y|button,action) event list
 //          curl -X POST -d '{"name":"imgui_snapshot"}' localhost:9090/command \
 //              | jq '{active: .io.active_widget, value: .globals."MAIN_WIN/DEMO_SLIDER".payload.value}'
 // STANDALONE: daslang.exe modules/dasImgui/examples/features/io_synth_drag.das
@@ -34,7 +33,7 @@ def update() {
     SetNextWindowSize(ImVec2(720.0, 220.0), ImGuiCond.Always)
     window(MAIN_WIN, (text = "io_synth_drag — phase 2.2", closable = false,
                       flags = ImGuiWindowFlags.None)) {
-        text("L1 drag: imgui_drag synthesizes mouse press → moves → release.")
+        text("Synthetic drag: mouse press → moves → release (via imgui_mouse_play).")
         text("During the drag, io.active_widget == 'MAIN_WIN/DEMO_SLIDER'.")
         slider_float(DEMO_SLIDER, (text = "Drag me"))
         text("slider value = {DEMO_SLIDER.value}")

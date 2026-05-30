@@ -8,16 +8,16 @@ require imgui/imgui_playwright public
 require daslib/json public
 require daslib/json_boost public
 
-//! Integration smoke for Phase 2.2 — L1 keyboard input synthesis.
+//! Integration smoke for keyboard input synthesis.
 //!
-//! `imgui_type_text` runs a coroutine that pushes one
-//! AddInputCharactersUTF8 call per frame. The DEMO_INPUT widget
-//! auto-focuses on first render; ImGui routes the chars into its buffer.
+//! The playwright `type_text` helper focuses the target, then streams the text
+//! as synthetic key+char events via `imgui_key_type` (the live timeline, on the
+//! owned synth primitives). ImGui routes the chars into the focused buffer.
 //!
 //! Gates:
 //!   1. DEMO_INPUT renders and starts empty.
-//!   2. imgui_type_text with empty text returns Result.err.
-//!   3. imgui_type_text with payload returns Result.ok.
+//!   2. type_text with empty text returns ok=false.
+//!   3. type_text with payload returns ok=true echoing the target.
 //!   4. After the chars stream in, DEMO_INPUT.payload.value == payload.
 
 let IO_SYNTH_TEXT_FEATURE = "modules/dasImgui/examples/features/io_synth_text.das"
@@ -32,15 +32,14 @@ def test_imgui_type_text_buffer_fills(t : T?) {
         t |> equal(snap0?["globals"]?["MAIN_WIN/DEMO_INPUT"]?["payload"]?["value"] ?? "?", "",
                    "DEMO_INPUT starts with empty buffer")
 
-        // Gate 2: error path — empty text rejected.
-        let empty_resp = post_command(d, "imgui_type_text",
-                                      JV((target = "MAIN_WIN/DEMO_INPUT", text = "")))
+        // Gate 2: error path — empty text rejected client-side by type_text.
+        let empty_resp = type_text(d, "MAIN_WIN/DEMO_INPUT", "")
         t |> equal(empty_resp?["ok"] ?? true, false,
                    "empty text → response.ok = false")
 
         // Gate 3: payload accepted, ok-Result echoes target.
         let resp = type_text(d, "MAIN_WIN/DEMO_INPUT", "hello")
-        t |> success(resp != null, "imgui_type_text returned a response")
+        t |> success(resp != null, "type_text returned a response")
         t |> equal(resp?["ok"] ?? false, true,
                    "type_text response.ok = true")
         t |> equal(resp?["value"] ?? "", "MAIN_WIN/DEMO_INPUT",

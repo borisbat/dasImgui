@@ -722,9 +722,9 @@ let private LAZY_EDIT_WIDGET_MODULE = "<edit_widget>"
 // when the target string is "0x..." but not in g_id_to_path. Cleared at the
 // top of begin_frame() alongside g_registry.
 //
-// `g_coroutines` holds in-flight L1 input coroutines (imgui_drag, imgui_type_text).
-// Each [async] command spawns one Coroutine (iterator<bool>); the runtime
-// advances the array one step per frame in begin_frame() via advance_coroutines.
+// `g_coroutines` holds in-flight synth coroutines (e.g. imgui_click's press/
+// release). Each [async] command spawns one Coroutine (iterator<bool>); the
+// runtime advances the array one step per frame in begin_frame() via advance_coroutines.
 
 var private g_id_to_path : table<uint; string>
 var private g_id_to_bbox : table<uint; float4>
@@ -1937,29 +1937,6 @@ def imgui_await(input : JsonValue?) : JsonValue? {
     return with_await(input, ok(result, type<string>))
 }
 
-// ===== Phase 2.2 — L1 IO synthesis (coroutine-driven) =====
-//
-// drag/type_text push raw ImGuiIO events through `[async]` coroutines that
-// yield one event per frame. The widget consumes them on subsequent frames
-// like any other input. Targets resolve via the same path/hex_id rails the
-// L2 dispatchers use. `target` for type_text is informational until Phase
-// 2.4 wires the focus arm; chars go to whichever widget already holds focus.
-
-struct DragArgs {
-    @optional target : string = ""               //! widget path or 0x... hex_id where the drag starts
-    @optional dx : float = 0.0f                  //! horizontal pixel delta from start to end
-    @optional dy : float = 0.0f                  //! vertical pixel delta from start to end
-    @optional steps : int = 4                    //! interpolation steps (one mouse move per frame)
-    @optional button : int = 0                   //! ImGuiMouseButton index (0=Left, 1=Right, 2=Middle)
-}
-
-struct TypeTextArgs {
-    @optional target           : string = ""     //! informational target path (chars go to whichever widget holds focus)
-    @optional text             : string = ""     //! ASCII text to push one char at a time
-    @optional per_char_frames  : int    = 1      //! frames between consecutive chars
-    @optional total_frames     : int    = 0      //! when >0, overrides per_char_frames so the typing fits this frame budget
-}
-
 def private parse_hex_id(s : string) : uint {
     // Parse "0x..." / "0X..." → uint; 0u on failure (matches ImGui's "no widget" sentinel).
     let n = length(s)
@@ -1989,59 +1966,4 @@ def private resolve_target_bbox(target : string) : tuple<bool; float2> {
     if (!r._0) return (false, float2(0.0f, 0.0f))
     let bb = r._1
     return (true, float2((bb.x + bb.z) * 0.5f, (bb.y + bb.w) * 0.5f))
-}
-
-[async]
-def private drag_coro(start : float2; endp : float2; steps : int; button : int) : void {
-    var io & = unsafe(GetIO())
-    io |> AddMousePosEvent(start.x, start.y)
-    io |> AddMouseButtonEvent(button, true)
-    await_next_frame()
-    for (i in range(1, steps + 1)) {
-        let t = float(i) / float(steps)
-        let p = start + (endp - start) * t
-        io |> AddMousePosEvent(p.x, p.y)
-        await_next_frame()
-    }
-    io |> AddMouseButtonEvent(button, false)
-}
-
-[async]
-def private type_text_coro(text : string; per_char_frames : int) : void {
-    // L1 keyboard input: one ASCII char every per_char_frames frames via AddInputCharactersUTF8. ASCII only — multi-byte sequences would split.
-    var io & = unsafe(GetIO())
-    let n = length(text)
-    let gap = max(1, per_char_frames)
-    for (i in range(n)) {
-        io |> AddInputCharactersUTF8(slice(text, i, i + 1))
-        for (_ in range(gap)) {
-            await_next_frame()
-        }
-    }
-}
-
-[live_command(description = "L1 drag: synthesize mouse-press → N moves → release at target widget bbox center")]
-def imgui_drag(input : JsonValue?) : JsonValue? {
-    //! Live-command: spawn an L1 drag coroutine — press at ``target`` bbox center, walk ``(dx,dy)`` over ``steps`` frames, release.
-    let args = from_JV(input, default<DragArgs>)
-    let (found, start) = resolve_target_bbox(args.target)
-    if (!found) return with_await(input, err("drag target unresolved: {args.target}", type<string>))
-    let endp = start + float2(args.dx, args.dy)
-    spawn_coroutine(drag_coro(start, endp, max(args.steps, 1), args.button))
-    dispatch_post_command_hooks("drag", args.target)
-    return with_await(input, ok(args.target, type<string>))
-}
-
-[live_command(description = "L1 keyboard: push UTF-8 chars to the focused widget. Args: text, per_char_frames (default 1) | total_frames (preferred for fixed-duration typing)")]
-def imgui_type_text(input : JsonValue?) : JsonValue? {
-    //! Live-command: spawn an L1 typing coroutine that pushes ``text`` to whichever widget currently holds focus.
-    let args = from_JV(input, default<TypeTextArgs>)
-    if (empty(args.text)) return with_await(input, err("missing 'text'", type<string>))
-    var gap = max(1, args.per_char_frames)
-    if (args.total_frames > 0) {
-        gap = max(1, args.total_frames / length(args.text))
-    }
-    spawn_coroutine(type_text_coro(args.text, gap))
-    if (!empty(args.target)) dispatch_post_command_hooks("type_text", args.target)
-    return with_await(input, ok(args.target, type<string>))
 }

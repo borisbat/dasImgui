@@ -330,9 +330,7 @@ No new HTTP server. The dasLiveHost `live_api` debug agent (port 9090 by default
 |---|---|
 | `imgui_snapshot` | Returns full JSON snapshot |
 | `imgui_force_set` | Mutates widget state (`{"target":"Setup/RPS_SLIDER","value":0.7}`) |
-| `imgui_click` | Sets pending-click flag for a button (L2) |
-| `imgui_drag` | Synthesizes drag events (L1) |
-| `imgui_type_text` | Synthesizes character input (L1) |
+| `imgui_click` | Real synthetic click on a widget (resolves bbox by path or hex_id) |
 | `imgui_focus` | Force-focus a widget |
 | `imgui_open` / `imgui_close` | Toggle window state |
 | `imgui_await` | Returns `{quiescent, frame, pending_coroutines, active_id}` snapshot for client-side polling |
@@ -380,7 +378,7 @@ Two strategies — faithful input vs. bypass:
 Mapping:
 - `imgui_force_set(target, value)` → **L3 / bypass**
 - `imgui_click(IDENT)` / `imgui_click(hex_id)` → **L1** (real synthetic click; resolves the bbox either way)
-- `imgui_drag` / `imgui_type_text` / multi-frame interactions → **L1**
+- multi-frame interactions (drag, type) → playwright `drag` / `type_text`, composed over the `imgui_mouse_play` / `imgui_key_type` timelines
 
 Default rule: `imgui_click` for clicks (faithful); `imgui_force_set` only when the value itself is the goal.
 

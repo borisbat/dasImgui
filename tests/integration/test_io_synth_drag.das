@@ -8,20 +8,19 @@ require imgui/imgui_playwright public
 require daslib/json public
 require daslib/json_boost public
 
-//! Integration smoke for Phase 2.2 — L1 mouse-drag synthesis.
+//! Integration smoke for mouse-drag synthesis.
 //!
-//! Phase 2.2 wires `imgui_drag` to a coroutine that pushes one IO event per
-//! frame: AddMousePosEvent(start) + AddMouseButtonEvent(down), then `steps`
-//! interpolated AddMousePosEvent updates, then AddMouseButtonEvent(up).
-//! End-to-end gates: target resolution + L1 reaches the widget + slider value
-//! actually moves.
+//! The playwright `drag` helper resolves the target's bbox center client-side,
+//! then composes an `imgui_mouse_play` timeline (warp → press → drag → release)
+//! on the owned synth primitives. End-to-end gates: target resolution + the
+//! synthetic drag reaches the widget + the slider value actually moves.
 //!
 //! Gates:
 //!   1. DEMO_SLIDER renders and starts at 0.
-//!   2. imgui_drag with unknown target returns Result.err.
-//!   3. imgui_drag with known target returns Result.ok with the target name.
+//!   2. drag with unknown target returns ok=false (resolved client-side).
+//!   3. drag with known target returns ok=true echoing the target name.
 //!   4. After the drag settles, slider value moved away from 0 — end-to-end
-//!      proof that L1 mouse events drove the widget's interactive logic.
+//!      proof that the synthetic mouse events drove the widget's interactive logic.
 //!
 //! NOT verified here: snapshot.io.active_widget transient binding during the
 //! drag. The drag completes in ~10 frames; daslang-live runs at ~700fps in
@@ -47,11 +46,11 @@ def test_imgui_drag_value_changes(t : T?) {
         t |> equal(err_resp?["ok"] ?? true, false,
                    "unknown drag target → response.ok = false")
 
-        // Gate 3: imgui_drag with known target returns ok-Result. 8 steps over
+        // Gate 3: drag with known target returns ok-Result. 8 steps over
         // ~120 px gives the slider plenty of pixel travel for a noticeable
         // value bump (bounds 0..1000, default slider width ~200 px).
         let drag_resp = drag(d, "MAIN_WIN/DEMO_SLIDER", 120.0f, 0.0f, 8)
-        t |> success(drag_resp != null, "imgui_drag returned a response")
+        t |> success(drag_resp != null, "drag returned a response")
         t |> equal(drag_resp?["ok"] ?? false, true,
                    "drag response.ok = true on hit")
         t |> equal(drag_resp?["value"] ?? "", "MAIN_WIN/DEMO_SLIDER",
