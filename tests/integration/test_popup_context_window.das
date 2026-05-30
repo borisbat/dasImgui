@@ -52,8 +52,18 @@ def test_popup_context_window_smoke(t : T?) {
         t |> success(snap_open2 != null, "ITEM_QUIT registers on re-open")
         if (snap_open2 == null) return
         click(d, "MAIN_WIN/CTX/ITEM_QUIT")
-        t |> success(wait_for_string_value(d, "MAIN_WIN/STATUS", "value",
-                                           "last pick: Quit", 300),
-                     "STATUS reflects 'Quit' after second menu pick")
+        let got_quit = wait_for_string_value(d, "MAIN_WIN/STATUS", "value",
+                                             "last pick: Quit", 300)
+        if (!got_quit) {
+            // DIAGNOSTIC (PR #95, macOS-only second-pick regression): on failure surface what the
+            // click actually did — STATUS shows the last pick that registered (still 'New' = the
+            // click never landed; another item = wrong bbox), and whether the popup stayed open.
+            var diag = snapshot(d)
+            let stat   = widget_payload_field(diag, "MAIN_WIN/STATUS", "value") ?? "<none>"
+            let iq_ex  = widget_exists(diag, "MAIN_WIN/CTX/ITEM_QUIT")
+            let in_ex  = widget_exists(diag, "MAIN_WIN/CTX/ITEM_NEW")
+            to_log(LOG_WARNING, "[popup-diag] second pick FAILED: STATUS='{stat}' ITEM_QUIT_exists={iq_ex} ITEM_NEW_exists={in_ex}\n")
+        }
+        t |> success(got_quit, "STATUS reflects 'Quit' after second menu pick")
     }
 }

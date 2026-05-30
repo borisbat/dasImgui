@@ -1392,7 +1392,12 @@ var public synth_buttons_mask : int = 0        //! held mouse-button bitmask (bi
 var public synth_click_button : int = -1       //! last synth-clicked button (visual_aids click flash)
 var public synth_click_action : int = 0        //! 1 press / 0 release
 var public synth_click_t : float = -1.0
-var private g_synth_mouse_busy : bool = false  // serialization gate: one click coroutine drives the button at a time
+// FIFO serialization for click coroutines: each click claims a ticket at dispatch time (issue
+// order) and waits until it's the one being served. Keeps back-to-back clicks driving the button
+// strictly in the order their commands were issued, regardless of how the per-frame command drain
+// batches them or in what order the reverse-order coroutine advance resumes them.
+var private g_click_ticket_next    : int = 0   // next ticket to hand out (bumped at dispatch, just before spawn)
+var private g_click_ticket_serving : int = 0   // ticket currently allowed to drive the button
 
 var public synth_held_keys : table<int>        //! currently-held ImGuiKey values (visual_aids keycap HUD)
 var public synth_last_keycode : int = 0        //! last ImGuiKey synth-pressed; 0 = none
@@ -1566,7 +1571,6 @@ def public set_user_control_enabled(enabled : bool) {
         }
         release_held_buttons()
         release_held_keys()
-        g_synth_mouse_busy = false   // a mid-flight click coroutine must not leave the gate stuck
         synth_cursor_owned = false
     } else {
         // Take over: clear keys/buttons latched right now so their release events
@@ -1669,7 +1673,7 @@ def private scroll_target_into_view(target : string) : float {
 }
 
 [async]
-def private click_at_coro(center : float2; scrolled : bool; button : int) : void {
+def private click_at_coro(center : float2; scrolled : bool; button : int; ticket : int) : void {
     // Real synthetic click via the owned synth primitives (imgui_test_engine model):
     // [scroll queued by dispatch] → move → settle hover one frame → reset the double-click
     // timer → press → hold a frame → release. `center` is the post-scroll position (dispatch
@@ -1678,17 +1682,17 @@ def private click_at_coro(center : float2; scrolled : bool; button : int) : void
     // bars (TabItemButton) register the press only once HoveredId is set from a prior frame's
     // mouse pos — a real user always hovers before clicking, so the synthetic path must too.
     //
-    // Serialize against any in-flight click. imgui_test_engine runs one test coroutine, so its
-    // MouseClick calls are inherently sequential; dasImgui spawns a coroutine per imgui_click,
-    // so two back-to-back clicks whose commands land in the same frame's queue drain (a timing
-    // race — passes when the server ticks many frames between the two POSTs, fails when it
-    // doesn't, e.g. macOS CI) would otherwise interleave press/release into ONE merged
-    // button-down → one click registered instead of two. Gate so the next click waits for the
-    // prior to fully release and for ImGui's NewFrame to process the up before pressing.
-    while (g_synth_mouse_busy) {
+    // FIFO-serialize against any in-flight click: wait until this click's ticket is the one being
+    // served. imgui_test_engine runs one test coroutine, so its MouseClick calls are inherently
+    // sequential; dasImgui spawns a coroutine per imgui_click and the per-frame command drain can
+    // batch two into one frame — without ordering, the reverse-order advance runs them LIFO,
+    // either firing a menu-item click before the right-click that opens the menu, or merging two
+    // same-target presses into one button-down (one click registered instead of two). The NEXT
+    // click's own move+settle below supplies the frame gap that separates the two press/release
+    // cycles, so no extra hold frame is needed after release.
+    while (g_click_ticket_serving != ticket) {
         await_next_frame()
     }
-    g_synth_mouse_busy = true
     if (scrolled) await_next_frame()
     synth_mouse_move(center.x, center.y)
     await_next_frame()
@@ -1699,8 +1703,7 @@ def private click_at_coro(center : float2; scrolled : bool; button : int) : void
     synth_mouse_button(button, 1)
     await_next_frame()
     synth_mouse_button(button, 0)
-    await_next_frame()                                   // let ImGui consume the release before the gate frees
-    g_synth_mouse_busy = false
+    g_click_ticket_serving++
 }
 
 // --- immediate synth live_commands (transport calls these; live adds the animated forms) ---
@@ -1819,7 +1822,11 @@ def private dispatch_or_err(action : string; input : JsonValue?) : Result<string
         // read the freshly-cleared registry when it advances in begin_frame.
         let scroll_dy = scroll_target_into_view(resolved)
         let target_center = float2(center.x, center.y - scroll_dy)
-        spawn_coroutine(click_at_coro(target_center, scroll_dy != 0.0f, button))
+        // Claim the FIFO ticket here (issue order), AFTER every early-return above — a ticket with
+        // no coroutine to serve it would stall g_click_ticket_serving and hang all later clicks.
+        let my_ticket = g_click_ticket_next
+        g_click_ticket_next++
+        spawn_coroutine(click_at_coro(target_center, scroll_dy != 0.0f, button, my_ticket))
         // Return the clean resolved target (path or hex_id), not a synthetic tag:
         // the post-command auto-highlight hook resolves it via widget_rect, and
         // tests assert the resolved path. Same value for every button.
