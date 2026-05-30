@@ -119,9 +119,9 @@ def main {
         // ---- Stage 7: drive S_MAX_FPS slider ----
         move_to(app, p_max_fps)
         sleep(SETTLE_MS)
-        set_value(app, T_S_MAX_FPS, JV(90))
+        force_set_value(app, T_S_MAX_FPS, JV(90))
         sleep(CLICK_DWELL_MS)
-        say(app, "S_MAX_FPS set to 90 via imgui_set — the slider lives inside the modal body, addressed via PM_WIN/SETTINGS_MODAL/S_MAX_FPS.", T_S_MAX_FPS)
+        say(app, "S_MAX_FPS set to 90 via imgui_force_set — the slider lives inside the modal body, addressed via PM_WIN/SETTINGS_MODAL/S_MAX_FPS.", T_S_MAX_FPS)
 
         // ---- Stage 8: dismiss via Apply button ----
         let p_apply = widget_center(settings_snap, T_S_APPLY)

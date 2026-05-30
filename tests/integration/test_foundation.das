@@ -18,7 +18,7 @@ require daslib/json_boost public
 //!      identifiers ("MAIN_WIN/SPEED", "MAIN_WIN/VOLUME").
 //!   3. Lazy serializer — snapshot returns per-kind payloads (click_count for
 //!      ClickState, value+bounds for SliderStateInt/Float).
-//!   4. Unified L2/L3 dispatch — imgui_click steers the button, imgui_set
+//!   4. Unified L2/L3 dispatch — imgui_click steers the button, imgui_force_set
 //!      steers the sliders, all through one g_dispatchers table.
 
 let FOUNDATION_FEATURE = "modules/dasImgui/examples/features/foundation.das"
@@ -53,14 +53,14 @@ def test_foundation_smoke(t : T?) {
         t |> equal(volume?["kind"] ?? "", "slider_float", "VOLUME.kind")
         t |> success(volume?["payload"]?["value"] != null, "SliderStateFloat payload.value")
 
-        // Gate 4: unified dispatch — imgui_click and imgui_set both work.
+        // Gate 4: unified dispatch — imgui_click and imgui_force_set both work.
         let count_before = save?["payload"]?["click_count"] ?? 0
         click(d, "MAIN_WIN/SAVE_BTN")
         t |> success(wait_for_int_value(d, "MAIN_WIN/SAVE_BTN", "click_count", count_before + 1, 300),
                      "imgui_click bumps SAVE_BTN.click_count")
 
-        set_value(d, "MAIN_WIN/SPEED", JV(7))
+        force_set_value(d, "MAIN_WIN/SPEED", JV(7))
         t |> success(wait_for_int_value(d, "MAIN_WIN/SPEED", "value", 7, 300),
-                     "imgui_set steers SPEED.value to 7")
+                     "imgui_force_set steers SPEED.value to 7")
     }
 }

@@ -45,9 +45,9 @@ def test_widget_init_defaults(t : T?) {
         t |> equal(mode, ImGuiButtonFlags.MouseButtonRight, "mode default fires (enum value)")
 
         // ===== Live state writes still work — confirm the default-init global
-        // didn't trip a const-shadow trap. imgui_set bumps count by 1 next frame.
-        set_value(d, "MAIN_WIN/DEFAULTS", JV(0))
+        // didn't trip a const-shadow trap. imgui_force_set bumps count by 1 next frame.
+        force_set_value(d, "MAIN_WIN/DEFAULTS", JV(0))
         t |> success(wait_for_int_value(d, "MAIN_WIN/DEFAULTS", "count", 43, 300),
-                     "imgui_set still steers state after default-init")
+                     "imgui_force_set still steers state after default-init")
     }
 }

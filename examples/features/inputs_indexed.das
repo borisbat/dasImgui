@@ -8,7 +8,7 @@ require imgui/imgui_harness
 //          `slider_float(TRACK_VOL[name], ...)` (string-keyed).
 // DRIVE:   curl -s -X POST -d '{"name":"imgui_snapshot"}' localhost:9090/command
 //          # snapshot.globals has "MIX_WIN/CHANNEL_VOL[3]" and "MIX_WIN/TRACK_VOL[lead]"
-//          curl -s -X POST -d '{"name":"imgui_set","args":{
+//          curl -s -X POST -d '{"name":"imgui_force_set","args":{
 //               "target":"MIX_WIN/CHANNEL_VOL[3]","value":0.7}}' \
 //               localhost:9090/command
 // STANDALONE: daslang.exe modules/dasImgui/examples/features/inputs_indexed.das

@@ -45,7 +45,7 @@ def main {
         // ---- Stage 1: VOLUME (@live slider, preserved across reload) ----
         move_to(app, p_volume)
         say(app, "VOLUME is @live — value preserved across reload.", T_VOLUME)
-        post_command(app, "imgui_set", JV((target = T_VOLUME, value = 0.65f)))
+        post_command(app, "imgui_force_set", JV((target = T_VOLUME, value = 0.65f)))
         sleep(CLICK_DWELL_MS)
 
         // ---- Stage 2: PING button — ClickState's @live click_count ----

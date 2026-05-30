@@ -48,7 +48,7 @@ require imgui/imgui_visual_aids
 //   curl -X POST -d '{"name":"imgui_snapshot"}'                                                       localhost:9090/command
 //   curl -X POST -d '{"name":"imgui_click","args":{"target":"ID_WIN/section_a/SAVE_BTN"}}'             localhost:9090/command
 //   curl -X POST -d '{"name":"imgui_click","args":{"target":"ID_WIN/section_b/SAVE_BTN"}}'             localhost:9090/command
-//   curl -X POST -d '{"name":"imgui_set","args":{"target":"ID_WIN/rps_stable","value":0.7}}'           localhost:9090/command
+//   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"ID_WIN/rps_stable","value":0.7}}'           localhost:9090/command
 // =============================================================================
 
 [export]
@@ -116,7 +116,7 @@ def update() {
         // ---- path= per-call: stable telemetry path across renames ----
         // RPS_PATH is the daslang global (rename it and the variable
         // reference breaks). "rps_stable" is the registry path leaf — the
-        // imgui_set / imgui_click string used by external drivers. Both the
+        // imgui_force_set / imgui_click string used by external drivers. Both the
         // path AND the ImGui hash adopt "rps_stable".
         text("Per-call path= — script-stable telemetry path:")
         slider_float(RPS_PATH, (text = "Speed (path=)",

@@ -9,7 +9,7 @@ require daslib/json public
 require daslib/json_boost public
 
 //! Integration smoke for Phase 0b.2 Slider* widgets — exercises every
-//! scalar/vector/vertical kind through `imgui_set` via the playwright-style
+//! scalar/vector/vertical kind through `imgui_force_set` via the playwright-style
 //! harness and asserts the snapshot payload converges.
 
 let SLIDER_FEATURE = "modules/dasImgui/examples/features/inputs_slider.das"
@@ -27,48 +27,48 @@ def test_inputs_slider_smoke(t : T?) {
         t |> success(gain0?["payload"] != null, "GAIN.payload present")
 
         // ----- Float scalar -----
-        set_value(d, "MAIN_WIN/GAIN", JV(0.7f))
+        force_set_value(d, "MAIN_WIN/GAIN", JV(0.7f))
         t |> success(wait_for_payload_value(d, "MAIN_WIN/GAIN", "value", 0.7f, 300),
-                     "imgui_set steers GAIN.value to 0.7")
+                     "imgui_force_set steers GAIN.value to 0.7")
 
         // ----- Float vectors -----
-        set_value(d, "MAIN_WIN/UV_OFFSET", JV(float2(-0.5f, 0.25f)))
+        force_set_value(d, "MAIN_WIN/UV_OFFSET", JV(float2(-0.5f, 0.25f)))
         t |> success(wait_for_payload_value(d, "MAIN_WIN/UV_OFFSET", "value", float2(-0.5f, 0.25f), 300),
-                     "imgui_set steers UV_OFFSET to (-0.5, 0.25)")
+                     "imgui_force_set steers UV_OFFSET to (-0.5, 0.25)")
 
-        set_value(d, "MAIN_WIN/WAVE_RGB", JV(float3(0.1f, 0.5f, 0.9f)))
+        force_set_value(d, "MAIN_WIN/WAVE_RGB", JV(float3(0.1f, 0.5f, 0.9f)))
         t |> success(wait_for_payload_value(d, "MAIN_WIN/WAVE_RGB", "value", float3(0.1f, 0.5f, 0.9f), 300),
-                     "imgui_set steers WAVE_RGB to (0.1, 0.5, 0.9)")
+                     "imgui_force_set steers WAVE_RGB to (0.1, 0.5, 0.9)")
 
-        set_value(d, "MAIN_WIN/WAVE_RGBA", JV(float4(0.2f, 0.4f, 0.6f, 0.8f)))
+        force_set_value(d, "MAIN_WIN/WAVE_RGBA", JV(float4(0.2f, 0.4f, 0.6f, 0.8f)))
         t |> success(wait_for_payload_value(d, "MAIN_WIN/WAVE_RGBA", "value", float4(0.2f, 0.4f, 0.6f, 0.8f), 300),
-                     "imgui_set steers WAVE_RGBA to (0.2, 0.4, 0.6, 0.8)")
+                     "imgui_force_set steers WAVE_RGBA to (0.2, 0.4, 0.6, 0.8)")
 
         // ----- Int scalar + vectors -----
-        set_value(d, "MAIN_WIN/LIVES", JV(7))
+        force_set_value(d, "MAIN_WIN/LIVES", JV(7))
         t |> success(wait_for_int_value(d, "MAIN_WIN/LIVES", "value", 7, 300),
-                     "imgui_set steers LIVES.value to 7")
+                     "imgui_force_set steers LIVES.value to 7")
 
-        set_value(d, "MAIN_WIN/SHIFT_XY", JV(int2(-3, 5)))
+        force_set_value(d, "MAIN_WIN/SHIFT_XY", JV(int2(-3, 5)))
         t |> success(wait_for_payload_value(d, "MAIN_WIN/SHIFT_XY", "value", int2(-3, 5), 300),
-                     "imgui_set steers SHIFT_XY to (-3, 5)")
+                     "imgui_force_set steers SHIFT_XY to (-3, 5)")
 
-        set_value(d, "MAIN_WIN/TINT_BUDGET_RGB", JV(int3(64, 128, 200)))
+        force_set_value(d, "MAIN_WIN/TINT_BUDGET_RGB", JV(int3(64, 128, 200)))
         t |> success(wait_for_payload_value(d, "MAIN_WIN/TINT_BUDGET_RGB", "value", int3(64, 128, 200), 300),
-                     "imgui_set steers TINT_BUDGET_RGB to (64, 128, 200)")
+                     "imgui_force_set steers TINT_BUDGET_RGB to (64, 128, 200)")
 
-        set_value(d, "MAIN_WIN/FRAME_LTRB", JV(int4(8, 16, 504, 240)))
+        force_set_value(d, "MAIN_WIN/FRAME_LTRB", JV(int4(8, 16, 504, 240)))
         t |> success(wait_for_payload_value(d, "MAIN_WIN/FRAME_LTRB", "value", int4(8, 16, 504, 240), 300),
-                     "imgui_set steers FRAME_LTRB to (8, 16, 504, 240)")
+                     "imgui_force_set steers FRAME_LTRB to (8, 16, 504, 240)")
 
         // ----- Vertical sliders (reuse SliderStateFloat / SliderStateInt) -----
-        set_value(d, "MAIN_WIN/VOL_L", JV(0.85f))
+        force_set_value(d, "MAIN_WIN/VOL_L", JV(0.85f))
         t |> success(wait_for_payload_value(d, "MAIN_WIN/VOL_L", "value", 0.85f, 300),
-                     "imgui_set steers vslider VOL_L.value to 0.85")
+                     "imgui_force_set steers vslider VOL_L.value to 0.85")
 
-        set_value(d, "MAIN_WIN/BUS_GAIN", JV(-3))
+        force_set_value(d, "MAIN_WIN/BUS_GAIN", JV(-3))
         t |> success(wait_for_int_value(d, "MAIN_WIN/BUS_GAIN", "value", -3, 300),
-                     "imgui_set steers vslider BUS_GAIN.value to -3")
+                     "imgui_force_set steers vslider BUS_GAIN.value to -3")
 
         // ----- Snapshot envelope -----
         var snap_final = snapshot(d)

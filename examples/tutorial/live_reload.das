@@ -30,7 +30,7 @@ require daslib/json_boost public
 //
 // In the live mode, the script is hosted inside daslang-live: a wrapper
 // process that runs your `init` / `update` / `shutdown` exports, watches
-// the source file for edits, and exposes an HTTP server for `imgui_set` /
+// the source file for edits, and exposes an HTTP server for `imgui_force_set` /
 // `imgui_click` / `imgui_snapshot` and any user-defined `[live_command]`.
 // Save the file and daslang-live re-runs the typer/codegen, calls
 // `[before_reload]` hooks to stash anything that needs surviving, swaps in
@@ -46,7 +46,7 @@ require daslib/json_boost public
 //                              or reloading. Skip the frame if it does.
 //   3. `@live` on a state struct — value preserved across reload
 //   4. `[live_command]` — custom HTTP endpoint that the running process
-//                          exposes; driven from curl just like imgui_set
+//                          exposes; driven from curl just like imgui_force_set
 //   5. `[before_reload]` / `[after_reload]` — explicit save/restore hooks
 //                                              for state the framework
 //                                              doesn't track automatically
@@ -70,7 +70,7 @@ var private @live g_custom_counter : int = 0
 var private g_session_string : string = "fresh session"
 
 // ---- Custom live_command — externally callable HTTP endpoint ----
-// imgui_set / imgui_click / imgui_snapshot are all `[live_command]`
+// imgui_force_set / imgui_click / imgui_snapshot are all `[live_command]`
 // internally. Users can add their own:
 struct BumpArgs {
     @optional by : int = 1

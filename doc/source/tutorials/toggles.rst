@@ -5,7 +5,7 @@ Toggles
 #########
 
 The toggle widgets are **pick-this-not-that** input — three shapes,
-one mental model. Click flips state; ``imgui_set`` writes it from
+one mental model. Click flips state; ``imgui_force_set`` writes it from
 outside. The three forms differ in glyph and in whether they share
 state across call sites:
 
@@ -83,16 +83,16 @@ without it.
 Driving from outside
 ====================
 
-Same telemetry channel as every other widget — ``imgui_set`` writes
+Same telemetry channel as every other widget — ``imgui_force_set`` writes
 ``state.pending_value``, consumed next frame:
 
 .. code-block:: bash
 
    # checkbox / bool radio — bool value
-   curl -X POST -d '{"name":"imgui_set","args":{"target":"TG_WIN/T_CHECK","value":true}}' \
+   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"TG_WIN/T_CHECK","value":true}}' \
         localhost:9090/command
    # grouped radio — int value (the v_button to select)
-   curl -X POST -d '{"name":"imgui_set","args":{"target":"TG_WIN/T_MODE","value":2}}' \
+   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"TG_WIN/T_MODE","value":2}}' \
         localhost:9090/command
 
 The dispatcher (``[widget_dispatch]`` on ``ToggleState`` and

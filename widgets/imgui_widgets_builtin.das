@@ -24,8 +24,9 @@ require math
 //! state struct's runtime type), populated by the ``[widget_dispatch]``
 //! defs paired with each state struct further down. One ``[widget_dispatch]``
 //! body covers every widget kind that shares that state — e.g. one
-//! ClickState dispatcher handles ``button`` / ``small_button`` /
-//! ``arrow_button`` / ``invisible_button`` / ``image_button``. No
+//! ToggleState dispatcher handles ``checkbox`` / ``radio_button`` /
+//! ``selectable`` / ``menu_item``. ClickState (the button family) carries no
+//! dispatcher — an ``imgui_click`` is a real synthetic mouse click. No
 //! per-widget serializer or dispatcher lambda is emitted; snapshot reads
 //! route through ``sprint_json_at(state_addr, *ti)`` and set-actions
 //! through ``sscan_json_at(state_addr, *ti)``.
@@ -114,28 +115,25 @@ def edit_container_open_close_finalize(widget_ident : string; kind : string;
 //
 // One ``[widget_dispatch]`` body per state struct — the macro keys by the
 // first parameter's struct type, so each body fires for every widget kind
-// whose state is that struct (e.g. ClickState handles ``button``/
-// ``small_button``/``arrow_button``/...). No per-kind registration table:
-// ``dispatch_or_err`` looks up by ``meta.ti.hash``.
+// whose state is that struct (e.g. ToggleState handles ``checkbox``/
+// ``radio_button``/``selectable``/``menu_item``). No per-kind registration
+// table: ``dispatch_or_err`` looks up by ``meta.ti.hash``.
 //
 // Non-Structure ``ti`` (scalar pointee from ``[edit_widget]``) falls through
 // to the generic ``sscan_json_at(state_addr, *ti)`` in ``dispatch_or_err`` —
 // no per-edit-pointee dispatcher needed.
 //
-// Display-only state structs (NarrativeState, EmptyMarkerState,
-// ProgressBarState, ImageState, PlotState, LabelTextState, TextFilterState,
-// ChildState, GroupState, MenuBarState, MainMenuBarState, MenuState,
-// TooltipState, TabBarState, DragDropSourceState, DragDropTargetState,
-// PopupContextItemState, PopupContextWindowState, PopupWindowState) get no
-// dispatcher — ``dispatch_or_err`` silently succeeds when no entry exists
-// for a Structure ti.
-
-[widget_dispatch]
-def _click_dispatch(var state : ClickState; action : string; payload : string) {
-    if (action == "click") {
-        state.pending_click = true
-    }
-}
+// Click-only state structs (ClickState — button/small_button/arrow_button/
+// invisible_button/image_button/menu_label/selectable_label/color_button) get
+// NO dispatcher: an ``imgui_click`` is a real synthetic mouse click, handled in
+// ``dispatch_or_err`` before any dispatcher lookup, so ImGui's own activation
+// path fires (the widget behaves exactly as under a real click). Display-only
+// structs (NarrativeState, EmptyMarkerState, ProgressBarState, ImageState,
+// PlotState, LabelTextState, TextFilterState, ChildState, GroupState,
+// MenuBarState, MainMenuBarState, MenuState, TooltipState, TabBarState,
+// DragDropSourceState, DragDropTargetState, PopupContextItemState,
+// PopupContextWindowState, PopupWindowState) likewise get none —
+// ``dispatch_or_err`` silently succeeds when no entry exists for a Structure ti.
 
 [widget_dispatch]
 def _toggle_dispatch(var state : ToggleState; action : string; payload : string) {
@@ -396,12 +394,7 @@ def _pv_listbox(var state : ListBoxState; action : string; payload : string) {
 [widget]
 def button(var state : ClickState; text : string;
            size : float2 = float2(0.0f, 0.0f)) : bool {
-    let im_clicked = Button(text, ImVec2(size.x, size.y))
-    var clicked = im_clicked
-    if (state.pending_click) {
-        state.pending_click = false
-        clicked = true
-    }
+    let clicked = Button(text, ImVec2(size.x, size.y))
     state.clicked = clicked
     if (clicked) {
         state.click_count++
@@ -418,12 +411,7 @@ def tab_item_button(var state : ClickState; text : string;
     //! (e.g. "+" to add tabs, "?" to open a help popup). Click semantics
     //! mirror `button`: returns true on click; `state.click_count`
     //! accumulates. Must be called INSIDE a `tab_bar` body.
-    let im_clicked = TabItemButton(text, flags)
-    var clicked = im_clicked
-    if (state.pending_click) {
-        state.pending_click = false
-        clicked = true
-    }
+    let clicked = TabItemButton(text, flags)
     state.clicked = clicked
     if (clicked) {
         state.click_count++
@@ -434,12 +422,7 @@ def tab_item_button(var state : ClickState; text : string;
 
 [widget]
 def small_button(var state : ClickState; text : string) : bool {
-    let im_clicked = SmallButton(text)
-    var clicked = im_clicked
-    if (state.pending_click) {
-        state.pending_click = false
-        clicked = true
-    }
+    let clicked = SmallButton(text)
     state.clicked = clicked
     if (clicked) {
         state.click_count++
@@ -450,12 +433,7 @@ def small_button(var state : ClickState; text : string) : bool {
 
 [widget]
 def arrow_button(var state : ClickState; text : string; dir : ImGuiDir) : bool {
-    let im_clicked = ArrowButton(text, dir)
-    var clicked = im_clicked
-    if (state.pending_click) {
-        state.pending_click = false
-        clicked = true
-    }
+    let clicked = ArrowButton(text, dir)
     state.clicked = clicked
     if (clicked) {
         state.click_count++
@@ -467,12 +445,7 @@ def arrow_button(var state : ClickState; text : string; dir : ImGuiDir) : bool {
 [widget]
 def invisible_button(var state : ClickState; text : string; size : float2;
                      flags : ImGuiButtonFlags = ImGuiButtonFlags.None) : bool {
-    let im_clicked = InvisibleButton(text, size, flags)
-    var clicked = im_clicked
-    if (state.pending_click) {
-        state.pending_click = false
-        clicked = true
-    }
+    let clicked = InvisibleButton(text, size, flags)
     state.clicked = clicked
     if (clicked) {
         state.click_count++
@@ -487,12 +460,7 @@ def image_button(var state : ClickState; text : string; user_texture_id : void?;
                  uv1 : float2 = float2(1.0f, 1.0f);
                  bg_col : float4 = float4(0.0f, 0.0f, 0.0f, 0.0f);
                  tint_col : float4 = float4(1.0f, 1.0f, 1.0f, 1.0f)) : bool {
-    let im_clicked = ImageButton(text, user_texture_id, size, uv0, uv1, bg_col, tint_col)
-    var clicked = im_clicked
-    if (state.pending_click) {
-        state.pending_click = false
-        clicked = true
-    }
+    let clicked = ImageButton(text, user_texture_id, size, uv0, uv1, bg_col, tint_col)
     state.clicked = clicked
     if (clicked) {
         state.click_count++
@@ -592,12 +560,7 @@ def menu_label(var state : ClickState; text : string;
     //! (`enabled=false, selected=false`) and permanent-state labels
     //! (`selected=true`). For toggleable menu items use `menu_item`.
     //! State tracks click count for telemetry; no `state.value`.
-    let im_clicked = MenuItem(text, shortcut, selected, enabled)
-    var clicked = im_clicked
-    if (state.pending_click) {
-        state.pending_click = false
-        clicked = true
-    }
+    let clicked = MenuItem(text, shortcut, selected, enabled)
     state.clicked = clicked
     if (clicked) {
         state.click_count++
@@ -616,12 +579,7 @@ def selectable_label(var state : ClickState; text : string; selected : bool;
     //! group.value == i)`) where one external int tracks the chosen index.
     //! For the self-toggling form, use `selectable` instead. Parallels
     //! `menu_label` (static) vs `menu_item` (toggling).
-    let im_clicked = Selectable(text, selected, flags, size)
-    var clicked = im_clicked
-    if (state.pending_click) {
-        state.pending_click = false
-        clicked = true
-    }
+    let clicked = Selectable(text, selected, flags, size)
     state.clicked = clicked
     if (clicked) {
         state.click_count++
@@ -1228,7 +1186,7 @@ def color_picker4(var state : ColorState4; text : string;
 [widget]
 def combo(var state : ComboState; text : string; items : array<string>;
           popup_max_height_in_items : int = -1) : bool {
-    //! `imgui_set {"value": N}` selects the N-th item next frame.
+    //! `imgui_force_set {"value": N}` selects the N-th item next frame.
     //! `popup_max_height_in_items = -1` lets ImGui pick a default.
     if (state.has_pending) {
         state.value = state.pending_value
@@ -1263,12 +1221,7 @@ def color_button(var state : ClickState; desc_id : string;
     //! pick a default square. Param order puts size before flags so
     //! callers can pass `(desc_id, col, size = …)` without an explicit
     //! `flags = None` middle arg (named-tuple positional dispatch).
-    let im_clicked = ColorButton(desc_id, col, flags, size)
-    var clicked = im_clicked
-    if (state.pending_click) {
-        state.pending_click = false
-        clicked = true
-    }
+    let clicked = ColorButton(desc_id, col, flags, size)
     state.clicked = clicked
     if (clicked) {
         state.click_count++
@@ -1348,7 +1301,7 @@ def private apply_pending_text(var state : InputTextState) {
 [widget]
 def input_text(var state : InputTextState; text : string;
                flags : ImGuiInputTextFlags = ImGuiInputTextFlags.None) : bool {
-    //! Single-line text input. `imgui_set {"value":"…"}` overwrites the
+    //! Single-line text input. `imgui_force_set {"value":"…"}` overwrites the
     //! buffer next frame. Buffer is fixed-size (`state.capacity`, default
     //! 256). For grow-on-overflow use `input_text_growable`.
     input_text_buffer_init(state)
@@ -1404,7 +1357,7 @@ def input_text_growable(var state : InputTextState; text : string;
     //! lambda that resizes the array and re-points `data.Buf`. The thunk
     //! holding (Context*, LineInfo*, lambda) lives on the C call stack —
     //! ImGui invokes the callback synchronously inside InputText, so no
-    //! ABI pin needed. `imgui_set` with a value larger than `state.capacity`
+    //! ABI pin needed. `imgui_force_set` with a value larger than `state.capacity`
     //! also grows — without that the user-visible "growable" promise leaks.
     input_text_buffer_init(state)
     if (state.has_pending) {
@@ -1576,7 +1529,7 @@ def text_show(var state : TextShowState; value : string = "") {
     //!      argument every frame (call-site is the source of truth).
     //!   2. `text_show(STATUS)` — displays whatever's in state.value
     //!      (set programmatically by `STATUS.value = compute()` or
-    //!      remotely via `imgui_set`).
+    //!      remotely via `imgui_force_set`).
     //! Either form serializes `state.value` for `expect_value` assertions.
     if (!empty(value)) {
         state.value := value
@@ -1977,7 +1930,7 @@ def plot_histogram_getter(var state : PlotState; text : string;
 
 [edit_widget]
 def edit_checkbox(var ptr : bool? implicit; text : string = "") : bool {
-    //! ``Checkbox(label, ptr)`` against a caller-owned ``bool?``. Telemetry payload is ``{value}``; ``imgui_set`` writes through ``*ptr``.
+    //! ``Checkbox(label, ptr)`` against a caller-owned ``bool?``. Telemetry payload is ``{value}``; ``imgui_force_set`` writes through ``*ptr``.
     let lbl = empty(text) ? widget_ident : text
     let changed = Checkbox(lbl, ptr)
     edit_finalize(widget_ident, "edit_checkbox", ptr)

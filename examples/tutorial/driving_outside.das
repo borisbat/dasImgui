@@ -27,7 +27,7 @@ var PRESET_ROW : table<int; ClickState>
 // what the JSON command surface looks like as a programming model in its
 // own right. Every widget the boost layer ships registers a path in the
 // telemetry tree; that path is also addressable from outside via the
-// [live_command] HTTP endpoints `imgui_snapshot` / `imgui_set` /
+// [live_command] HTTP endpoints `imgui_snapshot` / `imgui_force_set` /
 // `imgui_click` / `imgui_open` / `imgui_close` / `imgui_focus`.
 //
 // The target app is small — slider + button + input + popup + combo — so
@@ -42,20 +42,20 @@ var PRESET_ROW : table<int; ClickState>
 //   # Snapshot the world (always the first read in any driver)
 //   curl -X POST -d '{"name":"imgui_snapshot"}' localhost:9090/command
 //
-//   # imgui_set — drive a slider value
-//   curl -X POST -d '{"name":"imgui_set","args":{"target":"DRIVE_WIN/SPEED","value":7}}' \
+//   # imgui_force_set — drive a slider value
+//   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"DRIVE_WIN/SPEED","value":7}}' \
 //        localhost:9090/command
 //
 //   # imgui_click — fire a button
 //   curl -X POST -d '{"name":"imgui_click","args":{"target":"DRIVE_WIN/RUN_BTN"}}' \
 //        localhost:9090/command
 //
-//   # imgui_set — string into a text input
-//   curl -X POST -d '{"name":"imgui_set","args":{"target":"DRIVE_WIN/USER","value":"Alice"}}' \
+//   # imgui_force_set — string into a text input
+//   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"DRIVE_WIN/USER","value":"Alice"}}' \
 //        localhost:9090/command
 //
-//   # imgui_set — combo by selected-index
-//   curl -X POST -d '{"name":"imgui_set","args":{"target":"DRIVE_WIN/PRESET","value":2}}' \
+//   # imgui_force_set — combo by selected-index
+//   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"DRIVE_WIN/PRESET","value":2}}' \
 //        localhost:9090/command
 //
 //   # imgui_open / imgui_close — popups, closable windows, tabs
@@ -88,19 +88,19 @@ def update() {
     window(DRIVE_WIN, (text = "driving_outside", closable = false,
                        flags = ImGuiWindowFlags.None)) {
 
-        // ---- A text input — driven by `imgui_set` with a string value ----
+        // ---- A text input — driven by `imgui_force_set` with a string value ----
         input_text(USER, (text = "User"))
         text("USER.value = \"{USER.value}\"")
 
         separator(DR_SEP_1)
 
-        // ---- A slider — driven by `imgui_set` with a number value ----
+        // ---- A slider — driven by `imgui_force_set` with a number value ----
         slider_int(SPEED, (text = "Speed"))
         text("SPEED.value = {SPEED.value}")
 
         separator(DR_SEP_2)
 
-        // ---- A combo — driven by `imgui_set` with the selected index ----
+        // ---- A combo — driven by `imgui_force_set` with the selected index ----
         var preset_label = "(none)"
         if (PRESET.value >= 0 && PRESET.value < length(PRESETS)) {
             preset_label = PRESETS[PRESET.value]

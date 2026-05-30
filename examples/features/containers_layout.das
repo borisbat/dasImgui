@@ -11,7 +11,7 @@ require imgui/imgui_harness
 //          # tree leaves render as e.g. "LAYOUT_WIN/SETTINGS_TAB/PHYSICS_TREE/GRAVITY"
 //          curl -X POST -d '{"name":"imgui_open","args":{"target":"LAYOUT_WIN/SETTINGS_TAB/PHYSICS_TREE"}}' \
 //                       localhost:9090/command
-//          curl -X POST -d '{"name":"imgui_set",
+//          curl -X POST -d '{"name":"imgui_force_set",
 //                            "args":{"target":"LAYOUT_WIN/SETTINGS_TAB/PHYSICS_TREE/GRAVITY","value":12.5}}' \
 //                       localhost:9090/command
 // STANDALONE: daslang.exe modules/dasImgui/examples/features/containers_layout.das

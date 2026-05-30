@@ -146,7 +146,7 @@ def document_module_imgui_playwright() {
     var groups <- array<DocGroup>(
         group_by_regex("App lifecycle",     mod, %regex~^(with_imgui_app|launch_imgui_app|shutdown|with_recording_app).*%%),
         group_by_regex("Locators / queries", mod, %regex~^(find_widget|widget_exists|widget_payload_field|widget_rendered|get_text)$%%),
-        group_by_regex("Actions",           mod, %regex~^(click|click_at|right_click|type_text|key_tap|set_value|drag|drag_along|drag_to|focus|open_widget|close_widget|reload|move_to|reset_cursor_pos|resize_window|say)$%%),
+        group_by_regex("Actions",           mod, %regex~^(click|click_at|right_click|type_text|key_tap|force_set_value|drag|drag_along|drag_to|focus|open_widget|close_widget|reload|move_to|reset_cursor_pos|resize_window|say)$%%),
         group_by_regex("Snapshots",         mod, %regex~^(snapshot|expect_value|expect_render).*%%),
         group_by_regex("Polling / await",   mod, %regex~^(wait_until.*|wait_for_.*|await_quiescent|await_probe)$%%),
         group_by_regex("Pause control",     mod, %regex~^(pause|unpause|with_paused)$%%),

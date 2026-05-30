@@ -42,22 +42,22 @@ def test_inputs_text_smoke(t : T?) {
                    "FONT.kind == 'combo_getter'")
 
         // ----- input_text — string round-trip -----
-        set_value(d, "MAIN_WIN/NAME", JV("Alice"))
+        force_set_value(d, "MAIN_WIN/NAME", JV("Alice"))
         t |> success(wait_for_string_value(d, "MAIN_WIN/NAME", "value", "Alice", 300),
-                     "imgui_set steers NAME.value to 'Alice'")
-        set_value(d, "MAIN_WIN/NAME", JV("Bob"))
+                     "imgui_force_set steers NAME.value to 'Alice'")
+        force_set_value(d, "MAIN_WIN/NAME", JV("Bob"))
         t |> success(wait_for_string_value(d, "MAIN_WIN/NAME", "value", "Bob", 300),
-                     "imgui_set re-steers NAME.value to 'Bob'")
+                     "imgui_force_set re-steers NAME.value to 'Bob'")
 
         // ----- input_text_with_hint — same round-trip -----
-        set_value(d, "MAIN_WIN/EMAIL", JV("bob@example.com"))
+        force_set_value(d, "MAIN_WIN/EMAIL", JV("bob@example.com"))
         t |> success(wait_for_string_value(d, "MAIN_WIN/EMAIL", "value", "bob@example.com", 300),
-                     "imgui_set steers EMAIL.value")
+                     "imgui_force_set steers EMAIL.value")
 
         // ----- input_text_multiline — embedded newline survives -----
-        set_value(d, "MAIN_WIN/BIO", JV("line one\nline two"))
+        force_set_value(d, "MAIN_WIN/BIO", JV("line one\nline two"))
         t |> success(wait_for_string_value(d, "MAIN_WIN/BIO", "value", "line one\nline two", 300),
-                     "imgui_set steers BIO.value with embedded newline")
+                     "imgui_force_set steers BIO.value with embedded newline")
 
         // ----- input_text_growable — long string forces CallbackResize -----
         // 400 bytes overflows the default 256-byte capacity; the trampoline
@@ -67,29 +67,29 @@ def test_inputs_text_smoke(t : T?) {
         for (_ in range(400)) {
             long_text += "x"
         }
-        set_value(d, "MAIN_WIN/GROW", JV(long_text))
+        force_set_value(d, "MAIN_WIN/GROW", JV(long_text))
         t |> success(wait_for_string_value(d, "MAIN_WIN/GROW", "value", long_text, 480),
-                     "imgui_set steers GROW.value past 256B (CallbackResize fired)")
+                     "imgui_force_set steers GROW.value past 256B (CallbackResize fired)")
         var snap_grew = snapshot(d)
         let final_capacity = widget_payload_field(snap_grew, "MAIN_WIN/GROW", "capacity") ?? 0
         t |> success(final_capacity > 256,
                      "GROW.capacity grew past 256 (got {final_capacity})")
 
         // ----- combo_getter — int round-trip via lambda getter -----
-        set_value(d, "MAIN_WIN/FONT", JV(2))
+        force_set_value(d, "MAIN_WIN/FONT", JV(2))
         t |> success(wait_for_int_value(d, "MAIN_WIN/FONT", "value", 2, 300),
-                     "imgui_set steers FONT to row 2 (Mono)")
-        set_value(d, "MAIN_WIN/FONT", JV(4))
+                     "imgui_force_set steers FONT to row 2 (Mono)")
+        force_set_value(d, "MAIN_WIN/FONT", JV(4))
         t |> success(wait_for_int_value(d, "MAIN_WIN/FONT", "value", 4, 300),
-                     "imgui_set re-steers FONT to row 4 (Display)")
+                     "imgui_force_set re-steers FONT to row 4 (Display)")
 
         // ----- Final snapshot persistence -----
         var snap_final = snapshot(d)
         t |> equal(widget_payload_field(snap_final, "MAIN_WIN/EMAIL", "value") ?? "",
                    "bob@example.com",
-                   "EMAIL.value persists final imgui_set")
+                   "EMAIL.value persists final imgui_force_set")
         t |> equal(widget_payload_field(snap_final, "MAIN_WIN/FONT", "value") ?? -1,
                    4,
-                   "FONT.value persists final imgui_set")
+                   "FONT.value persists final imgui_force_set")
     }
 }

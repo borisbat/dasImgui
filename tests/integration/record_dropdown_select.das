@@ -54,39 +54,39 @@ def main {
         sleep(SETTLE_MS)
 
         // ---- Stage 1: combo (items array) — single-call dropdown ----
-        post_command(app, "imgui_set", JV((target = T_FRUIT, value = 2)))
+        post_command(app, "imgui_force_set", JV((target = T_FRUIT, value = 2)))
         sleep(CLICK_DWELL_MS)
         say(app, "combo — items <- ['Apple', ...] in one call. ImGui owns the popup; state.value is the chosen index.", T_FRUIT)
-        post_command(app, "imgui_set", JV((target = T_FRUIT, value = 4)))
+        post_command(app, "imgui_force_set", JV((target = T_FRUIT, value = 4)))
         sleep(CLICK_DWELL_MS)
 
         // ---- Stage 2: combo_getter — procedural list via lambda ----
         move_to(app, p_font, 800)
         sleep(SETTLE_MS)
-        post_command(app, "imgui_set", JV((target = T_FONT, value = 1)))
+        post_command(app, "imgui_force_set", JV((target = T_FONT, value = 1)))
         sleep(CLICK_DWELL_MS)
         say(app, "combo_getter — callback (idx, var result : string&) : bool supplies row text on demand. Use for table/generator-backed lists.", T_FONT)
-        post_command(app, "imgui_set", JV((target = T_FONT, value = 3)))
+        post_command(app, "imgui_force_set", JV((target = T_FONT, value = 3)))
         sleep(CLICK_DWELL_MS)
 
         // ---- Stage 3: selectable — N rows, each self-toggles ----
         move_to(app, p_tag0, 800)
         sleep(SETTLE_MS)
-        post_command(app, "imgui_set", JV((target = T_TAG0, value = true)))
+        post_command(app, "imgui_force_set", JV((target = T_TAG0, value = true)))
         sleep(CLICK_DWELL_MS)
-        post_command(app, "imgui_set", JV((target = T_TAG2, value = true)))
+        post_command(app, "imgui_force_set", JV((target = T_TAG2, value = true)))
         sleep(CLICK_DWELL_MS)
         say(app, "selectable — each row owns its ToggleState; rows toggle independently. Multi-select naturally.", T_TAG0)
-        post_command(app, "imgui_set", JV((target = T_TAG1, value = true)))
+        post_command(app, "imgui_force_set", JV((target = T_TAG1, value = true)))
         sleep(CLICK_DWELL_MS)
 
         // ---- Stage 4: selectable_label in list_box — single-select ----
         move_to(app, p_shirt, 800)
         sleep(SETTLE_MS)
-        post_command(app, "imgui_set", JV((target = T_SHIRT, value = 3)))
+        post_command(app, "imgui_force_set", JV((target = T_SHIRT, value = 3)))
         sleep(CLICK_DWELL_MS)
-        say(app, "selectable_label — caller-owned 'selected' arg. Pair with list_box + an external int to enforce single-select. imgui_set on the list_box steers next-frame selection.", T_SHIRT)
-        post_command(app, "imgui_set", JV((target = T_SHIRT, value = 5)))
+        say(app, "selectable_label — caller-owned 'selected' arg. Pair with list_box + an external int to enforce single-select. imgui_force_set on the list_box steers next-frame selection.", T_SHIRT)
+        post_command(app, "imgui_force_set", JV((target = T_SHIRT, value = 5)))
         sleep(CLICK_DWELL_MS)
     }
 }

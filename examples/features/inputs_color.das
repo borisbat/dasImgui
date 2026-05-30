@@ -5,7 +5,7 @@ require imgui/imgui_harness
 // =============================================================================
 // FEATURE: inputs_color — every Phase 0b.2 Color* widget in one window.
 // SHOWS:   color_edit3 / color_edit4 / color_picker3 / color_picker4 / color_button
-// DRIVE:   curl -X POST -d '{"name":"imgui_set","args":{"target":"MAIN_WIN/BG_COLOR","value":[0.2,0.5,0.9,1.0]}}' \
+// DRIVE:   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"MAIN_WIN/BG_COLOR","value":[0.2,0.5,0.9,1.0]}}' \
 //               localhost:9090/command
 //          curl -X POST -d '{"name":"imgui_click","args":{"target":"MAIN_WIN/PALETTE_RED"}}' \
 //               localhost:9090/command

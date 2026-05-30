@@ -132,16 +132,16 @@ Driving from outside
 ====================
 
 Every input_* widget exposes the same telemetry channel as drag and
-slider — ``imgui_set`` writes ``state.pending_value`` which the next
+slider — ``imgui_force_set`` writes ``state.pending_value`` which the next
 frame consumes:
 
 .. code-block:: bash
 
    # Scalar:
-   curl -X POST -d '{"name":"imgui_set","args":{"target":"IN_WIN/I_FLOAT","value":12.5}}' \
+   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"IN_WIN/I_FLOAT","value":12.5}}' \
         localhost:9090/command
    # Vector — one number per component:
-   curl -X POST -d '{"name":"imgui_set","args":{"target":"IN_WIN/I_VEC3","value":[1.0,2.0,3.0]}}' \
+   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"IN_WIN/I_VEC3","value":[1.0,2.0,3.0]}}' \
         localhost:9090/command
 
 The dispatcher (``[widget_dispatch]`` on ``InputStateFloat`` and
@@ -182,7 +182,7 @@ See :ref:`tutorial_edit_external_tour`.
    Full source: :download:`examples/tutorial/input_numeric.das <../../../examples/tutorial/input_numeric.das>`
 
    Features-side demo: ``examples/features/inputs_numeric.das`` — every
-   numeric input in one window, useful for ``imgui_set`` smoke testing.
+   numeric input in one window, useful for ``imgui_force_set`` smoke testing.
 
    Sibling tutorials: :ref:`tutorial_drag`, :ref:`tutorial_slider`,
    :ref:`tutorial_input_text`.

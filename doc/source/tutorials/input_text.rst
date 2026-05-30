@@ -167,15 +167,15 @@ needs the user's hand.
 Driving from outside
 ====================
 
-``imgui_set`` writes ``state.pending_value`` and the next frame
+``imgui_force_set`` writes ``state.pending_value`` and the next frame
 overwrites the buffer:
 
 .. code-block:: bash
 
-   curl -X POST -d '{"name":"imgui_set","args":{"target":"IT_WIN/IT_NAME","value":"hello"}}' \
+   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"IT_WIN/IT_NAME","value":"hello"}}' \
         localhost:9090/command
    # Multiline content — embed \n in the JSON string:
-   curl -X POST -d '{"name":"imgui_set","args":{"target":"IT_WIN/IT_BIO","value":"line 1\nline 2"}}' \
+   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"IT_WIN/IT_BIO","value":"line 1\nline 2"}}' \
         localhost:9090/command
 
 For ``input_text_growable``, sending a payload longer than current
@@ -183,7 +183,7 @@ For ``input_text_growable``, sending a payload longer than current
 buffer is consumed.
 
 text_filter is currently **read-only** via telemetry — there's no
-``imgui_set`` path that writes the filter expression. Click the filter
+``imgui_force_set`` path that writes the filter expression. Click the filter
 field and type directly to change it.
 
 .. seealso::

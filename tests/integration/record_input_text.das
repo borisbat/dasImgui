@@ -11,9 +11,9 @@ require daslib/json_boost public
 //! Driver script: record ``input_text.apng`` against
 //! ``examples/tutorial/input_text.das``. Tours six text-input forms —
 //! basic, with_hint, multiline, growable, callback (TAB completion),
-//! and text_filter — and drives one buffer via ``imgui_set``.
+//! and text_filter — and drives one buffer via ``imgui_force_set``.
 
-let SET_DWELL_MS = 1500u    //! 1.5s post-imgui_set dwell
+let SET_DWELL_MS = 1500u    //! 1.5s post-imgui_force_set dwell
 
 def widget_bbox(var snap : JsonValue?; ident : string) : float4 {
     var b = snap?["globals"]?[ident]?["bbox"]
@@ -57,28 +57,28 @@ def main {
         sleep(SETTLE_MS)
 
         // ---- Stage 1: basic input_text — drive a value during narration ----
-        post_command(app, "imgui_set", JV((target = T_NAME, value = "Ada Lovelace")))
+        post_command(app, "imgui_force_set", JV((target = T_NAME, value = "Ada Lovelace")))
         sleep(SET_DWELL_MS)
         say(app, "input_text(IDENT, (text)) — single-line, fixed 256-byte buffer. state.value mirrors the C++ buffer each frame.", T_NAME)
 
         // ---- Stage 2: with_hint — set then clear to show placeholder ----
         move_to(app, p_email, 800)
         sleep(SETTLE_MS)
-        post_command(app, "imgui_set", JV((target = T_EMAIL, value = "ada@analytical.engine")))
+        post_command(app, "imgui_force_set", JV((target = T_EMAIL, value = "ada@analytical.engine")))
         sleep(SET_DWELL_MS)
         say(app, "input_text_with_hint — extra 'hint' arg shows as placeholder when the buffer is empty.", T_EMAIL)
 
         // ---- Stage 3: multiline ----
         move_to(app, p_bio, 800)
         sleep(SETTLE_MS)
-        post_command(app, "imgui_set", JV((target = T_BIO, value = "Note No. 1: Charles Babbage\nNote No. 2: Analytical Engine\nNote No. 3: First algorithm")))
+        post_command(app, "imgui_force_set", JV((target = T_BIO, value = "Note No. 1: Charles Babbage\nNote No. 2: Analytical Engine\nNote No. 3: First algorithm")))
         sleep(SET_DWELL_MS)
         say(app, "input_text_multiline — CR/LF tolerant. size = (w, h); (0, 0) lets ImGui pick a default wide-short rect.", T_BIO)
 
         // ---- Stage 4: growable — drive payload past 256B to trigger CallbackResize ----
         move_to(app, p_free, 800)
         sleep(SETTLE_MS)
-        post_command(app, "imgui_set", JV((target = T_FREE,
+        post_command(app, "imgui_force_set", JV((target = T_FREE,
                                            value = "The Analytical Engine has no pretensions whatever to originate anything. It can do whatever we know how to order it to perform. It can follow analysis; but it has no power of anticipating any analytical relations or truths.")))
         sleep(SET_DWELL_MS)
         say(app, "input_text_growable — buffer auto-resizes past state.capacity via ImGui's CallbackResize. Plumbed through a daslang lambda + stack thunk.", T_FREE)
@@ -86,7 +86,7 @@ def main {
         // ---- Stage 5: callback (TAB completion) ----
         move_to(app, p_cmd, 800)
         sleep(SETTLE_MS)
-        post_command(app, "imgui_set", JV((target = T_CMD, value = "cla")))
+        post_command(app, "imgui_force_set", JV((target = T_CMD, value = "cla")))
         sleep(SET_DWELL_MS)
         say(app, "input_text_callback — user lambda fires on flagged events. CallbackCompletion = TAB; CallbackHistory = Up/Down. data pointer valid inside the call.", T_CMD)
 

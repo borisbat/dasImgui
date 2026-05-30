@@ -11,7 +11,7 @@ require imgui/imgui_harness
 //                       localhost:9090/command
 //          curl -X POST -d '{"name":"imgui_close","args":{"target":"OVERLAY_WIN/OPTIONS_POPUP"}}' \
 //                       localhost:9090/command
-//          curl -X POST -d '{"name":"imgui_set",
+//          curl -X POST -d '{"name":"imgui_force_set",
 //                            "args":{"target":"OVERLAY_WIN/PALETTE_COMBO","value":2}}' \
 //                       localhost:9090/command
 // STANDALONE: daslang.exe modules/dasImgui/examples/features/containers_overlay.das

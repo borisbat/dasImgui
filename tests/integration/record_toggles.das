@@ -14,7 +14,7 @@ require daslib/json_boost public
 //! checkbox, only the glyph differs), and grouped radio_button_int
 //! (three sites sharing one RadioIntState).
 
-let SET_DWELL_MS   = 1500u      //! 1.5s post-imgui_set dwell
+let SET_DWELL_MS   = 1500u      //! 1.5s post-imgui_force_set dwell
 
 def widget_bbox(var snap : JsonValue?; ident : string) : float4 {
     var b = snap?["globals"]?[ident]?["bbox"]
@@ -52,23 +52,23 @@ def main {
         sleep(SETTLE_MS)
 
         // ---- Stage 1: checkbox — flip on, then off ----
-        post_command(app, "imgui_set", JV((target = T_CHECK, value = true)))
+        post_command(app, "imgui_force_set", JV((target = T_CHECK, value = true)))
         sleep(SET_DWELL_MS)
-        say(app, "checkbox — single ToggleState bool. Click flips, imgui_set writes pending_value.", T_CHECK)
+        say(app, "checkbox — single ToggleState bool. Click flips, imgui_force_set writes pending_value.", T_CHECK)
 
         // ---- Stage 2: radio_button (bool form) — circle-rendered checkbox ----
         move_to(app, p_radio, 800)
         sleep(SETTLE_MS)
-        post_command(app, "imgui_set", JV((target = T_RADIO_BOOL, value = true)))
+        post_command(app, "imgui_force_set", JV((target = T_RADIO_BOOL, value = true)))
         sleep(SET_DWELL_MS)
         say(app, "radio_button (bool) — SAME ToggleState as checkbox; only the glyph differs (circle vs square).", T_RADIO_BOOL)
 
         // ---- Stage 3: radio_button_int — grouped, mutually exclusive ----
         move_to(app, p_mode, 800)
         sleep(SETTLE_MS)
-        post_command(app, "imgui_set", JV((target = T_MODE, value = 1)))
+        post_command(app, "imgui_force_set", JV((target = T_MODE, value = 1)))
         sleep(SET_DWELL_MS)
-        post_command(app, "imgui_set", JV((target = T_MODE, value = 2)))
+        post_command(app, "imgui_force_set", JV((target = T_MODE, value = 2)))
         sleep(SET_DWELL_MS)
         say(app, "radio_button_int — three call sites SHARE one RadioIntState. Click writes state.value = v_button — the canonical 'pick one of N'.", T_MODE)
     }

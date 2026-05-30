@@ -118,7 +118,7 @@ Driving from outside
 ====================
 
 Both widgets surface their payload via ``imgui_snapshot`` — no
-``imgui_set`` channels (the texture is caller-owned, the open state
+``imgui_force_set`` channels (the texture is caller-owned, the open state
 is local to ``tree_node_ex``'s call site):
 
 .. code-block:: bash

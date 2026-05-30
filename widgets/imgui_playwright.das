@@ -405,9 +405,9 @@ def public right_click(app : ImguiApp; target : string) : JsonValue? {
     return send_imgui_command(app.transport, "imgui_click", JV((target = target, button = 1)))
 }
 
-def public set_value(app : ImguiApp; target : string; var value : JsonValue?) : JsonValue? {
-    //! Set ``target``'s payload value remotely (``imgui_set`` verb); ``value`` is the JSON form expected by the widget kind.
-    return send_imgui_command(app.transport, "imgui_set", JV((target = target, value = value)))
+def public force_set_value(app : ImguiApp; target : string; var value : JsonValue?) : JsonValue? {
+    //! Set ``target``'s payload value remotely (``imgui_force_set`` verb); ``value`` is the JSON form expected by the widget kind.
+    return send_imgui_command(app.transport, "imgui_force_set", JV((target = target, value = value)))
 }
 
 def public resize_window(app : ImguiApp; target : string; w : float; h : float) : JsonValue? {

@@ -8,7 +8,7 @@ mix ``@live`` fields (preserved across hot-reload) and ``@optional`` fields
 <struct-imgui_boost_runtime-WidgetEntry>`, not the per-kind structs, so each
 state struct stays small.
 
-The live-command surface (``imgui_snapshot``, ``imgui_click``, ``imgui_set``,
+The live-command surface (``imgui_snapshot``, ``imgui_click``, ``imgui_force_set``,
 ``imgui_open``, ``imgui_close``, ``imgui_focus``, ``imgui_await``,
 ``imgui_drag``, ``imgui_type_text``) is the wire-protocol that
 ``imgui_playwright`` and external test harnesses drive. Commands resolve

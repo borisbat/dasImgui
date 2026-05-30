@@ -35,13 +35,13 @@ require imgui/imgui_visual_aids
 //
 // DRIVE (when running live):
 //   # Set scalar value directly:
-//   curl -X POST -d '{"name":"imgui_set","args":{"target":"DRAG_WIN/D_FLOAT","value":0.75}}' \
+//   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"DRAG_WIN/D_FLOAT","value":0.75}}' \
 //        localhost:9090/command
 //   # Set vector value (one number per component):
-//   curl -X POST -d '{"name":"imgui_set","args":{"target":"DRAG_WIN/D_VEC3","value":[1.0,2.0,3.0]}}' \
+//   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"DRAG_WIN/D_VEC3","value":[1.0,2.0,3.0]}}' \
 //        localhost:9090/command
 //   # Set range (lo, hi):
-//   curl -X POST -d '{"name":"imgui_set","args":{"target":"DRAG_WIN/D_RANGE","value":[10.0,40.0]}}' \
+//   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"DRAG_WIN/D_RANGE","value":[10.0,40.0]}}' \
 //        localhost:9090/command
 // =============================================================================
 

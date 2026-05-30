@@ -9,7 +9,7 @@ require daslib/safe_addr
 //          ImGui's bool form doesn't mutate, the wrapper does), and
 //          edit_checkbox_flags(int?) which toggles a specific bit in a
 //          shared int mask.
-// DRIVE:   curl -X POST -d '{"name":"imgui_set","args":{"target":"MAIN_WIN/CB_GATE","value":true}}' \
+// DRIVE:   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"MAIN_WIN/CB_GATE","value":true}}' \
 //              localhost:9090/command
 // STANDALONE: daslang.exe modules/dasImgui/examples/features/edit_external_toggles.das
 // HEADLESS:   daslang.exe modules/dasImgui/examples/features/edit_external_toggles.das -- --headless --headless-frames=60

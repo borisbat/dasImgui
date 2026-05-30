@@ -9,7 +9,7 @@ require daslib/safe_addr
 //          float3? / float4? pointers. ColorPicker4 also surfaces an
 //          optional [ref] swatch via has_ref_col / ref_col. Payload mirrors
 //          the underlying floatN value.
-// DRIVE:   curl -X POST -d '{"name":"imgui_set","args":{"target":"MAIN_WIN/CE4","value":{"x":0.8,"y":0.2,"z":0.4,"w":1.0}}}' \
+// DRIVE:   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"MAIN_WIN/CE4","value":{"x":0.8,"y":0.2,"z":0.4,"w":1.0}}}' \
 //              localhost:9090/command
 // STANDALONE: daslang.exe modules/dasImgui/examples/features/edit_external_color.das
 // HEADLESS:   daslang.exe modules/dasImgui/examples/features/edit_external_color.das -- --headless --headless-frames=60

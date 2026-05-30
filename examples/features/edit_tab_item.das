@@ -10,7 +10,7 @@ require imgui/imgui_harness
 //          `*p_open = false`; when false, the entire tab (chrome + body) is
 //          skipped. External siblings (the edit_checkbox row at the top)
 //          drive the SAME bools — bidir-bound shared state.
-// DRIVE:   curl -X POST -d '{"name":"imgui_set","args":{"target":"MAIN_WIN/BAR/TAB_A","value":false}}' \
+// DRIVE:   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"MAIN_WIN/BAR/TAB_A","value":false}}' \
 //              localhost:9090/command
 // STANDALONE: daslang.exe modules/dasImgui/examples/features/edit_tab_item.das
 // HEADLESS:   daslang.exe modules/dasImgui/examples/features/edit_tab_item.das -- --headless --headless-frames=60

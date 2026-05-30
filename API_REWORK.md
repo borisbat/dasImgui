@@ -257,7 +257,7 @@ def knob(var state : VolumeKnobState; text : string) : bool {
 
 - bbox / hex_id / hover / active / focus capture from the **last ImGui item** (your `InvisibleButton` or stock call).
 - Registry insert keyed on the widget path.
-- Installs serializer (drives `imgui_snapshot`) + dispatcher (drives `imgui_set`) lambdas — both generic on the state-struct type, picking up every field via `typedecl`.
+- Installs serializer (drives `imgui_snapshot`) + dispatcher (drives `imgui_force_set`) lambdas — both generic on the state-struct type, picking up every field via `typedecl`.
 
 Power users can hand-write `<kind>_finalize` directly if `pending_value_finalize` doesn't fit (boolean toggles, multi-action widgets, plots) — `click_finalize` / `toggle_finalize` / `plot_finalize` in `widgets/imgui_widgets_builtin.das` are the in-tree templates.
 
@@ -329,7 +329,7 @@ No new HTTP server. The dasLiveHost `live_api` debug agent (port 9090 by default
 | Command | Action |
 |---|---|
 | `imgui_snapshot` | Returns full JSON snapshot |
-| `imgui_set` | Mutates widget state (`{"target":"Setup/RPS_SLIDER","value":0.7}`) |
+| `imgui_force_set` | Mutates widget state (`{"target":"Setup/RPS_SLIDER","value":0.7}`) |
 | `imgui_click` | Sets pending-click flag for a button (L2) |
 | `imgui_drag` | Synthesizes drag events (L1) |
 | `imgui_type_text` | Synthesizes character input (L1) |
@@ -370,21 +370,19 @@ await_imgui(transport, until="quiescent")
 
 `transport` is `lambda<(action : string; payload : JsonValue?) : JsonValue?>`. Default impl `live_api_transport(url)` POSTs to `/command`. Users override for in-process buses, mocked tests, custom IPC, etc. (In-process drive = "open transport to yourself.")
 
-### 6.3 How clicks actually work
+### 6.3 How clicks and value-writes actually work
 
-Three implementation levels, picked per command:
+Two strategies — faithful input vs. bypass:
 
-- **L1 — synthesize ImGuiIO events.** `AddMousePosEvent` + `AddMouseButtonEvent` (both public in `imgui.h`). Move cursor to widget bbox center, push down, next frame push up. Works for *anything*. Warps cursor briefly; needs ≥2 frames; can race user input.
-- **L2 — boost wrapper short-circuit.** Widget's `ButtonState` carries a `pending_click` flag. The boost `button()` wrapper checks it and returns true regardless of imgui's hit-test. Single frame, no cursor warp, deterministic. Works only for boost-wrapped widgets.
-- **L3 — direct state mutation.** Write the daslang global. Sliders/checkboxes/inputs paint the new value next frame. ImGui never knows it was driven externally.
+- **Faithful synth input (L1).** `AddMousePosEvent` + `AddMouseButtonEvent` (both public in `imgui.h`). Move cursor to the widget bbox center, push down, next frame push up — a real click through ImGui's own input path. Works for *anything*; warps the cursor briefly; needs ≥2 frames. `imgui_click` **always** takes this path, so every widget (boost-wrapped or not) behaves exactly as under a hardware click — buttons fire, checkbox/selectable/menu_item toggle and auto-close their popup. No per-widget click short-circuit.
+- **Direct state mutation (L3 — bypass).** Write the widget's state field directly. Sliders/checkboxes/inputs paint the new value next frame; ImGui never knows it was driven externally. This is `imgui_force_set` — a deliberate bypass for what a user can't do (exact value, off-screen / inactive widget).
 
 Mapping:
-- `imgui_set(target, value)` → **L3**
-- `imgui_click(IDENT)` → **L2** (boost-wrapped button)
-- `imgui_click(hex_id)` → **L1** (arbitrary widget without a daslang global)
+- `imgui_force_set(target, value)` → **L3 / bypass**
+- `imgui_click(IDENT)` / `imgui_click(hex_id)` → **L1** (real synthetic click; resolves the bbox either way)
 - `imgui_drag` / `imgui_type_text` / multi-frame interactions → **L1**
 
-Default rule: try L2/L3 first, fall back to L1 when widget isn't boost-wrapped.
+Default rule: `imgui_click` for clicks (faithful); `imgui_force_set` only when the value itself is the goal.
 
 ---
 
@@ -495,8 +493,8 @@ Each phase lands as a branch in `D:\DASPKG\dasImgui`, pushed for backup. Reviewe
 | **0a — define_widget core** | `define_widget` macro shipping; migrate `button` and `slider` as proof-of-concept built-ins. State globals, identifier-as-id, block-arg auto-end. Migrate one example. | other widgets |
 | **0b — built-ins migrated** | All of imgui's widget surface migrated to `define_widget`: checkbox, radio, combo, list_box, input_text/int/float, color_edit/picker, drag, slider variants, plot_lines, tree_node, collapsing_header, menu, tab_bar/item, popup/modal, tooltip, etc. **ABI-paired shims rewritten in lockstep with their C++ partners** in `bind/` — `ImGuiInputTextBuffer`, `ImGuiComboGetter`, `ImGuiPlotGetter`, `ImGuiSizeConstraints` all get redesigned around the new state-global model (no more `addr` of a stack `var buf`). Update all examples. Breaking change for downstream `require dasImgui/daslib/imgui_boost` users — coordinate with `daspkg` index. | new capabilities |
 | **1 — registry + snapshot** | Per-frame registry table populated by every boost wrapper; **RTTI walk replaces the hand-rolled snapshot from Phase 00** — auto-discovers globals of any registered widget-state type; per-widget `extras` for kinds that have them (text-input cursor, scroll offset, tree expansion). `imgui_snapshot` returns the full picture. | commands beyond snapshot |
-| **2 — full command set** | `imgui_set` (L3), `imgui_click` for arbitrary hex_ids (L1), `imgui_drag`, `imgui_type_text`, `imgui_focus`, `imgui_open`/`close`, `imgui_await` with predicate support. Lambda transport interface, `live_api_transport` default impl. | playwright |
-| **3 — playwright boost** | **DONE 2026-05-10.** Public `imgui/imgui_playwright` (sibling module, not folded into `imgui_boost`). Block-form `with_imgui_app <| $(app) { ... }`, `click`, `type_text` (auto-focus target, 2-frame settle), `set_value`, `open_widget`/`close_widget`, `drag`, `focus`, `await_probe`, `post_command`, `reload`, full poll-until family (`wait_until` + typed sugars + `wait_for_payload_value`), snapshot navigation (`find_widget`/`widget_exists`/`widget_payload_field`/`widget_rendered`). New assertion helpers panic on timeout with focused failure UX: `expect_value` (4-arg, explicit field), `expect_render`, `await_quiescent`. 27→28 dastest cases green (added `test_save_demo`); 27 prior tests cut over from private `tests/integration/live_driver.das` (deleted, no compat shim per §9.4). Raw-curl smoke ships as cross-tool diagnostic (`smoke_curl.ps1` / `smoke_curl.sh`). **Deferred:** noun-form `launch_imgui_app` (daslang-live IS the launcher; block form satisfies every test); hidden-window / offscreen FBO (rolls into Phase 4 where FBO is needed anyway); programmatic negative-path tests for assertion panic UX (`try/recover` ruled out — panic semantics, lint rule incoming). | visual aids |
+| **2 — full command set** | `imgui_force_set` (L3 bypass), `imgui_click` (L1 real click, by path or hex_id), `imgui_drag`, `imgui_type_text`, `imgui_focus`, `imgui_open`/`close`, `imgui_await` with predicate support. Lambda transport interface, `live_api_transport` default impl. | playwright |
+| **3 — playwright boost** | **DONE 2026-05-10.** Public `imgui/imgui_playwright` (sibling module, not folded into `imgui_boost`). Block-form `with_imgui_app <| $(app) { ... }`, `click`, `type_text` (auto-focus target, 2-frame settle), `force_set_value`, `open_widget`/`close_widget`, `drag`, `focus`, `await_probe`, `post_command`, `reload`, full poll-until family (`wait_until` + typed sugars + `wait_for_payload_value`), snapshot navigation (`find_widget`/`widget_exists`/`widget_payload_field`/`widget_rendered`). New assertion helpers panic on timeout with focused failure UX: `expect_value` (4-arg, explicit field), `expect_render`, `await_quiescent`. 27→28 dastest cases green (added `test_save_demo`); 27 prior tests cut over from private `tests/integration/live_driver.das` (deleted, no compat shim per §9.4). Raw-curl smoke ships as cross-tool diagnostic (`smoke_curl.ps1` / `smoke_curl.sh`). **Deferred:** noun-form `launch_imgui_app` (daslang-live IS the launcher; block form satisfies every test); hidden-window / offscreen FBO (rolls into Phase 4 where FBO is needed anyway); programmatic negative-path tests for assertion panic UX (`try/recover` ruled out — panic semantics, lint rule incoming). | visual aids |
 | **4 — visual aids** | `imgui_visual_aids_serve()`, auto-highlight on commands, mouse trail, explicit `imgui_highlight`, `narrate` callouts. | recording |
 | **5 — recording / extras** | **APNG recording — DONE 2026-05-11.** Streaming APNG writer in `dasStbImage` (`stbi_apng_begin/frame/end/dropped`, ~300 lines reusing stb's CRC32+zlib internals, worker thread + bounded queue). Live commands `record_start` / `record_stop` / `record_status` in `live/opengl_live` (sibling to `screenshot`, fps throttle + max_seconds auto-stop). dastest covers C-API correctness (chunk parse, default-image fallback, RGB+RGBA, error paths, overflow drops, parallel writers); end-to-end smoke recorded 225 frames at 15fps over visual_aids_tour with 0 drops. Theme/layout helpers not yet shipped — final polish. | doc generation |
 | **6 — docs + website** | `imgui2rst` tool (parallel to daslang's `doc/reflections/das2rst.das`) generating RST from `//!` comments in dasImgui modules. Stitches in tutorials. Output linked from the main daslang website (module catalog with per-module docs). | n/a |

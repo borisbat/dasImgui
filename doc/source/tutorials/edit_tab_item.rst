@@ -7,7 +7,7 @@ edit_tab_item
 Caller-owned visibility bool for a tab. The external-pointer sibling
 of ``tab_item`` (which owns visibility internally). The canonical
 "shared open state" pattern — a second UI surface (checkbox row,
-menu toggle, ``imgui_set``) drives the same flag the tab's X-close
+menu toggle, ``imgui_force_set``) drives the same flag the tab's X-close
 button writes.
 
 .. code-block:: das
@@ -102,13 +102,13 @@ The recording uses ``safe_addr`` on three module globals
 Driving from outside
 ====================
 
-``imgui_set`` writes the external bool through ``edit_checkbox``'s
+``imgui_force_set`` writes the external bool through ``edit_checkbox``'s
 channel (which shares the bool with the tab):
 
 .. code-block:: bash
 
    # Hide alpha tab:
-   curl -X POST -d '{"name":"imgui_set","args":{"target":"ET_WIN/ET_CHECK_A","value":false}}' \
+   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"ET_WIN/ET_CHECK_A","value":false}}' \
         localhost:9090/command
 
 The X-button click on the tab header writes the same bool — symmetric.

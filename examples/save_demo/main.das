@@ -13,7 +13,7 @@ require imgui/imgui_harness
 // DRIVE:   curl -X POST -d '{"name":"imgui_click","args":{"target":"MAIN_WIN/SAVE_BTN"}}' \
 //               localhost:9090/command
 //          → globals."MAIN_WIN/STATUS_TEXT".payload.value flips to "saved"
-//          curl -X POST -d '{"name":"imgui_set","args":{"target":"MAIN_WIN/NAME_INPUT","value":"hello"}}' \
+//          curl -X POST -d '{"name":"imgui_force_set","args":{"target":"MAIN_WIN/NAME_INPUT","value":"hello"}}' \
 //               localhost:9090/command
 // STANDALONE: daslang.exe modules/dasImgui/examples/save_demo/main.das
 // HEADLESS:   daslang.exe modules/dasImgui/examples/save_demo/main.das -- --headless

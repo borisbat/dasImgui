@@ -8,9 +8,9 @@ require daslib/safe_addr
 // SHOWS:   edit_slider_*2/3/4, edit_drag_*2/3/4, edit_input_*2/3/4 for both
 //          float and int. Each Tn? pointer is reinterpret-cast to T? at the
 //          ImGui call (Slider* / Drag* / Input* family take a single T*).
-//          Payload shape: {value: {x, y[, z[, w]]}}; imgui_set takes the
+//          Payload shape: {value: {x, y[, z[, w]]}}; imgui_force_set takes the
 //          same shape and writes through the full vector.
-// DRIVE:   curl -X POST -d '{"name":"imgui_set","args":{"target":"MAIN_WIN/SF3","value":{"x":0.5,"y":0.6,"z":0.7}}}' \
+// DRIVE:   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"MAIN_WIN/SF3","value":{"x":0.5,"y":0.6,"z":0.7}}}' \
 //              localhost:9090/command
 // STANDALONE: daslang.exe modules/dasImgui/examples/features/edit_external_vectors.das
 // HEADLESS:   daslang.exe modules/dasImgui/examples/features/edit_external_vectors.das -- --headless --headless-frames=60

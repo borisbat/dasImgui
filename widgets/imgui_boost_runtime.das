@@ -30,91 +30,90 @@ require strings
 
 struct ClickState {
     @live click_count : int                      //! cumulative across reloads
-    @optional pending_click : bool               //! queued by imgui_click L2; consumed next frame
     @optional clicked : bool                     //! true on the frame the button fired
 }
 
 struct SliderStateFloat {
     @live value : float                          //! preserved across reload
     @live bounds : tuple<float; float>           //! (min, max)
-    @optional has_pending : bool                 //! imgui_set L3 sets; render fn consumes
-    @optional pending_value : float              //! next-frame value queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set L3 sets; render fn consumes
+    @optional pending_value : float              //! next-frame value queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the widget fired
 }
 
 struct SliderStateFloat2 {
     @live value : float2                         //! preserved across reload
     @live bounds : tuple<float; float>           //! (min, max) applied to every component
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : float2             //! next-frame value queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : float2             //! next-frame value queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the widget fired
 }
 
 struct SliderStateFloat3 {
     @live value : float3                         //! preserved across reload
     @live bounds : tuple<float; float>           //! (min, max) applied to every component
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : float3             //! next-frame value queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : float3             //! next-frame value queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the widget fired
 }
 
 struct SliderStateFloat4 {
     @live value : float4                         //! preserved across reload
     @live bounds : tuple<float; float>           //! (min, max) applied to every component
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : float4             //! next-frame value queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : float4             //! next-frame value queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the widget fired
 }
 
 struct SliderStateInt {
     @live value : int                            //! preserved across reload
     @live bounds : tuple<int; int>               //! (min, max)
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : int                //! next-frame value queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : int                //! next-frame value queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the widget fired
 }
 
 struct SliderStateInt2 {
     @live value : int2                           //! preserved across reload
     @live bounds : tuple<int; int>               //! (min, max) applied to every component
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : int2               //! next-frame value queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : int2               //! next-frame value queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the widget fired
 }
 
 struct SliderStateInt3 {
     @live value : int3                           //! preserved across reload
     @live bounds : tuple<int; int>               //! (min, max) applied to every component
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : int3               //! next-frame value queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : int3               //! next-frame value queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the widget fired
 }
 
 struct SliderStateInt4 {
     @live value : int4                           //! preserved across reload
     @live bounds : tuple<int; int>               //! (min, max) applied to every component
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : int4               //! next-frame value queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : int4               //! next-frame value queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the widget fired
 }
 
 struct ToggleState {
     //! Shared across Checkbox / RadioButton (bool form) / Selectable / MenuItem.
-    //! `pending_toggle` + `pending_value` let imgui_set steer the next frame's
+    //! `pending_toggle` + `pending_value` let imgui_force_set steer the next frame's
     //! value deterministically; the renderer consumes-then-clears.
     @live value : bool                               //! current toggle state; preserved across reload
-    @optional pending_toggle : bool                  //! imgui_set L3 sets; consumed next frame
-    @optional pending_value : bool                   //! next-frame value queued by imgui_set
+    @optional pending_toggle : bool                  //! imgui_force_set L3 sets; consumed next frame
+    @optional pending_value : bool                   //! next-frame value queued by imgui_force_set
     @optional changed : bool                         //! true on the frame the widget fired
 }
 
 struct RadioIntState {
     //! Backs RadioButton(int form). `value` is the currently-selected button
     //! id; the widget def takes the per-call `v_button` and writes value=v_button
-    //! when the user clicks. `imgui_set {"value":N}` steers the selection.
+    //! when the user clicks. `imgui_force_set {"value":N}` steers the selection.
     @live value : int                                //! currently-selected button id
-    @optional pending_set : bool                     //! imgui_set queued; consumed next frame
-    @optional pending_value : int                    //! next-frame selection queued by imgui_set
+    @optional pending_set : bool                     //! imgui_force_set queued; consumed next frame
+    @optional pending_value : int                    //! next-frame selection queued by imgui_force_set
     @optional changed : bool                         //! true on the frame the selection changed
 }
 
@@ -124,79 +123,79 @@ struct RadioIntState {
 // at the call site — globals can't apply struct field defaults (they're
 // zero-init), and string defaults trip the uninit-safety check. `pending_value`
 // matches `value`'s type so the generic `drag_set_finalize` helper in
-// imgui_widgets_builtin can capture state and steer it from imgui_set.
+// imgui_widgets_builtin can capture state and steer it from imgui_force_set.
 
 struct DragStateFloat {
     @live value : float                          //! preserved across reload
     @live bounds : tuple<float; float>           //! (min, max); zero-init = unclamped
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : float              //! next-frame value queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : float              //! next-frame value queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the widget fired
 }
 
 struct DragStateFloat2 {
     @live value : float2                         //! preserved across reload
     @live bounds : tuple<float; float>           //! (min, max); zero-init = unclamped
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : float2             //! next-frame value queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : float2             //! next-frame value queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the widget fired
 }
 
 struct DragStateFloat3 {
     @live value : float3                         //! preserved across reload
     @live bounds : tuple<float; float>           //! (min, max); zero-init = unclamped
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : float3             //! next-frame value queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : float3             //! next-frame value queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the widget fired
 }
 
 struct DragStateFloat4 {
     @live value : float4                         //! preserved across reload
     @live bounds : tuple<float; float>           //! (min, max); zero-init = unclamped
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : float4             //! next-frame value queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : float4             //! next-frame value queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the widget fired
 }
 
 struct DragStateInt {
     @live value : int                            //! preserved across reload
     @live bounds : tuple<int; int>               //! (min, max); zero-init = unclamped
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : int                //! next-frame value queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : int                //! next-frame value queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the widget fired
 }
 
 struct DragStateInt2 {
     @live value : int2                           //! preserved across reload
     @live bounds : tuple<int; int>               //! (min, max); zero-init = unclamped
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : int2               //! next-frame value queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : int2               //! next-frame value queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the widget fired
 }
 
 struct DragStateInt3 {
     @live value : int3                           //! preserved across reload
     @live bounds : tuple<int; int>               //! (min, max); zero-init = unclamped
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : int3               //! next-frame value queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : int3               //! next-frame value queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the widget fired
 }
 
 struct DragStateInt4 {
     @live value : int4                           //! preserved across reload
     @live bounds : tuple<int; int>               //! (min, max); zero-init = unclamped
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : int4               //! next-frame value queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : int4               //! next-frame value queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the widget fired
 }
 
 struct DragStateRangeFloat {
     //! `value.x` = current_min, `value.y` = current_max. Bounds clamp both.
-    //! `imgui_set {"value":[lo,hi]}` writes the whole range atomically.
+    //! `imgui_force_set {"value":[lo,hi]}` writes the whole range atomically.
     @live value : float2                         //! (current_min, current_max); preserved across reload
     @live bounds : tuple<float; float>           //! (min, max) clamp applied to both endpoints
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : float2             //! next-frame range queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : float2             //! next-frame range queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the range changed
 }
 
@@ -204,8 +203,8 @@ struct DragStateRangeInt {
     //! `value.x` = current_min, `value.y` = current_max.
     @live value : int2                           //! (current_min, current_max); preserved across reload
     @live bounds : tuple<int; int>               //! (min, max) clamp applied to both endpoints
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : int2               //! next-frame range queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : int2               //! next-frame range queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the range changed
 }
 
@@ -216,64 +215,64 @@ struct DragStateRangeInt {
 
 struct InputStateFloat {
     @live value : float                          //! preserved across reload
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : float              //! next-frame value queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : float              //! next-frame value queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the widget fired
 }
 
 struct InputStateFloat2 {
     @live value : float2                         //! preserved across reload
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : float2             //! next-frame value queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : float2             //! next-frame value queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the widget fired
 }
 
 struct InputStateFloat3 {
     @live value : float3                         //! preserved across reload
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : float3             //! next-frame value queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : float3             //! next-frame value queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the widget fired
 }
 
 struct InputStateFloat4 {
     @live value : float4                         //! preserved across reload
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : float4             //! next-frame value queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : float4             //! next-frame value queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the widget fired
 }
 
 struct InputStateInt {
     @live value : int                            //! preserved across reload
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : int                //! next-frame value queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : int                //! next-frame value queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the widget fired
 }
 
 struct InputStateInt2 {
     @live value : int2                           //! preserved across reload
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : int2               //! next-frame value queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : int2               //! next-frame value queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the widget fired
 }
 
 struct InputStateInt3 {
     @live value : int3                           //! preserved across reload
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : int3               //! next-frame value queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : int3               //! next-frame value queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the widget fired
 }
 
 struct InputStateInt4 {
     @live value : int4                           //! preserved across reload
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : int4               //! next-frame value queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : int4               //! next-frame value queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the widget fired
 }
 
 struct InputStateDouble {
     @live value : double                         //! preserved across reload
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : double             //! next-frame value queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : double             //! next-frame value queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the widget fired
 }
 
@@ -286,19 +285,19 @@ struct InputStateDouble {
 
 struct ColorState3 {
     @live value : float3                         //! RGB in [0..1]
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : float3             //! next-frame RGB queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : float3             //! next-frame RGB queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the color changed
 }
 
 struct ColorState4 {
     @live value : float4                         //! RGBA in [0..1]
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : float4             //! next-frame RGBA queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : float4             //! next-frame RGBA queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the color changed
 }
 
-// Choice family. `value` is the selected item index; `imgui_set {"value":N}`
+// Choice family. `value` is the selected item index; `imgui_force_set {"value":N}`
 // steers the next-frame selection. The user passes `items : array<string>`
 // per-frame; combo/list_box marshal it C-side without a shim:
 //   - combo packs a zero-separated `array<uint8>` (kept on state for capacity
@@ -311,16 +310,16 @@ struct ColorState4 {
 
 struct ComboState {
     @live value : int = -1                       //! selected index, -1 = none
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : int                //! next-frame selection queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : int                //! next-frame selection queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the selection changed
     @optional items_buf : array<uint8>           //! transient zero-separated buffer; rebuilt each frame
 }
 
 struct ListBoxState {
     @live value : int = -1                       //! selected index, -1 = none
-    @optional has_pending : bool                 //! imgui_set queued; consumed next frame
-    @optional pending_value : int                //! next-frame selection queued by imgui_set
+    @optional has_pending : bool                 //! imgui_force_set queued; consumed next frame
+    @optional pending_value : int                //! next-frame selection queued by imgui_force_set
     @optional changed : bool                     //! true on the frame the selection changed
 }
 
@@ -332,8 +331,8 @@ struct ListBoxState {
 struct InputTextState {
     @live value : string = ""                             //! current text content (clone of buffer)
     @live capacity : int = 256                            //! working buffer size in bytes (incl. trailing null)
-    @optional has_pending : bool                          //! imgui_set queued; consumed next frame
-    @optional pending_value : string = ""                 //! next-frame text queued by imgui_set
+    @optional has_pending : bool                          //! imgui_force_set queued; consumed next frame
+    @optional pending_value : string = ""                 //! next-frame text queued by imgui_force_set
     @optional changed : bool                              //! true on the frame the text changed
     @optional buffer : array<uint8>                       //! working buffer; mirrors `value`, allocated to capacity on first frame / post-reload
 }
@@ -345,9 +344,9 @@ struct TextShowState {
     //! or programmatically (`STATUS.value = compute_status()`). The
     //! standard serializer surfaces `value` for telemetry / playwright
     //! `expect_value(app, STATUS, "saved")`. Tests can also drive the
-    //! value externally via `imgui_set` — the dispatcher writes
+    //! value externally via `imgui_force_set` — the dispatcher writes
     //! `state.value` directly.
-    @live value : string = ""                          //! displayed text; settable via call-site initializer or imgui_set
+    @live value : string = ""                          //! displayed text; settable via call-site initializer or imgui_force_set
 }
 
 struct PlotState {
@@ -1220,10 +1219,12 @@ typedef KindDispatcher = function<(state_addr : void?; action : string; payload 
 
 //! Dispatch is keyed by the state's runtime ``TypeInfo.hash`` — one dispatcher
 //! per state-struct type covers every widget kind that uses that struct (e.g.
-//! the single ClickState dispatcher fires for ``button``/``small_button``/
-//! ``arrow_button``/...). Non-Structure ti (scalar pointee from ``[edit_widget]``)
-//! that don't have a registered dispatcher fall back to the generic
-//! ``sscan_json_at(state_addr, *ti)`` write-through in ``dispatch_or_err``.
+//! the single ToggleState dispatcher fires for ``checkbox``/``radio_button``/
+//! ``selectable``/``menu_item``). ClickState carries no dispatcher: an
+//! ``imgui_click`` is a real synthetic mouse click handled before any lookup.
+//! Non-Structure ti (scalar pointee from ``[edit_widget]``) that don't have a
+//! registered dispatcher fall back to the generic ``sscan_json_at(state_addr,
+//! *ti)`` write-through in ``dispatch_or_err``.
 var private g_dispatchers : table<uint64; KindDispatcher>
 
 def public register_widget_dispatch_for_type(ti : TypeInfo const?; dispatcher : KindDispatcher) {
@@ -1385,19 +1386,21 @@ def private dispatch_or_err(action : string; input : JsonValue?) : Result<string
     let target = extract_string_field(input, "target")
     let (level, resolved) = classify_target(target)
     if (level == 0) return err("unresolvable target: {target}", type<string>)
-    // Click with non-zero button (right-click / middle-click) always goes through
-    // the L1 mouse-event path: popups (popup_context_item / popup_context_window)
-    // and IsItemClicked(N>0) checks respond to real io.AddMouseButtonEvent, not
-    // the L2 dispatcher's state-mutation rail. resolve_target_bbox works at both
-    // path (L2) and hex_id (L1) so this branch handles both target forms.
+    // A click is a real synthetic mouse click: warp to the widget center, press and
+    // release across one frame (click_at_coro), driving ImGui's own input path. Every
+    // widget then behaves exactly as under a real click — buttons fire, checkbox /
+    // selectable / menu_item toggle and auto-close their popup, popup_context_* and
+    // IsItemClicked(N) all respond. No per-widget programmatic rail. resolve_target_bbox
+    // resolves both L2 (path) and L1 (hex_id) targets, so this handles every click form.
     if (action == "click") {
         let button = input?["button"] ?? 0
-        if (button != 0) {
-            let (got, center) = resolve_target_bbox(resolved)
-            if (!got) return err("target {resolved} has no bbox this frame (not rendered)", type<string>)
-            spawn_coroutine(click_at_coro(center, button))
-            return ok("L1:{resolved}:btn{button}", type<string>)
-        }
+        let (got, center) = resolve_target_bbox(resolved)
+        if (!got) return err("target {resolved} has no bbox this frame (not rendered)", type<string>)
+        spawn_coroutine(click_at_coro(center, button))
+        // Return the clean resolved target (path or hex_id), not a synthetic tag:
+        // the post-command auto-highlight hook resolves it via widget_rect, and
+        // tests assert the resolved path. Same value for every button.
+        return ok(resolved, type<string>)
     }
     if (level == 2) {
         if (action == "focus") {
@@ -1437,26 +1440,29 @@ def private dispatch_or_err(action : string; input : JsonValue?) : Result<string
         }
         return ok(resolved, type<string>)
     }
-    if (action != "click") return err("L1 hex_id fallback only supports 'click', got '{action}'", type<string>)
-    let hid = parse_hex_id(resolved)
-    if (!key_exists(g_id_to_bbox, hid)) return err("hex_id {resolved} not seen this frame (no bbox to click)", type<string>)
-    let bb = g_id_to_bbox[hid]
-    let center = float2((bb.x + bb.z) * 0.5f, (bb.y + bb.w) * 0.5f)
-    spawn_coroutine(click_at_coro(center, 0))
-    return ok("L1:{resolved}", type<string>)
+    // L1 hex_id targets (the dispatcher never rendered them) support clicks only,
+    // which the click branch above already handled; no rail exists for other actions.
+    return err("L1 hex_id target {resolved} supports 'click' only, got '{action}'", type<string>)
 }
 
-[live_command(description = "Queue an L2 click on a widget identified by 'target'")]
+[live_command(description = "Real synthetic mouse click on the widget identified by 'target' (optional 'button')")]
 def imgui_click(input : JsonValue?) : JsonValue? {
-    //! Live-command: dispatch a ``click`` to the widget named by ``input["target"]``; resolves path or ``0x...`` hex_id.
+    //! Live-command: a real synthetic mouse click on the widget named by ``input["target"]``
+    //! (resolves path or ``0x...`` hex_id; optional ``input["button"]`` — 0 left / 1 right / 2 middle).
+    //! Faithful — warps to the widget center and presses/releases through ImGui's own input path,
+    //! so the widget behaves exactly as under a real click (errors if the target isn't rendered).
+    //! To set an exact value a click can't reach, use ``imgui_force_set``.
     let r = dispatch_or_err("click", input)
     if (r._is_ok) dispatch_post_command_hooks("click", r._value)
     return with_await(input, r)
 }
 
-[live_command(description = "Queue an L3 value set on a widget ('target' name + 'value')")]
-def imgui_set(input : JsonValue?) : JsonValue? {
-    //! Live-command: steer the next-frame value of ``input["target"]`` to ``input["value"]``.
+[live_command(description = "Force a widget's value directly, bypassing input ('target' name + 'value')")]
+def imgui_force_set(input : JsonValue?) : JsonValue? {
+    //! Live-command: force the next-frame value of ``input["target"]`` to ``input["value"]``.
+    //! A BYPASS — writes state directly, doing what a user couldn't (exact value, off-screen
+    //! or inactive widget). For a faithful interaction prefer ``imgui_click`` /
+    //! ``imgui_mouse_play`` / ``imgui_key_type``; reach for this only when the value itself is the goal.
     let r = dispatch_or_err("set", input)
     if (r._is_ok) dispatch_post_command_hooks("set", r._value)
     return with_await(input, r)

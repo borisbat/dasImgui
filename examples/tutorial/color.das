@@ -40,9 +40,9 @@ require imgui/imgui_visual_aids
 // LIVE:       daslang-live modules/dasImgui/examples/tutorial/color.das
 //
 // DRIVE (when running live):
-//   curl -X POST -d '{"name":"imgui_set","args":{"target":"CO_WIN/CO_EDIT3","value":[1.0,0.5,0.0]}}' \
+//   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"CO_WIN/CO_EDIT3","value":[1.0,0.5,0.0]}}' \
 //        localhost:9090/command
-//   curl -X POST -d '{"name":"imgui_set","args":{"target":"CO_WIN/CO_EDIT4","value":[0.2,0.4,0.9,0.6]}}' \
+//   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"CO_WIN/CO_EDIT4","value":[0.2,0.4,0.9,0.6]}}' \
 //        localhost:9090/command
 //   curl -X POST -d '{"name":"imgui_click","args":{"target":"CO_WIN/CO_SWATCH"}}' \
 //        localhost:9090/command

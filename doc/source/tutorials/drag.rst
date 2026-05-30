@@ -105,19 +105,19 @@ one bar** — useful for "filter between lo and hi" widgets:
 Driving from outside
 ====================
 
-Every drag widget exposes the same telemetry channel — ``imgui_set``
+Every drag widget exposes the same telemetry channel — ``imgui_force_set``
 writes ``state.pending_value`` which the next frame consumes:
 
 .. code-block:: bash
 
    # Scalar:
-   curl -X POST -d '{"name":"imgui_set","args":{"target":"DRAG_WIN/D_FLOAT","value":0.75}}' \
+   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"DRAG_WIN/D_FLOAT","value":0.75}}' \
         localhost:9090/command
    # Vector — one number per component:
-   curl -X POST -d '{"name":"imgui_set","args":{"target":"DRAG_WIN/D_VEC3","value":[1.0,2.0,3.0]}}' \
+   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"DRAG_WIN/D_VEC3","value":[1.0,2.0,3.0]}}' \
         localhost:9090/command
    # Range — (lo, hi) tuple:
-   curl -X POST -d '{"name":"imgui_set","args":{"target":"DRAG_WIN/D_RANGE","value":[10.0,40.0]}}' \
+   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"DRAG_WIN/D_RANGE","value":[10.0,40.0]}}' \
         localhost:9090/command
 
 The dispatcher (``[widget_dispatch]`` on the state struct) accepts the
@@ -159,7 +159,7 @@ See :ref:`tutorial_edit_external_tour`.
    Full source: :download:`examples/tutorial/drag.das <../../../examples/tutorial/drag.das>`
 
    Features-side demo: ``examples/features/inputs_drag.das`` — every drag
-   widget in one window, useful for ``imgui_set`` smoke testing.
+   widget in one window, useful for ``imgui_force_set`` smoke testing.
 
    Sibling tutorial: :ref:`tutorial_slider`.
 

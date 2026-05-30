@@ -11,10 +11,10 @@ require daslib/json_boost public
 //! Driver script: record ``drag.apng`` against
 //! ``examples/tutorial/drag.das``. Tours four drag forms — scalar float,
 //! scalar int, vector float3, and float range pair — narrating each in
-//! turn and driving one value via ``imgui_set`` to show the bidirectional
+//! turn and driving one value via ``imgui_force_set`` to show the bidirectional
 //! channel.
 
-let SET_DWELL_MS   = 2200u      //! 2.2s post-imgui_set dwell
+let SET_DWELL_MS   = 2200u      //! 2.2s post-imgui_force_set dwell
 
 def widget_bbox(var snap : JsonValue?; ident : string) : float4 {
     var b = snap?["globals"]?[ident]?["bbox"]
@@ -59,14 +59,14 @@ def main {
         // ---- Stage 2: scalar int ----
         move_to(app, p_int, 900)
         sleep(SETTLE_MS)
-        post_command(app, "imgui_set", JV((target = T_INT, value = 42)))
+        post_command(app, "imgui_force_set", JV((target = T_INT, value = 42)))
         sleep(SET_DWELL_MS)
         say(app, "drag_int — same shape, integer steps. format = \"%d\" by default; speed = 1 means one integer per pixel.", T_INT)
 
         // ---- Stage 3: vector float3 ----
         move_to(app, p_vec3, 900)
         sleep(SETTLE_MS)
-        post_command(app, "imgui_set", JV((target = T_VEC3, value = (0.5f, 1.0f, 1.5f))))
+        post_command(app, "imgui_force_set", JV((target = T_VEC3, value = (0.5f, 1.0f, 1.5f))))
         sleep(SET_DWELL_MS)
         say(app, "drag_float3 — three components on one row. State carries float3 value; bounds clamp every component.", T_VEC3)
 
@@ -75,13 +75,13 @@ def main {
         sleep(SETTLE_MS)
         say(app, "drag_float_range2 — two handles share one bar. value.x = lo, value.y = hi; ImGui enforces lo <= hi each frame.", T_RANGE)
 
-        // ---- Stage 5: drive from outside via imgui_set ----
-        post_command(app, "imgui_set", JV((target = T_FLOAT, value = 0.75f)))
+        // ---- Stage 5: drive from outside via imgui_force_set ----
+        post_command(app, "imgui_force_set", JV((target = T_FLOAT, value = 0.75f)))
         sleep(SET_DWELL_MS)
-        post_command(app, "imgui_set", JV((target = T_RANGE, value = (20.0f, 65.0f))))
+        post_command(app, "imgui_force_set", JV((target = T_RANGE, value = (20.0f, 65.0f))))
         sleep(SET_DWELL_MS)
         move_to(app, p_float, 900)
         sleep(SETTLE_MS)
-        say(app, "imgui_set writes through state.pending_value; next frame consumes it. Same channel for scalar (number) or range (two-number tuple).", T_FLOAT)
+        say(app, "imgui_force_set writes through state.pending_value; next frame consumes it. Same channel for scalar (number) or range (two-number tuple).", T_FLOAT)
     }
 }

@@ -140,7 +140,7 @@ When run live, the boost layer exposes the standard live-command surface at
 
 .. code-block:: bash
 
-   curl -X POST -d '{"name":"imgui_set","args":{"target":"BASICS_WIN/VOLUME","value":0.75}}' \
+   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"BASICS_WIN/VOLUME","value":0.75}}' \
         localhost:9090/command
 
 …and ``VOLUME.value`` jumps to ``0.75`` on the next frame. Note the

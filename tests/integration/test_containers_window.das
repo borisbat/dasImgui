@@ -11,7 +11,7 @@ require daslib/json_boost public
 //! Integration smoke for Phase 0b.3 window/child/group containers. Verifies
 //! hierarchical registry keys (leaf widgets nested inside a `[container]`
 //! show up under "MAIN_WIN/<ident>" rather than bare ident), and that
-//! imgui_set / imgui_click / imgui_open all resolve against the path-keyed
+//! imgui_force_set / imgui_click / imgui_open all resolve against the path-keyed
 //! dispatcher table.
 
 let WINDOW_FEATURE = "modules/dasImgui/examples/features/containers_window.das"
@@ -45,27 +45,27 @@ def test_containers_window_smoke(t : T?) {
         t |> success(wait_for_int_value(d, "MAIN_WIN/SAVE", "click_count", 1, 300),
                      "imgui_click MAIN_WIN/SAVE bumps click_count")
 
-        // ----- imgui_set on a nested slider -----
-        set_value(d, "MAIN_WIN/SPEED", JV(7.5f))
+        // ----- imgui_force_set on a nested slider -----
+        force_set_value(d, "MAIN_WIN/SPEED", JV(7.5f))
         t |> success(wait_for_payload_value(d, "MAIN_WIN/SPEED", "value", 7.5f, 300),
-                     "imgui_set steers MAIN_WIN/SPEED to 7.5")
+                     "imgui_force_set steers MAIN_WIN/SPEED to 7.5")
 
         // ----- Three-deep nesting: window > child > leaf -----
         var snap1 = snapshot(d)
         var wire_entry = find_widget(snap1, "MAIN_WIN/LEFT_PANEL/WIRE")
         t |> equal(wire_entry?["kind"] ?? "", "checkbox",
                    "MAIN_WIN/LEFT_PANEL/WIRE registers under 3-deep path")
-        set_value(d, "MAIN_WIN/LEFT_PANEL/WIRE", JV(true))
+        force_set_value(d, "MAIN_WIN/LEFT_PANEL/WIRE", JV(true))
         t |> success(wait_for_bool_value(d, "MAIN_WIN/LEFT_PANEL/WIRE", "value", true, 300),
-                     "imgui_set MAIN_WIN/LEFT_PANEL/WIRE flips it true")
+                     "imgui_force_set MAIN_WIN/LEFT_PANEL/WIRE flips it true")
 
         // ----- group(RIGHT_GROUP) inside MAIN_WIN, then leaf inside it -----
         var power_entry = find_widget(snap1, "MAIN_WIN/RIGHT_GROUP/POWER")
         t |> equal(power_entry?["kind"] ?? "", "slider_int",
                    "MAIN_WIN/RIGHT_GROUP/POWER registers under nested group path")
-        set_value(d, "MAIN_WIN/RIGHT_GROUP/POWER", JV(42))
+        force_set_value(d, "MAIN_WIN/RIGHT_GROUP/POWER", JV(42))
         t |> success(wait_for_int_value(d, "MAIN_WIN/RIGHT_GROUP/POWER", "value", 42, 300),
-                     "imgui_set on a leaf nested in window>group works")
+                     "imgui_force_set on a leaf nested in window>group works")
 
         // ----- imgui_open on a closable window flips state.open -----
         // DETAIL_WIN starts closed (state.open zero-init). Open it, expect

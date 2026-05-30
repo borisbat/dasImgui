@@ -11,7 +11,7 @@ require daslib/json_boost public
 //! Dynamic-table smoke for indexed widgets. Drives
 //! `examples/features/indexed_dynamic.das` through an ADD/BUMP/REMOVE
 //! sequence and verifies (a) snapshot entries appear when a key is added,
-//! (b) imgui_set lands per-key without bleeding across keys, (c) entries
+//! (b) imgui_force_set lands per-key without bleeding across keys, (c) entries
 //! vanish when a key is erased (validates §G expiration), (d) re-adding
 //! the same key restores a fresh entry. Telemetry runs in process via the
 //! standard playwright transport — no special fixture rigging.
@@ -34,10 +34,10 @@ def test_indexed_dynamic_add_remove(t : T?) {
         t |> success(wait_for_widget(d, "DYN_WIN/CHANNEL_VOL[0]", 5.0f) != null,
                      "ADD inserts CHANNEL_VOL[0]")
 
-        // imgui_set lands on the new entry; other keys (none) unaffected.
-        set_value(d, "DYN_WIN/CHANNEL_VOL[0]", JV(0.42f))
+        // imgui_force_set lands on the new entry; other keys (none) unaffected.
+        force_set_value(d, "DYN_WIN/CHANNEL_VOL[0]", JV(0.42f))
         t |> success(wait_for_payload_value(d, "DYN_WIN/CHANNEL_VOL[0]", "value", 0.42f, 300),
-                     "imgui_set CHANNEL_VOL[0]=0.42 lands")
+                     "imgui_force_set CHANNEL_VOL[0]=0.42 lands")
 
         // ADD again → [1] appears alongside [0].
         click(d, "DYN_WIN/ADD_CH")
@@ -49,10 +49,10 @@ def test_indexed_dynamic_add_remove(t : T?) {
         t |> equal(widget_payload_field(snap_two, "DYN_WIN/CHANNEL_VOL[0]", "value") ?? -1.0f,
                    0.42f, "[0].value still 0.42 (cross-key isolation)")
 
-        // imgui_set on [1] doesn't perturb [0].
-        set_value(d, "DYN_WIN/CHANNEL_VOL[1]", JV(0.91f))
+        // imgui_force_set on [1] doesn't perturb [0].
+        force_set_value(d, "DYN_WIN/CHANNEL_VOL[1]", JV(0.91f))
         t |> success(wait_for_payload_value(d, "DYN_WIN/CHANNEL_VOL[1]", "value", 0.91f, 300),
-                     "imgui_set CHANNEL_VOL[1]=0.91 lands")
+                     "imgui_force_set CHANNEL_VOL[1]=0.91 lands")
         var snap_after_set1 = snapshot(d)
         t |> equal(widget_payload_field(snap_after_set1, "DYN_WIN/CHANNEL_VOL[0]", "value") ?? -1.0f,
                    0.42f, "[0].value unchanged after setting [1]")

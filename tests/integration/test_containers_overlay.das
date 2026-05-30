@@ -30,15 +30,15 @@ def test_containers_overlay_smoke(t : T?) {
         t |> equal(listbox_entry?["kind"] ?? "", "list_box",
                    "list_box registers under nested path")
 
-        // ----- imgui_set on combo_select index -----
-        set_value(d, "OVERLAY_WIN/PALETTE_COMBO", JV(2))
+        // ----- imgui_force_set on combo_select index -----
+        force_set_value(d, "OVERLAY_WIN/PALETTE_COMBO", JV(2))
         t |> success(wait_for_int_value(d, "OVERLAY_WIN/PALETTE_COMBO", "value", 2, 300),
-                     "imgui_set steers PALETTE_COMBO to 2 (Forest)")
+                     "imgui_force_set steers PALETTE_COMBO to 2 (Forest)")
 
-        // ----- imgui_set on list_box index -----
-        set_value(d, "OVERLAY_WIN/TASK_LIST", JV(3))
+        // ----- imgui_force_set on list_box index -----
+        force_set_value(d, "OVERLAY_WIN/TASK_LIST", JV(3))
         t |> success(wait_for_int_value(d, "OVERLAY_WIN/TASK_LIST", "value", 3, 300),
-                     "imgui_set steers TASK_LIST to 3 (Package)")
+                     "imgui_force_set steers TASK_LIST to 3 (Package)")
 
         // ----- imgui_open on a popup flips state.open via the dispatcher -----
         // OPTIONS_POPUP starts closed; opening it via imgui_open routes

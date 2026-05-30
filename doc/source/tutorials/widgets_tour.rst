@@ -96,13 +96,13 @@ preserves the widget contents.
 Driving from outside
 ====================
 
-Under ``daslang-live`` the boost layer exposes ``imgui_set`` and
+Under ``daslang-live`` the boost layer exposes ``imgui_force_set`` and
 ``imgui_click`` over ``localhost:9090``. The top of the source file lists
 one ``curl`` invocation per widget. Each ``target`` is path-qualified:
 
 .. code-block:: bash
 
-   curl -X POST -d '{"name":"imgui_set","args":{"target":"AUDIO_WIN/USER_NAME","value":"Boris"}}' \
+   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"AUDIO_WIN/USER_NAME","value":"Boris"}}' \
         localhost:9090/command
 
 For ``color_edit3``, ``value`` is a JSON object with ``x`` / ``y`` / ``z``

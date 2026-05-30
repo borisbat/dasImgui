@@ -27,7 +27,7 @@ exposes:
   serializers in the ``live/live_vars`` module.
 * ``[live_command]`` — registers an HTTP endpoint that the running
   process exposes; called from ``curl`` or any other client. The
-  ``imgui_set`` / ``imgui_click`` / ``imgui_snapshot`` surface is
+  ``imgui_force_set`` / ``imgui_click`` / ``imgui_snapshot`` surface is
   built from ``[live_command]`` declarations.
 * ``[before_reload]`` / ``[after_reload]`` — manual save/restore hooks
   for state ``@live`` can't track (raw pointers, GL textures,
@@ -126,7 +126,7 @@ on the success branch.
 ``[live_command]`` — user-defined HTTP endpoints
 ================================================
 
-The same ``[live_command]`` annotation that registers ``imgui_set`` /
+The same ``[live_command]`` annotation that registers ``imgui_force_set`` /
 ``imgui_click`` / ``imgui_snapshot`` works for user functions. The
 function takes a ``JsonValue?`` (the request body's ``args`` field)
 and returns ``JsonValue?`` (echoed back to the caller):
@@ -229,7 +229,7 @@ Next steps
 
 Now that the live-command surface is explicit, next is the
 **driving-from-outside** view: the JSON command set the boost layer
-ships (``imgui_set`` / ``imgui_click`` / ``imgui_open`` / ...) treated
+ships (``imgui_force_set`` / ``imgui_click`` / ``imgui_open`` / ...) treated
 as its own programming model — a UI that responds to scripted
 external events the same way it responds to mouse clicks.
 

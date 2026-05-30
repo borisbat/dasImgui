@@ -680,7 +680,7 @@ def combo_select(var state : ComboState; text : string; preview_value : string;
 [container]
 def list_box(var state : ListBoxState; text : string; size : float2; blk : block) {
     //! `BeginListBox(label, size)` / `EndListBox()` — only-on-true. Body
-    //! emits the per-item rows. `imgui_set {"value":N}` steers next-frame
+    //! emits the per-item rows. `imgui_force_set {"value":N}` steers next-frame
     //! selection; bodies typically read `state.value` to tag the active row.
     if (state.has_pending) {
         state.value = state.pending_value

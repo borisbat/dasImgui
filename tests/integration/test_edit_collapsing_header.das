@@ -10,7 +10,7 @@ require daslib/json_boost public
 
 //! Integration smoke for `edit_collapsing_header` — closable CollapsingHeader
 //! bidir-bound to a caller-owned `bool? p_open`. Verifies kind, initial bool
-//! value, set_value dispatch through the [edit_widget] scalar-pointee path
+//! value, force_set_value dispatch through the [edit_widget] scalar-pointee path
 //! (sscan_json_at writes through *ptr), and recovery via the RESTORE_A button.
 
 let FEATURE = "modules/dasImgui/examples/features/edit_collapsing_header.das"
@@ -42,11 +42,11 @@ def test_edit_collapsing_header_smoke(t : T?) {
                          "{ident} registers")
         }
 
-        // Bidir-bind A→false via imgui_set; scalar-pointee dispatcher writes
+        // Bidir-bind A→false via imgui_force_set; scalar-pointee dispatcher writes
         // through *ptr (VISIBLE_A := false), header hides next frame.
-        set_value(d, "MAIN_WIN/HDR_A", JV(false))
+        force_set_value(d, "MAIN_WIN/HDR_A", JV(false))
         t |> success(wait_for_bool_value(d, "MAIN_WIN/HDR_A", "value", false, 300),
-                     "HDR_A.value flips to false after set_value")
+                     "HDR_A.value flips to false after force_set_value")
 
         // RESTORE_A button writes VISIBLE_A := true; reverse-direction proof.
         click(d, "MAIN_WIN/RESTORE_A")

@@ -9,7 +9,7 @@ require daslib/json public
 require daslib/json_boost public
 
 //! Integration test for unified `list_box` [container] — BeginListBox/EndListBox
-//! with Selectable rows in the body. `imgui_set {"value": N}` steers next-frame
+//! with Selectable rows in the body. `imgui_force_set {"value": N}` steers next-frame
 //! selection via the dispatcher; user-side Selectable click writes state.value.
 
 let LIST_BOX_FEATURE = "modules/dasImgui/examples/features/list_box.das"
@@ -25,20 +25,20 @@ def test_list_box_set_steers_selection(t : T?) {
         t |> equal(lang_entry?["kind"] ?? "", "list_box",
                    "LANG.kind == 'list_box'")
 
-        // imgui_set steers selection to "Rust" (index 2).
-        set_value(d, "MAIN_WIN/LANG", JV(2))
+        // imgui_force_set steers selection to "Rust" (index 2).
+        force_set_value(d, "MAIN_WIN/LANG", JV(2))
         t |> success(wait_for_int_value(d, "MAIN_WIN/LANG", "value", 2, 300),
-                     "imgui_set steers LANG to index 2 (Rust)")
+                     "imgui_force_set steers LANG to index 2 (Rust)")
 
         // Another step — Python (4).
-        set_value(d, "MAIN_WIN/LANG", JV(4))
+        force_set_value(d, "MAIN_WIN/LANG", JV(4))
         t |> success(wait_for_int_value(d, "MAIN_WIN/LANG", "value", 4, 300),
-                     "imgui_set steers LANG to index 4 (Python)")
+                     "imgui_force_set steers LANG to index 4 (Python)")
 
         // Final snapshot envelope.
         var snap_final = snapshot(d)
         let lang_final = find_widget(snap_final, "MAIN_WIN/LANG")
         t |> equal(lang_final?["payload"]?["value"] ?? -1, 4,
-                   "LANG.payload.value persists final imgui_set")
+                   "LANG.payload.value persists final imgui_force_set")
     }
 }

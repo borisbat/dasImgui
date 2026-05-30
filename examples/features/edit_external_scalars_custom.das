@@ -10,7 +10,7 @@ require daslib/safe_addr
 //          int64, double, uint, ...). Sibling demo to edit_external_scalars
 //          which covers only the float/int typed variants. Demonstrates that
 //          a single rail call site adapts to whatever T the pointee is.
-// DRIVE:   curl -X POST -d '{"name":"imgui_set","args":{"target":"MAIN_WIN/DRAG_I8","value":42}}' \
+// DRIVE:   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"MAIN_WIN/DRAG_I8","value":42}}' \
 //              localhost:9090/command
 // STANDALONE: daslang.exe modules/dasImgui/examples/features/edit_external_scalars_custom.das
 // HEADLESS:   daslang.exe modules/dasImgui/examples/features/edit_external_scalars_custom.das -- --headless --headless-frames=60

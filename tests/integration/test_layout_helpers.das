@@ -13,7 +13,7 @@ require math
 //! Three layers of coverage:
 //!   1. Path & kind registration (split_*/dock_left appear under the window,
 //!      all leaves resolve through their split panes).
-//!   2. L3 `imgui_set` reaches the SliderStateFloat-shaped state and the
+//!   2. L3 `imgui_force_set` reaches the SliderStateFloat-shaped state and the
 //!      layout actually moves next frame (left button shifts when SPLIT_MAIN
 //!      goes from 0.3 → 0.7).
 //!   3. Synth-mouse drag of the handle updates state.value (proves the
@@ -93,11 +93,11 @@ def test_layout_set_value(t : T?) {
                      "SPLIT_MAIN.value baseline ({v0}) matches init=0.3")
 
         // L3 drive: push split to 0.7, verify state converges next frame.
-        set_value(d, "LAYOUT_WIN/SPLIT_VERT/SPLIT_MAIN", JV(0.7f))
+        force_set_value(d, "LAYOUT_WIN/SPLIT_VERT/SPLIT_MAIN", JV(0.7f))
         let landed = wait_for_payload_value(d,
                         "LAYOUT_WIN/SPLIT_VERT/SPLIT_MAIN",
                         "value", 0.7f, 300)
-        t |> success(landed, "SPLIT_MAIN.value -> 0.7 after imgui_set")
+        t |> success(landed, "SPLIT_MAIN.value -> 0.7 after imgui_force_set")
 
         // Geometry follows: RIGHT_BTN sits at the start of the right pane;
         // when left fraction grows from 0.3 to 0.7 the pane boundary (and so
@@ -108,7 +108,7 @@ def test_layout_set_value(t : T?) {
         let rb_x0_orig = find_widget(snap0, "LAYOUT_WIN/SPLIT_VERT/SPLIT_MAIN/RIGHT_BTN")?["bbox"]?["x"] ?? 0.0f
         let rb_x0_now = find_widget(snap_lt, "LAYOUT_WIN/SPLIT_VERT/SPLIT_MAIN/RIGHT_BTN")?["bbox"]?["x"] ?? 0.0f
         t |> success(rb_x0_now > rb_x0_orig + 10.0f,
-                     "L3 set_value: RIGHT_BTN.left shifted right ({rb_x0_orig} -> {rb_x0_now})")
+                     "L3 force_set_value: RIGHT_BTN.left shifted right ({rb_x0_orig} -> {rb_x0_now})")
     }
 }
 
@@ -119,4 +119,4 @@ def test_layout_set_value(t : T?) {
 // surfaces; (b) expose handle screen position via a debug field on the state
 // struct; (c) drive drag through a synthetic L1 command that knows the handle
 // path. Pick when the drag test is needed (it's the only L1 coverage gap for
-// §4.6 — L3 set_value coverage is in test_layout_set_value above).
+// §4.6 — L3 force_set_value coverage is in test_layout_set_value above).

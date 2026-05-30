@@ -39,16 +39,16 @@ def test_triggers_smoke(t : T?) {
         t |> success(wait_for_int_value(d, "MAIN_WIN/SAVE_BTN", "click_count", count_before + 1, 300),
                      "click bumps SAVE_BTN.click_count")
 
-        // ----- Toggle family — imgui_set flips the bool -----
+        // ----- Toggle family — imgui_force_set flips the bool -----
         let wf_before = widget_payload_field(snap0, "MAIN_WIN/WIREFRAME", "value") ?? false
-        set_value(d, "MAIN_WIN/WIREFRAME", JV(!wf_before))
+        force_set_value(d, "MAIN_WIN/WIREFRAME", JV(!wf_before))
         t |> success(wait_for_bool_value(d, "MAIN_WIN/WIREFRAME", "value", !wf_before, 300),
-                     "imgui_set toggles WIREFRAME.value")
+                     "imgui_force_set toggles WIREFRAME.value")
 
-        // ----- Grouped int radio — imgui_set steers the selection -----
-        set_value(d, "MAIN_WIN/DIFFICULTY", JV(2))
+        // ----- Grouped int radio — imgui_force_set steers the selection -----
+        force_set_value(d, "MAIN_WIN/DIFFICULTY", JV(2))
         t |> success(wait_for_int_value(d, "MAIN_WIN/DIFFICULTY", "value", 2, 300),
-                     "imgui_set picks DIFFICULTY=2 (Hard)")
+                     "imgui_force_set picks DIFFICULTY=2 (Hard)")
 
         // ----- Snapshot envelope — required common fields per widget -----
         var snap_final = snapshot(d)

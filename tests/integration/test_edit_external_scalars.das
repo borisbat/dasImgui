@@ -10,7 +10,7 @@ require daslib/json_boost public
 
 //! Integration smoke for boost v2 edit_* scalar rail.
 //! Drives `examples/features/edit_external_scalars.das` and round-trips
-//! imgui_set on a sample of overloads.
+//! imgui_force_set on a sample of overloads.
 
 let FEATURE = "modules/dasImgui/examples/features/edit_external_scalars.das"
 
@@ -27,16 +27,16 @@ def test_edit_external_scalars_smoke(t : T?) {
                          "{ident} registered")
         }
 
-        // imgui_set on edit_slider_float — float pointee round-trips.
-        set_value(d, "MAIN_WIN/SLIDER_F", JV(0.875f))
+        // imgui_force_set on edit_slider_float — float pointee round-trips.
+        force_set_value(d, "MAIN_WIN/SLIDER_F", JV(0.875f))
         let after_f = wait_until(d, 300) $(var s) {
             let v = double(widget_payload_field(s, "MAIN_WIN/SLIDER_F", "value") ?? 0.0)
             return v > 0.87lf && v < 0.88lf
         }
         t |> success(after_f != null, "edit_slider_float write 0.875 round-trips")
 
-        // imgui_set on edit_input_int — int pointee round-trips.
-        set_value(d, "MAIN_WIN/INPUT_I", JV(99))
+        // imgui_force_set on edit_input_int — int pointee round-trips.
+        force_set_value(d, "MAIN_WIN/INPUT_I", JV(99))
         t |> success(wait_for_int_value(d, "MAIN_WIN/INPUT_I", "value", 99, 300),
                      "edit_input_int write 99 round-trips")
     }

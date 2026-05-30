@@ -8,7 +8,7 @@ require imgui/imgui_harness
 //          composition; closable window with imgui_open / imgui_close.
 // DRIVE:   curl -X POST -d '{"name":"imgui_snapshot"}' localhost:9090/command
 //          # leaves nested under MAIN_WIN appear as MAIN_WIN/<ident>
-//          curl -X POST -d '{"name":"imgui_set",
+//          curl -X POST -d '{"name":"imgui_force_set",
 //                            "args":{"target":"MAIN_WIN/SPEED","value":7.5}}' \
 //                       localhost:9090/command
 //          curl -X POST -d '{"name":"imgui_open",

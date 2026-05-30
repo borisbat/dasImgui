@@ -29,7 +29,7 @@ require imgui/imgui_visual_aids
 //
 //   1. Only the ACTIVE tab's body block runs each frame — widgets inside
 //      inactive tabs are NOT in the registry that frame. A driver doing
-//      imgui_set against an inactive tab's child path gets a 404.
+//      imgui_force_set against an inactive tab's child path gets a 404.
 //
 //   2. Closable tabs (closable=true) render an X-button. ImGui flips
 //      state.open=false; the wrapper then skips BeginTabItem entirely so

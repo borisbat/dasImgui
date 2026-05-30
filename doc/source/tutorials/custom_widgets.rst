@@ -52,7 +52,7 @@ The state struct
 
 This shape is the contract. ``pending_value_finalize`` is generic on the state
 type — it reads ``has_pending`` / ``pending_value`` to consume queued
-``imgui_set`` deliveries, and serializes the whole struct (``value``,
+``imgui_force_set`` deliveries, and serializes the whole struct (``value``,
 ``bounds``, ``changed``) verbatim into the snapshot. Any widget kind that
 matches these field names plugs straight into the rails. ``@live`` keeps
 ``value`` and ``bounds`` preserved across reloads; ``@optional`` lets the
@@ -122,7 +122,7 @@ lambdas:
 - **Serializer**: closure over ``widget_ident``, returns
   ``state_jv(path, type<VolumeKnobState>)`` — JSON-ifies the live state
   every time ``imgui_snapshot`` asks.
-- **Dispatcher**: closure that handles ``imgui_set`` with action
+- **Dispatcher**: closure that handles ``imgui_force_set`` with action
   ``"set"`` — writes ``state.pending_value`` and flips ``has_pending``.
   Next frame the body drains it (step 1).
 
@@ -155,7 +155,7 @@ The custom knob takes the same live commands every slider does:
    curl -X POST -d '{"name":"imgui_snapshot"}' localhost:9090/command
 
    # set a value programmatically — pending_value_finalize handles the dispatch
-   curl -X POST -d '{"name":"imgui_set","args":{"target":"MIXER_WIN/MASTER","value":0.75}}' \
+   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"MIXER_WIN/MASTER","value":0.75}}' \
         localhost:9090/command
 
    # click the built-in reset button next to the knobs

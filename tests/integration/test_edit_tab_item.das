@@ -10,7 +10,7 @@ require daslib/json_boost public
 
 //! Integration smoke for `edit_tab_item`. Demo binds two closable tabs
 //! (TAB_A, TAB_B) to module-scope bools via safe_addr. Verify both render
-//! initially, both bodies register, and `imgui_set TAB_A false` flips A's
+//! initially, both bodies register, and `imgui_force_set TAB_A false` flips A's
 //! bool — body and header disappear, the linked CHECK_A also unchecks
 //! (bidir bind), and STATUS reflects "a=false b=true".
 
@@ -39,15 +39,15 @@ def test_edit_tab_item_smoke(t : T?) {
                    "STATUS == 'a=true b=true' initially")
 
         // Flip A closed via the external bool dispatcher; body+chrome vanish.
-        set_value(d, "MAIN_WIN/BAR/TAB_A", JV(false))
+        force_set_value(d, "MAIN_WIN/BAR/TAB_A", JV(false))
         t |> success(wait_for_string_value(d, "MAIN_WIN/STATUS", "value",
                                            "a=false b=true", 300),
-                     "STATUS reflects A closed after set_value(TAB_A, false)")
+                     "STATUS reflects A closed after force_set_value(TAB_A, false)")
 
         // Restore A via the linked checkbox; bidir bind makes the tab reappear.
-        set_value(d, "MAIN_WIN/CHECK_A", JV(true))
+        force_set_value(d, "MAIN_WIN/CHECK_A", JV(true))
         t |> success(wait_for_string_value(d, "MAIN_WIN/STATUS", "value",
                                            "a=true b=true", 300),
-                     "STATUS reflects A restored after set_value(CHECK_A, true)")
+                     "STATUS reflects A restored after force_set_value(CHECK_A, true)")
     }
 }

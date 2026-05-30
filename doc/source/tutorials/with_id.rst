@@ -19,7 +19,7 @@ the boost ships three knobs for sorting out the collision:
   any hex_id-driven scripts must stay stable.
 * ``widget(IDENT, (path = "x"))`` replaces the registry path leaf — the
   daslang identifier still names the global; ``"x"`` is what external
-  drivers target via ``imgui_set`` / ``imgui_click``.
+  drivers target via ``imgui_force_set`` / ``imgui_click``.
 
 Source: ``examples/tutorial/with_id.das``.
 
@@ -162,7 +162,7 @@ The registry paths shown above are exactly what external drivers target:
         localhost:9090/command
    curl -X POST -d '{"name":"imgui_click","args":{"target":"ID_WIN/section_b/SAVE_BTN"}}' \
         localhost:9090/command
-   curl -X POST -d '{"name":"imgui_set","args":{"target":"ID_WIN/rps_stable","value":0.7}}' \
+   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"ID_WIN/rps_stable","value":0.7}}' \
         localhost:9090/command
 
 Note the third targets ``rps_stable`` (the ``path=`` override), not the

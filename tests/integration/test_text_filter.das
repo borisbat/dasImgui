@@ -12,7 +12,7 @@ require daslib/json_boost public
 //! filter rail over `ImGuiTextFilter::Draw`. The widget itself registers
 //! as `text_filter` kind; with an empty initial filter, all 10 LOG_ROW
 //! entries pass and register. Filter-mutation tests are out of scope —
-//! text_filter has no imgui_set dispatcher today.
+//! text_filter has no imgui_force_set dispatcher today.
 
 let FEATURE = "modules/dasImgui/examples/features/text_filter.das"
 
@@ -38,7 +38,7 @@ def test_text_filter_smoke(t : T?) {
         t |> success(widget_exists(snap, "MAIN_WIN/LEAD"), "LEAD registers")
         t |> success(widget_exists(snap, "MAIN_WIN/SEP"),  "SEP registers")
 
-        // TODO(text_filter dispatcher): when imgui_set lands for text_filter
+        // TODO(text_filter dispatcher): when imgui_force_set lands for text_filter
         // kind (or a typing-into-FILT path opens up), assert post-filter row
         // counts: filter='INFO' → 4 rows; filter='-DEBUG' → 8 rows.
     }

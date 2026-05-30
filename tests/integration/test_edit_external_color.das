@@ -24,8 +24,8 @@ def test_edit_external_color_smoke(t : T?) {
                          "{ident} registered")
         }
 
-        // imgui_set on edit_color_edit4 round-trips RGBA.
-        set_value(d, "MAIN_WIN/CE4", JV((x = 0.9f, y = 0.1f, z = 0.2f, w = 0.5f)))
+        // imgui_force_set on edit_color_edit4 round-trips RGBA.
+        force_set_value(d, "MAIN_WIN/CE4", JV((x = 0.9f, y = 0.1f, z = 0.2f, w = 0.5f)))
         let after = wait_until(d, 300) $(var s) {
             let v = widget_payload_field(s, "MAIN_WIN/CE4", "value")
             return v != null && v?["w"] != null

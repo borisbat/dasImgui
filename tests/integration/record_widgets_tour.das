@@ -71,18 +71,18 @@ def main {
         post_command(app, "imgui_mouse_play", JV((events = muted_events)))
         sleep(1500u)
 
-        // ---- Stage 4: combo via imgui_set ----
+        // ---- Stage 4: combo via imgui_force_set ----
         // Opening a combo + clicking a popup item requires the popup to render
         // before its bboxes appear in the snapshot. For a tutorial recording the
-        // simpler path is to imgui_set the value while the narrate post-it
+        // simpler path is to imgui_force_set the value while the narrate post-it
         // explains what just happened.
         say(app, "Pick a quality preset.", "AUDIO_WIN/QUALITY")
-        post_command(app, "imgui_set", JV((target = "AUDIO_WIN/QUALITY", value = 2)))
+        post_command(app, "imgui_force_set", JV((target = "AUDIO_WIN/QUALITY", value = 2)))
         sleep(1500u)
 
-        // ---- Stage 5: color editor via imgui_set ----
+        // ---- Stage 5: color editor via imgui_force_set ----
         say(app, "Tune the accent color.", "AUDIO_WIN/TINT")
-        post_command(app, "imgui_set", JV((target = "AUDIO_WIN/TINT", value = float3(0.25f, 0.75f, 0.45f))))
+        post_command(app, "imgui_force_set", JV((target = "AUDIO_WIN/TINT", value = float3(0.25f, 0.75f, 0.45f))))
         sleep(1500u)
 
         // ---- Stage 6: button click ----
