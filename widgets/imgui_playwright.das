@@ -441,9 +441,12 @@ def public drag(app : ImguiApp; target : string;
     //! Synthesize a mouse-drag on ``target``'s bbox center: warp → press → drag to
     //! ``center+(dx,dy)`` → release, composed as an ``imgui_mouse_play`` timeline. Resolves
     //! the bbox client-side from a fresh snapshot. Returns ``{ok, value=target}`` (``ok=false``
-    //! when the target isn't in the snapshot or the command post fails). ``steps`` scales the drag duration.
+    //! when the target isn't in the snapshot, isn't rendered this frame, or the command post
+    //! fails — a stale/unrendered widget would otherwise drag from a defaulted (0,0) bbox).
+    //! ``steps`` scales the drag duration.
     var snap = snapshot(app)
     if (!(snap |> widget_exists(target))) return JV((ok = false, error = "drag target unresolved: {target}"))
+    if (!(snap |> widget_rendered(target))) return JV((ok = false, error = "drag target not rendered this frame: {target}"))
     let bb = snap?["globals"]?[target]?["bbox"]
     let cx = ((bb?["x"] ?? 0.0f) + (bb?["z"] ?? 0.0f)) * 0.5f
     let cy = ((bb?["y"] ?? 0.0f) + (bb?["w"] ?? 0.0f)) * 0.5f
@@ -558,8 +561,9 @@ def public type_text(app : ImguiApp; target : string; text : string;
     }
     if (focused == null) return JV((ok = false, error = "focus never settled: {target}"))
     var args = (duration_s > 0.0f) ? JV((text = text, total_duration_s = duration_s)) : JV((text = text))
-    post_command(app, "imgui_key_type", args)
+    let resp = post_command(app, "imgui_key_type", args)
     unsafe { delete args; }
+    if (resp == null) return JV((ok = false, error = "type post failed: {target}"))
     return JV((ok = true, value = target))
 }
 

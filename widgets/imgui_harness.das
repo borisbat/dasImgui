@@ -14,9 +14,9 @@ module imgui_harness shared public
 //!
 //! Hides the GLFW/OpenGL backend boilerplate behind five helpers
 //! (``harness_init`` / ``harness_begin_frame`` / ``harness_new_frame`` /
-//! ``harness_end_frame`` / ``harness_shutdown``, plus optional
-//! ``harness_apply_synth_io``). Examples ``require imgui_harness`` and never
-//! touch GLFW/GL symbols directly.
+//! ``harness_end_frame`` / ``harness_shutdown``). ``harness_new_frame`` runs the
+//! boost synth tick automatically, so synthetic input works with no opt-in.
+//! Examples ``require imgui_harness`` and never touch GLFW/GL symbols directly.
 //!
 //! Mode dispatch (windowed vs headless) is internal. Pass ``--headless`` after
 //! the daslang ``--`` separator to run without a window:

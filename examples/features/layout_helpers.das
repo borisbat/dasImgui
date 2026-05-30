@@ -10,8 +10,6 @@ require imgui/imgui_harness
 //            horizontal splitter.
 //          - `dock_left(SIDEBAR, init=180.0, bounds=(80.0, 320.0)) { ... }` —
 //            sidebar with a draggable right edge; state.value is width (px).
-//          - `apply_synth_io_override()` between Impl_NewFrame and NewFrame so
-//            synth-mouse drag tests land (per feedback_synth_io_override_pattern).
 // DRIVE:   curl -X POST -d '{"name":"imgui_snapshot"}' localhost:9090/command
 //          curl -X POST -d '{"name":"imgui_force_set",
 //                            "args":{"target":"LAYOUT_WIN/SPLIT_MAIN","value":0.7}}' \

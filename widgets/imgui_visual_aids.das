@@ -68,8 +68,8 @@ var public cursor_sprite_radius             : float = 9.0f
 var public cursor_sprite_outline_thickness  : float = 2.0f
 var public cursor_sprite_inner_radius       : float = 2.5f
 
-// Click flash — expanding ring drawn at the cursor when imgui_live's synth
-// driver fires a button press. The overlay is the recording's proof-of-click
+// Click flash — expanding ring drawn at the cursor when imgui_boost_runtime's
+// synth driver fires a button press. The overlay is the recording's proof-of-click
 // — useful when the widget's own hover/active visuals don't fire for a
 // synthetic click (e.g. because the backend's per-frame poll fights over
 // io.MousePos with our synth state).
@@ -99,7 +99,7 @@ var public imgui_auto_highlight_on_command : bool = false
     //! When true, every accepted imgui_* command auto-flashes its target with ``auto_highlight_color`` for ``auto_highlight_frames`` ticks.
 
 // Keycap / modifier HUD — bottom-center keycap pops + modifier-strip below.
-// Reads `synth_last_codepoint` / `synth_last_keycode` from imgui_live to
+// Reads `synth_last_codepoint` / `synth_last_keycode` from imgui_boost_runtime to
 // detect each new synth key event and pop a new keycap. Modifier strip
 // lights up directly from `IsKeyDown(ImGuiKey_*)` so it reacts to BOTH
 // synth events AND real hardware keys.
@@ -682,7 +682,7 @@ def private paint_all {
     paint_key_hud()
 }
 
-def private on_command(command : string; target : string) {
+def private on_command(_command : string; target : string) {
     if (imgui_auto_highlight_on_command && !empty(target)) {
         highlight(target, auto_highlight_frames, auto_highlight_color)
     }

@@ -16,7 +16,6 @@ require imgui/imgui_harness
 //          - Live commands: imgui_dock / imgui_undock / imgui_dock_reset all
 //            route through dispatcher lambdas installed by dock_window_finalize
 //            / dockspace_finalize.
-//          - `apply_synth_io_override()` for playwright drag/click coverage.
 // DRIVE:   curl -X POST -d '{"name":"imgui_snapshot"}' localhost:9090/command
 //          curl -X POST -d '{"name":"imgui_undock","args":{"target":"DOCK_ROOT/OUTPUT"}}' \
 //                       localhost:9090/command
