@@ -823,6 +823,12 @@ def begin_frame() {
         g_container_path |> clear()
         g_container_path_str = ""
     }
+    // Defensive: a transformed canvas balances push/pop within a frame, but a missed pop
+    // (e.g. a panic in the block) would otherwise leave the transform active for every
+    // later frame and corrupt unrelated widget bboxes. Reset like the other per-frame state.
+    if (!empty(g_item_xform_stack)) {
+        g_item_xform_stack |> clear()
+    }
 }
 
 var private g_end_of_frame_hooks : table<string; function<() : void>>
@@ -1092,6 +1098,14 @@ def private item_xform_screen(local : float4) : float4 {
         local.y * top.scale.y + top.offset.y,
         local.z * top.scale.x + top.offset.x,
         local.w * top.scale.y + top.offset.y)
+}
+
+def public snapshot_item_screen(local : float4) : float4 {
+    //! Map a captured (canvas-local) item rect to screen via the active item-transform
+    //! stack; identity when no transform is active. Any bbox-capture site that reads
+    //! imgui's current item rect (e.g. container headers) routes through this so the
+    //! snapshot stays uniformly screen-space, consistent with leaf widgets.
+    return empty(g_item_xform_stack) ? local : item_xform_screen(local)
 }
 
 def public widget_finalize(widget_ident : string;

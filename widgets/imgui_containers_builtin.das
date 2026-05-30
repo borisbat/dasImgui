@@ -71,10 +71,12 @@ def public stateless_finalize(widget_ident : string; kind : string; var state : 
 def private current_item_bbox() : float4 {
     //! Snapshot ``GetItemRectMin/Max`` for the "last item" — meaningful for
     //! containers whose Begin* call emits a clickable header into the parent
-    //! (``menu`` / ``tab_item``). Returns (0,0,0,0)-shaped float4 directly.
+    //! (``menu`` / ``tab_item``). Mapped to SCREEN via the active snapshot
+    //! item-transform (identity outside a transformed canvas) so a header rendered
+    //! inside a node-editor canvas reports screen-space, consistent with leaf widgets.
     let rmin = GetItemRectMin()
     let rmax = GetItemRectMax()
-    return float4(rmin.x, rmin.y, rmax.x, rmax.y)
+    return snapshot_item_screen(float4(rmin.x, rmin.y, rmax.x, rmax.y))
 }
 
 // ===== Notes on ergonomics =====
