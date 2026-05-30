@@ -12,7 +12,7 @@ require daslib/json_boost public
 //!
 //! `imgui_click` accepts either a path string ("MAIN_WIN/DEMO_BTN") or a hex_id
 //! string ("0x{hex}"). Hex_ids resolve via g_id_to_path; when found, the
-//! click goes through the L2 dispatcher just like a name-targeted call.
+//! click dispatches just like a name-targeted call.
 //!
 //! Gates:
 //!   1. DEMO_BTN renders and exposes a hex_id in the snapshot.
@@ -20,7 +20,7 @@ require daslib/json_boost public
 //!      RESOLVED path ("MAIN_WIN/DEMO_BTN") in `value` (proves classify_target
 //!      reverse-mapped before dispatch).
 //!   3. After the click, DEMO_BTN.payload.click_count incremented (proves
-//!      the L2 dispatcher actually fired, not just the resolution).
+//!      the click actually fired, not just the resolution).
 //!   4. Garbage hex (well-formed prefix, value not in g_id_to_path AND
 //!      not in g_id_to_bbox) returns Result.err.
 

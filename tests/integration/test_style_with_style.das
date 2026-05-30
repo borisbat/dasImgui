@@ -34,7 +34,7 @@ def test_with_style_smoke(t : T?) {
         t |> success(widget_exists(snap0, "STYLE_WIN/NESTED_STYLED_BTN"),
                      "NESTED_STYLED_BTN inside nested with_style registers")
 
-        // Styled buttons stay interactive — L2 click dispatch works through
+        // Styled buttons stay interactive — a real synthetic click works through
         // the synthesized push/invoke/pop body.
         click(d, "STYLE_WIN/STYLED_BTN")
         t |> success(wait_for_int_value(d, "STYLE_WIN/STYLED_BTN", "click_count", 1, 300),
