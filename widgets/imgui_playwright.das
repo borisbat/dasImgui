@@ -733,6 +733,23 @@ def public with_recording_app(feature_path : string;
                               max_seconds : int;
                               fps : int;
                               body : block<(app : ImguiApp) : void>) {
+    //! dasImgui-only form — feature + assets rooted under dasImgui, no extra
+    //! modules. Delegates to the full form below; another package
+    //! (dasImguiNodeEditor) calls the full form directly with its own roots.
+    let no_extra : array<string>
+    let root = dasimgui_module_root()
+    with_recording_app(feature_path, output_apng_basename, max_seconds, fps,
+                       no_extra, root, root, body)
+}
+
+def public with_recording_app(feature_path : string;
+                              output_apng_basename : string;
+                              max_seconds : int;
+                              fps : int;
+                              extra_module_roots : array<string>;
+                              feature_root : string;
+                              asset_root : string;
+                              body : block<(app : ImguiApp) : void>) {
     //! Run a recording session against ``feature_path``. If a daslang-live
     //! host is already serving at the live-API port, **attach** to it (the
     //! running host's current HDPI/style — dev workflow: iterate live, then
@@ -751,25 +768,22 @@ def public with_recording_app(feature_path : string;
     //! ``wait_for_render`` call will time out and the driver panics with
     //! the standard "{ident} never rendered — wrong app running?" message.
     //!
-    //! APNG lands at
-    //! ``<dasImgui>/doc/source/_static/tutorials/<output_apng_basename>``
-    //! regardless of caller cwd. Forwards ``-project_root`` from the
-    //! driver's own argv (spawn mode only) so the source-repo recording
-    //! workflow survives (``skills/recording.md``). ``fps`` defaults to
-    //! ``RECORD_FPS`` (60 — native MP4 playback). The APNG-era 50 MB
-    //! GitHub-warning pressure that justified fps=30 is gone now that
-    //! recordings ship as MP4 (PR #73). Panics on non-zero exit /
-    //! readiness or test timeout so the recording driver fails loudly.
-    // Resolve feature_path against dasImgui root (where examples/tutorial/
-    // and examples/features/ actually live), NOT the daScript root that
-    // resolve_feature_path uses. Same idiom as
-    // widgets/imgui_theme_daslang.das:155 (font path resolution).
-    let dasimgui_root = dir_name(get_this_module_dir())
+    //! Spawns ``daslang-live`` with ``-load_module`` for dasImgui plus each
+    //! root in ``extra_module_roots`` (after dasImgui's, so dependency order
+    //! holds) — this is how another package (dasImguiNodeEditor) records a
+    //! feature whose ``require`` chain needs its module too. A relative
+    //! ``feature_path`` resolves under ``feature_root``; the APNG lands under
+    //! ``<asset_root>/doc/source/_static/tutorials/`` regardless of caller cwd.
+    //! ``fps`` defaults to ``RECORD_FPS`` (60 — native MP4 playback). Panics on
+    //! non-zero exit / readiness or test timeout so the driver fails loudly.
+    // Relative feature_path resolves under feature_root (the calling package's
+    // module root, where examples/tutorial/ + examples/features/ live); the
+    // APNG lands under asset_root. The 5-arg delegate defaults both to dasImgui.
     var app_path = feature_path
     if (!is_absolute(app_path)) {
-        app_path = path_join(dasimgui_root, app_path)
+        app_path = path_join(feature_root, app_path)
     }
-    let asset_dir = path_join(dasimgui_root, RECORD_ASSET_REL)
+    let asset_dir = path_join(asset_root, RECORD_ASSET_REL)
     let output_apng_path = path_join(asset_dir, output_apng_basename)
 
     let base_url = "http://127.0.0.1:{DEFAULT_LIVE_PORT}"
@@ -799,18 +813,17 @@ def public with_recording_app(feature_path : string;
     }
 
     let exe = daslang_live_exe()
-    var argv <- [exe]
-    // Forward -project_root if the driver received it (source-repo
-    // workflow: APNGs land under the source repo's asset dir, not the
-    // daspkg-installed copy under daScript/modules/).  -project_root
-    // is a daslang.exe flag (pre-`--`), so scan the full argv via
-    // get_command_line_arguments() — get_user_args() only sees the
-    // post-`--` slice in interpreted mode.
-    let argv_all <- get_command_line_arguments()
-    let pr = find_flag_raw_value(argv_all, "-project_root") |> unwrap_or("")
-    if (!empty(pr)) {
-        argv |> push("-project_root")
-        argv |> push(pr)
+    // -load_module dasImgui (+ each extra root after it, dependency order) so
+    // the spawned host resolves the feature's `require imgui/...` chain
+    // regardless of layout — same explicit-load model as with_imgui_app. In CI
+    // dasImgui is on the module search path so its entry is a harmless
+    // duplicate; locally it's load-bearing. Extra roots let a dependent package
+    // (e.g. node-editor, which requires dasImgui) load after it.
+    var argv <- [exe, "-load_module", dasimgui_module_root()]
+    argv |> reserve(length(argv) + length(extra_module_roots) * 2)
+    for (extra_root in extra_module_roots) {
+        argv |> push("-load_module")
+        argv |> push(extra_root)
     }
     argv |> push(app_path)
     argv |> push("--")
