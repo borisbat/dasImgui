@@ -2050,9 +2050,25 @@ def public active_widget_path() : string {
     return id_to_path(aid)
 }
 
+def private is_left_glyph_kind(kind : string) : bool {
+    // Toggle-family widgets render a small glyph (square check / radio circle) at the LEFT of a
+    // row whose item rect also spans the label. Their click should land on the glyph, not the
+    // label-inflated row center. selectable / menu_item have no left glyph (the whole row IS the
+    // control), so they keep center-targeting.
+    return kind == "checkbox" || kind == "radio_button" || kind == "radio_button_int"
+}
+
 def private resolve_target_bbox(target : string) : tuple<bool; float2> {
     let r = widget_rect(target)
     if (!r._0) return (false, float2(0.0f, 0.0f))
     let bb = r._1
-    return (true, float2((bb.x + bb.z) * 0.5f, (bb.y + bb.w) * 0.5f))
+    let cy = (bb.y + bb.w) * 0.5f
+    // Aim the click at the glyph for the toggle family — the glyph is ImGui's left frame-height
+    // square, so its center is one half-row-height in from the left edge. Keeps the bbox (used by
+    // highlight / telemetry) as the full row.
+    if (key_exists(g_registry, target) && is_left_glyph_kind(g_registry[target].kind)) {
+        let h = bb.w - bb.y
+        return (true, float2(bb.x + h * 0.5f, cy))
+    }
+    return (true, float2((bb.x + bb.z) * 0.5f, cy))
 }
