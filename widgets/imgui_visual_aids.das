@@ -522,9 +522,10 @@ def private effective_synth_click() : tuple<int; float> {
 }
 
 def private paint_click_flash {
-    // Only fire on press, not release; skip if disabled or never clicked.
-    let (action, t) = effective_synth_click()
-    return if (!click_flash_enabled || t < 0.0 || action != 1)
+    // Anchor latched on press (synth_mouse_button); release doesn't reset it, so the ring
+    // animates the full click_flash_duration_s even though the press->release is ~1 frame.
+    let t = effective_synth_click()._1
+    return if (!click_flash_enabled || t < 0.0)
     let elapsed = get_uptime() - t
     return if (elapsed < 0.0 || elapsed > click_flash_duration_s)
     let alpha_f = (1.0f - elapsed / click_flash_duration_s) * 255.0f

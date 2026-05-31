@@ -1462,12 +1462,12 @@ def public synth_mouse_button(button : int; action : int) {
     io |> AddMouseButtonEvent(button, action == 1)
     if (action == 1) {
         synth_buttons_mask |= (1 << button)
+        synth_click_t = get_uptime()   // latch the flash anchor on press; release must not reset it
     } else {
         synth_buttons_mask &= ~(1 << button)
     }
     synth_click_button = button
     synth_click_action = action
-    synth_click_t      = get_uptime()
     synth_cursor_owned = true
 }
 
