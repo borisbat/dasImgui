@@ -503,8 +503,9 @@ def public key_tap(app : ImguiApp; key : int) {
 // offset where the caption (hence the voice) begins. No manifest -> unchanged behavior.
 
 struct public VoEntry {
-    hash  : string      //!< say_hash(text) — links a narration line to its wav
-    text  : string      //!< narration line, verbatim TTS input
+    hash  : string      //!< say_hash(spoken) — links a narration line to its wav
+    text  : string      //!< on-screen caption (the say() text arg)
+    voice : string      //!< spoken line fed to TTS (say() voice arg, or text if none)
     wav   : string      //!< wav basename under the voiceover/ dir
     dur_s : float       //!< measured wav duration, seconds
 }
@@ -591,22 +592,26 @@ def private flush_voiceovers(stopped : JsonValue?; apng_path : string; fps : int
 
 // ===== Recording cadence helper =====
 
-def public say(app : ImguiApp; text : string; target : string = ""; read_ms : uint = NARRATE_READ_MS) {
+def public say(app : ImguiApp; text : string; target : string = ""; read_ms : uint = NARRATE_READ_MS; voice : string = "") {
     //! Pop a narration overlay (``imgui_narrate`` verb), then sleep ``read_ms`` so the
     //! recorder captures the on-screen window. The overlay is held by wall-clock ``duration_s``
     //! (the same span as the sleep), not a tick budget, so it lingers correctly even though
     //! render fps and capture fps diverge during recording. In voiceover mode the dwell is the
     //! wav length (+gap) instead, so the caption stays up exactly while the voice speaks.
+    //! ``text`` is the on-screen caption; ``voice`` (when set) is the spoken line — write
+    //! captions for the eye (terse) and voice for the ear (natural sentences). Empty voice
+    //! falls back to text, so existing calls keep speaking their caption.
     //! Named ``say`` (not ``narrate``) to avoid overload-resolution churn with
     //! imgui_visual_aids::narrate (the host-side overlay function), which differs
     //! only in the first arg type (string vs ImguiApp).
+    let spoken = voice != "" ? voice : text
     if (g_vo_active) {
-        let h = say_hash(text)
+        let h = say_hash(spoken)
         if (key_exists(g_vo_dur, h)) {
             // Voiceover mode: dwell == wav length (+gap); caption stays up while the voice speaks.
             // Hold by wall-clock duration_s (not a tick budget) — render fps diverges from the
             // capture grid during recording, so a frame count would drain early and the box would
-            // vanish mid-voiceover.
+            // vanish mid-voiceover. Box shows the caption (text); wav/dwell come from spoken.
             let dwell_s = g_vo_dur[h] + float(g_vo_gap_ms) / 1000.0f
             post_command(app, "imgui_narrate", JV((text = text, target = target, duration_s = dwell_s)))
             let st = post_command(app, "record_status", null)

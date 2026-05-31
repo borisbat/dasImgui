@@ -45,7 +45,11 @@ struct Config {
 }
 
 // Collected by the AST scan (module globals so the visitor appends directly).
-var g_texts : array<string>
+struct SayLine {
+    caption : string    // say() text arg — the on-screen caption
+    spoken  : string    // say() voice arg, or caption when voice is empty — the TTS input
+}
+var g_lines : array<SayLine>
 var g_apng : string
 
 def const_str(e : Expression?) : string {
@@ -57,12 +61,14 @@ class ScanVisitor : AstVisitor {
     def override preVisitExprCall(expr : ExprCall?) : void {
         let name = string(expr.name)
         if (name == "say") {
-            // first string-literal argument is the narration text (after the app arg)
-            for (a in expr.arguments) {
-                let s = const_str(a)
-                if (!empty(s)) {
-                    g_texts |> push(s)
-                    break
+            // say(app, text, target, read_ms, voice) — by compile time all 5 are positional
+            // (defaults materialized): caption at [1], voice at [4] (empty "" when omitted).
+            if (length(expr.arguments) >= 5) {
+                let caption = const_str(expr.arguments[1])
+                let voice = const_str(expr.arguments[4])
+                if (!empty(caption)) {
+                    g_lines |> push(SayLine(caption = caption,
+                        spoken = !empty(voice) ? voice : caption))
                 }
             }
         } elif (name == "with_recording_app" || name == "with_node_editor_recording_app") {
@@ -139,19 +145,20 @@ def main : int {
         to_log(LOG_ERROR, "[prepare] no with_recording_app(...) APNG basename found in {cfg.driver}\n")
         return 1
     }
-    if (empty(g_texts)) {
+    if (empty(g_lines)) {
         to_log(LOG_WARNING, "[prepare] no say() lines found in {cfg.driver}\n")
         return 0
     }
-    to_log(LOG_INFO, "[prepare] scanned {cfg.driver}: apng={g_apng}, {length(g_texts)} say() line(s)\n")
+    to_log(LOG_INFO, "[prepare] scanned {cfg.driver}: apng={g_apng}, {length(g_lines)} say() line(s)\n")
     let apng_stem = stem(g_apng)
     let vo_dir = path_join(path_join(dasimgui_module_root(), RECORD_ASSET_REL), "voiceover")
     mkdir_rec(vo_dir)
     let client = openai_client(cfg.base_url)
     var manifest = VoManifest(voice = cfg.voice, gap_ms = cfg.gap_ms)
     var seen : table<string>
-    for (txt in g_texts) {
-        let h = say_hash(txt)
+    for (line in g_lines) {
+        // Hash + TTS on the spoken line; the caption rides along in VoEntry.text for reference.
+        let h = say_hash(line.spoken)
         continue if (key_exists(seen, h))
         seen |> insert(h)
         let wav_name = "{apng_stem}_{h}.wav"
@@ -159,9 +166,9 @@ def main : int {
         let st = stat(wav_path)
         if (!st.is_valid) {
             let res = speech(client, SpeechRequest(model = cfg.model, voice = cfg.voice,
-                input = txt, response_format = "wav"))
+                input = line.spoken, response_format = "wav"))
             if (!res.ok) {
-                to_log(LOG_ERROR, "[prepare] TTS failed for: \"{txt}\"\n")
+                to_log(LOG_ERROR, "[prepare] TTS failed for: \"{line.spoken}\"\n")
                 return 1
             }
             fopen(wav_path, "wb") $(f) {
@@ -171,8 +178,9 @@ def main : int {
             }
         }
         let dur = wav_duration(wav_path)
-        manifest.entries |> push(VoEntry(hash = h, text = txt, wav = wav_name, dur_s = dur))
-        to_log(LOG_INFO, "[prepare] {wav_name}  {dur}s  \"{txt}\"\n")
+        manifest.entries |> push(VoEntry(hash = h, text = line.caption,
+            voice = line.spoken, wav = wav_name, dur_s = dur))
+        to_log(LOG_INFO, "[prepare] {wav_name}  {dur}s  \"{line.spoken}\"\n")
     }
     let manifest_path = path_join(vo_dir, "{apng_stem}.manifest.json")
     if (!fwrite(manifest_path, write_json(JV(manifest)))) {
