@@ -71,11 +71,17 @@ def private toggle_finalize(widget_ident : string; kind : string; var state : To
     register_focusable(widget_ident)
 }
 
-def private radio_int_finalize(widget_ident : string; kind : string; var state : RadioIntState) {
+def private radio_int_finalize(widget_ident : string; kind : string; var state : RadioIntState; v_button : int) {
     //! Int-form RadioButton finalize. State path; dispatch handled per-kind via [widget_dispatch].
+    //! Also registers a per-site geometry alias `<path>#<v_button>` (the shared ident collapses all
+    //! sites onto one path) so each option is independently click-/test-targetable.
     var entry : WidgetEntry
     finalize_state(widget_ident, kind, state, entry)
     register_focusable(widget_ident)
+    unsafe {
+        register_radio_site_alias(widget_ident, v_button, addr(state),
+                                  reinterpret<TypeInfo const?>(typeinfo rtti_typeinfo(type<RadioIntState>)))
+    }
 }
 
 def private text_value_finalize(widget_ident : string; kind : string; var state : InputTextState) {
@@ -631,14 +637,17 @@ def tree_node_ex(var state : TreeNodeState; text : string;
 def radio_button_int(var state : RadioIntState; text : string; v_button : int) : bool {
     //! Grouped-radio form. Each call site picks `v_button`; click writes
     //! state.value = v_button. Multiple radio_button_int calls sharing the
-    //! same RadioIntState ident form one logical group.
+    //! same RadioIntState ident form one logical group. Because the sites share
+    //! one ident (hence one snapshot path), each also registers a per-site
+    //! geometry alias `<path>#<v_button>` so an individual option is independently
+    //! click-/test-targetable; the shared state stays at the bare `<path>`.
     if (state.pending_set) {
         state.value = state.pending_value
         state.pending_set = false
     }
     let changed = RadioButton(text, unsafe(addr(state.value)), v_button)
     state.changed = changed
-    radio_int_finalize(widget_ident, "radio_button_int", state)
+    radio_int_finalize(widget_ident, "radio_button_int", state, v_button)
     return changed
 }
 

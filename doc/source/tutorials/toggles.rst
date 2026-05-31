@@ -80,6 +80,12 @@ rows light off automatically because they re-check whether
 ``same_line`` between rows lays them horizontally. Stack vertically
 without it.
 
+Because the rows share one ident (hence one snapshot path), each row
+*also* registers a per-site geometry alias ``<path>#<v_button>`` — e.g.
+``TG_WIN/T_MODE#0`` / ``#1`` / ``#2``. Use these to click or test one
+specific option (``imgui_click`` resolves an alias to that row's bbox);
+the shared value still lives at the bare ``TG_WIN/T_MODE``.
+
 Driving from outside
 ====================
 

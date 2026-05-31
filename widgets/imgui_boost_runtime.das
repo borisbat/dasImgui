@@ -1148,6 +1148,25 @@ def public widget_finalize(widget_ident : string;
     PopID()
 }
 
+def public register_radio_site_alias(widget_ident : string; v_button : int;
+                                     state_addr : void?; ti : TypeInfo const?) {
+    //! Register a per-site geometry alias ``<path>#<v_button>`` for a grouped ``radio_button_int``,
+    //! so each option is independently click-/test-targetable even though all sites share one ident
+    //! (hence one ``<path>``) for their state. Shared state stays at ``<path>``; the alias carries
+    //! only this site's bbox. Call right after the site's normal finalize — ``GetItemRectMin/Max``
+    //! still reports this radio's rect (we re-capture rather than reuse the parent ``entry``, which
+    //! ``widget_finalize`` already moved into ``g_registry``). ``widgets_mark_seen(alias, alias, …)``
+    //! skips the bare-ident migration (its two args are equal) and lazily creates/refreshes the meta.
+    let alias = "{widget_path_key(widget_ident)}#{v_button}"
+    var entry : WidgetEntry
+    entry.kind = "radio_button_int"
+    let rmin = GetItemRectMin()
+    let rmax = GetItemRectMax()
+    capture_item_bbox(entry, float4(rmin.x, rmin.y, rmax.x, rmax.y))
+    g_registry[alias] <- entry
+    widgets_mark_seen(alias, alias, "radio_button_int", state_addr, ti)
+}
+
 def private widgets_mark_seen(bare_ident : string; path_key : string;
                               kind : string; state_addr : void?; ti : TypeInfo const?) {
     // First render: migrate the bare-ident entry to its container-aware path_key. Subsequent renders just bump last_seen_frame.
