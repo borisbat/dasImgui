@@ -724,13 +724,12 @@ def public hold_through_voice(app : ImguiApp; dwell : uint; clicks : array<strin
     //! Pace the click(s) in ``clicks`` UNDER an already-posted voice line: a short lead lets the
     //! box + voice start, then each click lands (ripple + state change visible while the voice
     //! plays), then hold the caption for the rest of its voice. ``dwell`` is the value returned
-    //! by ``say_begin`` — call it with the caption/voice LITERALS at the call site so
-    //! prepare_recording can scan them, then pass its result here:
-    //!   ``hold_through_voice(app, say_begin(app, "cap", T, [voice = "..."]), [T])``
-    //! The caller must have already moved the cursor onto the first target.
-    //! Each click is VERIFIED (the effect must register, or the recording aborts) and the tracked
-    //! cursor is advanced to the click's resolved point so the next move_to starts there (no
-    //! teleport). Multi-click stages dwell a beat between picks so each state is visible.
+    //! by ``say_begin``; pass the caption/voice LITERALS to ``say_begin`` at the call site (so
+    //! prepare_recording can scan them) and forward its result here. The caller must have already
+    //! moved the cursor onto the first target. Each click is VERIFIED (the effect must register,
+    //! or the recording aborts) and the tracked cursor is advanced to the click's resolved point
+    //! so the next move_to starts there (no teleport). Multi-click stages dwell a beat between
+    //! picks so each state is visible.
     let lead = dwell > 1200u ? 500u : dwell / 3u
     sleep(lead)
     let n = length(clicks)
