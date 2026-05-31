@@ -251,9 +251,7 @@ def public widget_click_point(var snap : JsonValue?; ident : string) : tuple<flo
     let y1 = g?["bbox"]?["w"] ?? 0.0f
     let cy = (y0 + y1) * 0.5f
     let kind = g?["kind"] ?? ""
-    if (kind == "checkbox" || kind == "radio_button" || kind == "radio_button_int") {
-        return (x0 + (y1 - y0) * 0.5f, cy)
-    }
+    if (kind == "checkbox" || kind == "radio_button" || kind == "radio_button_int") return (x0 + (y1 - y0) * 0.5f, cy)
     return ((x0 + x1) * 0.5f, cy)
 }
 
@@ -382,14 +380,7 @@ def public expect_value(app : ImguiApp;
                         max_frames : int = 300) : void {
     //! Assertion form of ``wait_for_payload_value``; panics with a focused want/got/kind/rendered message on timeout.
     if (wait_for_payload_value(app, target, field, expected, max_frames)) return
-    var snap = snapshot(app)
-    let got_jv = widget_payload_field(snap, target, field)
-    let got_str = got_jv != null ? write_json(got_jv) : "<missing>"
-    let kind = snap?["globals"]?[target]?["kind"] ?? "<unknown>"
-    let exists = widget_exists(snap, target)
-    let rendered = exists && widget_rendered(snap, target)
-    let want_str = write_json(JV(expected))
-    panic("expect_value({target}.{field}) gave up after {max_frames} frames:\n  want: {want_str}\n  got:  {got_str}\n  widget kind: {kind}\n  widget rendered: {rendered}")
+    panic(format_value_mismatch(app, target, field, expected, max_frames))
 }
 
 def public expect_render(app : ImguiApp;
@@ -432,6 +423,17 @@ def public right_click(app : ImguiApp; target : string) : JsonValue? {
 def public force_set_value(app : ImguiApp; target : string; var value : JsonValue?) : JsonValue? {
     //! Set ``target``'s payload value remotely (``imgui_force_set`` verb); ``value`` is the JSON form expected by the widget kind.
     return send_imgui_command(app.transport, "imgui_force_set", JV((target = target, value = value)))
+}
+
+def public force_set_verified(app : ImguiApp; target : string; value : auto(T); max_frames : int = 120) {
+    //! Recording-as-test ``force_set``: set ``target.value`` to the typed ``value`` and verify it
+    //! took. Accumulates a self-verification miss (surfaced as a loud panic at ``with_recording_app``
+    //! teardown) rather than panicking mid-body — so the recording still stops + shuts the host
+    //! down cleanly. For force_set-driven tutorial stages (slider / drag / input / color); the
+    //! verified counterpart of the clicks ``hold_through_voice`` checks automatically. Use only
+    //! inside a ``with_recording_app`` body — raw tests want the panicking ``expect_value``.
+    force_set_value(app, target, JV(value))
+    record_check_value(app, target, "value", value, max_frames)
 }
 
 def public resize_window(app : ImguiApp; target : string; w : float; h : float) : JsonValue? {
@@ -565,6 +567,32 @@ var private g_vo_stem : string                  // apng stem, for reconstructing
 var private g_vo_dur : table<string; float>     // hash -> wav duration (seconds)
 var private g_vo_collect : array<VoSidecarHit>  // accumulated while a voiceover recording runs
 var private g_vo_extra_s = 0.0f                 // total added dwell (sum of wav_dur + gap) — extends the recorder cap
+var private g_record_failures : array<string>   // self-verification misses during a recording; surfaced (panic) at with_recording_app teardown
+
+def private format_value_mismatch(app : ImguiApp; target : string; field : string; expected : auto(T); max_frames : int) : string {
+    //! The want/got/kind/rendered diagnostic shared by ``expect_value`` (panics with it) and the
+    //! recording sequencer's ``record_check_value`` (accumulates it).
+    var snap = snapshot(app)
+    let got_jv = widget_payload_field(snap, target, field)
+    let got_str = got_jv != null ? write_json(got_jv) : "<missing>"
+    let kind = snap?["globals"]?[target]?["kind"] ?? "<unknown>"
+    let exists = widget_exists(snap, target)
+    let rendered = exists && widget_rendered(snap, target)
+    let want_str = write_json(JV(expected))
+    return "expect_value({target}.{field}) gave up after {max_frames} frames:\n  want: {want_str}\n  got:  {got_str}\n  widget kind: {kind}\n  widget rendered: {rendered}"
+}
+
+def private record_check_value(app : ImguiApp; target : string; field : string; expected : auto(T); max_frames : int) : bool {
+    //! Non-panicking verify for the recording sequencer. A recording body must NOT panic mid-run:
+    //! daslang panic is fatal and can't be recovered-and-continued, so a mid-body panic would skip
+    //! the clean record_stop + /shutdown and orphan the host. So on a mismatch we push the same
+    //! diagnostic ``expect_value`` would panic with onto ``g_record_failures`` and return false; the
+    //! body runs to its normal teardown, then ``with_recording_app`` fails loudly after the host is
+    //! drained. Returns true when the value matched.
+    if (wait_for_payload_value(app, target, field, expected, max_frames)) return true
+    g_record_failures |> push(format_value_mismatch(app, target, field, expected, max_frames))
+    return false
+}
 
 def private arm_voiceovers(apng_path : string) : bool {
     //! Load voiceover/<stem>.manifest.json beside apng_path. On success fill g_vo_dur, set
@@ -672,21 +700,22 @@ def private split_alias(target : string) : tuple<string; int> {
 }
 
 def private verify_click_effect(app : ImguiApp; target : string; var pre : JsonValue?) {
-    //! Assert the kind-appropriate effect of clicking ``target`` actually happened — a recording is
-    //! also a test, so a no-op click (landed off, or nothing changed) aborts via expect_value's
-    //! panic. Effect-by-kind doubles as a landing check: if the click missed, the state wouldn't
-    //! move. Kinds with no click-tracked field (sliders etc. — recordings don't click them) skip.
+    //! Verify the kind-appropriate effect of clicking ``target`` actually happened — a recording is
+    //! also a test, so a no-op click (landed off, or nothing changed) is recorded as a failure (via
+    //! ``record_check_value``, surfaced at teardown). Effect-by-kind doubles as a landing check: if
+    //! the click missed, the state wouldn't move. Kinds with no click-tracked field (sliders etc. —
+    //! recordings don't click them) skip.
     let (ground, vb) = split_alias(target)
     let kind = find_widget(pre, ground)?["kind"] ?? ""
     if (empty(kind)) return
     if (is_button_kind(kind)) {
         let pre_cc = widget_payload_field(pre, ground, "click_count") ?? 0
-        expect_value(app, ground, "click_count", pre_cc + 1, 120)
+        record_check_value(app, ground, "click_count", pre_cc + 1, 120)
     } elif (kind == "radio_button_int") {
-        expect_value(app, ground, "value", vb, 120)
+        record_check_value(app, ground, "value", vb, 120)
     } elif (kind == "checkbox" || kind == "radio_button" || kind == "selectable" || kind == "menu_item") {
         let pre_v = widget_payload_field(pre, ground, "value") ?? false
-        expect_value(app, ground, "value", !pre_v, 120)
+        record_check_value(app, ground, "value", !pre_v, 120)
     }
 }
 
@@ -1018,6 +1047,7 @@ def public with_recording_app(feature_path : string;
     let asset_dir = path_join(asset_root, RECORD_ASSET_REL)
     let output_apng_path = path_join(asset_dir, output_apng_basename)
     arm_voiceovers(output_apng_path)
+    g_record_failures |> clear()   // fresh self-verification ledger for this recording
     // Voiceover dwells make the body run far longer than the silent-record cap.
     // The cap is only a safety backstop (real length comes from record_stop), so
     // extend it by the total added narration time when armed.
@@ -1051,6 +1081,11 @@ def public with_recording_app(feature_path : string;
         post_command(app, "set_user_control",     JV((enabled = true)))
         post_command(app, "imgui_cursor_sprite", JV((enabled = false)))
         post_command(app, "imgui_mouse_trail",   JV((enabled = false)))
+        // Host stays running (we didn't spawn it). The body never panics on a failed interaction;
+        // it accumulates misses, so the recording stops cleanly above — now fail loudly if any.
+        if (!empty(g_record_failures)) {
+            panic(record_failures_message())
+        }
         return
     }
 
@@ -1097,6 +1132,10 @@ def public with_recording_app(feature_path : string;
             fps = fps,
             max_seconds = eff_max_seconds
         )))
+        // The body never panics on a failed interaction — it accumulates misses into
+        // g_record_failures (recovering-and-continuing from a daslang panic isn't supported, so we
+        // can't catch mid-body and still shut down cleanly). So record_stop + /shutdown always run;
+        // the misses are surfaced after popen drains, below.
         invoke(body, app)
         let stopped = post_command(app, "record_stop", null)
         let dump = stopped != null ? write_json(stopped) : "<null>"
@@ -1118,4 +1157,15 @@ def public with_recording_app(feature_path : string;
     if (exit_code != 0) {
         panic("daslang-live exited non-zero ({exit_code}).\nstdout/stderr:\n{captured}")
     }
+    if (!empty(g_record_failures)) {
+        // Host shut down cleanly above; surface the self-verification misses now (after drain) so
+        // the recording fails loudly with every want/got diagnostic + the subprocess stdout/stderr.
+        panic("{record_failures_message()}\nstdout/stderr:\n{captured}")
+    }
+}
+
+def private record_failures_message() : string {
+    //! Join the accumulated self-verification misses into one loud teardown message.
+    return ("recording self-verification failed — {length(g_record_failures)} interaction(s) did not register:\n" +
+            join(g_record_failures, "\n---\n"))
 }
