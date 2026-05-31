@@ -1418,6 +1418,33 @@ var public synth_click_t : float = -1.0
 var private g_click_ticket_next    : int = 0   // next ticket to hand out (bumped at dispatch, just before spawn)
 var private g_click_ticket_serving : int = 0   // ticket currently allowed to drive the button
 
+// Toggleable per-section debug logging ("ledgeable" sections). A section name maps to enabled;
+// emit via the ambient to_log gated on it, so per-frame instrumentation costs one set-lookup when
+// off. Toggle from a test or via the imgui_log_section live_command. Deliberately a tiny local
+// gate, NOT a daslib/logger require — boost is foundational and we don't pull logger+debugger into
+// every dasImgui app's compile.
+var private g_log_sections : table<string>
+var private g_log_buf : array<string>   // drainable ring of emitted lines (imgui_log_drain returns + clears)
+def log_section(name : string; on : bool) {
+    //! Enable/disable a debug log section. Sections are checked by log_section_on; gated emit sites
+    //! cost one set-lookup when off, so heavy per-frame logging is free until a section is turned on.
+    if (on) { g_log_sections |> insert(name) } else { g_log_sections |> erase(name) }
+}
+def log_section_on(name : string) : bool {
+    //! True if debug log section ``name`` is enabled. Guard heavy per-frame emit: ``if (log_section_on("x")) clk_log(...)``.
+    return key_exists(g_log_sections, name)
+}
+def private clk_log(section, line : string) {
+    // Emit one instrumentation line if its section is on: to the ambient log (stdout/recordings)
+    // AND a drainable buffer (imgui_log_drain → JSON, readable over the transport / MCP, since a
+    // host's stdout is only surfaced to a test on panic). Capped so per-frame sections can't grow it
+    // unbounded.
+    return if (!log_section_on(section))
+    let entry = "[{section}] {line}"
+    to_log(LOG_INFO, "{entry}\n")
+    if (length(g_log_buf) < 8000) { g_log_buf |> push(entry) }
+}
+
 var public synth_held_keys : table<int>        //! currently-held ImGuiKey values (visual_aids keycap HUD)
 var public synth_last_keycode : int = 0        //! last ImGuiKey synth-pressed; 0 = none
 var public synth_last_keycode_t : float = -1.0
@@ -1712,6 +1739,7 @@ def private click_at_coro(center : float2; scrolled : bool; button : int; ticket
     while (g_click_ticket_serving != ticket) {
         await_next_frame()
     }
+    if (log_section_on("synth.click")) clk_log("synth.click", "SERVE ticket={ticket} frame={GetFrameCount()} from=({mouse_cursor_x},{mouse_cursor_y}) to=({center.x},{center.y}) scrolled={scrolled} active={GetActiveID()} hover={IsAnyItemHovered()}")
     if (scrolled) await_next_frame()
     // Animate the approach from the current cursor to the target instead of warping — a real
     // mouse never teleports, and the move_to that precedes a click may land elsewhere (e.g. the
@@ -1730,6 +1758,7 @@ def private click_at_coro(center : float2; scrolled : bool; button : int; ticket
         let f = float(i) / float(steps)
         synth_mouse_move(sx + dx * f, sy + dy * f)
         await_next_frame()
+        if (log_section_on("synth.click.move")) clk_log("synth.click.move", "ticket={ticket} step={i}/{steps} frame={GetFrameCount()} pos=({sx + dx * f},{sy + dy * f}) active={GetActiveID()} hover={IsAnyItemHovered()}")
     }
     unsafe {
         var io & = GetIO()
@@ -1737,8 +1766,10 @@ def private click_at_coro(center : float2; scrolled : bool; button : int; ticket
     }
     synth_mouse_button(button, 1)
     await_next_frame()
+    if (log_section_on("synth.click")) clk_log("synth.click", "PRESS-HOLD ticket={ticket} button={button} frame={GetFrameCount()} pos=({center.x},{center.y}) active={GetActiveID()} hover={IsAnyItemHovered()}")
     synth_mouse_button(button, 0)
     g_click_ticket_serving++
+    if (log_section_on("synth.click")) clk_log("synth.click", "RELEASE ticket={ticket} frame={GetFrameCount()} active={GetActiveID()} hover={IsAnyItemHovered()}")
 }
 
 // --- immediate synth live_commands (transport calls these; live adds the animated forms) ---
@@ -1840,6 +1871,7 @@ def set_user_control(input : JsonValue?) : JsonValue? {
 def private dispatch_or_err(action : string; input : JsonValue?) : Result<string, string> {
     let target = extract_string_field(input, "target")
     let (level, resolved) = classify_target(target)
+    if (log_section_on("synth.click")) clk_log("synth.click", "ATTEMPT action='{action}' target='{target}' level={level} resolved='{resolved}' frame={GetFrameCount()}")
     if (level == 0) return err("unresolvable target: {target}", type<string>)
     // A click is a real synthetic mouse click: warp to the widget center, press and
     // release across one frame (click_at_coro), driving ImGui's own input path. Every
@@ -1850,6 +1882,7 @@ def private dispatch_or_err(action : string; input : JsonValue?) : Result<string
     if (action == "click") {
         let button = input?["button"] ?? 0
         let (got, center) = resolve_target_bbox(resolved)
+        if (log_section_on("synth.click")) clk_log("synth.click", "BBOX resolved='{resolved}' got={got} center=({center.x},{center.y}) frame={GetFrameCount()}")
         if (!got) return err("target {resolved} has no bbox this frame (not rendered)", type<string>)
         // Scroll a below-the-fold target into view first. Scroll is a pure vertical content
         // translation, so the post-scroll center is the current center shifted up by the applied
@@ -1861,6 +1894,7 @@ def private dispatch_or_err(action : string; input : JsonValue?) : Result<string
         // no coroutine to serve it would stall g_click_ticket_serving and hang all later clicks.
         let my_ticket = g_click_ticket_next
         g_click_ticket_next++
+        if (log_section_on("synth.click")) clk_log("synth.click", "DISPATCH target='{target}' resolved='{resolved}' level={level} center=({center.x},{center.y}) scroll_dy={scroll_dy} target_center=({target_center.x},{target_center.y}) ticket={my_ticket} serving={g_click_ticket_serving} frame={GetFrameCount()} active={GetActiveID()} hover={IsAnyItemHovered()}")
         spawn_coroutine(click_at_coro(target_center, scroll_dy != 0.0f, button, my_ticket))
         // Return the clean resolved target (path or hex_id), not a synthetic tag:
         // the post-command auto-highlight hook resolves it via widget_rect, and
@@ -1931,6 +1965,28 @@ def imgui_force_set(input : JsonValue?) : JsonValue? {
     let r = dispatch_or_err("set", input)
     if (r._is_ok) dispatch_post_command_hooks("set", r._value)
     return with_await(input, r)
+}
+
+[live_command(description = "Toggle a debug log section in the host ('name' + bool 'on') for ledgeable per-frame instrumentation")]
+def imgui_log_section(input : JsonValue?) : JsonValue? {
+    //! Live-command: enable/disable host-side debug log section ``input["name"]`` per ``input["on"]``.
+    //! Gated emit sites (e.g. "synth.click") cost one set-lookup when off, so heavy per-frame
+    //! logging is free until a section is turned on. Runs in the host context, so it reaches the
+    //! dispatch/coroutine instrumentation a test's own context can't.
+    let name = extract_string_field(input, "name")
+    let on = input?["on"] ?? false
+    log_section(name, on)
+    return JV((ok = true, name = name, on = on))
+}
+
+[live_command(description = "Return + clear the host's buffered debug-log lines (from enabled log sections)")]
+def imgui_log_drain(_input : JsonValue?) : JsonValue? {
+    //! Live-command: return the host-side instrumentation lines accumulated since the last drain
+    //! (a JSON array of strings) and clear the buffer. The transport-readable companion to the
+    //! stdout emit — a test or MCP client reads the dispatch/coroutine trace from the response.
+    var result = JV(g_log_buf)
+    g_log_buf |> clear()
+    return result
 }
 
 [live_command(description = "Queue an open command on a container widget ('target' name)")]
