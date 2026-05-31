@@ -636,6 +636,22 @@ def public say(app : ImguiApp; text : string; target : string = ""; read_ms : ui
     sleep(say_begin(app, text, target, read_ms, voice))
 }
 
+def public hold_through_voice(app : ImguiApp; dwell : uint; clicks : array<string>) {
+    //! Pace the click(s) in ``clicks`` UNDER an already-posted voice line: a short lead lets the
+    //! box + voice start, then each click lands (ripple + state change visible while the voice
+    //! plays), then hold the caption for the rest of its voice. ``dwell`` is the value returned
+    //! by ``say_begin`` — call it with the caption/voice LITERALS at the call site so
+    //! prepare_recording can scan them, then pass its result here:
+    //!   ``hold_through_voice(app, say_begin(app, "cap", T, [voice = "..."]), [T])``
+    //! The caller must have already moved the cursor onto the target.
+    let lead = dwell > 1200u ? 500u : dwell / 3u
+    sleep(lead)
+    for (t in clicks) {
+        click(app, t)        // blocks through press+release; the ripple animates from the press
+    }
+    sleep(dwell > lead ? dwell - lead : 0u)
+}
+
 def public wait_for_key_idle(app : ImguiApp; timeout_sec : float = DEFAULT_FRAME_WAIT_SEC) : bool {
     //! Poll ``imgui_key_status`` until ``playing == false`` or timeout; returns true on idle.
     //! Uses one HTTP request per poll (unlike a ``wait_until`` body that pairs a snapshot

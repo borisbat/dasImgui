@@ -31,19 +31,6 @@ def widget_center(var snap : JsonValue?; ident : string) : tuple<float; float> {
     return ((b.x + b.z) * 0.5f, (b.y + b.w) * 0.5f)
 }
 
-def hold_through_voice(app : ImguiApp; dwell : uint; clicks : array<string>) {
-    //! Pace the click(s) UNDER an already-posted voice line: a short lead lets the box + voice
-    //! start, then each click lands (ripple + counter tick visible while Emma talks), then hold
-    //! the caption for the rest of its voice. ``dwell`` is the value say_begin returned. The
-    //! caption/voice LITERALS stay at the say_begin call site so prepare_recording can scan them.
-    let lead = dwell > 1200u ? 500u : dwell / 3u
-    sleep(lead)
-    for (t in clicks) {
-        click(app, t)        // blocks through press+release; the ripple animates from the press
-    }
-    sleep(dwell > lead ? dwell - lead : 0u)
-}
-
 [export]
 def main {
     with_recording_app("examples/tutorial/buttons.das",
