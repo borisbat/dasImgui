@@ -257,9 +257,11 @@ def public widget_click_point(var snap : JsonValue?; ident : string) : tuple<flo
 }
 
 def public widget_rendered(var snap : JsonValue?; ident : string) : bool {
-    //! True iff ``globals[ident]`` is for a widget that painted this frame.
-    //! Registered-but-not-yet-painted entries carry ``"rendered": false``; rendered widgets omit the field (``?? true`` covers absent).
-    return snap?["globals"]?[ident]?["rendered"] ?? true
+    //! True iff ``globals[ident]`` EXISTS and painted this frame. Registered-but-unpainted entries
+    //! carry ``"rendered": false``; painted widgets omit the field (``?? true``). The leading
+    //! existence check is load-bearing: an absent (or misspelled) path yields ``null ?? true`` — a
+    //! false pass — so a never-registered ident must report not-rendered, not silently "rendered".
+    return widget_exists(snap, ident) && (snap?["globals"]?[ident]?["rendered"] ?? true)
 }
 
 // ===== Poll-until family =====
@@ -311,10 +313,14 @@ def public wait_for_widget(app : ImguiApp; widget_ident : string;
     return null
 }
 
-def public wait_for_render(app : ImguiApp; widget_ident : string;
-                           timeout_sec : float = DEFAULT_FRAME_WAIT_SEC) : JsonValue? {
-    //! Poll snapshot until ``globals[widget_ident]`` reports ``rendered:true`` (the widget painted this frame).
-    //! Use when you specifically need first-paint semantics — registered-but-not-rendered widgets pass ``wait_for_widget`` immediately.
+def public wait_for_visible(app : ImguiApp; widget_ident : string;
+                            timeout_sec : float = DEFAULT_FRAME_WAIT_SEC) : JsonValue? {
+    //! Poll snapshot until ``widget_ident`` is registered AND painted this frame (``widget_rendered``).
+    //! The robust gate for a widget that can hide and re-show: ``wait_for_widget`` returns on a stale
+    //! registry entry left from a prior appearance (e.g. a re-opened popup / menu) while the widget
+    //! is currently off-screen, so a click fired right after can dispatch before the widget
+    //! re-renders and be silently dropped (no bbox this frame). Use this whenever the click target
+    //! may have been shown before.
     let start = ref_time_ticks()
     let timeout_usec = int(timeout_sec * 1000000.0f)
     while (get_time_usec(start) < timeout_usec) {
@@ -323,6 +329,14 @@ def public wait_for_render(app : ImguiApp; widget_ident : string;
         sleep(FRAME_POLL_INTERVAL_MS)
     }
     return null
+}
+
+def public wait_for_render(app : ImguiApp; widget_ident : string;
+                           timeout_sec : float = DEFAULT_FRAME_WAIT_SEC) : JsonValue? {
+    //! First-paint gate — alias of :func:`wait_for_visible`. ``widget_rendered`` now requires
+    //! existence, so this no longer false-passes for an absent path. Prefer ``wait_for_visible``
+    //! at call sites that target a widget which can hide and re-show.
+    return wait_for_visible(app, widget_ident, timeout_sec)
 }
 
 def public wait_for_int_value(app : ImguiApp;

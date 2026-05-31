@@ -20,13 +20,6 @@ let FEATURE = "modules/dasImgui/examples/features/popup_context_window.das"
 
 [test]
 def test_popup_context_window_smoke(t : T?) {
-    // QUARANTINED pending a follow-up fix. A synth click on a menu item of a context popup that was
-    // just RE-OPENED (right-click → pick → right-click again → pick) no-ops: the cursor lands dead-on
-    // the item but the press doesn't activate it (popup stays open, state unchanged). A first open
-    // works; only the re-open races. Isolated to dispatch-time — a settle BEFORE the dependent click
-    // is dispatched fixes it, but no settle inside the click coroutine does — so the fix is in the
-    // synth-IO dispatch layer (PR #95-era), not this test. Tracked for a follow-up PR.
-    t->skip("popup_context_window re-open second-pick activation race — fix in follow-up PR")
     with_imgui_app(FEATURE) $(d) {
         var snap = wait_for_widget(d, "MAIN_WIN/CTX", 15.0f)
         t |> success(snap != null, "CTX container registers")
@@ -41,10 +34,11 @@ def test_popup_context_window_smoke(t : T?) {
         t |> success(!widget_exists(snap, "MAIN_WIN/CTX/ITEM_NEW"),
                      "ITEM_NEW absent while popup closed")
 
-        // Right-click LEAD to open the context popup.
+        // Right-click LEAD to open the context popup. Gate on wait_for_visible (rendered THIS frame),
+        // not wait_for_widget (exists-only) — see the re-open note below.
         right_click(d, "MAIN_WIN/LEAD")
-        var snap_open = wait_for_widget(d, "MAIN_WIN/CTX/ITEM_NEW", 5.0f)
-        t |> success(snap_open != null, "ITEM_NEW registers after right-click on LEAD")
+        var snap_open = wait_for_visible(d, "MAIN_WIN/CTX/ITEM_NEW", 5.0f)
+        t |> success(snap_open != null, "ITEM_NEW visible after right-click on LEAD")
         if (snap_open == null) return
 
         // Pick "New" — a real synthetic click fires the demo's `if (menu_item(...))` branch.
@@ -53,18 +47,21 @@ def test_popup_context_window_smoke(t : T?) {
                                            "last pick: New", 300),
                      "STATUS reflects 'New' after menu pick")
 
-        // Re-open + pick "Quit" — verifies the popup can be re-opened.
+        // Re-open + pick "Quit" — the case that used to race. ITEM_QUIT's registry entry persists from
+        // the first open, so wait_for_widget (exists-only) returns on the stale entry while the popup
+        // is still closed; the click then dispatches before the re-open paints and is dropped (no bbox
+        // that frame). wait_for_visible gates on rendered-this-frame, so it blocks until the popup is
+        // actually back on screen.
         right_click(d, "MAIN_WIN/LEAD")
-        var snap_open2 = wait_for_widget(d, "MAIN_WIN/CTX/ITEM_QUIT", 5.0f)
-        t |> success(snap_open2 != null, "ITEM_QUIT registers on re-open")
+        var snap_open2 = wait_for_visible(d, "MAIN_WIN/CTX/ITEM_QUIT", 5.0f)
+        t |> success(snap_open2 != null, "ITEM_QUIT visible on re-open")
         if (snap_open2 == null) return
         click(d, "MAIN_WIN/CTX/ITEM_QUIT")
         let got_quit = wait_for_string_value(d, "MAIN_WIN/STATUS", "value",
                                              "last pick: Quit", 300)
         if (!got_quit) {
-            // DIAGNOSTIC (PR #95, macOS-only second-pick regression): on failure surface what the
-            // click actually did — STATUS shows the last pick that registered (still 'New' = the
-            // click never landed; another item = wrong bbox), and whether the popup stayed open.
+            // DIAGNOSTIC: on failure surface what the click did — STATUS shows the last pick that
+            // registered (still 'New' = the click never landed), and whether the items still exist.
             var diag = snapshot(d)
             let stat   = widget_payload_field(diag, "MAIN_WIN/STATUS", "value") ?? "<none>"
             let iq_ex  = widget_exists(diag, "MAIN_WIN/CTX/ITEM_QUIT")
