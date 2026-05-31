@@ -1713,8 +1713,24 @@ def private click_at_coro(center : float2; scrolled : bool; button : int; ticket
         await_next_frame()
     }
     if (scrolled) await_next_frame()
-    synth_mouse_move(center.x, center.y)
-    await_next_frame()
+    // Animate the approach from the current cursor to the target instead of warping — a real
+    // mouse never teleports, and the move_to that precedes a click may land elsewhere (e.g. the
+    // glyph-targeted click point differs from a row-center approach). Step count scales with
+    // distance; the final step ends on `center` and its await doubles as the hover-settle frame
+    // (load-bearing for tab-bar press registration). Zero distance -> single in-place step.
+    let sx = mouse_cursor_x
+    let sy = mouse_cursor_y
+    let dx = center.x - sx
+    let dy = center.y - sy
+    // Constant cursor SPEED: step count scales with distance (≈11 px/step) so a long hop takes
+    // proportionally more frames instead of warping. The cap is a sanity ceiling, not the common
+    // case — at the old /45+min(16) a full-width move flattened to 16 frames and read as a teleport.
+    let steps = max(int(max(abs(dx), abs(dy)) / 11.0f) + 1, 2) |> min(96)
+    for (i in range(1, steps + 1)) {
+        let f = float(i) / float(steps)
+        synth_mouse_move(sx + dx * f, sy + dy * f)
+        await_next_frame()
+    }
     unsafe {
         var io & = GetIO()
         io.MouseClickedTime[button] = -3.40282347e+38lf  // -FLT_MAX: never auto-double-click

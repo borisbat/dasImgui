@@ -15,6 +15,7 @@ require daslib/clargs
 require daslib/module_path
 require daslib/strings_boost
 require strings
+require math
 
 // Module overview lives in handmade/module-imgui_playwright.rst.
 
@@ -80,13 +81,16 @@ def public reset_cursor_pos(pos : tuple<float; float> = (0.0f, 0.0f)) {
 }
 
 def public move_to(app : ImguiApp; pos : tuple<float; float>; duration_ms : int = 600) {
-    //! Post a lerped cursor move from the last tracked position to ``pos``
-    //! over ``duration_ms``, with a brief dwell pin afterwards. Updates the
-    //! tracked position.
+    //! Post a lerped cursor move from the last tracked position to ``pos``, with a brief dwell pin
+    //! afterwards. Updates the tracked position. ``duration_ms`` is a FLOOR: the actual duration
+    //! scales with distance (≈0.325 px/ms ≈ constant cursor speed) so a long move doesn't cover its
+    //! span in the same time as a short one and read as a teleport; short moves keep the floor.
+    let dist = max(abs(pos._0 - last_cursor_x), abs(pos._1 - last_cursor_y))
+    let dur = max(duration_ms, int(dist / 0.325f))
     var events <- [
-        JV((t_ms = 0,                 kind = "move", x = last_cursor_x, y = last_cursor_y)),
-        JV((t_ms = duration_ms,       kind = "move", x = pos._0,        y = pos._1)),
-        JV((t_ms = duration_ms + 300, kind = "move", x = pos._0,        y = pos._1))
+        JV((t_ms = 0,           kind = "move", x = last_cursor_x, y = last_cursor_y)),
+        JV((t_ms = dur,         kind = "move", x = pos._0,        y = pos._1)),
+        JV((t_ms = dur + 300,   kind = "move", x = pos._0,        y = pos._1))
     ]
     post_command(app, "imgui_mouse_play", JV((events = events)))
     unsafe { delete events; }
@@ -232,6 +236,25 @@ def public widget_exists(var snap : JsonValue?; ident : string) : bool {
 def public widget_payload_field(var snap : JsonValue?; ident : string; field : string) : JsonValue? {
     //! Navigate to ``snapshot.globals[ident].payload[field]``; returns null if any link is missing.
     return snap?["globals"]?[ident]?["payload"]?[field]
+}
+
+def public widget_click_point(var snap : JsonValue?; ident : string) : tuple<float; float> {
+    //! The point ``imgui_click`` aims at for ``ident``: the left glyph (square check / radio
+    //! circle) for the toggle family — checkbox / radio_button / radio_button_int — and the bbox
+    //! center otherwise. Mirrors ``resolve_target_bbox`` in imgui_boost_runtime so a recording's
+    //! ``move_to`` lands exactly where the click fires (no mid-row → glyph hop). Keep the kind list
+    //! in sync with that resolver.
+    var g = find_widget(snap, ident)
+    let x0 = g?["bbox"]?["x"] ?? 0.0f
+    let y0 = g?["bbox"]?["y"] ?? 0.0f
+    let x1 = g?["bbox"]?["z"] ?? 0.0f
+    let y1 = g?["bbox"]?["w"] ?? 0.0f
+    let cy = (y0 + y1) * 0.5f
+    let kind = g?["kind"] ?? ""
+    if (kind == "checkbox" || kind == "radio_button" || kind == "radio_button_int") {
+        return (x0 + (y1 - y0) * 0.5f, cy)
+    }
+    return ((x0 + x1) * 0.5f, cy)
 }
 
 def public widget_rendered(var snap : JsonValue?; ident : string) : bool {
@@ -636,6 +659,37 @@ def public say(app : ImguiApp; text : string; target : string = ""; read_ms : ui
     sleep(say_begin(app, text, target, read_ms, voice))
 }
 
+def private is_button_kind(kind : string) : bool {
+    return (kind == "button" || kind == "small_button" || kind == "arrow_button" ||
+            kind == "invisible_button" || kind == "image_button" || kind == "tab_item_button")
+}
+
+def private split_alias(target : string) : tuple<string; int> {
+    //! "X#v" -> (ground "X", v_button v); plain "X" -> ("X", 0). The per-site radio alias suffix.
+    let h = find(target, "#")
+    if (h < 0) return (target, 0)
+    return (slice(target, 0, h), to_int(slice(target, h + 1)))
+}
+
+def private verify_click_effect(app : ImguiApp; target : string; var pre : JsonValue?) {
+    //! Assert the kind-appropriate effect of clicking ``target`` actually happened — a recording is
+    //! also a test, so a no-op click (landed off, or nothing changed) aborts via expect_value's
+    //! panic. Effect-by-kind doubles as a landing check: if the click missed, the state wouldn't
+    //! move. Kinds with no click-tracked field (sliders etc. — recordings don't click them) skip.
+    let (ground, vb) = split_alias(target)
+    let kind = find_widget(pre, ground)?["kind"] ?? ""
+    if (empty(kind)) return
+    if (is_button_kind(kind)) {
+        let pre_cc = widget_payload_field(pre, ground, "click_count") ?? 0
+        expect_value(app, ground, "click_count", pre_cc + 1, 120)
+    } elif (kind == "radio_button_int") {
+        expect_value(app, ground, "value", vb, 120)
+    } elif (kind == "checkbox" || kind == "radio_button" || kind == "selectable" || kind == "menu_item") {
+        let pre_v = widget_payload_field(pre, ground, "value") ?? false
+        expect_value(app, ground, "value", !pre_v, 120)
+    }
+}
+
 def public hold_through_voice(app : ImguiApp; dwell : uint; clicks : array<string>) {
     //! Pace the click(s) in ``clicks`` UNDER an already-posted voice line: a short lead lets the
     //! box + voice start, then each click lands (ripple + state change visible while the voice
@@ -643,13 +697,22 @@ def public hold_through_voice(app : ImguiApp; dwell : uint; clicks : array<strin
     //! by ``say_begin`` — call it with the caption/voice LITERALS at the call site so
     //! prepare_recording can scan them, then pass its result here:
     //!   ``hold_through_voice(app, say_begin(app, "cap", T, [voice = "..."]), [T])``
-    //! The caller must have already moved the cursor onto the target.
+    //! The caller must have already moved the cursor onto the first target.
+    //! Each click is VERIFIED (the effect must register, or the recording aborts) and the tracked
+    //! cursor is advanced to the click's resolved point so the next move_to starts there (no
+    //! teleport). Multi-click stages dwell a beat between picks so each state is visible.
     let lead = dwell > 1200u ? 500u : dwell / 3u
     sleep(lead)
-    for (t in clicks) {
-        click(app, t)        // blocks through press+release; the ripple animates from the press
+    let n = length(clicks)
+    let body_ms = dwell > lead ? dwell - lead : 0u
+    let beat = n > 0 ? body_ms / uint(n) : body_ms
+    for (target in clicks) {
+        var pre = snapshot(app)
+        click(app, target)                              // animated approach + press/release
+        verify_click_effect(app, target, pre)           // panics if the click had no effect
+        reset_cursor_pos(widget_click_point(pre, target))  // track where the click left the cursor
+        sleep(beat)
     }
-    sleep(dwell > lead ? dwell - lead : 0u)
 }
 
 def public wait_for_key_idle(app : ImguiApp; timeout_sec : float = DEFAULT_FRAME_WAIT_SEC) : bool {

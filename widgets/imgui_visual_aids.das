@@ -62,11 +62,11 @@ var public trail_enabled    : bool  = false
 // it shows up in glReadPixels-based recordings (the OS hardware cursor never
 // hits the GL back buffer). Off by default; enable during APNG recording.
 var public cursor_sprite_enabled            : bool  = false
-var public cursor_sprite_color              : uint  = rgba(255, 64, 64, 255)
-var public cursor_sprite_outline_color      : uint  = rgba(255, 255, 255, 255)
+var public cursor_sprite_color              : uint  = rgba(255, 64, 64, 64)   // ~25% alpha — see clicks/widgets through the indicator
+var public cursor_sprite_outline_color      : uint  = rgba(255, 255, 255, 96) // ~38% — ring stays trackable while semi-transparent
 var public cursor_sprite_radius             : float = 9.0f
 var public cursor_sprite_outline_thickness  : float = 2.0f
-var public cursor_sprite_inner_radius       : float = 2.5f
+var public cursor_sprite_inner_radius       : float = 1.5f
 
 // Click flash — expanding ring drawn at the cursor when imgui_boost_runtime's
 // synth driver fires a button press. The overlay is the recording's proof-of-click
