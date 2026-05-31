@@ -46,7 +46,7 @@ let FRAME_POLL_INTERVAL_MS : uint = 100u             // ms between snapshot poll
 // NARRATE_FRAMES is gone — the unified `narrate()` helper derives it from
 // RECORD_FPS * NARRATE_READ_MS / 1000 so only one knob remains.
 
-let public RECORD_FPS : int = 60                     // native MP4 playback target (was 30 in APNG era)
+let public RECORD_FPS : int = 30                     // capture + playback grid; synchronous writer never drops, so APNG frame N == N/30s
 let public NARRATE_READ_MS : uint = 4500u            // narrative on-screen window — long enough to read with audio muted
 let public SETTLE_MS : uint = 1200u                  // post-move cursor settle
 let public CLICK_DWELL_MS : uint = 1500u             // post-click visual confirmation
@@ -142,7 +142,7 @@ def private daslang_live_exe() : string {
     return path_join(dir, bin)
 }
 
-def private dasimgui_module_root() : string {
+def public dasimgui_module_root() : string {
     //! dasImgui's module root resolved via `daslib/module_path`'s 3-tier walk.
     //! `get_this_module_dir()` returns the directory hosting this `.das` source
     //! (i.e. `<root>/widgets/`); one `dir_name` up gives the module root.
@@ -496,20 +496,129 @@ def public key_tap(app : ImguiApp; key : int) {
     post_command(app, "imgui_key_release", JV((key = key)))
 }
 
+// ===== Voiceover sync (record-time, opt-in via a prepared manifest) =====
+// prepare_recording.das pre-renders each say() line to a wav and writes
+// voiceover/<stem>.manifest.json beside the APNG. with_recording_app auto-arms when that
+// manifest exists; say() then paces each line by its wav duration and records the wall-clock
+// offset where the caption (hence the voice) begins. No manifest -> unchanged behavior.
+
+struct public VoEntry {
+    hash  : string      //!< say_hash(text) — links a narration line to its wav
+    text  : string      //!< narration line, verbatim TTS input
+    wav   : string      //!< wav basename under the voiceover/ dir
+    dur_s : float       //!< measured wav duration, seconds
+}
+
+struct public VoManifest {
+    voice   : string
+    gap_ms  : int = 500
+    entries : array<VoEntry>
+}
+
+struct public VoSidecarHit {
+    frame : int         //!< recorded APNG frame index at the caption's appearance — the sync anchor
+    t_s   : float       //!< wall-clock seconds from record_start (reference/debug; convert uses frame)
+    wav   : string      //!< wav basename to mux
+    text  : string      //!< narration line (for reference)
+}
+
+struct public VoSidecar {
+    apng       : string
+    fps        : int
+    frames     : int
+    duration_s : float
+    voiceovers : array<VoSidecarHit>
+}
+
+def public say_hash(text : string) : string {
+    //! Stable wav key shared by prepare_recording.das and say(); hash() is deterministic.
+    return "{hash(text)}"
+}
+
+var private g_vo_active = false
+var private g_vo_gap_ms = 500u
+var private g_vo_stem : string                  // apng stem, for reconstructing wav names
+var private g_vo_dur : table<string; float>     // hash -> wav duration (seconds)
+var private g_vo_collect : array<VoSidecarHit>  // accumulated while a voiceover recording runs
+var private g_vo_extra_s = 0.0f                 // total added dwell (sum of wav_dur + gap) — extends the recorder cap
+
+def private arm_voiceovers(apng_path : string) : bool {
+    //! Load voiceover/<stem>.manifest.json beside apng_path. On success fill g_vo_dur, set
+    //! g_vo_active, clear the collection. Returns true when armed.
+    g_vo_active = false
+    g_vo_stem = stem(apng_path)
+    g_vo_dur |> clear()
+    g_vo_collect |> clear()
+    let manifest_path = path_join(path_join(dir_name(apng_path), "voiceover"), "{g_vo_stem}.manifest.json")
+    let txt = fread(manifest_path)
+    if (empty(txt)) return false
+    var err : string
+    let jv = read_json(txt, err)
+    if (jv == null) {
+        print("[voiceover] bad manifest {manifest_path}: {err}\n")
+        return false
+    }
+    let m = from_JV(jv, type<VoManifest>)
+    g_vo_gap_ms = uint(m.gap_ms > 0 ? m.gap_ms : 500)
+    g_vo_extra_s = 0.0f
+    let gap_s = float(g_vo_gap_ms) / 1000.0f
+    for (e in m.entries) {
+        g_vo_dur[e.hash] = e.dur_s
+        g_vo_extra_s += e.dur_s + gap_s
+    }
+    g_vo_active = !empty(g_vo_dur)
+    if (g_vo_active) {
+        print("[voiceover] armed: {length(m.entries)} lines, gap {int(g_vo_gap_ms)}ms, voice {m.voice}\n")
+    }
+    return g_vo_active
+}
+
+def private flush_voiceovers(stopped : JsonValue?; apng_path : string; fps : int) {
+    //! After record_stop, write voiceover/<stem>.sidecar.json (clip length + per-line offsets).
+    if (!g_vo_active) return
+    g_vo_active = false
+    let sidecar_path = path_join(path_join(dir_name(apng_path), "voiceover"), "{stem(apng_path)}.sidecar.json")
+    let sc = VoSidecar(apng = base_name(apng_path), fps = fps,
+        frames = stopped?["frames"] ?? 0,
+        duration_s = stopped?["duration_s"] ?? 0.0f,
+        voiceovers <- g_vo_collect)
+    if (!fwrite(sidecar_path, write_json(JV(sc)))) {
+        print("[voiceover] FAILED to write {sidecar_path}\n")
+        return
+    }
+    print("[voiceover] wrote {sidecar_path} ({length(sc.voiceovers)} lines, {sc.duration_s}s)\n")
+}
+
 // ===== Recording cadence helper =====
 
 def public say(app : ImguiApp; text : string; target : string = ""; read_ms : uint = NARRATE_READ_MS) {
     //! Pop a narration overlay (``imgui_narrate`` verb), then sleep ``read_ms`` so the
-    //! recorder captures the on-screen window. ``frames`` is derived from
-    //! ``RECORD_FPS * read_ms / 1000`` so a single centralized knob (``NARRATE_READ_MS``)
-    //! controls both the host-side overlay duration AND the recorder dwell — drivers
-    //! used to redeclare ``NARRATE_FRAMES`` + ``READ_MS`` as per-file lets, drifting
-    //! apart over time. Now: one call instead of post+sleep, one knob instead of two.
+    //! recorder captures the on-screen window. The overlay is held by wall-clock ``duration_s``
+    //! (the same span as the sleep), not a tick budget, so it lingers correctly even though
+    //! render fps and capture fps diverge during recording. In voiceover mode the dwell is the
+    //! wav length (+gap) instead, so the caption stays up exactly while the voice speaks.
     //! Named ``say`` (not ``narrate``) to avoid overload-resolution churn with
     //! imgui_visual_aids::narrate (the host-side overlay function), which differs
     //! only in the first arg type (string vs ImguiApp).
-    let frames = int(float(RECORD_FPS) * float(read_ms) / 1000.0f)
-    post_command(app, "imgui_narrate", JV((text = text, target = target, frames = frames)))
+    if (g_vo_active) {
+        let h = say_hash(text)
+        if (key_exists(g_vo_dur, h)) {
+            // Voiceover mode: dwell == wav length (+gap); caption stays up while the voice speaks.
+            // Hold by wall-clock duration_s (not a tick budget) — render fps diverges from the
+            // capture grid during recording, so a frame count would drain early and the box would
+            // vanish mid-voiceover.
+            let dwell_s = g_vo_dur[h] + float(g_vo_gap_ms) / 1000.0f
+            post_command(app, "imgui_narrate", JV((text = text, target = target, duration_s = dwell_s)))
+            let st = post_command(app, "record_status", null)
+            g_vo_collect |> push(VoSidecarHit(frame = st?["frames"] ?? 0,
+                t_s = st?["elapsed_s"] ?? 0.0f,
+                wav = "{g_vo_stem}_{h}.wav", text = text))
+            sleep(uint(dwell_s * 1000.0f))
+            return
+        }
+    }
+    post_command(app, "imgui_narrate", JV((text = text, target = target,
+        duration_s = float(read_ms) / 1000.0f)))
     sleep(read_ms)
 }
 
@@ -744,7 +853,7 @@ def public with_imgui_app(feature_path : string;
 
 // ===== Recording helper =====
 
-let private RECORD_ASSET_REL = "doc/source/_static/tutorials"
+let public RECORD_ASSET_REL = "doc/source/_static/tutorials"
 let private RECORD_FPS_DEFAULT = RECORD_FPS  // 60 — see widgets/imgui_playwright.das tunables section
 
 def public with_recording_app(feature_path : string;
@@ -815,6 +924,11 @@ def public with_recording_app(feature_path : string;
     }
     let asset_dir = path_join(asset_root, RECORD_ASSET_REL)
     let output_apng_path = path_join(asset_dir, output_apng_basename)
+    arm_voiceovers(output_apng_path)
+    // Voiceover dwells make the body run far longer than the silent-record cap.
+    // The cap is only a safety backstop (real length comes from record_stop), so
+    // extend it by the total added narration time when armed.
+    let eff_max_seconds = g_vo_active ? max_seconds + int(g_vo_extra_s) + 5 : max_seconds
 
     let base_url = "http://127.0.0.1:{DEFAULT_LIVE_PORT}"
     var app = ImguiApp(base_url = base_url,
@@ -827,16 +941,21 @@ def public with_recording_app(feature_path : string;
         print("[record] attaching to existing daslang-live at {base_url}\n")
         post_command(app, "imgui_mouse_trail",   JV((enabled = true)))
         post_command(app, "imgui_cursor_sprite", JV((enabled = true)))
+        // Windowed glfw re-polls the real OS cursor into io.MousePos every frame; detach real
+        // input so synth fully owns IO, else synth clicks land wherever the real mouse sits.
+        post_command(app, "set_user_control",     JV((enabled = false)))
         post_command(app, "record_start", JV((
             file = output_apng_path,
             fps = fps,
-            max_seconds = max_seconds
+            max_seconds = eff_max_seconds
         )))
         invoke(body, app)
         let stopped = post_command(app, "record_stop", null)
         let dump = stopped != null ? write_json(stopped) : "<null>"
         print("[record] record_stop -> {dump}\n")
         print("[record] APNG saved to {output_apng_path}\n")
+        flush_voiceovers(stopped, output_apng_path, fps)
+        post_command(app, "set_user_control",     JV((enabled = true)))
         post_command(app, "imgui_cursor_sprite", JV((enabled = false)))
         post_command(app, "imgui_mouse_trail",   JV((enabled = false)))
         return
@@ -867,7 +986,7 @@ def public with_recording_app(feature_path : string;
     var captured : string
     var unready  = false
     // Body must complete within max_seconds + ready/shutdown headroom.
-    let test_timeout_sec = float(max_seconds) + 30.0f
+    let test_timeout_sec = float(eff_max_seconds) + 30.0f
     let exit_code = unsafe(popen_argv(argv, test_timeout_sec, $(f) {
         return if (f == null)
         if (!wait_until_ready(app, DEFAULT_READY_TIMEOUT_SEC)) {
@@ -877,16 +996,21 @@ def public with_recording_app(feature_path : string;
         }
         post_command(app, "imgui_mouse_trail",   JV((enabled = true)))
         post_command(app, "imgui_cursor_sprite", JV((enabled = true)))
+        // Windowed glfw re-polls the real OS cursor into io.MousePos every frame; detach real
+        // input so synth fully owns IO, else synth clicks land wherever the real mouse sits.
+        post_command(app, "set_user_control",     JV((enabled = false)))
         post_command(app, "record_start", JV((
             file = output_apng_path,
             fps = fps,
-            max_seconds = max_seconds
+            max_seconds = eff_max_seconds
         )))
         invoke(body, app)
         let stopped = post_command(app, "record_stop", null)
         let dump = stopped != null ? write_json(stopped) : "<null>"
         print("[record] record_stop -> {dump}\n")
         print("[record] APNG saved to {output_apng_path}\n")
+        flush_voiceovers(stopped, output_apng_path, fps)
+        post_command(app, "set_user_control",     JV((enabled = true)))
         post_command(app, "imgui_cursor_sprite", JV((enabled = false)))
         post_command(app, "imgui_mouse_trail",   JV((enabled = false)))
         post_signal(app, "/shutdown")

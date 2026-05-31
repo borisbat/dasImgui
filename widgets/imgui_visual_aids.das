@@ -154,6 +154,7 @@ struct private NarrateSpec {
     text : string
     target : string
     remaining_frames : int
+    remaining_s : float        // wall-clock budget in seconds; < 0 → fall back to the remaining_frames tick countdown
 }
 
 var private g_highlights : array<HighlightSpec>
@@ -200,15 +201,27 @@ def public cursor_sprite(enabled : bool) {
 }
 
 def public apply_synth_io_override() {
-    //! Per-frame synth IO entry point — call between the backend's ``NewFrame`` and ImGui's ``NewFrame``. Drives :ref:`imgui_synth_tick <function-imgui_boost_runtime_imgui_synth_tick>`.
+    //! Per-frame synth IO entry point for hand-rolled (non-harness) update loops — call between the
+    //! backend's ``*_NewFrame()`` and ImGui's ``NewFrame()``. Drains the COMPLETE synth pipeline:
+    //! advances L1 input coroutines (``imgui_click`` press/release) then drives
+    //! :ref:`imgui_synth_tick <function-imgui_boost_runtime_imgui_synth_tick>` (timelines +
+    //! held-state re-assert). Mirrors the harness's ``advance_coroutines()`` (in ``harness_begin_frame``)
+    //! + ``imgui_synth_tick()`` (in ``harness_new_frame``), so coroutine-based synth clicks work
+    //! without the harness — a demo calls this one function and never needs ``advance_coroutines`` itself.
+    advance_coroutines()
     imgui_synth_tick()
 }
 
 def public narrate(text : string;
                    target : string = "";
-                   frames : int = narrate_default_frames) {
-    //! Pop a callout box with ``text`` for ``frames`` ticks. If ``target`` resolves to a widget bbox the box anchors next to it with a connector line; otherwise it floats top-left.
-    g_narrates |> push(NarrateSpec(text = text, target = target, remaining_frames = frames))
+                   frames : int = narrate_default_frames;
+                   duration_s : float = -1.0f) {
+    //! Pop a callout box with ``text``. By default it lingers ``frames`` render ticks; pass
+    //! ``duration_s > 0`` to hold it for that many wall-clock seconds instead — rate-independent,
+    //! required for recordings where render fps and capture fps diverge. If ``target`` resolves
+    //! to a widget bbox the box anchors next to it with a connector line; otherwise it floats top-left.
+    g_narrates |> push(NarrateSpec(text = text, target = target,
+                                   remaining_frames = frames, remaining_s = duration_s))
 }
 
 // ===== Painters =====
@@ -477,9 +490,19 @@ def private paint_narrates {
         *dl |> AddText(null, 0.0f,
                        float2(anchor.x + narrate_pad_x, anchor.y + narrate_pad_y),
                        narrate_fg_color, g_narrates[i].text, narrate_max_width, null)
-        g_narrates[i].remaining_frames--
-        if (g_narrates[i].remaining_frames <= 0) {
-            g_narrates |> erase(i)
+        if (g_narrates[i].remaining_s >= 0.0f) {
+            // Wall-clock countdown. During recording the render fps != the capture fps, so a
+            // tick budget would drain at the render rate and the box would vanish early (mid
+            // voiceover). Summing io.DeltaTime holds the box for a true wall-clock span instead.
+            g_narrates[i].remaining_s -= io.DeltaTime
+            if (g_narrates[i].remaining_s <= 0.0f) {
+                g_narrates |> erase(i)
+            }
+        } else {
+            g_narrates[i].remaining_frames--
+            if (g_narrates[i].remaining_frames <= 0) {
+                g_narrates |> erase(i)
+            }
         }
     }
 }
@@ -731,14 +754,16 @@ struct NarrateArgs {
     text : string
     @optional target : string = ""
     @optional frames : int = -1
+    @optional duration_s : float = -1.0f
 }
 
-[live_command(description="Show a callout box with text for N frames; optional target widget for connector line.")]
+[live_command(description="Show a callout box with text; lingers N frames, or duration_s wall-clock seconds if given. Optional target widget for connector line.")]
 def imgui_narrate(input : JsonValue?) : JsonValue? {
-    //! ``[live_command]`` wrapper around :ref:`narrate <function-imgui_visual_aids_narrate_string_string_int>`. Args: ``text``, ``target``, ``frames``.
+    //! ``[live_command]`` wrapper around :ref:`narrate <function-imgui_visual_aids_narrate_string_string_int_float>`.
+    //! Args: ``text``, ``target``, ``frames``, ``duration_s`` (wall-clock seconds; wins over ``frames`` — use for recordings).
     let args = from_JV(input, type<NarrateArgs>)
     let frames = args.frames > 0 ? args.frames : narrate_default_frames
-    narrate(args.text, args.target, frames)
+    narrate(args.text, args.target, frames, args.duration_s)
     return JV((ok = true))
 }
 
