@@ -31,7 +31,7 @@ struct Config {
     out : string
 
     @clarg_doc = "Music bed level in dB (negative = quieter under the voice)"
-    bed_db : int = -16
+    bed_db : int = -13
 
     @clarg_doc = "Fade in/out length, milliseconds"
     fade_ms : int = 100
