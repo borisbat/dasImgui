@@ -592,18 +592,15 @@ def private flush_voiceovers(stopped : JsonValue?; apng_path : string; fps : int
 
 // ===== Recording cadence helper =====
 
-def public say(app : ImguiApp; text : string; target : string = ""; read_ms : uint = NARRATE_READ_MS; voice : string = "") {
-    //! Pop a narration overlay (``imgui_narrate`` verb), then sleep ``read_ms`` so the
-    //! recorder captures the on-screen window. The overlay is held by wall-clock ``duration_s``
-    //! (the same span as the sleep), not a tick budget, so it lingers correctly even though
-    //! render fps and capture fps diverge during recording. In voiceover mode the dwell is the
-    //! wav length (+gap) instead, so the caption stays up exactly while the voice speaks.
+def public say_begin(app : ImguiApp; text : string; target : string = ""; read_ms : uint = NARRATE_READ_MS; voice : string = "") : uint {
+    //! Non-blocking ``say``: post the narration overlay (+ record the voiceover anchor) and
+    //! RETURN the dwell in milliseconds WITHOUT sleeping. The caller then sleeps the returned
+    //! dwell — splitting it around a ``click`` / ``drag`` so the action lands visibly under the
+    //! voice (cursor lands -> say_begin -> short lead -> click -> hold the remainder). For plain
+    //! narration with no mid-dwell action, use ``say`` which posts + sleeps in one call.
     //! ``text`` is the on-screen caption; ``voice`` (when set) is the spoken line — write
     //! captions for the eye (terse) and voice for the ear (natural sentences). Empty voice
     //! falls back to text, so existing calls keep speaking their caption.
-    //! Named ``say`` (not ``narrate``) to avoid overload-resolution churn with
-    //! imgui_visual_aids::narrate (the host-side overlay function), which differs
-    //! only in the first arg type (string vs ImguiApp).
     let spoken = voice != "" ? voice : text
     if (g_vo_active) {
         let h = say_hash(spoken)
@@ -618,13 +615,25 @@ def public say(app : ImguiApp; text : string; target : string = ""; read_ms : ui
             g_vo_collect |> push(VoSidecarHit(frame = st?["frames"] ?? 0,
                 t_s = st?["elapsed_s"] ?? 0.0f,
                 wav = "{g_vo_stem}_{h}.wav", text = text))
-            sleep(uint(dwell_s * 1000.0f))
-            return
+            return uint(dwell_s * 1000.0f)
         }
     }
     post_command(app, "imgui_narrate", JV((text = text, target = target,
         duration_s = float(read_ms) / 1000.0f)))
-    sleep(read_ms)
+    return read_ms
+}
+
+def public say(app : ImguiApp; text : string; target : string = ""; read_ms : uint = NARRATE_READ_MS; voice : string = "") {
+    //! Pop a narration overlay (``imgui_narrate`` verb), then sleep for the dwell so the
+    //! recorder captures the on-screen window. The overlay is held by wall-clock ``duration_s``
+    //! (the same span as the sleep), not a tick budget, so it lingers correctly even though
+    //! render fps and capture fps diverge during recording. In voiceover mode the dwell is the
+    //! wav length (+gap) instead, so the caption stays up exactly while the voice speaks.
+    //! Named ``say`` (not ``narrate``) to avoid overload-resolution churn with
+    //! imgui_visual_aids::narrate (the host-side overlay function), which differs
+    //! only in the first arg type (string vs ImguiApp). For a click/drag that must land under
+    //! the voice, use ``say_begin`` + a manual dwell split instead.
+    sleep(say_begin(app, text, target, read_ms, voice))
 }
 
 def public wait_for_key_idle(app : ImguiApp; timeout_sec : float = DEFAULT_FRAME_WAIT_SEC) : bool {
