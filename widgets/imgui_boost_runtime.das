@@ -1148,6 +1148,25 @@ def public widget_finalize(widget_ident : string;
     PopID()
 }
 
+def public register_radio_site_alias(widget_ident : string; v_button : int;
+                                     state_addr : void?; ti : TypeInfo const?) {
+    //! Register a per-site geometry alias ``<path>#<v_button>`` for a grouped ``radio_button_int``,
+    //! so each option is independently click-/test-targetable even though all sites share one ident
+    //! (hence one ``<path>``) for their state. Shared state stays at ``<path>``; the alias carries
+    //! only this site's bbox. Call right after the site's normal finalize — ``GetItemRectMin/Max``
+    //! still reports this radio's rect (we re-capture rather than reuse the parent ``entry``, which
+    //! ``widget_finalize`` already moved into ``g_registry``). ``widgets_mark_seen(alias, alias, …)``
+    //! skips the bare-ident migration (its two args are equal) and lazily creates/refreshes the meta.
+    let alias = "{widget_path_key(widget_ident)}#{v_button}"
+    var entry : WidgetEntry
+    entry.kind = "radio_button_int"
+    let rmin = GetItemRectMin()
+    let rmax = GetItemRectMax()
+    capture_item_bbox(entry, float4(rmin.x, rmin.y, rmax.x, rmax.y))
+    g_registry[alias] <- entry
+    widgets_mark_seen(alias, alias, "radio_button_int", state_addr, ti)
+}
+
 def private widgets_mark_seen(bare_ident : string; path_key : string;
                               kind : string; state_addr : void?; ti : TypeInfo const?) {
     // First render: migrate the bare-ident entry to its container-aware path_key. Subsequent renders just bump last_seen_frame.
@@ -1462,12 +1481,12 @@ def public synth_mouse_button(button : int; action : int) {
     io |> AddMouseButtonEvent(button, action == 1)
     if (action == 1) {
         synth_buttons_mask |= (1 << button)
+        synth_click_t = get_uptime()   // latch the flash anchor on press; release must not reset it
     } else {
         synth_buttons_mask &= ~(1 << button)
     }
     synth_click_button = button
     synth_click_action = action
-    synth_click_t      = get_uptime()
     synth_cursor_owned = true
 }
 
@@ -1694,8 +1713,24 @@ def private click_at_coro(center : float2; scrolled : bool; button : int; ticket
         await_next_frame()
     }
     if (scrolled) await_next_frame()
-    synth_mouse_move(center.x, center.y)
-    await_next_frame()
+    // Animate the approach from the current cursor to the target instead of warping — a real
+    // mouse never teleports, and the move_to that precedes a click may land elsewhere (e.g. the
+    // glyph-targeted click point differs from a row-center approach). Step count scales with
+    // distance; the final step ends on `center` and its await doubles as the hover-settle frame
+    // (load-bearing for tab-bar press registration). Zero distance -> single in-place step.
+    let sx = mouse_cursor_x
+    let sy = mouse_cursor_y
+    let dx = center.x - sx
+    let dy = center.y - sy
+    // Constant cursor SPEED: step count scales with distance (≈11 px/step) so a long hop takes
+    // proportionally more frames instead of warping. The cap is a sanity ceiling, not the common
+    // case — at the old /45+min(16) a full-width move flattened to 16 frames and read as a teleport.
+    let steps = max(int(max(abs(dx), abs(dy)) / 11.0f) + 1, 2) |> min(96)
+    for (i in range(1, steps + 1)) {
+        let f = float(i) / float(steps)
+        synth_mouse_move(sx + dx * f, sy + dy * f)
+        await_next_frame()
+    }
     unsafe {
         var io & = GetIO()
         io.MouseClickedTime[button] = -3.40282347e+38lf  // -FLT_MAX: never auto-double-click
@@ -2031,9 +2066,25 @@ def public active_widget_path() : string {
     return id_to_path(aid)
 }
 
+def private is_left_glyph_kind(kind : string) : bool {
+    // Toggle-family widgets render a small glyph (square check / radio circle) at the LEFT of a
+    // row whose item rect also spans the label. Their click should land on the glyph, not the
+    // label-inflated row center. selectable / menu_item have no left glyph (the whole row IS the
+    // control), so they keep center-targeting.
+    return kind == "checkbox" || kind == "radio_button" || kind == "radio_button_int"
+}
+
 def private resolve_target_bbox(target : string) : tuple<bool; float2> {
     let r = widget_rect(target)
     if (!r._0) return (false, float2(0.0f, 0.0f))
     let bb = r._1
-    return (true, float2((bb.x + bb.z) * 0.5f, (bb.y + bb.w) * 0.5f))
+    let cy = (bb.y + bb.w) * 0.5f
+    // Aim the click at the glyph for the toggle family — the glyph is ImGui's left frame-height
+    // square, so its center is one half-row-height in from the left edge. Keeps the bbox (used by
+    // highlight / telemetry) as the full row.
+    if (key_exists(g_registry, target) && is_left_glyph_kind(g_registry[target].kind)) {
+        let h = bb.w - bb.y
+        return (true, float2(bb.x + h * 0.5f, cy))
+    }
+    return (true, float2((bb.x + bb.z) * 0.5f, cy))
 }

@@ -11,25 +11,9 @@ require daslib/json_boost public
 //! Driver script: record ``toggles.apng`` against
 //! ``examples/tutorial/toggles.das``. Tours three toggle forms — single
 //! checkbox, single radio_button (bool-form, same ToggleState as
-//! checkbox, only the glyph differs), and grouped radio_button_int
-//! (three sites sharing one RadioIntState).
-
-let SET_DWELL_MS   = 1500u      //! 1.5s post-imgui_force_set dwell
-
-def widget_bbox(var snap : JsonValue?; ident : string) : float4 {
-    var b = snap?["globals"]?[ident]?["bbox"]
-    return float4(
-        b?["x"] ?? 0.0f,
-        b?["y"] ?? 0.0f,
-        b?["z"] ?? 0.0f,
-        b?["w"] ?? 0.0f
-    )
-}
-
-def widget_center(var snap : JsonValue?; ident : string) : tuple<float; float> {
-    let b = widget_bbox(snap, ident)
-    return ((b.x + b.z) * 0.5f, (b.y + b.w) * 0.5f)
-}
+//! checkbox, only the glyph differs), and grouped radio_button_int.
+//! Each stage clicks the real widget UNDER an ear-first voice line so the
+//! ripple and the value readout change while Emma talks.
 
 [export]
 def main {
@@ -37,39 +21,42 @@ def main {
                        "toggles.apng", 35) $(app) {
         let T_CHECK      = "TG_WIN/T_CHECK"
         let T_RADIO_BOOL = "TG_WIN/T_RADIO_BOOL"
-        let T_MODE       = "TG_WIN/T_MODE"
+        let T_MODE       = "TG_WIN/T_MODE"   // bbox = the last (Auto) of the three shared-ident sites
 
         var snap = wait_for_widget(app, T_CHECK, 10.0f)
         if (snap == null) {
-            panic("{T_CHECK} never registered — wrong app running?")
+            panic("{T_CHECK} never registered - wrong app running?")
         }
-        let p_check = widget_center(snap, T_CHECK)
-        let p_radio = widget_center(snap, T_RADIO_BOOL)
-        let p_mode  = widget_center(snap, T_MODE)
+        // Move to the exact point each click will fire (glyph for the toggle family) so the
+        // cursor travels straight there — no mid-row approach then hop to the glyph. Stage 3
+        // approaches its FIRST click target (Manual = the #1 site alias).
+        let p_check  = widget_click_point(snap, T_CHECK)
+        let p_radio  = widget_click_point(snap, T_RADIO_BOOL)
+        let p_manual = widget_click_point(snap, "{T_MODE}#1")
 
         //! Initial cursor placement.
         move_to(app, p_check, 500)
         sleep(SETTLE_MS)
 
-        // ---- Stage 1: checkbox — flip on, then off ----
-        post_command(app, "imgui_force_set", JV((target = T_CHECK, value = true)))
-        sleep(SET_DWELL_MS)
-        say(app, "checkbox — single ToggleState bool. Click flips, imgui_force_set writes pending_value.", T_CHECK)
+        // ---- Stage 1: checkbox — single bool, click flips it ----
+        hold_through_voice(app, say_begin(app, "checkbox - single bool", T_CHECK,
+            [voice = "This is a checkbox. Click it once and it turns on; click again and it turns back off. The value just flips between true and false."]),
+            [T_CHECK, T_CHECK])
 
-        // ---- Stage 2: radio_button (bool form) — circle-rendered checkbox ----
+        // ---- Stage 2: radio_button (bool form) — same state, round glyph ----
         move_to(app, p_radio, 800)
         sleep(SETTLE_MS)
-        post_command(app, "imgui_force_set", JV((target = T_RADIO_BOOL, value = true)))
-        sleep(SET_DWELL_MS)
-        say(app, "radio_button (bool) — SAME ToggleState as checkbox; only the glyph differs (circle vs square).", T_RADIO_BOOL)
+        hold_through_voice(app, say_begin(app, "radio_button - same, round", T_RADIO_BOOL,
+            [voice = "A radio button, on its own, behaves exactly like a checkbox. Same on-off value underneath; the only difference is the round glyph instead of a square."]),
+            [T_RADIO_BOOL])
 
         // ---- Stage 3: radio_button_int — grouped, mutually exclusive ----
-        move_to(app, p_mode, 800)
+        // Per-site aliases T_MODE#<v_button> let us click each option by name even though
+        // all three share one ident; click Manual then Auto so the dot walks and clears the last.
+        move_to(app, p_manual, 800)
         sleep(SETTLE_MS)
-        post_command(app, "imgui_force_set", JV((target = T_MODE, value = 1)))
-        sleep(SET_DWELL_MS)
-        post_command(app, "imgui_force_set", JV((target = T_MODE, value = 2)))
-        sleep(SET_DWELL_MS)
-        say(app, "radio_button_int — three call sites SHARE one RadioIntState. Click writes state.value = v_button — the canonical 'pick one of N'.", T_MODE)
+        hold_through_voice(app, say_begin(app, "radio_button_int - pick one of many", T_MODE,
+            [voice = "Group several radio buttons and they share one value, so picking one clears the rest. Watch: click Manual, then Auto, and the dot walks across as each pick clears the last."]),
+            ["{T_MODE}#1", "{T_MODE}#2"])
     }
 }

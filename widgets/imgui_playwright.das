@@ -15,6 +15,7 @@ require daslib/clargs
 require daslib/module_path
 require daslib/strings_boost
 require strings
+require math
 
 // Module overview lives in handmade/module-imgui_playwright.rst.
 
@@ -39,14 +40,15 @@ let FRAME_POLL_INTERVAL_MS : uint = 100u             // ms between snapshot poll
 //
 // One knob set for every record_*.das. Drivers used to redeclare these as
 // per-file lets (NARRATE_FRAMES / READ_MS / SETTLE_MS / CLICK_DWELL_MS) with
-// inconsistent values across the corpus. The MP4 migration also dropped the
-// "keep APNG asset under 50 MB" pressure that justified fps=30, so the
-// default now matches the app's native 60 fps.
+// inconsistent values across the corpus. RECORD_FPS is the nominal capture +
+// playback grid: the synchronous APNG writer (daScript-side) never drops, and
+// convert_recording reclocks the mp4 to the measured effective rate, so 30 keeps
+// assets light without risking timeline drift.
 //
 // NARRATE_FRAMES is gone — the unified `narrate()` helper derives it from
 // RECORD_FPS * NARRATE_READ_MS / 1000 so only one knob remains.
 
-let public RECORD_FPS : int = 60                     // native MP4 playback target (was 30 in APNG era)
+let public RECORD_FPS : int = 30                     // capture + playback grid; synchronous writer never drops, so APNG frame N == N/30s
 let public NARRATE_READ_MS : uint = 4500u            // narrative on-screen window — long enough to read with audio muted
 let public SETTLE_MS : uint = 1200u                  // post-move cursor settle
 let public CLICK_DWELL_MS : uint = 1500u             // post-click visual confirmation
@@ -80,13 +82,16 @@ def public reset_cursor_pos(pos : tuple<float; float> = (0.0f, 0.0f)) {
 }
 
 def public move_to(app : ImguiApp; pos : tuple<float; float>; duration_ms : int = 600) {
-    //! Post a lerped cursor move from the last tracked position to ``pos``
-    //! over ``duration_ms``, with a brief dwell pin afterwards. Updates the
-    //! tracked position.
+    //! Post a lerped cursor move from the last tracked position to ``pos``, with a brief dwell pin
+    //! afterwards. Updates the tracked position. ``duration_ms`` is a FLOOR: the actual duration
+    //! scales with distance (≈0.325 px/ms ≈ constant cursor speed) so a long move doesn't cover its
+    //! span in the same time as a short one and read as a teleport; short moves keep the floor.
+    let dist = max(abs(pos._0 - last_cursor_x), abs(pos._1 - last_cursor_y))
+    let dur = max(duration_ms, int(dist / 0.325f))
     var events <- [
-        JV((t_ms = 0,                 kind = "move", x = last_cursor_x, y = last_cursor_y)),
-        JV((t_ms = duration_ms,       kind = "move", x = pos._0,        y = pos._1)),
-        JV((t_ms = duration_ms + 300, kind = "move", x = pos._0,        y = pos._1))
+        JV((t_ms = 0,           kind = "move", x = last_cursor_x, y = last_cursor_y)),
+        JV((t_ms = dur,         kind = "move", x = pos._0,        y = pos._1)),
+        JV((t_ms = dur + 300,   kind = "move", x = pos._0,        y = pos._1))
     ]
     post_command(app, "imgui_mouse_play", JV((events = events)))
     unsafe { delete events; }
@@ -142,7 +147,7 @@ def private daslang_live_exe() : string {
     return path_join(dir, bin)
 }
 
-def private dasimgui_module_root() : string {
+def public dasimgui_module_root() : string {
     //! dasImgui's module root resolved via `daslib/module_path`'s 3-tier walk.
     //! `get_this_module_dir()` returns the directory hosting this `.das` source
     //! (i.e. `<root>/widgets/`); one `dir_name` up gives the module root.
@@ -232,6 +237,23 @@ def public widget_exists(var snap : JsonValue?; ident : string) : bool {
 def public widget_payload_field(var snap : JsonValue?; ident : string; field : string) : JsonValue? {
     //! Navigate to ``snapshot.globals[ident].payload[field]``; returns null if any link is missing.
     return snap?["globals"]?[ident]?["payload"]?[field]
+}
+
+def public widget_click_point(var snap : JsonValue?; ident : string) : tuple<float; float> {
+    //! The point ``imgui_click`` aims at for ``ident``: the left glyph (square check / radio
+    //! circle) for the toggle family — checkbox / radio_button / radio_button_int — and the bbox
+    //! center otherwise. Mirrors ``resolve_target_bbox`` in imgui_boost_runtime so a recording's
+    //! ``move_to`` lands exactly where the click fires (no mid-row → glyph hop). Keep the kind list
+    //! in sync with that resolver.
+    var g = find_widget(snap, ident)
+    let x0 = g?["bbox"]?["x"] ?? 0.0f
+    let y0 = g?["bbox"]?["y"] ?? 0.0f
+    let x1 = g?["bbox"]?["z"] ?? 0.0f
+    let y1 = g?["bbox"]?["w"] ?? 0.0f
+    let cy = (y0 + y1) * 0.5f
+    let kind = g?["kind"] ?? ""
+    if (kind == "checkbox" || kind == "radio_button" || kind == "radio_button_int") return (x0 + (y1 - y0) * 0.5f, cy)
+    return ((x0 + x1) * 0.5f, cy)
 }
 
 def public widget_rendered(var snap : JsonValue?; ident : string) : bool {
@@ -359,14 +381,7 @@ def public expect_value(app : ImguiApp;
                         max_frames : int = 300) : void {
     //! Assertion form of ``wait_for_payload_value``; panics with a focused want/got/kind/rendered message on timeout.
     if (wait_for_payload_value(app, target, field, expected, max_frames)) return
-    var snap = snapshot(app)
-    let got_jv = widget_payload_field(snap, target, field)
-    let got_str = got_jv != null ? write_json(got_jv) : "<missing>"
-    let kind = snap?["globals"]?[target]?["kind"] ?? "<unknown>"
-    let exists = widget_exists(snap, target)
-    let rendered = exists && widget_rendered(snap, target)
-    let want_str = write_json(JV(expected))
-    panic("expect_value({target}.{field}) gave up after {max_frames} frames:\n  want: {want_str}\n  got:  {got_str}\n  widget kind: {kind}\n  widget rendered: {rendered}")
+    panic(format_value_mismatch(app, target, field, expected, max_frames))
 }
 
 def public expect_render(app : ImguiApp;
@@ -409,6 +424,17 @@ def public right_click(app : ImguiApp; target : string) : JsonValue? {
 def public force_set_value(app : ImguiApp; target : string; var value : JsonValue?) : JsonValue? {
     //! Set ``target``'s payload value remotely (``imgui_force_set`` verb); ``value`` is the JSON form expected by the widget kind.
     return send_imgui_command(app.transport, "imgui_force_set", JV((target = target, value = value)))
+}
+
+def public force_set_verified(app : ImguiApp; target : string; value : auto(T); max_frames : int = 120) {
+    //! Recording-as-test ``force_set``: set ``target.value`` to the typed ``value`` and verify it
+    //! took. Accumulates a self-verification miss (surfaced as a loud panic at ``with_recording_app``
+    //! teardown) rather than panicking mid-body — so the recording still stops + shuts the host
+    //! down cleanly. For force_set-driven tutorial stages (slider / drag / input / color); the
+    //! verified counterpart of the clicks ``hold_through_voice`` checks automatically. Use only
+    //! inside a ``with_recording_app`` body — raw tests want the panicking ``expect_value``.
+    force_set_value(app, target, JV(value))
+    record_check_value(app, target, "value", value, max_frames)
 }
 
 def public resize_window(app : ImguiApp; target : string; w : float; h : float) : JsonValue? {
@@ -496,21 +522,226 @@ def public key_tap(app : ImguiApp; key : int) {
     post_command(app, "imgui_key_release", JV((key = key)))
 }
 
+// ===== Voiceover sync (record-time, opt-in via a prepared manifest) =====
+// prepare_recording.das pre-renders each say() line to a wav and writes
+// voiceover/<stem>.manifest.json beside the APNG. with_recording_app auto-arms when that
+// manifest exists; say() then paces each line by its wav duration and records the wall-clock
+// offset where the caption (hence the voice) begins. No manifest -> unchanged behavior.
+
+struct public VoEntry {
+    hash  : string      //!< say_hash(spoken) — links a narration line to its wav
+    text  : string      //!< on-screen caption (the say() text arg)
+    voice : string      //!< spoken line fed to TTS (say() voice arg, or text if none)
+    wav   : string      //!< wav basename under the voiceover/ dir
+    dur_s : float       //!< measured wav duration, seconds
+}
+
+struct public VoManifest {
+    voice   : string
+    gap_ms  : int = 500
+    entries : array<VoEntry>
+}
+
+struct public VoSidecarHit {
+    frame : int         //!< recorded APNG frame index at the caption's appearance — the sync anchor
+    t_s   : float       //!< wall-clock seconds from record_start (reference/debug; convert uses frame)
+    wav   : string      //!< wav basename to mux
+    text  : string      //!< narration line (for reference)
+}
+
+struct public VoSidecar {
+    apng       : string
+    fps        : int
+    frames     : int
+    duration_s : float
+    voiceovers : array<VoSidecarHit>
+}
+
+def public say_hash(text : string) : string {
+    //! Stable wav key shared by prepare_recording.das and say(); hash() is deterministic.
+    return "{hash(text)}"
+}
+
+var private g_vo_active = false
+var private g_vo_gap_ms = 500u
+var private g_vo_stem : string                  // apng stem, for reconstructing wav names
+var private g_vo_dur : table<string; float>     // hash -> wav duration (seconds)
+var private g_vo_collect : array<VoSidecarHit>  // accumulated while a voiceover recording runs
+var private g_vo_extra_s = 0.0f                 // total added dwell (sum of wav_dur + gap) — extends the recorder cap
+var private g_record_failures : array<string>   // self-verification misses during a recording; surfaced (panic) at with_recording_app teardown
+
+def private format_value_mismatch(app : ImguiApp; target : string; field : string; expected : auto(T); max_frames : int) : string {
+    //! The want/got/kind/rendered diagnostic shared by ``expect_value`` (panics with it) and the
+    //! recording sequencer's ``record_check_value`` (accumulates it).
+    var snap = snapshot(app)
+    let got_jv = widget_payload_field(snap, target, field)
+    let got_str = got_jv != null ? write_json(got_jv) : "<missing>"
+    let kind = snap?["globals"]?[target]?["kind"] ?? "<unknown>"
+    let exists = widget_exists(snap, target)
+    let rendered = exists && widget_rendered(snap, target)
+    let want_str = write_json(JV(expected))
+    return "expect_value({target}.{field}) gave up after {max_frames} frames:\n  want: {want_str}\n  got:  {got_str}\n  widget kind: {kind}\n  widget rendered: {rendered}"
+}
+
+def private record_check_value(app : ImguiApp; target : string; field : string; expected : auto(T); max_frames : int) : bool {
+    //! Non-panicking verify for the recording sequencer. A recording body must NOT panic mid-run:
+    //! daslang panic is fatal and can't be recovered-and-continued, so a mid-body panic would skip
+    //! the clean record_stop + /shutdown and orphan the host. So on a mismatch we push the same
+    //! diagnostic ``expect_value`` would panic with onto ``g_record_failures`` and return false; the
+    //! body runs to its normal teardown, then ``with_recording_app`` fails loudly after the host is
+    //! drained. Returns true when the value matched.
+    if (wait_for_payload_value(app, target, field, expected, max_frames)) return true
+    g_record_failures |> push(format_value_mismatch(app, target, field, expected, max_frames))
+    return false
+}
+
+def private arm_voiceovers(apng_path : string) : bool {
+    //! Load voiceover/<stem>.manifest.json beside apng_path. On success fill g_vo_dur, set
+    //! g_vo_active, clear the collection. Returns true when armed.
+    g_vo_active = false
+    g_vo_stem = stem(apng_path)
+    g_vo_dur |> clear()
+    g_vo_collect |> clear()
+    let manifest_path = path_join(path_join(dir_name(apng_path), "voiceover"), "{g_vo_stem}.manifest.json")
+    let txt = fread(manifest_path)
+    if (empty(txt)) return false
+    var err : string
+    let jv = read_json(txt, err)
+    if (jv == null) {
+        print("[voiceover] bad manifest {manifest_path}: {err}\n")
+        return false
+    }
+    let m = from_JV(jv, type<VoManifest>)
+    g_vo_gap_ms = uint(m.gap_ms > 0 ? m.gap_ms : 500)
+    g_vo_extra_s = 0.0f
+    let gap_s = float(g_vo_gap_ms) / 1000.0f
+    for (e in m.entries) {
+        g_vo_dur[e.hash] = e.dur_s
+        g_vo_extra_s += e.dur_s + gap_s
+    }
+    g_vo_active = !empty(g_vo_dur)
+    if (g_vo_active) {
+        print("[voiceover] armed: {length(m.entries)} lines, gap {int(g_vo_gap_ms)}ms, voice {m.voice}\n")
+    }
+    return g_vo_active
+}
+
+def private flush_voiceovers(stopped : JsonValue?; apng_path : string; fps : int) {
+    //! After record_stop, write voiceover/<stem>.sidecar.json (clip length + per-line offsets).
+    if (!g_vo_active) return
+    g_vo_active = false
+    let sidecar_path = path_join(path_join(dir_name(apng_path), "voiceover"), "{stem(apng_path)}.sidecar.json")
+    let sc = VoSidecar(apng = base_name(apng_path), fps = fps,
+        frames = stopped?["frames"] ?? 0,
+        duration_s = stopped?["duration_s"] ?? 0.0f,
+        voiceovers <- g_vo_collect)
+    if (!fwrite(sidecar_path, write_json(JV(sc)))) {
+        print("[voiceover] FAILED to write {sidecar_path}\n")
+        return
+    }
+    print("[voiceover] wrote {sidecar_path} ({length(sc.voiceovers)} lines, {sc.duration_s}s)\n")
+}
+
 // ===== Recording cadence helper =====
 
-def public say(app : ImguiApp; text : string; target : string = ""; read_ms : uint = NARRATE_READ_MS) {
-    //! Pop a narration overlay (``imgui_narrate`` verb), then sleep ``read_ms`` so the
-    //! recorder captures the on-screen window. ``frames`` is derived from
-    //! ``RECORD_FPS * read_ms / 1000`` so a single centralized knob (``NARRATE_READ_MS``)
-    //! controls both the host-side overlay duration AND the recorder dwell — drivers
-    //! used to redeclare ``NARRATE_FRAMES`` + ``READ_MS`` as per-file lets, drifting
-    //! apart over time. Now: one call instead of post+sleep, one knob instead of two.
+def public say_begin(app : ImguiApp; text : string; target : string = ""; read_ms : uint = NARRATE_READ_MS; voice : string = "") : uint {
+    //! Non-blocking ``say``: post the narration overlay (+ record the voiceover anchor) and
+    //! RETURN the dwell in milliseconds WITHOUT sleeping. The caller then sleeps the returned
+    //! dwell — splitting it around a ``click`` / ``drag`` so the action lands visibly under the
+    //! voice (cursor lands -> say_begin -> short lead -> click -> hold the remainder). For plain
+    //! narration with no mid-dwell action, use ``say`` which posts + sleeps in one call.
+    //! ``text`` is the on-screen caption; ``voice`` (when set) is the spoken line — write
+    //! captions for the eye (terse) and voice for the ear (natural sentences). Empty voice
+    //! falls back to text, so existing calls keep speaking their caption.
+    let spoken = voice != "" ? voice : text
+    if (g_vo_active) {
+        let h = say_hash(spoken)
+        if (key_exists(g_vo_dur, h)) {
+            // Voiceover mode: dwell == wav length (+gap); caption stays up while the voice speaks.
+            // Hold by wall-clock duration_s (not a tick budget) — render fps diverges from the
+            // capture grid during recording, so a frame count would drain early and the box would
+            // vanish mid-voiceover. Box shows the caption (text); wav/dwell come from spoken.
+            let dwell_s = g_vo_dur[h] + float(g_vo_gap_ms) / 1000.0f
+            post_command(app, "imgui_narrate", JV((text = text, target = target, duration_s = dwell_s)))
+            let st = post_command(app, "record_status", null)
+            g_vo_collect |> push(VoSidecarHit(frame = st?["frames"] ?? 0,
+                t_s = st?["elapsed_s"] ?? 0.0f,
+                wav = "{g_vo_stem}_{h}.wav", text = text))
+            return uint(dwell_s * 1000.0f)
+        }
+    }
+    post_command(app, "imgui_narrate", JV((text = text, target = target,
+        duration_s = float(read_ms) / 1000.0f)))
+    return read_ms
+}
+
+def public say(app : ImguiApp; text : string; target : string = ""; read_ms : uint = NARRATE_READ_MS; voice : string = "") {
+    //! Pop a narration overlay (``imgui_narrate`` verb), then sleep for the dwell so the
+    //! recorder captures the on-screen window. The overlay is held by wall-clock ``duration_s``
+    //! (the same span as the sleep), not a tick budget, so it lingers correctly even though
+    //! render fps and capture fps diverge during recording. In voiceover mode the dwell is the
+    //! wav length (+gap) instead, so the caption stays up exactly while the voice speaks.
     //! Named ``say`` (not ``narrate``) to avoid overload-resolution churn with
     //! imgui_visual_aids::narrate (the host-side overlay function), which differs
-    //! only in the first arg type (string vs ImguiApp).
-    let frames = int(float(RECORD_FPS) * float(read_ms) / 1000.0f)
-    post_command(app, "imgui_narrate", JV((text = text, target = target, frames = frames)))
-    sleep(read_ms)
+    //! only in the first arg type (string vs ImguiApp). For a click/drag that must land under
+    //! the voice, use ``say_begin`` + a manual dwell split instead.
+    sleep(say_begin(app, text, target, read_ms, voice))
+}
+
+def private is_button_kind(kind : string) : bool {
+    return (kind == "button" || kind == "small_button" || kind == "arrow_button" ||
+            kind == "invisible_button" || kind == "image_button" || kind == "tab_item_button")
+}
+
+def private split_alias(target : string) : tuple<string; int> {
+    //! "X#v" -> (ground "X", v_button v); plain "X" -> ("X", 0). The per-site radio alias suffix.
+    let h = find(target, "#")
+    if (h < 0) return (target, 0)
+    return (slice(target, 0, h), to_int(slice(target, h + 1)))
+}
+
+def private verify_click_effect(app : ImguiApp; target : string; var pre : JsonValue?) {
+    //! Verify the kind-appropriate effect of clicking ``target`` actually happened — a recording is
+    //! also a test, so a no-op click (landed off, or nothing changed) is recorded as a failure (via
+    //! ``record_check_value``, surfaced at teardown). Effect-by-kind doubles as a landing check: if
+    //! the click missed, the state wouldn't move. Kinds with no click-tracked field (sliders etc. —
+    //! recordings don't click them) skip.
+    let (ground, vb) = split_alias(target)
+    let kind = find_widget(pre, ground)?["kind"] ?? ""
+    if (empty(kind)) return
+    if (is_button_kind(kind)) {
+        let pre_cc = widget_payload_field(pre, ground, "click_count") ?? 0
+        record_check_value(app, ground, "click_count", pre_cc + 1, 120)
+    } elif (kind == "radio_button_int") {
+        record_check_value(app, ground, "value", vb, 120)
+    } elif (kind == "checkbox" || kind == "radio_button" || kind == "selectable" || kind == "menu_item") {
+        let pre_v = widget_payload_field(pre, ground, "value") ?? false
+        record_check_value(app, ground, "value", !pre_v, 120)
+    }
+}
+
+def public hold_through_voice(app : ImguiApp; dwell : uint; clicks : array<string>) {
+    //! Pace the click(s) in ``clicks`` UNDER an already-posted voice line: a short lead lets the
+    //! box + voice start, then each click lands (ripple + state change visible while the voice
+    //! plays), then hold the caption for the rest of its voice. ``dwell`` is the value returned
+    //! by ``say_begin``; pass the caption/voice LITERALS to ``say_begin`` at the call site (so
+    //! prepare_recording can scan them) and forward its result here. The caller must have already
+    //! moved the cursor onto the first target. Each click is VERIFIED (the effect must register,
+    //! or the recording aborts) and the tracked cursor is advanced to the click's resolved point
+    //! so the next move_to starts there (no teleport). Multi-click stages dwell a beat between
+    //! picks so each state is visible.
+    let lead = dwell > 1200u ? 500u : dwell / 3u
+    sleep(lead)
+    let n = length(clicks)
+    let body_ms = dwell > lead ? dwell - lead : 0u
+    let beat = n > 0 ? body_ms / uint(n) : body_ms
+    for (target in clicks) {
+        var pre = snapshot(app)
+        click(app, target)                              // animated approach + press/release
+        verify_click_effect(app, target, pre)           // panics if the click had no effect
+        reset_cursor_pos(widget_click_point(pre, target))  // track where the click left the cursor
+        sleep(beat)
+    }
 }
 
 def public wait_for_key_idle(app : ImguiApp; timeout_sec : float = DEFAULT_FRAME_WAIT_SEC) : bool {
@@ -744,8 +975,8 @@ def public with_imgui_app(feature_path : string;
 
 // ===== Recording helper =====
 
-let private RECORD_ASSET_REL = "doc/source/_static/tutorials"
-let private RECORD_FPS_DEFAULT = RECORD_FPS  // 60 — see widgets/imgui_playwright.das tunables section
+let public RECORD_ASSET_REL = "doc/source/_static/tutorials"
+let private RECORD_FPS_DEFAULT = RECORD_FPS  // nominal capture+playback grid — see the tunables section above
 
 def public with_recording_app(feature_path : string;
                               output_apng_basename : string;
@@ -804,7 +1035,7 @@ def public with_recording_app(feature_path : string;
     //! feature whose ``require`` chain needs its module too. A relative
     //! ``feature_path`` resolves under ``feature_root``; the APNG lands under
     //! ``<asset_root>/doc/source/_static/tutorials/`` regardless of caller cwd.
-    //! ``fps`` defaults to ``RECORD_FPS`` (60 — native MP4 playback). Panics on
+    //! ``fps`` defaults to ``RECORD_FPS`` (the nominal capture+playback grid). Panics on
     //! non-zero exit / readiness or test timeout so the driver fails loudly.
     // Relative feature_path resolves under feature_root (the calling package's
     // module root, where examples/tutorial/ + examples/features/ live); the
@@ -815,6 +1046,12 @@ def public with_recording_app(feature_path : string;
     }
     let asset_dir = path_join(asset_root, RECORD_ASSET_REL)
     let output_apng_path = path_join(asset_dir, output_apng_basename)
+    arm_voiceovers(output_apng_path)
+    g_record_failures |> clear()   // fresh self-verification ledger for this recording
+    // Voiceover dwells make the body run far longer than the silent-record cap.
+    // The cap is only a safety backstop (real length comes from record_stop), so
+    // extend it by the total added narration time when armed.
+    let eff_max_seconds = g_vo_active ? max_seconds + int(g_vo_extra_s) + 5 : max_seconds
 
     let base_url = "http://127.0.0.1:{DEFAULT_LIVE_PORT}"
     var app = ImguiApp(base_url = base_url,
@@ -827,18 +1064,28 @@ def public with_recording_app(feature_path : string;
         print("[record] attaching to existing daslang-live at {base_url}\n")
         post_command(app, "imgui_mouse_trail",   JV((enabled = true)))
         post_command(app, "imgui_cursor_sprite", JV((enabled = true)))
+        // Windowed glfw re-polls the real OS cursor into io.MousePos every frame; detach real
+        // input so synth fully owns IO, else synth clicks land wherever the real mouse sits.
+        post_command(app, "set_user_control",     JV((enabled = false)))
         post_command(app, "record_start", JV((
             file = output_apng_path,
             fps = fps,
-            max_seconds = max_seconds
+            max_seconds = eff_max_seconds
         )))
         invoke(body, app)
         let stopped = post_command(app, "record_stop", null)
         let dump = stopped != null ? write_json(stopped) : "<null>"
         print("[record] record_stop -> {dump}\n")
         print("[record] APNG saved to {output_apng_path}\n")
+        flush_voiceovers(stopped, output_apng_path, fps)
+        post_command(app, "set_user_control",     JV((enabled = true)))
         post_command(app, "imgui_cursor_sprite", JV((enabled = false)))
         post_command(app, "imgui_mouse_trail",   JV((enabled = false)))
+        // Host stays running (we didn't spawn it). The body never panics on a failed interaction;
+        // it accumulates misses, so the recording stops cleanly above — now fail loudly if any.
+        if (!empty(g_record_failures)) {
+            panic(record_failures_message())
+        }
         return
     }
 
@@ -867,7 +1114,7 @@ def public with_recording_app(feature_path : string;
     var captured : string
     var unready  = false
     // Body must complete within max_seconds + ready/shutdown headroom.
-    let test_timeout_sec = float(max_seconds) + 30.0f
+    let test_timeout_sec = float(eff_max_seconds) + 30.0f
     let exit_code = unsafe(popen_argv(argv, test_timeout_sec, $(f) {
         return if (f == null)
         if (!wait_until_ready(app, DEFAULT_READY_TIMEOUT_SEC)) {
@@ -877,16 +1124,25 @@ def public with_recording_app(feature_path : string;
         }
         post_command(app, "imgui_mouse_trail",   JV((enabled = true)))
         post_command(app, "imgui_cursor_sprite", JV((enabled = true)))
+        // Windowed glfw re-polls the real OS cursor into io.MousePos every frame; detach real
+        // input so synth fully owns IO, else synth clicks land wherever the real mouse sits.
+        post_command(app, "set_user_control",     JV((enabled = false)))
         post_command(app, "record_start", JV((
             file = output_apng_path,
             fps = fps,
-            max_seconds = max_seconds
+            max_seconds = eff_max_seconds
         )))
+        // The body never panics on a failed interaction — it accumulates misses into
+        // g_record_failures (recovering-and-continuing from a daslang panic isn't supported, so we
+        // can't catch mid-body and still shut down cleanly). So record_stop + /shutdown always run;
+        // the misses are surfaced after popen drains, below.
         invoke(body, app)
         let stopped = post_command(app, "record_stop", null)
         let dump = stopped != null ? write_json(stopped) : "<null>"
         print("[record] record_stop -> {dump}\n")
         print("[record] APNG saved to {output_apng_path}\n")
+        flush_voiceovers(stopped, output_apng_path, fps)
+        post_command(app, "set_user_control",     JV((enabled = true)))
         post_command(app, "imgui_cursor_sprite", JV((enabled = false)))
         post_command(app, "imgui_mouse_trail",   JV((enabled = false)))
         post_signal(app, "/shutdown")
@@ -901,4 +1157,15 @@ def public with_recording_app(feature_path : string;
     if (exit_code != 0) {
         panic("daslang-live exited non-zero ({exit_code}).\nstdout/stderr:\n{captured}")
     }
+    if (!empty(g_record_failures)) {
+        // Host shut down cleanly above; surface the self-verification misses now (after drain) so
+        // the recording fails loudly with every want/got diagnostic + the subprocess stdout/stderr.
+        panic("{record_failures_message()}\nstdout/stderr:\n{captured}")
+    }
+}
+
+def private record_failures_message() : string {
+    //! Join the accumulated self-verification misses into one loud teardown message.
+    return ("recording self-verification failed — {length(g_record_failures)} interaction(s) did not register:\n" +
+            join(g_record_failures, "\n---\n"))
 }

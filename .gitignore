@@ -40,6 +40,12 @@ doc/source/stdlib/generated/
 # all tutorials) ship in-tree under doc/source/_static/tutorials/. .apng
 # is gitignored; .mp4 is tracked.
 doc/source/_static/tutorials/*.apng
+# Voiceover pipeline intermediates (prepare_recording / convert_recording):
+# pre-rendered TTS wavs + manifest, the record-time sidecar, the per-clip music
+# bed, and the saved ffmpeg command. Only the final .mp4 is tracked.
+doc/source/_static/tutorials/voiceover/
+doc/source/_static/tutorials/*_music.wav
+doc/source/_static/tutorials/*.mp4.ffmpeg.txt
 doc/source/__pycache__/
 doc/build_html/
 

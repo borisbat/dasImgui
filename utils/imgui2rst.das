@@ -42,7 +42,7 @@ def document_module_imgui_boost_runtime() {
     var mod = find_module("imgui_boost_runtime")
     var groups <- array<DocGroup>(
         group_by_regex("Widget state types",      mod, %regex~.*State(Float|Int|Float2|Float3|Float4|Int2|Int3|Int4)?$%%),
-        group_by_regex("Per-frame registry",      mod, %regex~^(WidgetEntry|WidgetMeta|begin_frame|end_frame|end_of_frame|register_widget|register_focusable|register_end_of_frame_hook|register_post_command_hook|lookup_widget|lookup_state_addr|clear_module_widgets|widget_registered|widget_prelude|widget_rect|with_state|id_to_path|id_to_bbox).*%%),
+        group_by_regex("Per-frame registry",      mod, %regex~^(WidgetEntry|WidgetMeta|begin_frame|end_frame|end_of_frame|register_widget|register_focusable|register_radio_site_alias|register_end_of_frame_hook|register_post_command_hook|lookup_widget|lookup_state_addr|clear_module_widgets|widget_registered|widget_prelude|widget_rect|with_state|id_to_path|id_to_bbox).*%%),
         group_by_regex("Path machinery",          mod, %regex~^(container_path_push|container_path_pop|widget_path_key|container_path_key|active_widget_path)$%%),
         group_by_regex("Coroutines",              mod, %regex~^(advance_coroutines|spawn_coroutine)$%%),
         group_by_regex("Window control",          mod, %regex~^imgui_(dock|undock|dock_reset|set_window_pos|set_window_size)$%%),
@@ -146,13 +146,14 @@ def document_module_imgui_playwright() {
     var mod = find_module("imgui_playwright")
     var groups <- array<DocGroup>(
         group_by_regex("App lifecycle",     mod, %regex~^(with_imgui_app|launch_imgui_app|shutdown|with_recording_app).*%%),
-        group_by_regex("Locators / queries", mod, %regex~^(find_widget|widget_exists|widget_payload_field|widget_rendered|get_text)$%%),
-        group_by_regex("Actions",           mod, %regex~^(click|click_at|right_click|type_text|key_tap|force_set_value|drag|drag_along|drag_to|focus|open_widget|close_widget|reload|move_to|reset_cursor_pos|resize_window|say)$%%),
+        group_by_regex("Locators / queries", mod, %regex~^(find_widget|widget_exists|widget_payload_field|widget_rendered|widget_click_point|get_text)$%%),
+        group_by_regex("Actions",           mod, %regex~^(click|click_at|right_click|type_text|key_tap|force_set_value|force_set_verified|drag|drag_along|drag_to|focus|open_widget|close_widget|reload|move_to|reset_cursor_pos|resize_window)$%%),
+        group_by_regex("Recording / narration", mod, %regex~^(say|say_begin|say_hash|hold_through_voice)$%%),
         group_by_regex("Snapshots",         mod, %regex~^(snapshot|expect_value|expect_render).*%%),
         group_by_regex("Polling / await",   mod, %regex~^(wait_until.*|wait_for_.*|await_quiescent|await_probe)$%%),
         group_by_regex("Pause control",     mod, %regex~^(pause|unpause|with_paused)$%%),
         group_by_regex("Transport plumbing", mod, %regex~^(post_command|send_imgui_command|receive_imgui_command).*%%),
-        hide_group(group_by_regex("Internal", mod, %regex~^(_|priv_).*%%))
+        hide_group(group_by_regex("Internal", mod, %regex~^(_|priv_|dasimgui_module_root).*%%))
     )
     document("Playwright — block-form test harness for daslang-live + dasImgui apps", mod, "imgui_playwright.rst", groups)
 }
