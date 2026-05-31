@@ -40,9 +40,10 @@ let FRAME_POLL_INTERVAL_MS : uint = 100u             // ms between snapshot poll
 //
 // One knob set for every record_*.das. Drivers used to redeclare these as
 // per-file lets (NARRATE_FRAMES / READ_MS / SETTLE_MS / CLICK_DWELL_MS) with
-// inconsistent values across the corpus. The MP4 migration also dropped the
-// "keep APNG asset under 50 MB" pressure that justified fps=30, so the
-// default now matches the app's native 60 fps.
+// inconsistent values across the corpus. RECORD_FPS is the nominal capture +
+// playback grid: the synchronous APNG writer (daScript-side) never drops, and
+// convert_recording reclocks the mp4 to the measured effective rate, so 30 keeps
+// assets light without risking timeline drift.
 //
 // NARRATE_FRAMES is gone — the unified `narrate()` helper derives it from
 // RECORD_FPS * NARRATE_READ_MS / 1000 so only one knob remains.
@@ -976,7 +977,7 @@ def public with_imgui_app(feature_path : string;
 // ===== Recording helper =====
 
 let public RECORD_ASSET_REL = "doc/source/_static/tutorials"
-let private RECORD_FPS_DEFAULT = RECORD_FPS  // 60 — see widgets/imgui_playwright.das tunables section
+let private RECORD_FPS_DEFAULT = RECORD_FPS  // nominal capture+playback grid — see the tunables section above
 
 def public with_recording_app(feature_path : string;
                               output_apng_basename : string;
@@ -1035,7 +1036,7 @@ def public with_recording_app(feature_path : string;
     //! feature whose ``require`` chain needs its module too. A relative
     //! ``feature_path`` resolves under ``feature_root``; the APNG lands under
     //! ``<asset_root>/doc/source/_static/tutorials/`` regardless of caller cwd.
-    //! ``fps`` defaults to ``RECORD_FPS`` (60 — native MP4 playback). Panics on
+    //! ``fps`` defaults to ``RECORD_FPS`` (the nominal capture+playback grid). Panics on
     //! non-zero exit / readiness or test timeout so the driver fails loudly.
     // Relative feature_path resolves under feature_root (the calling package's
     // module root, where examples/tutorial/ + examples/features/ live); the
