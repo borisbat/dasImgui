@@ -31,17 +31,17 @@ def widget_center(var snap : JsonValue?; ident : string) : tuple<float; float> {
     return ((b.x + b.z) * 0.5f, (b.y + b.w) * 0.5f)
 }
 
-def click_under_voice(app : ImguiApp; caption : string; target : string; voice : string; clicks : array<string>) {
-    //! Speak ``caption``/``voice`` and fire each click in ``clicks`` UNDER the voice: a short
-    //! lead lets the box + voice start, then the clicks land so the ripple and counter tick are
-    //! visible while Emma talks. The caller must have already moved the cursor onto ``target``.
-    let dwell = say_begin(app, caption, target, NARRATE_READ_MS, voice)
+def hold_through_voice(app : ImguiApp; dwell : uint; clicks : array<string>) {
+    //! Pace the click(s) UNDER an already-posted voice line: a short lead lets the box + voice
+    //! start, then each click lands (ripple + counter tick visible while Emma talks), then hold
+    //! the caption for the rest of its voice. ``dwell`` is the value say_begin returned. The
+    //! caption/voice LITERALS stay at the say_begin call site so prepare_recording can scan them.
     let lead = dwell > 1200u ? 500u : dwell / 3u
     sleep(lead)
     for (t in clicks) {
         click(app, t)        // blocks through press+release; the ripple animates from the press
     }
-    sleep(dwell > lead ? dwell - lead : 0u)   // hold the caption for the rest of its voice
+    sleep(dwell > lead ? dwell - lead : 0u)
 }
 
 [export]
@@ -75,43 +75,43 @@ def main {
         sleep(SETTLE_MS)
 
         // ---- Stage 1: button — the workhorse ----
-        click_under_voice(app, "button - the workhorse", T_GO,
-            "Here is the everyday button. Each time you click it, its counter goes up by one. Watch the number climb.",
+        hold_through_voice(app, say_begin(app, "button - the workhorse", T_GO,
+            [voice = "Here is the everyday button. Each time you click it, its counter goes up by one. Watch the number climb."]),
             [T_GO, T_GO])
 
         // ---- Stage 2: small_button — no padding ----
         move_to(app, p_small, 800)
         sleep(SETTLE_MS)
-        click_under_voice(app, "small_button - no padding", T_SMALL,
-            "A small button is the same thing, just without the padding around the label. Handy for tight tool strips, like a quit or a reset.",
+        hold_through_voice(app, say_begin(app, "small_button - no padding", T_SMALL,
+            [voice = "A small button is the same thing, just without the padding around the label. Handy for tight tool strips, like a quit or a reset."]),
             [T_SMALL])
 
         // ---- Stage 3: arrow_button — directional pair ----
         move_to(app, p_back, 800)
         sleep(SETTLE_MS)
-        click_under_voice(app, "arrow_button - directional", T_BACK,
-            "Arrow buttons draw a little triangle. You pass a direction, and each one needs its own name. Here is back, and then forward.",
+        hold_through_voice(app, say_begin(app, "arrow_button - directional", T_BACK,
+            [voice = "Arrow buttons draw a little triangle. You pass a direction, and each one needs its own name. Here is back, and then forward."]),
             [T_BACK, T_FWD])
 
         // ---- Stage 4: invisible_button — hit area without glyph ----
         move_to(app, p_hot, 800)
         sleep(SETTLE_MS)
-        click_under_voice(app, "invisible_button - hit area", T_HOT,
-            "An invisible button is a clickable region that draws nothing at all. Lay one over your own artwork to make any shape respond to clicks.",
+        hold_through_voice(app, say_begin(app, "invisible_button - hit area", T_HOT,
+            [voice = "An invisible button is a clickable region that draws nothing at all. Lay one over your own artwork to make any shape respond to clicks."]),
             [T_HOT])
 
         // ---- Stage 5: image_button — font atlas as texture ----
         move_to(app, p_img, 800)
         sleep(SETTLE_MS)
-        click_under_voice(app, "image_button - textured", T_IMG,
-            "An image button wears a texture as its face. Here it is showing the font atlas, but a real app would load its own picture.",
+        hold_through_voice(app, say_begin(app, "image_button - textured", T_IMG,
+            [voice = "An image button wears a texture as its face. Here it is showing the font atlas, but a real app would load its own picture."]),
             [T_IMG])
 
         // ---- Stage 6: tab_item_button — inside tab_bar ----
         move_to(app, p_help, 800)
         sleep(SETTLE_MS)
-        click_under_voice(app, "tab_item_button - tab styled", T_HELP,
-            "This one looks like a tab, and it must live inside a tab bar. A leading button anchors to the start, a trailing one to the end. Think of a help mark, or an add button.",
+        hold_through_voice(app, say_begin(app, "tab_item_button - tab styled", T_HELP,
+            [voice = "This one looks like a tab, and it must live inside a tab bar. A leading button anchors to the start, a trailing one to the end. Think of a help mark, or an add button."]),
             [T_HELP, T_ADD])
     }
 }

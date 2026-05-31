@@ -60,9 +60,11 @@ def const_str(e : Expression?) : string {
 class ScanVisitor : AstVisitor {
     def override preVisitExprCall(expr : ExprCall?) : void {
         let name = string(expr.name)
-        if (name == "say") {
-            // say(app, text, target, read_ms, voice) — by compile time all 5 are positional
-            // (defaults materialized): caption at [1], voice at [4] (empty "" when omitted).
+        if (name == "say" || name == "say_begin") {
+            // say[_begin](app, text, target, read_ms, voice) — by compile time all 5 are positional
+            // (defaults materialized): caption at [1], voice at [4] (empty "" when omitted). Both
+            // are scanned because a click-under-voice driver calls say_begin directly (with literal
+            // caption + voice) and splits the dwell around the click itself.
             if (length(expr.arguments) >= 5) {
                 let caption = const_str(expr.arguments[1])
                 let voice = const_str(expr.arguments[4])
