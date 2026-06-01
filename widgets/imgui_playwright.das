@@ -836,7 +836,7 @@ def public drag_through_voice(app : ImguiApp; dwell : uint; target : string;
     let from_pos = (last_cursor_x, last_cursor_y)
     let dist = max(abs(to_pos._0 - from_pos._0), abs(to_pos._1 - from_pos._1))
     let scrub_ms = drag_ms > 0 ? drag_ms : max(700, int(dist / 0.30f))
-    let lead = min(max(dwell / 3u, 700u), 3000u)
+    let lead = clamp(dwell / 3u, 700u, 3000u)
     sleep(lead)
     var ev : array<JsonValue?>
     ev |> drag_along(0, from_pos, to_pos, scrub_ms, 150)
