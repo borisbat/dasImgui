@@ -658,6 +658,31 @@ def private flush_voiceovers(stopped : JsonValue?; apng_path : string; fps : int
 
 // ===== Recording cadence helper =====
 
+def private say_begin_impl(app : ImguiApp; text : string; targets : array<string>;
+                           read_ms : uint; voice : string) : uint {
+    // Shared body for both say_begin forms — posts imgui_narrate with the targets list (first is
+    // the anchor, all hard-avoided) and returns the dwell WITHOUT sleeping. In voiceover mode the
+    // dwell is the wav length (+gap), held by wall-clock duration_s (render fps diverges from the
+    // capture grid, so a tick budget would drain early and the box would vanish mid-voiceover);
+    // otherwise read_ms.
+    let spoken = voice != "" ? voice : text
+    if (g_vo_active) {
+        let h = say_hash(spoken)
+        if (key_exists(g_vo_dur, h)) {
+            let dwell_s = g_vo_dur[h] + float(g_vo_gap_ms) / 1000.0f
+            post_command(app, "imgui_narrate", JV((text = text, targets = JV(targets), duration_s = dwell_s)))
+            let st = post_command(app, "record_status", null)
+            g_vo_collect |> push(VoSidecarHit(frame = st?["frames"] ?? 0,
+                t_s = st?["elapsed_s"] ?? 0.0f,
+                wav = "{g_vo_stem}_{h}.wav", text = text))
+            return uint(dwell_s * 1000.0f)
+        }
+    }
+    post_command(app, "imgui_narrate", JV((text = text, targets = JV(targets),
+        duration_s = float(read_ms) / 1000.0f)))
+    return read_ms
+}
+
 def public say_begin(app : ImguiApp; text : string; target : string = ""; read_ms : uint = NARRATE_READ_MS; voice : string = "") : uint {
     //! Non-blocking ``say``: post the narration overlay (+ record the voiceover anchor) and
     //! RETURN the dwell in milliseconds WITHOUT sleeping. The caller then sleeps the returned
@@ -666,27 +691,16 @@ def public say_begin(app : ImguiApp; text : string; target : string = ""; read_m
     //! narration with no mid-dwell action, use ``say`` which posts + sleeps in one call.
     //! ``text`` is the on-screen caption; ``voice`` (when set) is the spoken line — write
     //! captions for the eye (terse) and voice for the ear (natural sentences). Empty voice
-    //! falls back to text, so existing calls keep speaking their caption.
-    let spoken = voice != "" ? voice : text
-    if (g_vo_active) {
-        let h = say_hash(spoken)
-        if (key_exists(g_vo_dur, h)) {
-            // Voiceover mode: dwell == wav length (+gap); caption stays up while the voice speaks.
-            // Hold by wall-clock duration_s (not a tick budget) — render fps diverges from the
-            // capture grid during recording, so a frame count would drain early and the box would
-            // vanish mid-voiceover. Box shows the caption (text); wav/dwell come from spoken.
-            let dwell_s = g_vo_dur[h] + float(g_vo_gap_ms) / 1000.0f
-            post_command(app, "imgui_narrate", JV((text = text, target = target, duration_s = dwell_s)))
-            let st = post_command(app, "record_status", null)
-            g_vo_collect |> push(VoSidecarHit(frame = st?["frames"] ?? 0,
-                t_s = st?["elapsed_s"] ?? 0.0f,
-                wav = "{g_vo_stem}_{h}.wav", text = text))
-            return uint(dwell_s * 1000.0f)
-        }
-    }
-    post_command(app, "imgui_narrate", JV((text = text, target = target,
-        duration_s = float(read_ms) / 1000.0f)))
-    return read_ms
+    //! falls back to text. For a step spanning sibling controls, use the ``targets`` overload.
+    return say_begin_impl(app, text, [target], read_ms, voice)
+}
+
+def public say_begin(app : ImguiApp; text : string; targets : array<string>; read_ms : uint = NARRATE_READ_MS; voice : string = "") : uint {
+    //! Multi-target ``say_begin``: the caption points at ``targets[0]`` and is placed to HARD-avoid
+    //! the union of all ``targets``' bboxes — pass the same list ``hold_through_voice`` will click so
+    //! the box never covers a sibling control (e.g. an arrow_button pair). Otherwise identical to the
+    //! single-target form (returns the dwell; the caller sleeps it).
+    return say_begin_impl(app, text, targets, read_ms, voice)
 }
 
 def public say(app : ImguiApp; text : string; target : string = ""; read_ms : uint = NARRATE_READ_MS; voice : string = "") {
@@ -700,6 +714,12 @@ def public say(app : ImguiApp; text : string; target : string = ""; read_ms : ui
     //! only in the first arg type (string vs ImguiApp). For a click/drag that must land under
     //! the voice, use ``say_begin`` + a manual dwell split instead.
     sleep(say_begin(app, text, target, read_ms, voice))
+}
+
+def public say(app : ImguiApp; text : string; targets : array<string>; read_ms : uint = NARRATE_READ_MS; voice : string = "") {
+    //! Multi-target ``say``: caption points at ``targets[0]`` and HARD-avoids the union of all
+    //! ``targets`` (see the ``say_begin`` list overload), then sleeps the dwell.
+    sleep(say_begin(app, text, targets, read_ms, voice))
 }
 
 def private is_button_kind(kind : string) : bool {

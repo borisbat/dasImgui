@@ -1418,13 +1418,13 @@ var public synth_click_t : float = -1.0
 var private g_click_ticket_next    : int = 0   // next ticket to hand out (bumped at dispatch, just before spawn)
 var private g_click_ticket_serving : int = 0   // ticket currently allowed to drive the button
 
-// Toggleable per-section debug logging ("ledgeable" sections). A section name maps to enabled;
+// Toggleable per-section debug logging. A section name maps to enabled;
 // emit via the ambient to_log gated on it, so per-frame instrumentation costs one set-lookup when
 // off. Toggle from a test or via the imgui_log_section live_command. Deliberately a tiny local
 // gate, NOT a daslib/logger require — boost is foundational and we don't pull logger+debugger into
 // every dasImgui app's compile.
 var private g_log_sections : table<string>
-var private g_log_buf : array<string>   // drainable ring of emitted lines (imgui_log_drain returns + clears)
+var private g_log_buf : array<string>   // drainable capped buffer of emitted lines (imgui_log_drain returns + clears)
 def log_section(name : string; on : bool) {
     //! Enable/disable a debug log section. Sections are checked by log_section_on; gated emit sites
     //! cost one set-lookup when off, so heavy per-frame logging is free until a section is turned on.
@@ -1967,7 +1967,7 @@ def imgui_force_set(input : JsonValue?) : JsonValue? {
     return with_await(input, r)
 }
 
-[live_command(description = "Toggle a debug log section in the host ('name' + bool 'on') for ledgeable per-frame instrumentation")]
+[live_command(description = "Toggle a debug log section in the host ('name' + bool 'on') for toggleable per-frame instrumentation")]
 def imgui_log_section(input : JsonValue?) : JsonValue? {
     //! Live-command: enable/disable host-side debug log section ``input["name"]`` per ``input["on"]``.
     //! Gated emit sites (e.g. "synth.click") cost one set-lookup when off, so heavy per-frame

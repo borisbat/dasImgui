@@ -152,7 +152,8 @@ struct private TrailDot {
 
 struct private NarrateSpec {
     text : string
-    target : string
+    target : string            // anchor: connector points here, box placed beside it
+    avoid : array<string>      // extra targets to keep the box clear of (union with target)
     remaining_frames : int
     remaining_s : float        // wall-clock budget in seconds; < 0 → fall back to the remaining_frames tick countdown
 }
@@ -220,8 +221,22 @@ def public narrate(text : string;
     //! ``duration_s > 0`` to hold it for that many wall-clock seconds instead — rate-independent,
     //! required for recordings where render fps and capture fps diverge. If ``target`` resolves
     //! to a widget bbox the box anchors next to it with a connector line; otherwise it floats top-left.
-    g_narrates |> push(NarrateSpec(text = text, target = target,
-                                   remaining_frames = frames, remaining_s = duration_s))
+    g_narrates |> emplace(NarrateSpec(text = text, target = target,
+                                      remaining_frames = frames, remaining_s = duration_s))
+}
+
+def public narrate(text : string;
+                   targets : array<string>;
+                   frames : int = narrate_default_frames;
+                   duration_s : float = -1.0f) {
+    //! Multi-target callout: the box points at ``targets[0]`` and is placed to HARD-avoid the union
+    //! of all ``targets``' bboxes, so a step spanning sibling controls (e.g. a +/- pair) never covers
+    //! a related element. Empty list floats top-left.
+    var avoid <- [for (k in range(1, length(targets))); targets[k]]
+    g_narrates |> emplace(NarrateSpec(text = text,
+                                      target = empty(targets) ? "" : targets[0],
+                                      avoid <- avoid,
+                                      remaining_frames = frames, remaining_s = duration_s))
 }
 
 // ===== Painters =====
@@ -314,12 +329,19 @@ def private clamp_anchor(c : float2; box_size : float2; viewport : float2;
 }
 
 def private score_anchor(c : float2; box_size : float2;
-                         target_bbox : float4; other_bboxes : array<float4>) : int {
-    // +1 per sibling bbox the banner overlaps, +1000 if the banner overlaps the
-    // target itself (the connector-loses-meaning penalty).
+                         target_bbox : float4; avoid_bboxes : array<float4>;
+                         other_bboxes : array<float4>) : int {
+    // +1000 if the banner overlaps the anchor target (connector loses meaning) or any member of the
+    // step's hard-avoid group (the other "main" elements a multi-target narrate spans), so the box
+    // never covers them; +1 per incidental widget so it still prefers the least-crowded gap.
     var s = 0
     if (rect_intersects(c, box_size, target_bbox)) {
         s += 1000
+    }
+    for (b in avoid_bboxes) {
+        if (rect_intersects(c, box_size, b)) {
+            s += 1000
+        }
     }
     for (b in other_bboxes) {
         s++ if (rect_intersects(c, box_size, b))
@@ -336,11 +358,14 @@ def public compute_narrate_anchor(
                                   gap          : float;
                                   shadow       : float2;
                                   hud_zone_h   : float;
-                                  other_bboxes : array<float4>
+                                  other_bboxes : array<float4>;
+                                  avoid_bboxes : array<float4>
                                   ) : float2 {
     //! Pick a post-it anchor (top-left corner) by scoring 4 viewport-clamped
-    //! candidates (right/left/below/above). ``score_anchor`` adds 1 per sibling
-    //! bbox the banner overlaps and 1000 if the banner overlaps the target —
+    //! candidates (right/left/below/above). ``score_anchor`` adds 1 per incidental
+    //! widget bbox (``other_bboxes``) the banner overlaps, and 1000 if it overlaps
+    //! the anchor target OR any ``avoid_bboxes`` member (the step's other "main"
+    //! elements) — so a multi-target step's box never covers a related control —
     //! lowest-score candidate wins, ties broken by iteration order (right >
     //! left > below > above). If the banner is larger than the viewport's
     //! placement region even when clamped, returns a bottom-left safety
@@ -364,10 +389,10 @@ def public compute_narrate_anchor(
                                box_size, viewport, edge_margin, shadow, hud_zone_h)
     let c_above = clamp_anchor(float2(cx - box_size.x * 0.5f, bb.y - gap - box_size.y),
                                box_size, viewport, edge_margin, shadow, hud_zone_h)
-    let s_right = score_anchor(c_right, box_size, widget_bbox, other_bboxes)
-    let s_left  = score_anchor(c_left,  box_size, widget_bbox, other_bboxes)
-    let s_below = score_anchor(c_below, box_size, widget_bbox, other_bboxes)
-    let s_above = score_anchor(c_above, box_size, widget_bbox, other_bboxes)
+    let s_right = score_anchor(c_right, box_size, widget_bbox, avoid_bboxes, other_bboxes)
+    let s_left  = score_anchor(c_left,  box_size, widget_bbox, avoid_bboxes, other_bboxes)
+    let s_below = score_anchor(c_below, box_size, widget_bbox, avoid_bboxes, other_bboxes)
+    let s_above = score_anchor(c_above, box_size, widget_bbox, avoid_bboxes, other_bboxes)
 
     // Tiebreak by iteration order: right > left > below > above.
     var best_anchor = c_right
@@ -462,11 +487,22 @@ def private paint_narrates {
             continue if (have_target && k == g_narrates[i].target)
             other_bboxes |> push(w.bbox)
         }
+        // The step's own sibling targets are HARD-avoided (scored like the anchor) so a
+        // multi-target narrate never covers a "main" element even when every gap is crowded.
+        // Plain loop (not a comprehension) so widget_rect(av) is resolved once per target, not twice.
+        var avoid_bboxes : array<float4>
+        for (av in g_narrates[i].avoid) {
+            let r = widget_rect(av)
+            if (r._0) {
+                avoid_bboxes |> push(r._1)
+            }
+        }
         let anchor = compute_narrate_anchor(have_target, widget_bbox, box_size,
                                             viewport, edge_margin, gap,
                                             narrate_shadow_offset, hud_zone_h,
-                                            other_bboxes)
+                                            other_bboxes, avoid_bboxes)
         delete other_bboxes
+        delete avoid_bboxes
         let box_end = float2(anchor.x + box_size.x, anchor.y + box_size.y)
         // Connector drawn first so the post-it covers any incidental crossing.
         // Endpoints are on the OUTSIDE edges of banner + target — the line stays
@@ -754,6 +790,7 @@ def imgui_mouse_trail(input : JsonValue?) : JsonValue? {
 struct NarrateArgs {
     text : string
     @optional target : string = ""
+    @optional targets : array<string>
     @optional frames : int = -1
     @optional duration_s : float = -1.0f
 }
@@ -761,10 +798,15 @@ struct NarrateArgs {
 [live_command(description="Show a callout box with text; lingers N frames, or duration_s wall-clock seconds if given. Optional target widget for connector line.")]
 def imgui_narrate(input : JsonValue?) : JsonValue? {
     //! ``[live_command]`` wrapper around :ref:`narrate <function-imgui_visual_aids_narrate_string_string_int_float>`.
-    //! Args: ``text``, ``target``, ``frames``, ``duration_s`` (wall-clock seconds; wins over ``frames`` — use for recordings).
+    //! Args: ``text``, ``target`` (single anchor) OR ``targets`` (list — first is the anchor, all
+    //! hard-avoided), ``frames``, ``duration_s`` (wall-clock seconds; wins over ``frames``).
     let args = from_JV(input, type<NarrateArgs>)
     let frames = args.frames > 0 ? args.frames : narrate_default_frames
-    narrate(args.text, args.target, frames, args.duration_s)
+    if (!empty(args.targets)) {
+        narrate(args.text, args.targets, frames, args.duration_s)
+    } else {
+        narrate(args.text, args.target, frames, args.duration_s)
+    }
     return JV((ok = true))
 }
 

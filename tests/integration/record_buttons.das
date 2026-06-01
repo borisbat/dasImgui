@@ -76,7 +76,7 @@ def main {
         // ---- Stage 3: arrow_button — directional pair ----
         move_to(app, p_back, 800)
         sleep(SETTLE_MS)
-        hold_through_voice(app, say_begin(app, "arrow_button - directional", T_BACK,
+        hold_through_voice(app, say_begin(app, "arrow_button - directional", [T_BACK, T_FWD],
             [voice = "Arrow buttons draw a little triangle. You pass a direction, and each one needs its own name. Here is back, and then forward."]),
             [T_BACK, T_FWD])
 
@@ -97,7 +97,7 @@ def main {
         // ---- Stage 6: tab_item_button — inside tab_bar ----
         move_to(app, p_help, 800)
         sleep(SETTLE_MS)
-        hold_through_voice(app, say_begin(app, "tab_item_button - tab styled", T_HELP,
+        hold_through_voice(app, say_begin(app, "tab_item_button - tab styled", [T_HELP, T_ADD],
             [voice = "This one looks like a tab, and it must live inside a tab bar. A leading button anchors to the start, a trailing one to the end. Think of a help mark, or an add button."]),
             [T_HELP, T_ADD])
     }
