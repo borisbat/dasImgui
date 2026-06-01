@@ -427,8 +427,12 @@ def imgui_key_chord(input : JsonValue?) : JsonValue? {
     // input poll falls relative to our per-frame tick, but small enough to stay one
     // discrete tap. synth_key_press auto-pairs the ImGuiMod_* alias so Shortcut() routing
     // sees the chord (mirrors imgui_test_engine).
+    // Lead frames before the chord presses: a chord is usually issued right after a click
+    // that focuses the target window, and ImGui applies that focus the frame AFTER the click
+    // — start a couple frames in so a focus-gated Shortcut (editor IsFocused gate) sees it.
+    let FOCUS_SETTLE_LEAD_FRAMES = 2
     let CHORD_HOLD_FRAMES = 2
-    var t = 0
+    var t = FOCUS_SETTLE_LEAD_FRAMES
     for (m in args.mods) {
         key_timeline |> push(KeyEvent(t_ms = t, kind = KEKind.press, key = mod_name_to_key(m)))
     }
