@@ -13,11 +13,11 @@ Recording is NOT in CI — drivers are manually-driven artifact producers. The p
 
 These are not style preferences. A recording that violates any of them is wrong and must not ship.
 
-1. **Do what it teaches.** Every stage must *perform the real interaction it narrates* — click the button so its counter ticks, flip the checkbox so the value changes, walk the radio dot across the group. Pointing the caption at a widget without driving it is not a tutorial; the viewer must SEE the effect happen. If a stage describes an action, the recorder fires that action under the voice.
+1. **Do what it teaches — drive it like a human.** Every stage must *perform the real interaction it narrates, using real synthetic input only* — click the button so its counter ticks, **drag** the slider handle to scrub, **type** into the input field, walk the radio dot across the group. The viewer must SEE the gesture and its effect. **Never `force_set` a value to shortcut the gesture** — `force_set` writes the widget state directly, bypassing the very interaction the tutorial teaches (it is the synthetic-≠-real workaround). The *only* exception is a tutorial whose **subject is programmatic / external driving** (e.g. `driving_outside`, which teaches the `imgui_force_set` verb itself) — there `force_set` is the thing being demonstrated. Pointing the caption at a widget without driving it is not a tutorial.
 
 2. **Self-verify every step.** A recording is an integration test. Every interaction is verified against the widget's actual state change:
    - clicks go through `hold_through_voice`, which snapshots the pre-state, clicks, and asserts the kind-appropriate effect (`verify_click_effect`);
-   - non-click value changes (slider / drag / input / color) go through `force_set_verified`.
+   - drags / key-types (slider, drag, input, color…) drive the real gesture (`drag` / `drag_to` / `type_text`) and assert the resulting value (`expect_value`); a stage that didn't move the value is a failure.
    A no-op interaction (click landed off-target, state didn't move) is recorded as a failure and the recording **aborts loudly** — so a dud can never silently ship. (Mechanism: failures accumulate into `g_record_failures` and surface as a panic at `with_recording_app` teardown, *after* a clean `record_stop` + `/shutdown`, because daslang panic is fatal and a mid-body panic would orphan the host.)
 
 3. **Pace by the voice, not by fixed sleeps.** Dwell is driven by the voiceover wav length. `say_begin` returns the dwell (the spoken line's duration + gap); `hold_through_voice` splits it — a short lead lets the caption + voice start, the verified click(s) land under the voice (ripple + state change visible while Emma talks), then it holds the caption for the remainder. Do not hand-tune `sleep(READ_MS)` for voiced recordings.
@@ -32,8 +32,8 @@ Plus one constraint that bites silently: **captions and voice strings must be AS
 
 A tutorial's `.mp4` ships only when ALL of these hold. The first three are the hard requirements above; the rest are the full-tutorial gate (the recording is also the integration test, so the example file and the RST page get fixed in the **same** pass, not deferred):
 
-- [ ] **Does what it teaches** — every narrated action is performed for real (counter ticks, value flips), never just pointed at. *(req 1)*
-- [ ] **Self-verifies every interaction** — clicks via `hold_through_voice`, value-sets via `force_set_verified`; a no-op aborts the recording at teardown (`g_record_failures` panic). No silent dud. *(req 2)*
+- [ ] **Does what it teaches, driven like a human** — every narrated action performed for real via synth input (click / drag / type), never just pointed at and **never `force_set`** (the sole exception is a force_set-subject tutorial like `driving_outside`). *(req 1)*
+- [ ] **Self-verifies every interaction** — clicks via `hold_through_voice`; drags/types assert the resulting value (`expect_value`); a no-op aborts the recording at teardown (`g_record_failures` panic). No silent dud. *(req 2)*
 - [ ] **Paced by the voice** — dwell = the voiceover wav length (`say_begin` returns it, `hold_through_voice` splits it); no hand-tuned `sleep`. *(req 3)*
 - [ ] **Caption/voice decoupled, ear-first** — terse on-screen caption (`text`) vs a natural spoken sentence (`voice`, which keys the TTS line and drives dwell). **ASCII only** — the font has no em-dash / arrow / smart-quote glyph.
 - [ ] **Example is correct** — the feature `.das` compiles, runs, and demonstrates the widget without bugs (fix what's broken in this pass).
@@ -41,6 +41,23 @@ A tutorial's `.mp4` ships only when ALL of these hold. The first three are the h
 - [ ] **Recording is clean** — `dropped = 0`, sidecar frame count == APNG `nb_read_frames`, voice + music bed muxed, ffprobe `video.dur ≈ audio.dur`, mp4 ≈ 50–300 KB, **eyeballed and approved**.
 
 A dasImgui/node-editor library bug surfaced while fixing a tutorial ships as its **own immediate PR**, not buried in the recording commit.
+
+## Author by live-probing, not guessing
+
+Driving a widget "like a human" only works if the synthetic gesture actually lands — a guessed click point or drag path that misses is a dud (and now a teardown-panic failure). **Don't guess the sequence; determine it live against a running host, then bake the proven sequence into the driver.**
+
+Build `daslang-live` once, launch the tutorial's feature file, and probe it through the MCP live API:
+
+```bash
+<daslang>/bin/Release/daslang-live -project_root <dasimgui> examples/tutorial/<scene>.das
+```
+
+- `mcp__daslang__live_command name="imgui_snapshot"` — read the widget bboxes / payload (real coords + current values).
+- `imgui_mouse_play` (events array) / `imgui_click` / `imgui_focus` / `imgui_key_type` — try the gesture.
+- `mcp__daslang__live_command name="screenshot"` → `Read` the PNG — confirm the gesture produced the effect (handle moved, counter ticked, menu opened).
+- Iterate until the gesture reliably drives the widget; **full-restart the host between tries** (interactive state contaminates the next probe). Then transcribe the proven coords/sequence into the `record_*.das` driver.
+
+Essential for **drags** (the value follows track geometry, so a guessed end-point lands on the wrong value) and **menus/popups** (open-then-click must be one bundled `imgui_mouse_play` stream before the auto-close timer fires). The probes obey the async rule in `skills/playwright.md` — gate each step on the snapshot, not a sleep.
 
 ## The pipeline: prepare → record → convert
 
@@ -142,11 +159,13 @@ Key points:
 | button / small_button / arrow_button / invisible_button / image_button / tab_item_button | `click_count == pre + 1` |
 | checkbox / radio_button / selectable / menu_item | `value` flips (`!pre`) |
 | radio_button_int (target `"X#v"`) | `value == v` |
-| anything else (slider, drag, input, color…) | not click-tracked — recordings drive these via `force_set_verified`, not clicks |
+| anything else (slider, drag, input, color…) | not click-tracked — recordings drive these by **real drag / type** and assert the value moved (NOT `force_set`) |
 
-### Verified value changes (non-click stages)
+### Verified value changes (non-click stages) — drive the real gesture
 
-For widgets you don't click — slider / drag / input / color — drive the value through `force_set_verified(app, target, value)`. It posts `imgui_force_set` then verifies `target.value == value` (accumulate-on-miss, same teardown panic as clicks). This is the do-what-it-teaches + self-verify rail for those stages.
+Widgets you don't click — slider / drag / input / color — are driven the way a human would: **drag the handle** (`drag` / `drag_to` / `drag_along`) or **focus + type** (`type_text`), then assert the resulting value with `expect_value` (or `wait_for_*_value`). A drag asserts the value *moved* (direction / approximate target, since the value follows track geometry); a type asserts the field equals what was typed. A stage that left the value unchanged is a failure (accumulate-on-miss → teardown panic, same as clicks).
+
+**Do NOT `force_set` to shortcut these** — `force_set` writes the state directly and skips the gesture the tutorial exists to show (synthetic ≠ real). `force_set_verified` is reserved for the one case where the *subject* of the tutorial is programmatic / external driving (e.g. `driving_outside`, `edit_external_tour`'s external-pointer rail) — there the `imgui_force_set` verb is itself what's being taught. If a stage wants a verified drag/type wrapper with `hold_through_voice`'s ergonomics, add it to `imgui_playwright.das` (a framework rail → its own PR).
 
 ## Resolving widget coords
 
