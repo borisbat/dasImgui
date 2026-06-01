@@ -489,7 +489,14 @@ def private paint_narrates {
         }
         // The step's own sibling targets are HARD-avoided (scored like the anchor) so a
         // multi-target narrate never covers a "main" element even when every gap is crowded.
-        var avoid_bboxes <- [for (av in g_narrates[i].avoid); widget_rect(av)._1; where widget_rect(av)._0]
+        // Plain loop (not a comprehension) so widget_rect(av) is resolved once per target, not twice.
+        var avoid_bboxes : array<float4>
+        for (av in g_narrates[i].avoid) {
+            let r = widget_rect(av)
+            if (r._0) {
+                avoid_bboxes |> push(r._1)
+            }
+        }
         let anchor = compute_narrate_anchor(have_target, widget_bbox, box_size,
                                             viewport, edge_margin, gap,
                                             narrate_shadow_offset, hud_zone_h,
