@@ -209,17 +209,17 @@ Tutorial pages live in `doc/source/tutorials/*.rst` and embed MP4 recordings fro
 
 ## Tutorial recordings — MP4 in source, APNG ignored
 
-**`doc/source/_static/tutorials/*.mp4` ships in-tree** (~5 MB total for the full set). `*.apng` is gitignored — it's the recorder's raw output; one ffmpeg pass converts to the deliverable MP4.
+**`doc/source/_static/tutorials/*.mp4` ships in-tree** (~5 MB total for the full set). The `.apng` plus all voiceover/music intermediates (`voiceover/*.wav`, `*.manifest.json`, `*.sidecar.json`, `*_music.wav`, `*.mp4.ffmpeg.txt`) are gitignored — only the `.mp4` deliverable is tracked.
+
+**Three hard requirements for any recording (REQUIRED — see `skills/recording.md`):** (1) **do what it teaches** — every stage performs the real interaction it narrates (click the button so the counter ticks), never just points at a widget; (2) **self-verify every step** — a recording is also an integration test: clicks go through `hold_through_voice` (verified by widget kind) and value changes through `force_set_verified`, and a no-op interaction aborts the recording loudly at teardown; (3) **pace by the voice** — dwell is the voiceover wav length (`say_begin` returns it, `hold_through_voice` splits it), not hand-tuned sleeps. Captions/voice must be **ASCII** (the font has no em-dash/arrow glyph). These rules apply to ALL recordings; legacy pre-voice drivers are a retrofit backlog, not an exemption.
 
 **Fresh clone before docs build:** nothing to fetch. The `.mp4` files are in the checkout. The `.. video::` directive references them.
 
-**Re-record workflow:** `daslang.exe -project_root . tests/integration/record_X.das` → eyeball-review the resulting `.apng` locally → `ffmpeg -y -i X.apng -c:v libx264 -crf 23 -pix_fmt yuv420p -movflags +faststart X.mp4` → `git add X.mp4`.
-
-Full mechanics + ffmpeg settings: `skills/recording.md` "Post-record conversion" section.
+**Soundtracked workflow:** `prepare_recording --driver record_X.das` (scan say() lines → Kokoro TTS → manifest) → `daslang.exe -project_root . tests/integration/record_X.das` (auto-arms voiceover; writes sidecar) → eyeball-review the `.apng` → `convert_recording --apng X.apng` (music bed + voiceover mux → `X.mp4`) → `git add X.mp4`. Full mechanics: `skills/recording.md`.
 
 ## Recording
 
-See `skills/recording.md` for the full recipe — pacing constants, two-shell workflow, menu-header coord workaround, screenshot/ffmpeg verification methodology, post-record APNG→MP4 conversion.
+See `skills/recording.md` for the full recipe — the three hard requirements (do-what-it-teaches, self-verify every step, voice-driven pacing), the prepare → record → convert soundtrack pipeline, the `say_begin`/`hold_through_voice`/`force_set_verified` driver model, menu-header coord workaround, and screenshot/ffmpeg verification methodology.
 
 ## Workflow
 

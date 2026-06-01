@@ -1,48 +1,80 @@
 # Recording tutorial videos
 
-dasImgui ships its tutorial site at `doc/source/` with an MP4 per tutorial page (`doc/source/_static/tutorials/*.mp4`). The recorder writes intermediate `.apng` (gitignored); a single ffmpeg pass converts each to H.264 `.mp4` (~300× smaller) — that's what ships in source and what the RSTs reference via `<video>` raw HTML. Recordings are produced by **one-shell driver scripts** under `tests/integration/record_*.das` that spawn their own `daslang-live` host via `with_recording_app` and post live-commands to it over HTTP. Recording is NOT in CI — drivers are manually-driven artifact producers; convert + commit the resulting `.mp4` alongside the driver script.
+dasImgui ships its tutorial site at `doc/source/` with an MP4 per tutorial page (`doc/source/_static/tutorials/*.mp4`). Recordings are produced by **one-shell driver scripts** under `tests/integration/record_*.das` that spawn their own `daslang-live` host and drive it over HTTP. A recording carries a **voiceover + music soundtrack** and is **also an integration test** — every interaction it narrates is performed for real and verified.
 
-This page is the recipe. Read before writing or revising any `record_*.das` driver.
+This page is the recipe. Read it before writing or revising any `record_*.das` driver.
+
+Recording is NOT in CI — drivers are manually-driven artifact producers. The pipeline is three tools (below); the deliverable is one `.mp4` per scene, committed alongside the driver.
+
+## The three hard requirements (REQUIRED)
+
+These are not style preferences. A recording that violates any of them is wrong and must not ship.
+
+1. **Do what it teaches.** Every stage must *perform the real interaction it narrates* — click the button so its counter ticks, flip the checkbox so the value changes, walk the radio dot across the group. Pointing the caption at a widget without driving it is not a tutorial; the viewer must SEE the effect happen. If a stage describes an action, the recorder fires that action under the voice.
+
+2. **Self-verify every step.** A recording is an integration test. Every interaction is verified against the widget's actual state change:
+   - clicks go through `hold_through_voice`, which snapshots the pre-state, clicks, and asserts the kind-appropriate effect (`verify_click_effect`);
+   - non-click value changes (slider / drag / input / color) go through `force_set_verified`.
+   A no-op interaction (click landed off-target, state didn't move) is recorded as a failure and the recording **aborts loudly** — so a dud can never silently ship. (Mechanism: failures accumulate into `g_record_failures` and surface as a panic at `with_recording_app` teardown, *after* a clean `record_stop` + `/shutdown`, because daslang panic is fatal and a mid-body panic would orphan the host.)
+
+3. **Pace by the voice, not by fixed sleeps.** Dwell is driven by the voiceover wav length. `say_begin` returns the dwell (the spoken line's duration + gap); `hold_through_voice` splits it — a short lead lets the caption + voice start, the verified click(s) land under the voice (ripple + state change visible while Emma talks), then it holds the caption for the remainder. Do not hand-tune `sleep(READ_MS)` for voiced recordings.
+
+Plus one constraint that bites silently: **captions and voice strings must be ASCII.** The bundled ImGui font has no em-dash / arrow / smart-quote glyph — non-ASCII renders as `?` in the caption box. Write `-` not `—`, `->` not `→`.
+
+`tests/integration/record_buttons.das` and `record_toggles.das` are the canonical exemplars of all three rules — read them before writing a new driver.
+
+> **Retrofit mandate:** these rules apply to **every** recording, including the legacy set. Drivers still using the pre-voice `imgui_narrate` + fixed-`sleep` + `click_at` pattern (most of `record_*.das`) must be re-recorded under the current model. That is an active backlog, not an exemption — do not author a new driver in the legacy style, and prefer to upgrade a legacy driver whenever you touch its scene.
+
+## The pipeline: prepare → record → convert
+
+Three tools under `utils/`, run in order. `<daslang>` = a daslang build tree, `<dasimgui>` = this repo (append `.exe` on Windows).
+
+**1. `prepare_recording` — pre-render the voiceover.** Compiles the driver (same module resolution as running it — if it won't compile, there is no recording), AST-scans it for every `say()` / `say_begin()` literal (caption + voice) plus the APNG basename, synthesizes each unique spoken line to a wav via an OpenAI-compatible TTS server (Kokoro, voice `bf_emma` by default), measures durations, and writes `voiceover/<stem>.manifest.json` beside where the APNG will land.
+
+```bash
+<daslang>/bin/Release/daslang -project_root <dasimgui> \
+    <dasimgui>/utils/prepare_recording.das -- \
+    --driver <dasimgui>/tests/integration/record_buttons.das
+```
+
+Needs a running TTS server at `--base-url` (default `http://127.0.0.1:8880/v1`). Re-running skips lines whose wav already exists (hash-named), so it's cheap to re-prepare after editing one line. Captions/voice must be ASCII (see above) — they're scanned verbatim.
+
+**2. `record_X.das` — capture.** Run the driver. `with_recording_app` auto-detects the manifest (`arm_voiceovers`), so `say_begin` returns each line's real wav duration as the dwell. On `record_stop` it writes `voiceover/<stem>.sidecar.json` (clip length + the frame each caption appeared on).
+
+```bash
+<daslang>/bin/Release/daslang -project_root <dasimgui> \
+    <dasimgui>/tests/integration/record_buttons.das
+```
+
+**3. `convert_recording` — soundtrack + mux to MP4.** Reads the sidecar, renders the daStrudel music bed to exactly the clip length, then runs one ffmpeg pass that muxes: APNG → H.264 video, a faded low-volume music bed (default `-13 dB`), and each voiceover wav delayed to the frame its caption appeared on. The video is forced onto a constant frames/duration grid (`-r fps_eff`) and each voiceover is anchored to its frame on that *same* grid, so caption and voice share one clock (the recorder's skip-missed scheduling makes the APNG's summed delays shorter than wall-clock, which would otherwise race the captions ahead of their voice). The exact ffmpeg command is saved to `<out>.mp4.ffmpeg.txt`.
+
+```bash
+<daslang>/bin/Release/daslang -project_root <dasimgui> \
+    <dasimgui>/utils/convert_recording.das -- \
+    --apng <dasimgui>/doc/source/_static/tutorials/buttons.apng
+```
+
+Only the resulting `.mp4` is tracked. The `.apng`, `voiceover/*.wav`, `*.manifest.json`, `*.sidecar.json`, `*_music.wav`, and `*.mp4.ffmpeg.txt` are all intermediates and gitignored.
 
 ## Mental model
 
 A recording has three independent layers:
 
-1. **Host**: `daslang-live.exe` running a feature file (`examples/tutorial/X.das` or `examples/features/X.das`). The host opens a window, runs your `update()` loop at 60 fps, listens for live-commands on port 9090. `with_recording_app` **spawns this host for you** with `--imgui-content-scale=1.0` + `--no-hdpi-framebuffer` so the framebuffer + ImGui style both stay at logical resolution (encoder-friendly APNGs even on retina). Tutorials run by users directly (no `--imgui-content-scale`) keep their native HDPI look.
-2. **Driver**: `daslang.exe tests/integration/record_X.das` runs once. The `with_recording_app(feature, output, max_seconds) $(app) { ... }` helper spawns the host, waits ready, enables `imgui_cursor_sprite` + `imgui_mouse_trail`, posts `record_start`, invokes the body for the narrate/click/drag timeline, posts `record_stop`, disables the aids, and `/shutdown`s the host. Driver exits when the host process does.
-3. **Visual overlays**: `imgui_cursor_sprite` (red+white circle at synth pos) + `imgui_mouse_trail` (fading dotted line behind cursor). Both paint to the **foreground draw list** during the host's `end_of_frame()`. The helper toggles them around the body; tour-specific overlays (`imgui_key_hud`, `imgui_focus_rect`) are body-managed (see `record_visual_aids.das`).
+1. **Host**: `daslang-live.exe` running a feature file (`examples/tutorial/X.das` or `examples/features/X.das`). It opens a window, runs `update()` at 60 fps, listens for live-commands on port 9090. `with_recording_app` **spawns it for you** with `--imgui-content-scale=1.0` + `--no-hdpi-framebuffer` so the framebuffer + ImGui style stay at logical resolution (encoder-friendly APNGs on retina). It also posts `set_user_control(false)` so the real OS cursor can't clobber synth input.
+2. **Driver**: `daslang.exe tests/integration/record_X.das` runs once. `with_recording_app(feature, output, max_seconds [, fps]) $(app) { ... }` spawns the host, waits ready, arms voiceovers from the manifest, enables `imgui_cursor_sprite` + `imgui_mouse_trail`, posts `record_start`, invokes the body, posts `record_stop`, writes the sidecar, disables the aids, and `/shutdown`s the host. If the body left any verification failures, it panics with them after teardown.
+3. **Visual overlays**: `imgui_cursor_sprite` (red+white circle at synth pos) + `imgui_mouse_trail` (fading dotted line) paint to the foreground draw list during `end_of_frame()`. The helper toggles them around the body; tour-specific overlays (`imgui_key_hud`, `imgui_focus_rect`) are body-managed (see `record_visual_aids.das`).
 
-The recorder captures the host's framebuffer at `fps` Hz starting on `record_start` and saves an APNG when `record_stop` fires.
+The recorder captures the host's framebuffer at `fps` Hz from `record_start` to `record_stop`, saving an APNG.
 
-## Pre-requisites for the host
+## Host pre-requisites
 
-If the host is a **tutorial** (`examples/tutorial/*.das`, `live_*` lifecycle): nothing extra — these files already call `apply_synth_io_override()` between `ImGui_ImplGlfw_NewFrame()` and `NewFrame()`.
+If the host is a **tutorial** (`examples/tutorial/*.das`, `live_*` lifecycle): nothing extra — these already call `apply_synth_io_override()` between `ImGui_ImplGlfw_NewFrame()` and `NewFrame()`. That override drains BOTH the synth-IO timelines AND `advance_coroutines` — the latter is what advances `imgui_click`'s animated `click_at_coro`; without it, a hand-rolled tutorial loop's synth clicks silently no-op.
 
-If the host is a **harness** (`examples/features/*.das`, `harness_*` lifecycle): the harness **must call `harness_apply_synth_io()`** between `harness_begin_frame()` and `harness_new_frame()`. Without it:
+If the host is a **harness** (`examples/features/*.das`, `harness_*` lifecycle): the harness **must call `harness_apply_synth_io()`** between `harness_begin_frame()` and `harness_new_frame()`. Without it `synth_cursor_owned` stays false (GLFW's poll wins the race), the cursor sprite + trail paint at the off-window OS cursor (invisible in the recording), and synth clicks never reach ImGui's hover/active state. The harness exposes it as OPTIONAL because most feature smokes only `wait_for_widget`; once you record one, it's mandatory.
 
-- `synth_cursor_owned` stays `false` (GLFW's mouse poll wins the per-frame race);
-- `imgui_cursor_sprite` paints at the real OS cursor (off-window) → invisible in recording;
-- `imgui_mouse_trail` same;
-- synth clicks never reach ImGui's hover/active state → menus stay closed, buttons don't activate.
+## Driver model (current)
 
-The harness API exposes `harness_apply_synth_io()` as OPTIONAL because most feature smokes only `wait_for_widget` without driving input. Once you record one, it becomes mandatory.
-
-## One-shell workflow
-
-`<daslang>` = path to a daslang build tree, `<dasimgui>` = path to this repo. Append `.exe` on Windows.
-
-```bash
-<daslang>/bin/Release/daslang -project_root <dasimgui> \
-    <dasimgui>/tests/integration/record_with_id.das
-```
-
-The driver spawns daslang-live, runs the body, posts `/shutdown`, drains stdout. Total wall time = `max_seconds` + ~3s (boot + drain headroom). The APNG lands at `<dasimgui>/doc/source/_static/tutorials/<basename>.apng` — `with_recording_app` resolves the path via `get_this_module_dir()` so cwd doesn't matter.
-
-**Concurrent driver runs collide on port 9090** (same risk as the playwright tests). Recording is interactive, one-at-a-time anyway; just don't fan them out.
-
-## Driver template
-
-Mirror `tests/integration/record_with_id.das` (canonical, `live_*` tutorial host) or `record_drag_drop.das` (harness-targeting). Spine:
+Mirror `record_buttons.das` / `record_toggles.das`. The spine of a voiced, self-verifying, do-what-it-teaches stage:
 
 ```daslang
 options gen2
@@ -55,242 +87,136 @@ require imgui/imgui_playwright public
 require daslib/json public
 require daslib/json_boost public
 
-let NARRATE_FRAMES = 240      //! 4.0s visible at 60 fps app
-let READ_MS    = 5000u        //! 5s read + 1s gap before next action
-let SETTLE_MS  = 1500u        //! 1.5s cursor settle before next narrate
-let RESULT_MS  = 2000u        //! 2s action result dwell
-
-def widget_bbox(var snap : JsonValue?; ident : string) : float4 { ... }
-def widget_center(var snap : JsonValue?; ident : string) : tuple<float; float> { ... }
-
 [export]
 def main {
-    with_recording_app("examples/tutorial/scene_name.das",
-                       "scene_name.apng", 45) $(app) {
-        var snap = wait_for_render(app, "ROOT_IDENT", 10.0f)
-        if (snap == null) { panic("ROOT_IDENT never rendered") }
+    with_recording_app("examples/tutorial/scene.das", "scene.apng", 45) $(app) {
+        let T_BTN = "WIN/BTN"
 
-        //! Initial cursor placement -- flips synth_cursor_owned.
-        move_to(app, (360.0f, 240.0f), 600)
+        var snap = wait_for_widget(app, T_BTN, 10.0f)
+        if (snap == null) { panic("{T_BTN} never registered - wrong app running?") }
+
+        // Move the cursor ONTO the first click target before say_begin, so the click
+        // can fire straight under the voice with no mid-stage hop.
+        move_to(app, widget_click_point(snap, T_BTN), 500)
         sleep(SETTLE_MS)
 
-        // ---- Stage 1 ----
-        move_to(app, p_target_1, 900)
-        sleep(SETTLE_MS)
-        post_command(app, "imgui_narrate", JV((
-            text = "...",
-            target = "ROOT_IDENT",
-            frames = NARRATE_FRAMES
-        )))
-        sleep(READ_MS)
-        var events : array<JsonValue?>
-        events |> click_at(0, p_target_1, 250)
-        post_command(app, "imgui_mouse_play", JV((events = events)))
-        sleep(RESULT_MS)
-        // ... etc
+        // ---- Stage: button — the workhorse ----
+        // say_begin posts the caption + records the voiceover anchor and RETURNS the dwell.
+        // hold_through_voice splits the dwell: lead -> verified click(s) under the voice -> hold.
+        hold_through_voice(app, say_begin(app, "button - the workhorse", T_BTN,
+            [voice = "Here is the everyday button. Each time you click it, its counter goes up by one. Watch the number climb."]),
+            [T_BTN, T_BTN])   // click it twice -> counter visibly ticks 0,1,2; each click verified
     }
 }
 ```
 
-The 3-arg form uses fps=30 (the common case). For long recordings where file size matters more than smoothness, use the 4-arg overload with explicit fps:
+Key points:
 
-```daslang
-with_recording_app("examples/tutorial/narrative_layout_tour.das",
-                   "narrative_layout_tour.apng", 75, 20) $(app) {
-    // ... narrate/click/drag ...
-}
-```
+- **Caption vs voice.** The `text` arg is the **on-screen caption** — terse, for the eye. The `voice` arg is the **spoken line** — natural sentences, for the ear. Pass both as *string literals at the call site* so `prepare_recording` can scan them. Empty `voice` falls back to `text` (but a bare caption read aloud sounds robotic — write a real voice line).
+- **`say_begin` returns the dwell; `hold_through_voice` consumes it.** Never `sleep()` a fixed read window for a voiced stage. For plain narration with no action, use `say()` (posts + sleeps in one call).
+- **The clicks list is the action AND the verification.** `hold_through_voice(app, dwell, [targets...])` clicks each target in order and verifies the kind-appropriate effect of each. Clicking `T_BTN` twice ticks the counter to 2 and asserts both ticks. The caller must have moved the cursor onto the *first* target already.
+- **Per-site radio aliases.** `radio_button_int` shares one ident across sites; address each option by `"IDENT#<v_button>"` (e.g. `"WIN/MODE#1"`, `"WIN/MODE#2"`). `verify_click_effect` reads the `#v` to assert `value == v` after the click; passing the list walks the dot.
+- **Multi-target stages (sibling controls).** When a stage spans more than one "main" widget (an `arrow_button` pair, an R/G/B triple), use the `targets` overload: `say_begin(app, caption, [T_FIRST, T_SECOND], [voice=...])`. The caption points at `targets[0]` and is placed to **hard-avoid the union** of all targets' bboxes, so the box never covers a sibling. Pass the **same list** to `hold_through_voice` that you passed to `say_begin`.
 
-Two drivers use fps=20: `record_boost_narrative_layout` (long progress-bar tour) and `record_edit_external` (slider drag + color picker pass that defeats APNG compression at 30 fps). Both stay under GitHub's 50 MB asset warning band.
+### What `verify_click_effect` checks, by kind
 
-## Tour-specific overlays
+| widget kind | verified effect after click |
+|---|---|
+| button / small_button / arrow_button / invisible_button / image_button / tab_item_button | `click_count == pre + 1` |
+| checkbox / radio_button / selectable / menu_item | `value` flips (`!pre`) |
+| radio_button_int (target `"X#v"`) | `value == v` |
+| anything else (slider, drag, input, color…) | not click-tracked — recordings drive these via `force_set_verified`, not clicks |
 
-`with_recording_app` only toggles the `mouse_trail` + `cursor_sprite` pair that every recording uses. Drivers that need additional overlays (`imgui_key_hud`, `imgui_focus_rect`) enable/disable them **inside the body block**. See `record_visual_aids.das` — body posts `imgui_key_hud` / `imgui_focus_rect` enable at start, posts disable before returning.
+### Verified value changes (non-click stages)
 
-## Reader pacing (LOCKED)
-
-Recordings are for **readers**, not test assertions. Every stage gets explicit time:
-
-| Constant | Value | Phase |
-|---|---|---|
-| `NARRATE_FRAMES` | `240` | 4.0s narrate visibility (`frames` is the app's per-frame counter at 60 fps, NOT the recorder's fps) |
-| `READ_MS` | `5000u` | After posting narrate: 5s read window + ~1s gap before next action |
-| `SETTLE_MS` | `1500u` | After `move_to`: 1.5s for cursor to settle visually before next narrate |
-| `RESULT_MS` | `2000u` | After `click_at`/`imgui_mouse_play` of an interaction: 2s dwell so the reader sees the result |
-
-A recording that fits in 30s is usually too dense. Bump the helper's `max_seconds` to 45-60 for multi-stage flows.
-
-Don't use the old `record_with_id.das` pacing (`frames = 180`, `sleep(3500u)`) for new recordings — Boris's feedback: it's too fast for readers. The older drivers predate the pacing audit; treat those constants as legacy, not canonical.
-
-## `imgui_playwright` helpers
-
-The `widgets/imgui_playwright.das` module exposes:
-
-- `with_recording_app(feature_path, output_basename, max_seconds, body)` — 3-arg form (fps=30 default). Spawns daslang-live for `<dasimgui>/<feature_path>`, posts record_start/stop bracket around `body`, shuts down. APNG lands at `<dasimgui>/doc/source/_static/tutorials/<output_basename>`.
-- `with_recording_app(feature_path, output_basename, max_seconds, fps, body)` — 4-arg form for explicit fps (typically 20 for long captures).
-- `with_imgui_app(feature_path, body)` — the playwright-test cousin (for `[test] def …(t : T?)` files). Forwards `--headless` from the parent; derives the live-API port from `DEFAULT_LIVE_PORT + worker_index` so dastest's `--isolated-mode --isolated-mode-threads N` parallel workers don't collide. Recording uses the `_recording_` variant instead because it needs the GL framebuffer.
-- `move_to(app, pos, duration_ms = 600)` — lerps cursor from last tracked position to `pos`; updates the tracked pos for the next call.
-- `click_at(var events, t_ms, pos, travel_ms = 500, button = 0)` — appends lerp + press + release + dwell to an events array. Call `post_command(app, "imgui_mouse_play", JV((events = events)))` to fire.
-- `drag_along(var events, t_ms, from_pos, to_pos, drag_ms, approach_ms = 400)` — lerp-to-start + press + drag + release.
-
-Each `imgui_mouse_play` call **resets the timeline** (`mouse_play_idx = 0`, `mouse_play_start = now`), so building events incrementally across stages means one `imgui_mouse_play` per stage, not one big timeline.
+For widgets you don't click — slider / drag / input / color — drive the value through `force_set_verified(app, target, value)`. It posts `imgui_force_set` then verifies `target.value == value` (accumulate-on-miss, same teardown panic as clicks). This is the do-what-it-teaches + self-verify rail for those stages.
 
 ## Resolving widget coords
 
-Most widgets — including `menu()` children and `tab_item()` tab headers — work with `widget_center(snap, "PATH/TO/WIDGET")`. `widgets/imgui_containers_builtin.das` snapshots `GetItemRectMin/Max` immediately after `BeginMenu`/`BeginTabItem` returns, while the parent-strip header is still the "last item"; the registered bbox is the clickable header rect.
+Use `widget_click_point(snap, ident)` (aims toggle-family clicks at the glyph, not the row center) or `widget_center(snap, ident)`. Most widgets — including `menu()` children and `tab_item()` headers — resolve directly: `imgui_containers_builtin.das` snapshots `GetItemRectMin/Max` right after `BeginMenu`/`BeginTabItem`, so the registered bbox is the clickable header.
 
-Two containers remain bbox-degenerate:
+Two containers are bbox-degenerate by design:
+- **`main_menu_bar()`** chrome has no header — `bbox = (0,0,0,0)`. Its `menu()` children DO register.
+- **`window()` / `tab_bar()`** are bodies, not headers — `bbox = (0,0,0,0)`. Click the contents, not the shell.
 
-- **`main_menu_bar()`** itself — the viewport-attached bar chrome has no meaningful "header." `MAIN_BAR_DEMO` still reports `bbox = (0,0,0,0)`. The children (`menu()` paths under it) DO register correctly.
-- **`window()` / `tab_bar()` containers** — these have a body, not a header. Their bbox is `(0,0,0,0)` and that's expected. Click targets are the contents, not the container shell.
-
-If you need a `main_menu_bar` screen position (e.g. clicking outside any child menu to dismiss), hardcode pixel coords:
-
-1. Launch the host normally, see the menu in the window.
-2. Use `mcp__daslang__live_command name="screenshot" args='{"file":"/tmp/probe.png"}'` to capture the framebuffer.
-3. Read the PNG; measure pixel positions visually.
-4. Bake them as constants in the driver.
-
-Submenu items DO register bboxes **once the parent is open** — click parent first via the parent's registered header bbox, then `wait_for_render` + `widget_center` for the child item.
-
-For drivers that need to click outside any registered widget (`main_menu_bar` strip dismissal, raw-canvas coordinates, viewport-corner anchors), capture pixel coords empirically and bake them as named constants — see the "Resolving widget coords" recipe above.
+If you need a `main_menu_bar` pixel position (e.g. to dismiss by clicking empty bar), capture it empirically: launch the host, `mcp__daslang__live_command name="screenshot"`, read the PNG, measure, bake as named constants. Submenu items register a bbox **once the parent is open** — open the parent first, then `wait_for_render` + `widget_center` the child.
 
 ### Menu interactions: bundle open + child click into ONE mouse_play
 
-A split-stream menu interaction — two separate `imgui_mouse_play` calls, one to open the menu, one to click the child — does NOT work. Between the two calls the synth cursor holds its last position but no fresh mouse events fire, and ImGui's menu auto-close timer closes the menu before the second call arrives. The child click then lands on empty bar chrome instead of the menu item, and the recording shows the menu opening + closing with no toggle/click effect.
-
-The reliable pattern is **one `imgui_mouse_play` per menu** that bundles header-click + lerp + child-click in a single event stream:
+A split-stream menu interaction (two `imgui_mouse_play` calls — open, then click child) does NOT work: between calls no fresh mouse events fire and ImGui's auto-close timer shuts the menu before the second call. Bundle header-click + lerp + child-click into a single event stream:
 
 ```daslang
-// MI_DARKMODE.bbox isn't known until the menu opens, but the menu
-// opens DOWN from the header — estimate y by adding 32px to p_file.y.
-let p_darkmode = (p_file._0, p_file._1 + 32.0f)
+let p_darkmode = (p_file._0, p_file._1 + 32.0f)   // child opens DOWN from header; est. +32px
 var events : array<JsonValue?>
 events |> click_at(0, p_file, 200)         // open File menu
 events |> click_at(1200, p_darkmode, 600)  // lerp + click child
 post_command(app, "imgui_mouse_play", JV((events = events)))
-sleep(3500u)                                // dwell so result is visible
 ```
 
-Two consequences:
-
-- The child's bbox isn't available until after the menu opens, so you can't `widget_center(snap, "MAIN_BAR/FILE_MENU/MI_DARKMODE")` up front. Either resnap inside the same dwell (rarely worth it) or estimate the child's position from the parent header with a known offset (item height ≈ 22px in the default font; first item ≈ header_bottom + 14px → `p_file.y + 32` for `MI_DARKMODE`).
-- Narrate text describing the action lands AFTER the bundled click, not between the two halves. Frame the narrate as "Click File, then Dark mode — MI_DARKMODE.value flips" rather than two separate "open" / "click" lines. See `tests/integration/record_main_menu_bar.das` for the canonical shape.
-
-The same pattern applies to any UI element with hover-driven auto-close: `combo_select`, `popup_context_window`, `tooltip` cascades.
+The child's bbox isn't known until the menu opens, so estimate its position from the parent header (item height ≈ 22px; first item ≈ header_bottom + 14px). Frame the narration as one action ("Click File, then Dark mode") since the click lands after the bundled stream. Same pattern for any hover-auto-close element: `combo_select`, `popup_context_window`, tooltip cascades. See `record_main_menu_bar.das`.
 
 ## Verifying a recording without playing it
 
-Don't rely on eyeballs alone — instrument it. Two probes:
+Beyond the built-in self-verification, two probes for diagnosing the visual path:
 
-### Probe 1: live-process screenshot (state at *this moment*)
-
-Launch a host manually (not via the helper — you want it to stay alive after your probe), then drive it via MCP:
+**Probe 1 — live screenshot (state right now).** Launch a host manually (so it stays alive), drive it via MCP, screenshot:
 
 ```
-mcp__daslang__live_command name="imgui_mouse_play" args='{"events":[
-    {"t_ms":0,"kind":"move","x":50,"y":15},
-    {"t_ms":1000,"kind":"move","x":300,"y":300}]}'
-mcp__daslang__live_command name="imgui_mouse_status"
+mcp__daslang__live_command name="imgui_mouse_play" args='{"events":[{"t_ms":0,"kind":"move","x":50,"y":15},{"t_ms":1000,"kind":"move","x":300,"y":300}]}'
 mcp__daslang__live_command name="screenshot" args='{"file":"<dasimgui>/diag.png"}'
 ```
 
-Then `Read` the PNG. Shows what daslang-live is rendering right now — cursor sprite, mouse trail, narrate callouts, foreground draw list, everything. If the screenshot shows what you expect but the APNG doesn't, the bug is in the recording path. If neither shows it, the synth IO isn't draining (recheck `harness_apply_synth_io`).
+`Read` the PNG. If the screenshot shows what you expect but the APNG doesn't, the bug is in the recording path; if neither shows it, the synth IO isn't draining (recheck `harness_apply_synth_io`).
 
-### Probe 2: extract individual frames from the APNG
+**Probe 2 — extract APNG frames.**
 
 ```bash
 ffmpeg -i scene.apng -vf "select=eq(n\,80)" -frames:v 1 -update 1 frame80.png -y
 ```
 
-Notes:
-- `-update 1` is REQUIRED for single-frame output (otherwise ffmpeg wants a `%d` pattern).
-- `select=eq(n\,N)` picks frame N (0-based). Comma needs the backslash.
-
-Pick 5-6 N values spanning the recording (e.g. 60 / 200 / 400 / 600 / 800 / 950 for a 1000-frame recording) and `Read` each PNG. This gives a fast story-arc check without watching the whole thing.
+`-update 1` is required for single-frame output; `select=eq(n\,N)` picks 0-based frame N (escape the comma). Pick 5-6 N values spanning the clip and `Read` each for a fast story-arc check.
 
 ## Where recordings land
 
-`doc/source/_static/tutorials/`. The helper writes the absolute path via `dir_name(get_this_module_dir()) / RECORD_ASSET_REL` — same idiom `widgets/imgui_theme_daslang.das:155` uses for the bundled font. Caller cwd is irrelevant.
+`doc/source/_static/tutorials/`. `with_recording_app` writes the absolute path via `dir_name(get_this_module_dir()) / RECORD_ASSET_REL`, so caller cwd is irrelevant. When dasImgui is daspkg-installed under `daScript/modules/dasImgui/`, the APNG lands in that install copy — for source-repo workflows (preferred), launch with `-project_root <dasimgui-source>` so the loaded copy IS the source repo (the helper forwards `-project_root` to the spawned host).
 
-The recorder produces `.apng` (intermediate). The deliverable is `.mp4` produced by a single ffmpeg pass. `.apng` is `.gitignore`d; `.mp4` is tracked in-tree (typical file is 50-300 KB; full set ~5 MB).
-
-When dasImgui is daspkg-installed under `daScript/modules/dasImgui/`, the APNG lands in that install copy. For source-repo workflows (preferred), launch the driver with `-project_root <dasimgui-source>` so the loaded copy IS the source repo. The helper forwards `-project_root` from the driver's own argv to the spawned daslang-live.
-
-Each tutorial RST under `doc/source/tutorials/*.rst` cites its video via the local `video` directive (registered by `doc/source/tutorial_video.py`, listed in `conf.py`'s `extensions`):
+Each tutorial RST cites its video via the local `video` directive (`doc/source/tutorial_video.py`, listed in `conf.py` extensions):
 
 ```rst
 .. video:: scene_name.mp4
 ```
 
-The directive emits a native HTML5 `<video controls preload="metadata" playsinline>` player: it starts **paused** with play/pause, scrubber, volume, and fullscreen controls; audio is on; no autoplay, no loop. Change player chrome once in `tutorial_video.py` rather than across every page. The argument is just the mp4 filename under `doc/source/_static/tutorials/`.
+It emits `<video controls preload="metadata" playsinline>` — starts paused, native play/pause + scrubber + volume + fullscreen, audio on, no autoplay, no loop. Change player chrome once in `tutorial_video.py`, not per page.
 
-CI's sphinx step uses `-W` (warnings-as-errors), so an RST referencing a missing `.mp4` fails the build. Commit the `.mp4` ahead of the RST cite to keep the intermediate state passing.
+CI's sphinx step uses `-W`, so an RST citing a missing `.mp4` fails the build — commit the `.mp4` ahead of (or with) the RST cite. Typical `.mp4` is 50-300 KB; way outside that is suspicious (too small = failed encode, too big = dropped frames).
 
-Typical sizes: `.mp4` is 50-300 KB at logical 1x (~300× smaller than the source `.apng` thanks to H.264 inter-frame deltas). Anything way outside that is suspicious — too small means failed encode, too big means dropped frames or atypical content.
+## Manual ffmpeg conversion (no soundtrack)
 
-## Post-record conversion (.apng → .mp4)
-
-The recorder writes `.apng` via `stbi_apng_frame` on a worker thread — that's an intrinsic property of the recording surface, not something we're changing. To produce the shipped `.mp4`, run one ffmpeg pass per recording:
+`convert_recording` is the normal path. For a quick silent conversion (no voiceover/music), one ffmpeg pass:
 
 ```bash
 ffmpeg -y -loglevel error -i scene.apng -c:v libx264 -crf 23 \
        -pix_fmt yuv420p -movflags +faststart scene.mp4
 ```
 
-Settings:
-- `-c:v libx264` — H.264 codec; universal browser support, hardware-decoded
-- `-crf 23` — quality knob; 18 = visually lossless, 28 = noticeably compressed. 23 is default and ample for UI recordings
-- `-pix_fmt yuv420p` — required for cross-browser playback (Safari refuses yuv444p)
-- `-movflags +faststart` — moves the MOOV atom to file start so `<video>` can play before the whole file downloads
+- `libx264` — universal browser support, hardware-decoded.
+- `-crf 23` — quality knob (18 = visually lossless, 28 = noticeably compressed); 23 is ample for UI.
+- `-pix_fmt yuv420p` — required cross-browser (Safari refuses yuv444p).
+- `-movflags +faststart` — MOOV atom up front so `<video>` plays before the full download.
 
-Batch convert all recordings under `doc/source/_static/tutorials/`:
+## Legacy drivers (pre-voice) — being retrofitted
 
-```bash
-cd doc/source/_static/tutorials
-for f in *.apng; do
-    base="${f%.apng}"
-    ffmpeg -y -loglevel error -i "$f" -c:v libx264 -crf 23 \
-           -pix_fmt yuv420p -movflags +faststart "$base.mp4"
-done
-```
+Older drivers (e.g. the original `record_with_id.das`) use the **pre-voice pattern**: `imgui_narrate` + fixed `sleep(READ_MS)` + `click_at` events, with no voiceover, no music, and **no per-step verification**. That pattern predates the soundtrack + self-verifying model and is **not canonical** — it is the retrofit backlog (see the mandate above). Do not copy it for new work. When you touch a legacy scene, upgrade it: scan for `say`/`say_begin`, drive interactions through `hold_through_voice` / `force_set_verified`, and re-run the prepare → record → convert pipeline.
 
-### Canonical workflows
+(The fixed-pacing constants `NARRATE_FRAMES=240` / `READ_MS=5000` / `SETTLE_MS=1500` / `RESULT_MS=2000` belong to that legacy model; only `SETTLE_MS` — the cursor-settle beat after a `move_to` — still appears in current drivers.)
 
-**Fresh clone, building docs locally:** nothing to fetch — `.mp4` files ship in-tree.
+## Commit structure for a recording
 
-```powershell
-git clone https://github.com/borisbat/dasImgui
-cd dasImgui
-sphinx-build --keep-going -b html doc/source build/site
-```
+For scene `foo`:
 
-**Single recording, iterating on a driver:**
+1. Author/upgrade `tests/integration/record_foo.das` (voiced, self-verifying, do-what-it-teaches).
+2. Run prepare → record → convert; **eyeball-review** the resulting `.mp4`.
+3. Commit: `recording: foo` — `record_foo.das` + `doc/source/_static/tutorials/foo.mp4`. (The `.apng`/`voiceover/*`/`*.ffmpeg.txt` intermediates are gitignored — don't commit them.)
+4. Commit: `tutorial: foo RST page` — `doc/source/tutorials/foo.rst` (`.. video:: foo.mp4`) + the `index.rst` toctree entry.
 
-```powershell
-daslang.exe -project_root . tests/integration/record_X.das
-# new doc/source/_static/tutorials/X.apng (gitignored)
-# convert and commit:
-ffmpeg -y -loglevel error -i doc/source/_static/tutorials/X.apng -c:v libx264 -crf 23 -pix_fmt yuv420p -movflags +faststart doc/source/_static/tutorials/X.mp4
-git add doc/source/_static/tutorials/X.mp4
-```
-
-**Re-record after a cross-cutting visual change:** kick the sweep, eyeball the local `.apng`s, then bulk-convert. (The legacy `rerecord_all.ps1` still wraps the sweep; it no longer publishes, since `.mp4` belongs in source.)
-
-### CI wiring (`.github/workflows/docs.yml`)
-
-No fetch step. The docs job checks out the source, daspkg-installs dasImgui, runs `imgui2rst`, then `sphinx-build` — the `.mp4` files are already on disk from the checkout. The old "Fetch tutorial APNGs from orphan assets branch" step is gone.
-
-### Historical note: orphan `assets` branch
-
-Before this migration, the 37-tutorial APNG set totaled ~1.7 GB and lived on an orphan `assets` branch (force-amend-pushed on every re-record sweep) to keep the source-repo history small. The branch is now dead — at ~5 MB of MP4 for the full set, the source repo absorbs the deliverables cleanly. The `origin/assets` ref can be deleted; nothing references it.
-
-## Commit structure for a new recording
-
-For a new scene `foo`:
-
-1. Commit 1: `recording: foo` — `tests/integration/record_foo.das` + `doc/source/_static/tutorials/foo.apng`.
-2. PAUSE for eyeball review.
-3. Commit 2: `tutorial: foo RST page` — `doc/source/tutorials/foo.rst` + `doc/source/tutorials/index.rst` toctree entry.
-
-If recording multiple scenes in one PR, repeat 1+2 per scene with a PAUSE between scenes. Boris's project workflow: eyeball-only review, no Copilot, branches as backup.
+If recording multiple scenes in one PR, repeat per scene with a PAUSE for eyeball review between scenes. Project workflow: eyeball-only review, no Copilot, branches as backup. Recording is interactive and one-at-a-time — concurrent driver runs collide on port 9090.
