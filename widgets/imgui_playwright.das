@@ -597,13 +597,18 @@ def private format_value_mismatch(app : ImguiApp; target : string; field : strin
     return "expect_value({target}.{field}) gave up after {max_frames} frames:\n  want: {want_str}\n  got:  {got_str}\n  widget kind: {kind}\n  widget rendered: {rendered}"
 }
 
-def private record_check_value(app : ImguiApp; target : string; field : string; expected : auto(T); max_frames : int) : bool {
-    //! Non-panicking verify for the recording sequencer. A recording body must NOT panic mid-run:
-    //! daslang panic is fatal and can't be recovered-and-continued, so a mid-body panic would skip
-    //! the clean record_stop + /shutdown and orphan the host. So on a mismatch we push the same
-    //! diagnostic ``expect_value`` would panic with onto ``g_record_failures`` and return false; the
-    //! body runs to its normal teardown, then ``with_recording_app`` fails loudly after the host is
-    //! drained. Returns true when the value matched.
+def public record_check_value(app : ImguiApp; target : string; field : string; expected : auto(T); max_frames : int = 120) : bool {
+    //! Recording-safe verifier: assert ``target.payload[field] == expected`` within ``max_frames``,
+    //! accumulating a miss instead of panicking. This is the public rail for self-verifying a NON-CLICK
+    //! effect in a recording — drive the real gesture (``move_to`` to hover, ``drag`` / ``drag_to``,
+    //! ``type_text``) then call this to assert the effect landed (the hover status updated, the slider
+    //! value moved, the field took the text). Clicks already verify through ``hold_through_voice`` /
+    //! ``verify_click_effect``, which call this internally; ``force_set_verified`` uses it too.
+    //! A recording body must NOT panic mid-run: daslang panic is fatal and can't be recovered-and-continued,
+    //! so a mid-body panic would skip the clean record_stop + /shutdown and orphan the host. So on a
+    //! mismatch we push the same diagnostic ``expect_value`` would panic with onto ``g_record_failures``
+    //! and return false; the body runs to its normal teardown, then ``with_recording_app`` fails loudly
+    //! after the host is drained. Returns true when the value matched.
     if (wait_for_payload_value(app, target, field, expected, max_frames)) return true
     g_record_failures |> push(format_value_mismatch(app, target, field, expected, max_frames))
     return false

@@ -61,7 +61,7 @@ def update() {
     SetNextWindowSize(ImVec2(520.0f, 300.0f), ImGuiCond.Always)
     window(SH_WIN, (text = "selectable_hover", closable = false,
                     flags = ImGuiWindowFlags.None)) {
-        text("Hover a row — STATE_MESSAGE follows the highlighted item.")
+        text("Hover a row - STATE_MESSAGE follows the highlighted item.")
         separator()
 
         for (i in range(length(ROWS))) {
