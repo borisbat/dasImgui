@@ -63,6 +63,23 @@ jobs:
         with:
           path: dasImgui
 
+      - name: "Exclude workspace from Windows Defender (Windows)"
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        continue-on-error: true
+        # GitHub-hosted Windows runners ship Defender with real-time protection
+        # on: it scans every .obj/.exe/.dll written during the build and every
+        # process spawned + DLL loaded at test time. With --isolated-mode the
+        # suite spawns one daslang-live subprocess per test, each LoadLibrary'ing
+        # 5 shared modules, so the per-spawn scan tax is paid hundreds of times.
+        # Excluding the workspace path + the daslang binaries cuts both compile
+        # and run wall-time. continue-on-error: a managed-Defender runner that
+        # rejects the call must not fail the job.
+        run: |
+          Add-MpPreference -ExclusionPath "${{ github.workspace }}"
+          Add-MpPreference -ExclusionProcess "daslang.exe"
+          Add-MpPreference -ExclusionProcess "daslang-live.exe"
+
       - name: "Install system dependencies (Linux)"
         if: matrix.os == 'ubuntu-latest'
         # libglfw3-dev needed by the DLL loader for imguiApp.shared_module
@@ -102,49 +119,49 @@ jobs:
       - name: "Install CMake and Ninja"
         uses: lukka/get-cmake@latest
 
+      - name: "Set up MSVC environment (Windows)"
+        if: matrix.os == 'windows-latest'
+        # Put cl.exe / link.exe / lib.exe on PATH so the bash build step can
+        # drive Ninja with MSVC. ilammy/msvc-dev-cmd exports the dev-env vars to
+        # $GITHUB_ENV, which the subsequent bash steps inherit.
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
       - name: "Build daslang + daslang-live + shared modules"
         working-directory: daslang-src
-        # Windows: Visual Studio 17 2022 generator (mirrors daslang's own
-        # extended_checks.yml). Avoids the Ninja+msvc-dev-cmd PATH-propagation
-        # dance under bash on Windows runners. Binaries land in bin/Release/
-        # instead of bin/ — handled by exporting BIN_DIR for downstream steps.
-        # Linux/macOS: Ninja, single-config, binaries in bin/.
+        # Ninja on all three OSes (single-config Release, binaries in bin/).
+        # Windows: cl.exe is on PATH via the msvc-dev-cmd step above, and
+        # OpenSSL comes prebuilt from vcpkg (toolchain file) so dasHV skips its
+        # perl+nmake source build. MSBuild (Visual Studio generator) was ~1.5-2x
+        # slower here — Ninja's global dependency graph parallelizes the module
+        # build far better than MSBuild's per-project scheduling.
         run: |
           set -eux
+          EXTRA_CMAKE=""
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
-            cmake --no-warn-unused-cli -B./build \
-              -DDAS_HV_DISABLED=OFF \
-              -DDAS_PUGIXML_DISABLED=OFF \
-              -DDAS_LLVM_DISABLED=ON \
-              -DDAS_GLFW_DISABLED=OFF \
-              -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
-              -G "Visual Studio 17 2022" -T host=x64 -A x64
-            cmake --build ./build --config Release --parallel --target \
-              daslang daslang-live \
-              dasModuleLiveHost dasModuleGlfw dasModuleHV \
-              dasModulePUGIXML dasModuleStbImage
-            echo "BIN_DIR=bin/Release" >> "$GITHUB_ENV"
-          else
-            cmake --no-warn-unused-cli -B./build \
-              -DCMAKE_BUILD_TYPE:STRING=Release \
-              -DDAS_HV_DISABLED=OFF \
-              -DDAS_PUGIXML_DISABLED=OFF \
-              -DDAS_LLVM_DISABLED=ON \
-              -DDAS_GLFW_DISABLED=OFF \
-              -G Ninja
-            # daslang + daslang-live binaries plus the shared-module artifacts
-            # daslang-live dlopens at runtime via `require <module>` lines in
-            # the test scripts: dasModuleLiveHost (lifecycle API exported via
-            # dlsym RTLD_DEFAULT), dasModuleGlfw (window/GL context — dlopened
-            # but no glfw fn called under --headless), dasModuleHV (HTTP
-            # /status, /command, /shutdown endpoints used by playwright),
-            # dasModulePUGIXML + dasModuleStbImage (rendering deps).
-            cmake --build ./build --parallel --target \
-              daslang daslang-live \
-              dasModuleLiveHost dasModuleGlfw dasModuleHV \
-              dasModulePUGIXML dasModuleStbImage
-            echo "BIN_DIR=bin" >> "$GITHUB_ENV"
+            EXTRA_CMAKE="-DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
           fi
+          cmake --no-warn-unused-cli -B./build \
+            -DCMAKE_BUILD_TYPE:STRING=Release \
+            -DDAS_HV_DISABLED=OFF \
+            -DDAS_PUGIXML_DISABLED=OFF \
+            -DDAS_LLVM_DISABLED=ON \
+            -DDAS_GLFW_DISABLED=OFF \
+            $EXTRA_CMAKE \
+            -G Ninja
+          # daslang + daslang-live binaries plus the shared-module artifacts
+          # daslang-live dlopens at runtime via `require <module>` lines in the
+          # test scripts: dasModuleLiveHost (lifecycle API exported via dlsym
+          # RTLD_DEFAULT), dasModuleGlfw (window/GL context — dlopened but no
+          # glfw fn called under --headless), dasModuleHV (HTTP /status,
+          # /command, /shutdown endpoints used by playwright), dasModulePUGIXML
+          # + dasModuleStbImage (rendering deps).
+          cmake --build ./build --parallel --target \
+            daslang daslang-live \
+            dasModuleLiveHost dasModuleGlfw dasModuleHV \
+            dasModulePUGIXML dasModuleStbImage
+          echo "BIN_DIR=bin" >> "$GITHUB_ENV"
 
       - name: "daspkg install dasImgui (global)"
         # Use bash-safe relative paths inside daslang-src; on Windows
