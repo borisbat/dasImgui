@@ -268,15 +268,24 @@ struct private KeyEvent {
     codepoint : uint   = 0u
 }
 
-var private key_timeline   : array<KeyEvent>
-var private key_play_start : float = 0.0
-var private key_play_idx   : int   = 0
-var private key_playing    : bool  = false
+var private key_timeline    : array<KeyEvent>
+var private key_play_start  : float = 0.0
+var private key_play_idx    : int   = 0
+var private key_playing     : bool  = false
+// Chords advance one event-group per FRAME (t_ms read as a frame index), not by
+// wall-clock — so a discrete tap is held for exactly one frame and fires its
+// shortcut exactly once regardless of frame rate. A wall-clock hold spans a
+// variable frame count, which double-fired non-idempotent shortcuts (paste) on
+// fast/uncapped POSIX frames. Text playback keeps the wall-clock cadence.
+var private key_frame_paced : bool  = false
+var private key_frame_no    : int   = 0
 
 def private reset_key_timeline() {
     key_timeline |> clear()
-    key_play_idx = 0
-    key_playing  = false
+    key_play_idx    = 0
+    key_playing     = false
+    key_frame_paced = false
+    key_frame_no    = 0
 }
 
 // --- ASCII translation tables (resolve to ImGuiKey values) ---
@@ -406,31 +415,36 @@ def imgui_key_chord(input : JsonValue?) : JsonValue? {
         return JV((error = "unknown modifier", modifier = m)) if (mod_name_to_key(m) == 0)
     }
     reset_key_timeline()
+    key_frame_paced = true
     key_timeline |> reserve(length(args.mods) + 2)
+    // Frame-paced edges (t_ms = frame index): mods down (frame 0), target key down
+    // (frame 1), held CHORD_HOLD_FRAMES frames, target key up, mods up one frame later.
+    // Frame-pacing makes the hold a fixed FRAME count instead of a wall-clock span, so
+    // the editor's shortcut can't be stretched into a repeat / multi-frame level-trigger
+    // by a fast or stalled frame (the wall-clock hold double-pasted on POSIX; see the
+    // node-editor test_clipboard_tutorial regression). The hold is >1 frame so the
+    // editor reliably polls the chord-down state at least once regardless of where its
+    // input poll falls relative to our per-frame tick, but small enough to stay one
+    // discrete tap. synth_key_press auto-pairs the ImGuiMod_* alias so Shortcut() routing
+    // sees the chord (mirrors imgui_test_engine).
+    let CHORD_HOLD_FRAMES = 2
     var t = 0
-    // Press the side-mod key — synth_key_press auto-pairs the ImGuiMod_*
-    // alias, so Shortcut() routing sees the chord (mirrors
-    // imgui_test_engine ApplyInputToImGuiContext mod-event pairing).
     for (m in args.mods) {
-        let mkc = mod_name_to_key(m)
-        key_timeline |> push(KeyEvent(t_ms = t, kind = KEKind.press, key = mkc))
-        t += 8
+        key_timeline |> push(KeyEvent(t_ms = t, kind = KEKind.press, key = mod_name_to_key(m)))
     }
+    t++
     key_timeline |> push(KeyEvent(t_ms = t, kind = KEKind.press, key = target_key))
-    t += 16
+    t += CHORD_HOLD_FRAMES
     key_timeline |> push(KeyEvent(t_ms = t, kind = KEKind.release, key = target_key))
-    t += 8
+    t++
     var i = length(args.mods) - 1
     while (i >= 0) {
-        let m = args.mods[i]
-        let mkc = mod_name_to_key(m)
-        key_timeline |> push(KeyEvent(t_ms = t, kind = KEKind.release, key = mkc))
-        t += 8
+        key_timeline |> push(KeyEvent(t_ms = t, kind = KEKind.release, key = mod_name_to_key(args.mods[i])))
         i--
     }
     key_play_start = get_uptime()
     key_playing    = true
-    return JV((queued = length(key_timeline)))
+    return JV((queued = length(key_timeline), frame_paced = true))
 }
 
 struct KeyEventWire {
@@ -511,10 +525,17 @@ def imgui_key_status(input : JsonValue?) : JsonValue? {
 
 def private advance_key_timeline() {
     return if (!key_playing)
-    let now_ms = int((get_uptime() - key_play_start) * 1000.0)
+    // Frame-paced chords step one t_ms-group per frame; text playback uses wall-clock.
+    var threshold = 0
+    if (key_frame_paced) {
+        threshold = key_frame_no
+        key_frame_no++
+    } else {
+        threshold = int((get_uptime() - key_play_start) * 1000.0)
+    }
     while (key_play_idx < length(key_timeline)) {
         let ev = key_timeline[key_play_idx]
-        break if (ev.t_ms > now_ms)
+        break if (ev.t_ms > threshold)
         if (ev.kind == KEKind.press) {
             synth_key_press(ev.key)
         } elif (ev.kind == KEKind.release) {
