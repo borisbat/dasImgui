@@ -256,6 +256,21 @@ def public widget_click_point(var snap : JsonValue?; ident : string) : tuple<flo
     return ((x0 + x1) * 0.5f, cy)
 }
 
+def public widget_component_point(var snap : JsonValue?; ident : string; component : int) : tuple<float; float> {
+    //! Center of multi-component widget ``ident``'s sub-rect ``component`` (slider_float2/3/4,
+    //! slider_int2/3/4), read from the ``sub_bboxes`` telemetry — the deterministic way to target a
+    //! single handle of a vector slider, instead of guessing an x within the combined bbox. Falls back
+    //! to ``widget_click_point`` when ``sub_bboxes`` is absent (single-component widget, component out
+    //! of range, or a host predating the field).
+    let sub = find_widget(snap, ident)?["sub_bboxes"]?[component]
+    if (sub == null) return widget_click_point(snap, ident)
+    let x0 = sub?["x"] ?? 0.0f
+    let y0 = sub?["y"] ?? 0.0f
+    let x1 = sub?["z"] ?? 0.0f
+    let y1 = sub?["w"] ?? 0.0f
+    return ((x0 + x1) * 0.5f, (y0 + y1) * 0.5f)
+}
+
 def public widget_rendered(var snap : JsonValue?; ident : string) : bool {
     //! True iff ``globals[ident]`` EXISTS and painted this frame. Registered-but-unpainted entries
     //! carry ``"rendered": false``; painted widgets omit the field (``?? true``). The leading
@@ -614,6 +629,26 @@ def public record_check_value(app : ImguiApp; target : string; field : string; e
     return false
 }
 
+def public record_check_changed(app : ImguiApp; target : string; field : string;
+                                before : string; max_frames : int = 120) : bool {
+    //! Recording-safe "the gesture moved it" verifier: assert ``target.payload[field]``'s JSON now
+    //! DIFFERS from ``before`` (the value captured before the gesture) within ``max_frames``. This is
+    //! the honest self-test for a continuous drag — a human drag lands on no exact pixel value, so we
+    //! assert the value CHANGED rather than equals a brittle pixel-derived target. Accumulate-on-miss
+    //! (surfaced as a teardown panic), mirroring ``record_check_value``; ``drag_through_voice`` uses it.
+    //! Returns true once the value differs.
+    let moved = wait_until(app, max_frames) $(var snap) {
+        let v = widget_payload_field(snap, target, field)
+        return v != null && write_json(v) != before
+    } != null
+    if (moved) return true
+    var snap = snapshot(app)
+    let got = widget_payload_field(snap, target, field)
+    let got_str = got != null ? write_json(got) : "<missing>"
+    g_record_failures |> push("record_check_changed({target}.{field}) gave up after {max_frames} frames:\n  the gesture never moved the value off {before} (still {got_str})")
+    return false
+}
+
 def private arm_voiceovers(apng_path : string) : bool {
     //! Load voiceover/<stem>.manifest.json beside apng_path. On success fill g_vo_dur, set
     //! g_vo_active, clear the collection. Returns true when armed.
@@ -781,6 +816,34 @@ def public hold_through_voice(app : ImguiApp; dwell : uint; clicks : array<strin
         reset_cursor_pos(widget_click_point(pre, target))  // track where the click left the cursor
         sleep(beat)
     }
+}
+
+def public drag_through_voice(app : ImguiApp; dwell : uint; target : string;
+                              to_pos : tuple<float; float>; drag_ms : int = 0) {
+    //! Drag analog of ``hold_through_voice``: scrub ``target`` from the CURRENT tracked cursor to
+    //! ``to_pos`` UNDER an already-posted voice line, then assert the drag moved ``target.value``.
+    //! The caller must have ``move_to``'d onto the handle first — the press starts at the tracked
+    //! cursor, so there is no re-position jump. A short lead lets the box + voice start, the handle
+    //! scrubs slowly (constant ~0.30 px/ms so short and long drags read the same), then the caption
+    //! holds for the rest of the voice. The effect is VERIFIED as a CHANGE from the pre-drag value
+    //! (record_check_changed) — a no-op drag (landed off, force_set removed, widget frozen) aborts
+    //! the recording at teardown. ``drag_ms`` overrides the auto-scaled duration when > 0.
+    let before_jv = widget_payload_field(snapshot(app), target, "value")
+    let before = before_jv != null ? write_json(before_jv) : ""
+    let from_pos = (last_cursor_x, last_cursor_y)
+    let dist = max(abs(to_pos._0 - from_pos._0), abs(to_pos._1 - from_pos._1))
+    let scrub_ms = drag_ms > 0 ? drag_ms : max(700, int(dist / 0.30f))
+    let lead = dwell > 1400u ? 600u : dwell / 3u
+    sleep(lead)
+    var ev : array<JsonValue?>
+    ev |> drag_along(0, from_pos, to_pos, scrub_ms, 150)
+    post_command(app, "imgui_mouse_play", JV((events = ev)))
+    unsafe { delete ev; }
+    let play = uint(150 + 100 + scrub_ms + 200 + 300) + 250u   // drag_along timeline + settle
+    sleep(play)
+    record_check_changed(app, target, "value", before, 120)
+    let consumed = lead + play
+    sleep(dwell > consumed ? dwell - consumed : 0u)
 }
 
 def public wait_for_key_idle(app : ImguiApp; timeout_sec : float = DEFAULT_FRAME_WAIT_SEC) : bool {

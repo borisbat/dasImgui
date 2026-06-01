@@ -66,7 +66,7 @@ def update() {
                         flags = ImGuiWindowFlags.None)) {
 
         text("Click anywhere on the track to jump; drag the handle to scrub.")
-        text(S_HINT, (text = "Bounds REQUIRED — track spans (lo, hi) literally."))
+        text(S_HINT, (text = "Bounds REQUIRED - track spans (lo, hi) literally."))
         separator()
 
         // ---- Stage 1: scalar float, 0..1 ----

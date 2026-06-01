@@ -629,6 +629,7 @@ struct WidgetEntry {
     hex_id : uint                                //! ImGui's GetID() for this widget on this frame
     bbox : float4                                //! packed [x0, y0, x1, y1] — ALWAYS screen-space
     @optional canvas_bbox : float4               //! packed [x0,y0,x1,y1] in a transformed canvas's LOCAL space. Emitted ONLY when the widget was captured under a non-identity snapshot item-transform (e.g. inside a node-editor canvas) — `bbox` is then its screen-space mapping. Absent for the common case where the widget is already screen-space.
+    @optional sub_bboxes : array<float4>         //! per-component sub-rects for multi-component widgets (slider_float2/3/4, slider_int2/3/4): each entry is one handle's screen-space [x0,y0,x1,y1]. Lets a driver target component N deterministically (widget_component_point) instead of guessing x within the combined bbox. Absent for single-component widgets.
     @optional hover : bool                       //! IsItemHovered() this frame
     @optional active : bool                      //! IsItemActive() this frame
     @optional focus : bool                       //! IsItemFocused() this frame
@@ -916,6 +917,46 @@ def public pending_value_container_finalize(widget_ident : string; kind : string
 def public pending_value_finalize(widget_ident : string; kind : string; var state : auto(ST)) {
     //! Generic finalize for any state struct with ``pending_value``/``has_pending`` (Drag/Slider/Input-numeric/Color/Combo/ListBox). Writes (addr(state), TypeInfo of ST) into ``g_widgets``; per-kind dispatcher is registered via ``[widget_dispatch]`` and routes the ``set`` action through ``sscan_json`` on the typed ``state.pending_value``.
     var entry : WidgetEntry
+    unsafe {
+        widget_finalize(widget_ident, kind, entry,
+                        addr(state),
+                        reinterpret<TypeInfo const?>(typeinfo rtti_typeinfo(type<ST>)))
+    }
+    register_focusable(widget_ident)
+}
+
+def private capture_sub_bboxes_into(var entry : WidgetEntry; components : int; item_width : float) {
+    //! Compute per-component sub-rects for a SliderScalarN-style widget and store them on ``entry``,
+    //! mapped to screen via the active item-transform (like ``capture_item_bbox``). Mirrors ImGui's
+    //! ``PushMultiItemsWidths`` layout: N items split ``item_width`` (the value ``CalcItemWidth()``
+    //! returned at the call), separated by ``ItemInnerSpacing.x``, the last taking the remainder.
+    //! ``GetItemRectMin/Max`` gives the combined frame — the sliders start at its left; the label (if
+    //! any) sits past ``item_width``, so the sub-rects use ``item_width``, not the combined width.
+    if (components <= 1) return
+    let rmin = GetItemRectMin()
+    let rmax = GetItemRectMax()
+    let inner = GetStyle().ItemInnerSpacing.x
+    let w_one = float(int((item_width - inner * float(components - 1)) / float(components)))   // IM_TRUNC, matches PushMultiItemsWidths
+    var subs : array<float4>
+    subs |> reserve(components)
+    for (i in range(components)) {
+        let x0 = rmin.x + float(i) * (w_one + inner)
+        let wi = i < components - 1 ? w_one : item_width - (w_one + inner) * float(components - 1)
+        let local = float4(x0, rmin.y, x0 + wi, rmax.y)
+        subs |> push(empty(g_item_xform_stack) ? local : item_xform_screen(local))
+    }
+    entry.sub_bboxes <- subs
+}
+
+def public pending_value_finalize_vec(widget_ident : string; kind : string;
+                                      var state : auto(ST); components : int; item_width : float) {
+    //! Multi-component variant of ``pending_value_finalize`` for ``slider_float2/3/4`` +
+    //! ``slider_int2/3/4``: identical dispatch wiring, plus per-component ``sub_bboxes`` so a driver
+    //! can target one handle (``widget_component_point``) instead of guessing x within the combined
+    //! bbox. ``item_width`` is ``CalcItemWidth()`` captured at the call site — the width ImGui's
+    //! ``SliderScalarN`` divides among the components.
+    var entry : WidgetEntry
+    capture_sub_bboxes_into(entry, components, item_width)
     unsafe {
         widget_finalize(widget_ident, kind, entry,
                         addr(state),

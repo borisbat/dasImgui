@@ -843,9 +843,10 @@ def slider_float2(var state : SliderStateFloat2; text : string;
         state.has_pending = false
     }
     let (mn, mx) = state.bounds
+    let item_width = CalcItemWidth()
     let changed = SliderFloat2(text, unsafe(addr(state.value.x)), mn, mx, format, flags)
     state.changed = changed
-    pending_value_finalize(widget_ident, "slider_float2", state)
+    pending_value_finalize_vec(widget_ident, "slider_float2", state, 2, item_width)
     return changed
 }
 
@@ -858,9 +859,10 @@ def slider_float3(var state : SliderStateFloat3; text : string;
         state.has_pending = false
     }
     let (mn, mx) = state.bounds
+    let item_width = CalcItemWidth()
     let changed = SliderFloat3(text, unsafe(addr(state.value.x)), mn, mx, format, flags)
     state.changed = changed
-    pending_value_finalize(widget_ident, "slider_float3", state)
+    pending_value_finalize_vec(widget_ident, "slider_float3", state, 3, item_width)
     return changed
 }
 
@@ -873,9 +875,10 @@ def slider_float4(var state : SliderStateFloat4; text : string;
         state.has_pending = false
     }
     let (mn, mx) = state.bounds
+    let item_width = CalcItemWidth()
     let changed = SliderFloat4(text, unsafe(addr(state.value.x)), mn, mx, format, flags)
     state.changed = changed
-    pending_value_finalize(widget_ident, "slider_float4", state)
+    pending_value_finalize_vec(widget_ident, "slider_float4", state, 4, item_width)
     return changed
 }
 
@@ -903,9 +906,10 @@ def slider_int2(var state : SliderStateInt2; text : string;
         state.has_pending = false
     }
     let (mn, mx) = state.bounds
+    let item_width = CalcItemWidth()
     let changed = SliderInt2(text, unsafe(addr(state.value.x)), mn, mx, format, flags)
     state.changed = changed
-    pending_value_finalize(widget_ident, "slider_int2", state)
+    pending_value_finalize_vec(widget_ident, "slider_int2", state, 2, item_width)
     return changed
 }
 
@@ -918,9 +922,10 @@ def slider_int3(var state : SliderStateInt3; text : string;
         state.has_pending = false
     }
     let (mn, mx) = state.bounds
+    let item_width = CalcItemWidth()
     let changed = SliderInt3(text, unsafe(addr(state.value.x)), mn, mx, format, flags)
     state.changed = changed
-    pending_value_finalize(widget_ident, "slider_int3", state)
+    pending_value_finalize_vec(widget_ident, "slider_int3", state, 3, item_width)
     return changed
 }
 
@@ -933,9 +938,10 @@ def slider_int4(var state : SliderStateInt4; text : string;
         state.has_pending = false
     }
     let (mn, mx) = state.bounds
+    let item_width = CalcItemWidth()
     let changed = SliderInt4(text, unsafe(addr(state.value.x)), mn, mx, format, flags)
     state.changed = changed
-    pending_value_finalize(widget_ident, "slider_int4", state)
+    pending_value_finalize_vec(widget_ident, "slider_int4", state, 4, item_width)
     return changed
 }
 
