@@ -217,15 +217,13 @@ The recorder produces `.apng` (intermediate). The deliverable is `.mp4` produced
 
 When dasImgui is daspkg-installed under `daScript/modules/dasImgui/`, the APNG lands in that install copy. For source-repo workflows (preferred), launch the driver with `-project_root <dasimgui-source>` so the loaded copy IS the source repo. The helper forwards `-project_root` from the driver's own argv to the spawned daslang-live.
 
-Each tutorial RST under `doc/source/tutorials/*.rst` cites its video via raw HTML:
+Each tutorial RST under `doc/source/tutorials/*.rst` cites its video via the local `video` directive (registered by `doc/source/tutorial_video.py`, listed in `conf.py`'s `extensions`):
 
 ```rst
-.. raw:: html
-
-   <video autoplay loop muted playsinline width="100%">
-     <source src="../_static/tutorials/scene_name.mp4" type="video/mp4">
-   </video>
+.. video:: scene_name.mp4
 ```
+
+The directive emits a native HTML5 `<video controls preload="metadata" playsinline>` player: it starts **paused** with play/pause, scrubber, volume, and fullscreen controls; audio is on; no autoplay, no loop. Change player chrome once in `tutorial_video.py` rather than across every page. The argument is just the mp4 filename under `doc/source/_static/tutorials/`.
 
 CI's sphinx step uses `-W` (warnings-as-errors), so an RST referencing a missing `.mp4` fails the build. Commit the `.mp4` ahead of the RST cite to keep the intermediate state passing.
 

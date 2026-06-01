@@ -25,12 +25,7 @@ Source: ``examples/tutorial/group.das``.
 Walkthrough
 ************
 
-.. raw:: html
-
-   <video autoplay loop muted playsinline width="100%">
-     <source src="../_static/tutorials/group.mp4" type="video/mp4">
-     Your browser doesn't support HTML5 video. <a href="../_static/tutorials/group.mp4">Download the recording</a>.
-   </video>
+.. video:: group.mp4
 
 .. literalinclude:: ../../../examples/tutorial/group.das
    :language: das

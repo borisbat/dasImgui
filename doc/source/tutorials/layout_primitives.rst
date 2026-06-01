@@ -42,12 +42,7 @@ Source: ``examples/tutorial/layout_primitives.das``.
 Walkthrough
 ************
 
-.. raw:: html
-
-   <video autoplay loop muted playsinline width="100%">
-     <source src="../_static/tutorials/layout_primitives.mp4" type="video/mp4">
-     Your browser doesn't support HTML5 video. <a href="../_static/tutorials/layout_primitives.mp4">Download the recording</a>.
-   </video>
+.. video:: layout_primitives.mp4
 
 .. literalinclude:: ../../../examples/tutorial/layout_primitives.das
    :language: das

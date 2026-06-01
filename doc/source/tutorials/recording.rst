@@ -43,12 +43,7 @@ all; it operates entirely through the live-command HTTP surface.
 The driver
 ************
 
-.. raw:: html
-
-   <video autoplay loop muted playsinline width="100%">
-     <source src="../_static/tutorials/recording.mp4" type="video/mp4">
-     Your browser doesn't support HTML5 video. <a href="../_static/tutorials/recording.mp4">Download the recording</a>.
-   </video>
+.. video:: recording.mp4
 
 .. literalinclude:: ../../../tests/integration/record_recording.das
    :language: das

@@ -24,12 +24,7 @@ Source: ``examples/tutorial/dropdown_select.das``.
 Walkthrough
 ************
 
-.. raw:: html
-
-   <video autoplay loop muted playsinline width="100%">
-     <source src="../_static/tutorials/dropdown_select.mp4" type="video/mp4">
-     Your browser doesn't support HTML5 video. <a href="../_static/tutorials/dropdown_select.mp4">Download the recording</a>.
-   </video>
+.. video:: dropdown_select.mp4
 
 .. literalinclude:: ../../../examples/tutorial/dropdown_select.das
    :language: das

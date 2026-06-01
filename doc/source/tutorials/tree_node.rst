@@ -27,12 +27,7 @@ Source: ``examples/tutorial/tree_node.das``.
 Walkthrough
 ************
 
-.. raw:: html
-
-   <video autoplay loop muted playsinline width="100%">
-     <source src="../_static/tutorials/tree_node.mp4" type="video/mp4">
-     Your browser doesn't support HTML5 video. <a href="../_static/tutorials/tree_node.mp4">Download the recording</a>.
-   </video>
+.. video:: tree_node.mp4
 
 .. literalinclude:: ../../../examples/tutorial/tree_node.das
    :language: das

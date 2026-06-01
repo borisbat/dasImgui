@@ -29,12 +29,7 @@ Source: ``examples/tutorial/slider.das``.
 Walkthrough
 ************
 
-.. raw:: html
-
-   <video autoplay loop muted playsinline width="100%">
-     <source src="../_static/tutorials/slider.mp4" type="video/mp4">
-     Your browser doesn't support HTML5 video. <a href="../_static/tutorials/slider.mp4">Download the recording</a>.
-   </video>
+.. video:: slider.mp4
 
 .. literalinclude:: ../../../examples/tutorial/slider.das
    :language: das

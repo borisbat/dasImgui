@@ -22,12 +22,7 @@ Source: ``examples/features/drag_drop.das``.
 Walkthrough
 ************
 
-.. raw:: html
-
-   <video autoplay loop muted playsinline width="100%">
-     <source src="../_static/tutorials/drag_drop.mp4" type="video/mp4">
-     Your browser doesn't support HTML5 video. <a href="../_static/tutorials/drag_drop.mp4">Download the recording</a>.
-   </video>
+.. video:: drag_drop.mp4
 
 .. literalinclude:: ../../../examples/features/drag_drop.das
    :language: das
