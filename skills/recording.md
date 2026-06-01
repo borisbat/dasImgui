@@ -2,7 +2,10 @@
 
 dasImgui ships its tutorial site at `doc/source/` with an MP4 per tutorial page (`doc/source/_static/tutorials/*.mp4`). Recordings are produced by **one-shell driver scripts** under `tests/integration/record_*.das` that spawn their own `daslang-live` host and drive it over HTTP. A recording carries a **voiceover + music soundtrack** and is **also an integration test** — every interaction it narrates is performed for real and verified.
 
-This page is the recipe. Read it before writing or revising any `record_*.das` driver.
+This page is the recipe. Read it before writing or revising any `record_*.das` driver. It builds on
+`skills/playwright.md` — read that first for the foundation: a recording is a playwright driver, so the
+**async rule applies** (every interaction must be gated on its observable effect, never a frame/sleep
+guess; `hold_through_voice`/`verify_click_effect` are the recording-side enforcement of exactly that).
 
 Recording is NOT in CI — drivers are manually-driven artifact producers. The pipeline is three tools (below); the deliverable is one `.mp4` per scene, committed alongside the driver.
 
@@ -25,6 +28,20 @@ Plus one constraint that bites silently: **captions and voice strings must be AS
 
 > **Retrofit mandate:** these rules apply to **every** recording, including the legacy set. Drivers still using the pre-voice `imgui_narrate` + fixed-`sleep` + `click_at` pattern (most of `record_*.das`) must be re-recorded under the current model. That is an active backlog, not an exemption — do not author a new driver in the legacy style, and prefer to upgrade a legacy driver whenever you touch its scene.
 
+## Tutorial quality bar — the ship / no-ship checklist
+
+A tutorial's `.mp4` ships only when ALL of these hold. The first three are the hard requirements above; the rest are the full-tutorial gate (the recording is also the integration test, so the example file and the RST page get fixed in the **same** pass, not deferred):
+
+- [ ] **Does what it teaches** — every narrated action is performed for real (counter ticks, value flips), never just pointed at. *(req 1)*
+- [ ] **Self-verifies every interaction** — clicks via `hold_through_voice`, value-sets via `force_set_verified`; a no-op aborts the recording at teardown (`g_record_failures` panic). No silent dud. *(req 2)*
+- [ ] **Paced by the voice** — dwell = the voiceover wav length (`say_begin` returns it, `hold_through_voice` splits it); no hand-tuned `sleep`. *(req 3)*
+- [ ] **Caption/voice decoupled, ear-first** — terse on-screen caption (`text`) vs a natural spoken sentence (`voice`, which keys the TTS line and drives dwell). **ASCII only** — the font has no em-dash / arrow / smart-quote glyph.
+- [ ] **Example is correct** — the feature `.das` compiles, runs, and demonstrates the widget without bugs (fix what's broken in this pass).
+- [ ] **Page is accurate** — the RST describes the current behavior and `.. video::`-cites an existing, fresh `.mp4`.
+- [ ] **Recording is clean** — `dropped = 0`, sidecar frame count == APNG `nb_read_frames`, voice + music bed muxed, ffprobe `video.dur ≈ audio.dur`, mp4 ≈ 50–300 KB, **eyeballed and approved**.
+
+A dasImgui/node-editor library bug surfaced while fixing a tutorial ships as its **own immediate PR**, not buried in the recording commit.
+
 ## The pipeline: prepare → record → convert
 
 Three tools under `utils/`, run in order. `<daslang>` = a daslang build tree, `<dasimgui>` = this repo (append `.exe` on Windows).
@@ -39,14 +56,14 @@ Three tools under `utils/`, run in order. `<daslang>` = a daslang build tree, `<
 
 Needs a running TTS server at `--base-url` (default `http://127.0.0.1:8880/v1`). Re-running skips lines whose wav already exists (hash-named), so it's cheap to re-prepare after editing one line. Captions/voice must be ASCII (see above) — they're scanned verbatim.
 
-**2. `record_X.das` — capture.** Run the driver. `with_recording_app` auto-detects the manifest (`arm_voiceovers`), so `say_begin` returns each line's real wav duration as the dwell. On `record_stop` it writes `voiceover/<stem>.sidecar.json` (clip length + the frame each caption appeared on).
+**2. `record_X.das` — capture.** Run the driver. `with_recording_app` auto-detects the manifest (`arm_voiceovers`), so `say_begin` returns each line's real wav duration as the dwell. On `record_stop` it writes `voiceover/<stem>.sidecar.json` (clip length + the frame each caption appeared on). When voiceovers are armed, the recorder's `max_seconds` cap is **auto-extended** by the summed wav dwell (+ a margin), so a voiced body can't be cut off mid-stage by the silent-mode budget — leave `max_seconds` sized for the silent run.
 
 ```bash
 <daslang>/bin/Release/daslang -project_root <dasimgui> \
     <dasimgui>/tests/integration/record_buttons.das
 ```
 
-**3. `convert_recording` — soundtrack + mux to MP4.** Reads the sidecar, renders the daStrudel music bed to exactly the clip length, then runs one ffmpeg pass that muxes: APNG → H.264 video, a faded low-volume music bed (default `-13 dB`), and each voiceover wav delayed to the frame its caption appeared on. The video is forced onto a constant frames/duration grid (`-r fps_eff`) and each voiceover is anchored to its frame on that *same* grid, so caption and voice share one clock (the recorder's skip-missed scheduling makes the APNG's summed delays shorter than wall-clock, which would otherwise race the captions ahead of their voice). The exact ffmpeg command is saved to `<out>.mp4.ffmpeg.txt`.
+**3. `convert_recording` — soundtrack + mux to MP4.** Reads the sidecar, renders the daStrudel music bed to exactly the clip length, then runs one ffmpeg pass that muxes: APNG → H.264 video, a faded low-volume music bed (default `-13 dB`), and each voiceover wav delayed to the frame its caption appeared on. The video is forced onto a constant frames/duration grid (`-r fps_eff`, where `fps_eff = frames/duration`) and each voiceover is anchored to its frame on that *same* grid, so caption and voice share one clock. (Why `fps_eff` and not the nominal fps: the APNG writer is **synchronous** — every frame is captured, none dropped — but it blocks the GL thread during zlib, so a windowed capture's *effective* fps runs below nominal while frames stay evenly spaced. Reclocking onto the real rate keeps the per-frame voiceover anchors true; without it the captions race ahead of their voice.) The exact ffmpeg command is saved to `<out>.mp4.ffmpeg.txt`.
 
 ```bash
 <daslang>/bin/Release/daslang -project_root <dasimgui> \

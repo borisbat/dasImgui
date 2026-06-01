@@ -28,6 +28,7 @@ Task-specific instructions live under `skills/`. Read the relevant file(s) befor
 
 | Skill file | Read BEFORE... |
 |---|---|
+| `skills/playwright.md` | Writing/editing any `tests/integration/test_*.das` or `record_*.das` driver, or the node-editor `ne_*` layer — the **async rule** (gate on the effect, not a frame/sleep guess), the `wait_*` family + what each guarantees, wait-gate holes, one-host-per-9090 (incl. Win/WSL localhost bridging) |
 | `skills/recording.md` | Writing/editing any `tests/integration/record_*.das` driver — pacing constants, two-shell vs one-shell workflow, menu-bbox quirks, APNG→MP4 conversion |
 | `skills/migration.md` | Migrating any v1 daslang+imgui code (`require imgui/imgui_boost`, `imgui_app(...) <\| $() {...}`, raw `NewFrame()`/`Begin()`/etc.) to dasImgui v2. Read when you hit IMGUI001 / IMGUI002 in compile output |
 
