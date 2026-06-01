@@ -679,9 +679,10 @@ def drag_float2(var state : DragStateFloat2; text : string;
         state.has_pending = false
     }
     let (mn, mx) = state.bounds
+    let item_width = CalcItemWidth()
     let changed = DragFloat2(text, unsafe(addr(state.value.x)), speed, mn, mx, format, flags)
     state.changed = changed
-    pending_value_finalize(widget_ident, "drag_float2", state)
+    pending_value_finalize_vec(widget_ident, "drag_float2", state, 2, item_width)
     return changed
 }
 
@@ -695,9 +696,10 @@ def drag_float3(var state : DragStateFloat3; text : string;
         state.has_pending = false
     }
     let (mn, mx) = state.bounds
+    let item_width = CalcItemWidth()
     let changed = DragFloat3(text, unsafe(addr(state.value.x)), speed, mn, mx, format, flags)
     state.changed = changed
-    pending_value_finalize(widget_ident, "drag_float3", state)
+    pending_value_finalize_vec(widget_ident, "drag_float3", state, 3, item_width)
     return changed
 }
 
@@ -711,9 +713,10 @@ def drag_float4(var state : DragStateFloat4; text : string;
         state.has_pending = false
     }
     let (mn, mx) = state.bounds
+    let item_width = CalcItemWidth()
     let changed = DragFloat4(text, unsafe(addr(state.value.x)), speed, mn, mx, format, flags)
     state.changed = changed
-    pending_value_finalize(widget_ident, "drag_float4", state)
+    pending_value_finalize_vec(widget_ident, "drag_float4", state, 4, item_width)
     return changed
 }
 
@@ -743,9 +746,10 @@ def drag_int2(var state : DragStateInt2; text : string;
         state.has_pending = false
     }
     let (mn, mx) = state.bounds
+    let item_width = CalcItemWidth()
     let changed = DragInt2(text, unsafe(addr(state.value.x)), speed, mn, mx, format, flags)
     state.changed = changed
-    pending_value_finalize(widget_ident, "drag_int2", state)
+    pending_value_finalize_vec(widget_ident, "drag_int2", state, 2, item_width)
     return changed
 }
 
@@ -759,9 +763,10 @@ def drag_int3(var state : DragStateInt3; text : string;
         state.has_pending = false
     }
     let (mn, mx) = state.bounds
+    let item_width = CalcItemWidth()
     let changed = DragInt3(text, unsafe(addr(state.value.x)), speed, mn, mx, format, flags)
     state.changed = changed
-    pending_value_finalize(widget_ident, "drag_int3", state)
+    pending_value_finalize_vec(widget_ident, "drag_int3", state, 3, item_width)
     return changed
 }
 
@@ -775,9 +780,10 @@ def drag_int4(var state : DragStateInt4; text : string;
         state.has_pending = false
     }
     let (mn, mx) = state.bounds
+    let item_width = CalcItemWidth()
     let changed = DragInt4(text, unsafe(addr(state.value.x)), speed, mn, mx, format, flags)
     state.changed = changed
-    pending_value_finalize(widget_ident, "drag_int4", state)
+    pending_value_finalize_vec(widget_ident, "drag_int4", state, 4, item_width)
     return changed
 }
 
@@ -793,10 +799,12 @@ def drag_float_range2(var state : DragStateRangeFloat; text : string;
         state.has_pending = false
     }
     let (mn, mx) = state.bounds
+    let item_width = CalcItemWidth()
     let changed = DragFloatRange2(text, unsafe(addr(state.value.x)), unsafe(addr(state.value.y)),
                                   speed, mn, mx, format, format, flags)
     state.changed = changed
-    pending_value_finalize(widget_ident, "drag_float_range2", state)
+    // two side-by-side handles via PushMultiItemsWidths(2): sub_bboxes[0]=lo, [1]=hi
+    pending_value_finalize_vec(widget_ident, "drag_float_range2", state, 2, item_width)
     return changed
 }
 
@@ -810,10 +818,12 @@ def drag_int_range2(var state : DragStateRangeInt; text : string;
         state.has_pending = false
     }
     let (mn, mx) = state.bounds
+    let item_width = CalcItemWidth()
     let changed = DragIntRange2(text, unsafe(addr(state.value.x)), unsafe(addr(state.value.y)),
                                 speed, mn, mx, format, format, flags)
     state.changed = changed
-    pending_value_finalize(widget_ident, "drag_int_range2", state)
+    // two side-by-side handles via PushMultiItemsWidths(2): sub_bboxes[0]=lo, [1]=hi
+    pending_value_finalize_vec(widget_ident, "drag_int_range2", state, 2, item_width)
     return changed
 }
 
