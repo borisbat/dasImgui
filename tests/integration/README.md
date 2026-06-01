@@ -129,7 +129,7 @@ git push -u origin <branch>
 
 `.github/workflows/docs.yml` checks out the source — `.mp4` files are
 already in the tree, no fetch step. CI uses `-W` (warnings-as-errors)
-on sphinx, so an RST `<video>` block referencing a missing `.mp4` fails
+on sphinx, so an RST `.. video::` cite referencing a missing `.mp4` fails
 the build. Implication for a new tutorial PR: commit the `.mp4`
 ahead of the RST cite to keep CI passing.
 

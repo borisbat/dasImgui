@@ -27,12 +27,7 @@ Source: ``examples/tutorial/color_button_hover.das``.
 Walkthrough
 ************
 
-.. raw:: html
-
-   <video autoplay loop muted playsinline width="100%">
-     <source src="../_static/tutorials/color_button_hover.mp4" type="video/mp4">
-     Your browser doesn't support HTML5 video. <a href="../_static/tutorials/color_button_hover.mp4">Download the recording</a>.
-   </video>
+.. video:: color_button_hover.mp4
 
 .. literalinclude:: ../../../examples/tutorial/color_button_hover.das
    :language: das

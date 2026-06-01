@@ -28,12 +28,7 @@ Source: ``examples/tutorial/popups.das``.
 Walkthrough
 ************
 
-.. raw:: html
-
-   <video autoplay loop muted playsinline width="100%">
-     <source src="../_static/tutorials/popups.mp4" type="video/mp4">
-     Your browser doesn't support HTML5 video. <a href="../_static/tutorials/popups.mp4">Download the recording</a>.
-   </video>
+.. video:: popups.mp4
 
 The recording narrates the widget code with the target visible — the
 popups themselves are right-click-triggered by ImGui's internal

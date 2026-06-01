@@ -16,12 +16,7 @@ keeps the snapshot stable across frames.
 
 Source: ``examples/tutorial/editing_external.das``.
 
-.. raw:: html
-
-   <video autoplay loop muted playsinline width="100%">
-     <source src="../_static/tutorials/edit_external_tour.mp4" type="video/mp4">
-     Your browser doesn't support HTML5 video. <a href="../_static/tutorials/edit_external_tour.mp4">Download the recording</a>.
-   </video>
+.. video:: edit_external_tour.mp4
 
 What the tour shows
 ===================

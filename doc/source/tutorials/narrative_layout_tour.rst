@@ -12,12 +12,7 @@ explaining what each one does.
 
 Source: ``examples/tutorial/narrative_layout_tour.das``.
 
-.. raw:: html
-
-   <video autoplay loop muted playsinline width="100%">
-     <source src="../_static/tutorials/narrative_layout_tour.mp4" type="video/mp4">
-     Your browser doesn't support HTML5 video. <a href="../_static/tutorials/narrative_layout_tour.mp4">Download the recording</a>.
-   </video>
+.. video:: narrative_layout_tour.mp4
 
 What the tour shows
 ===================

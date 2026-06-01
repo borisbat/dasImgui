@@ -16,12 +16,7 @@ Source: ``examples/tutorial/custom_widgets.das``.
 Walkthrough
 ************
 
-.. raw:: html
-
-   <video autoplay loop muted playsinline width="100%">
-     <source src="../_static/tutorials/custom_widgets.mp4" type="video/mp4">
-     Your browser doesn't support HTML5 video. <a href="../_static/tutorials/custom_widgets.mp4">Download the recording</a>.
-   </video>
+.. video:: custom_widgets.mp4
 
 .. literalinclude:: ../../../examples/tutorial/custom_widgets.das
    :language: das

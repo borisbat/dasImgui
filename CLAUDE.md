@@ -205,13 +205,13 @@ CI workflow: `.github/workflows/tests.yml`. Windows CI excludes 7 high-POST test
 
 Sphinx-based tutorial site. CI gates `-W` (warnings-as-errors) BUT pre-runs `utils/imgui2rst.das --detail_output doc/source/stdlib/generated` to generate per-module stdlib refs. **Locally**, `sphinx-build -W` fails on `stdlib/sec_boost.rst:11: toctree contains reference to nonexisting document 'stdlib/generated/imgui_boost_v2'` unless you run imgui2rst first. Plain `sphinx-build --keep-going` (no `-W`) builds clean.
 
-Tutorial pages live in `doc/source/tutorials/*.rst` and embed MP4 recordings from `doc/source/_static/tutorials/*.mp4` via raw `<video>` HTML. Each tutorial appears in `doc/source/tutorials/index.rst`'s toctree.
+Tutorial pages live in `doc/source/tutorials/*.rst` and embed MP4 recordings from `doc/source/_static/tutorials/*.mp4` via the local `.. video:: name.mp4` directive (registered in `doc/source/tutorial_video.py`). Each tutorial appears in `doc/source/tutorials/index.rst`'s toctree.
 
 ## Tutorial recordings — MP4 in source, APNG ignored
 
 **`doc/source/_static/tutorials/*.mp4` ships in-tree** (~5 MB total for the full set). `*.apng` is gitignored — it's the recorder's raw output; one ffmpeg pass converts to the deliverable MP4.
 
-**Fresh clone before docs build:** nothing to fetch. The `.mp4` files are in the checkout. Sphinx's raw `<video>` blocks reference them.
+**Fresh clone before docs build:** nothing to fetch. The `.mp4` files are in the checkout. The `.. video::` directive references them.
 
 **Re-record workflow:** `daslang.exe -project_root . tests/integration/record_X.das` → eyeball-review the resulting `.apng` locally → `ffmpeg -y -i X.apng -c:v libx264 -crf 23 -pix_fmt yuv420p -movflags +faststart X.mp4` → `git add X.mp4`.
 
