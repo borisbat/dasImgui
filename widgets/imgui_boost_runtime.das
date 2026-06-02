@@ -1216,6 +1216,13 @@ def public widget_finalize(widget_ident : string;
     entry.focus = IsItemFocused()
     g_id_to_path[entry.hex_id] = path_key
     g_id_to_bbox[entry.hex_id] = entry.bbox
+    // hex_id is GetID(widget_ident), which differs from ImGui's real active item id for input
+    // widgets - so focus_rect / the snapshot's active_widget couldn't resolve typing focus. When
+    // THIS widget is the active one, also map GetActiveID() (authoritative) -> path. Gated on
+    // entry.active so GetActiveID() is this item; additive (hex_id untouched, no targeting change).
+    if (entry.active) {
+        g_id_to_path[GetActiveID()] = path_key
+    }
     g_registry[path_key] <- entry
     widgets_mark_seen(widget_ident, path_key, kind, state_addr, ti)
     PopID()

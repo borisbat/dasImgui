@@ -735,8 +735,10 @@ def private paint_focus_rect {
 def private paint_all {
     paint_highlights()
     paint_trail()
-    paint_narrates()
+    // focus rect is a widget annotation — paint it before the narrative bar so the
+    // (later-drawn, thus on-top) caption stays readable over the halo, not under it.
     paint_focus_rect()
+    paint_narrates()
     paint_cursor_sprite()
     paint_click_flash()
     paint_key_hud()
