@@ -69,7 +69,7 @@ def init() {
     // Seed the three constraints once at init — daslang lambdas hold their
     // own capture state, so a single per-shape struct is enough for all
     // future Begin() invocations of the matching window.
-    SQUARE_CN <- ImGuiSizeConstraints(@ (var data : ImGuiSizeCallbackData) : void {
+    SQUARE_CN <- ImGuiSizeConstraints(@(var data : ImGuiSizeCallbackData) : void {
         let s = max(data.DesiredSize.x, data.DesiredSize.y)
         data.DesiredSize = float2(s, s)
     })

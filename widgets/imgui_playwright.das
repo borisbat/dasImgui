@@ -1143,6 +1143,45 @@ def public reload(app : ImguiApp; timeout_sec : float = DEFAULT_RELOAD_TIMEOUT_S
     panic("reload did not converge on a clean compile within {timeout_sec}s")
 }
 
+def public reset(app : ImguiApp; timeout_sec : float = DEFAULT_RELOAD_TIMEOUT_SEC) : void {
+    //! POST ``/reset`` — re-simulate the already-compiled program into a fresh context
+    //! (no parse / no infer), clearing ``@live`` state for a clean slate. ~100x cheaper
+    //! than ``reload``; use between subtests of one feature instead of respawning the host.
+    //! Polls ``/status`` until the ``generation`` counter advances (a deterministic done
+    //! signal); a reset that advanced generation but left ``has_error`` set panics, as does
+    //! a timeout.
+    let start = ref_time_ticks()
+    let timeout_usec = int(timeout_sec * 1000000.0f)
+    var gen0 = -1
+    while (gen0 < 0 && get_time_usec(start) < timeout_usec) {
+        let raw = get_text(app, "/status")
+        if (!empty(raw)) {
+            var err : string
+            let parsed = read_json(raw, err)
+            if (parsed != null) { gen0 = parsed?["generation"] ?? 0 }
+        }
+        if (gen0 < 0) sleep(READY_POLL_INTERVAL_MS)
+    }
+    post_signal(app, "/reset")
+    while (get_time_usec(start) < timeout_usec) {
+        let raw = get_text(app, "/status")
+        if (!empty(raw)) {
+            var err : string
+            let parsed = read_json(raw, err)
+            if (parsed != null) {
+                let gen = parsed?["generation"] ?? 0
+                if (gen != gen0) {
+                    let has_err = parsed?["has_error"] ?? false
+                    if (has_err) panic("reset re-simulate failed (generation advanced but has_error is set)")
+                    return
+                }
+            }
+        }
+        sleep(READY_POLL_INTERVAL_MS)
+    }
+    panic("reset did not converge within {timeout_sec}s")
+}
+
 var private g_headless_parsed : bool = false
 var private g_headless_cached : bool = false
 
