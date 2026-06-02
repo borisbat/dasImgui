@@ -8,61 +8,51 @@ require imgui/imgui_playwright public
 require daslib/json public
 require daslib/json_boost public
 
-//! Driver script: record ``flat_tooltips.apng`` against
-//! ``examples/tutorial/flat_tooltips.das``. Tour of the v2 flat-form tooltip
-//! widgets: ``set_item_tooltip`` after a button fires its tooltip on hover,
-//! and the disabled "(?)" + ``set_item_tooltip`` idiom is the dasImgui
-//! replacement for the imgui_demo HelpMarker helper.
-
-def widget_bbox(var snap : JsonValue?; ident : string) : float4 {
-    var b = snap?["globals"]?[ident]?["bbox"]
-    return float4(
-        b?["x"] ?? 0.0f,
-        b?["y"] ?? 0.0f,
-        b?["z"] ?? 0.0f,
-        b?["w"] ?? 0.0f
-    )
-}
-
-def widget_center(var snap : JsonValue?; ident : string) : tuple<float; float> {
-    let b = widget_bbox(snap, ident)
-    return ((b.x + b.z) * 0.5f, (b.y + b.w) * 0.5f)
-}
+//! Driver: record flat_tooltips.apng against examples/tutorial/flat_tooltips.das.
+//! Flat-form tooltips are pure hover surfaces (set_item_tooltip fires only while the previous item is
+//! hovered), so we drive them the human way - rest the cursor on each annotated item, never click - and
+//! self-verify that the tooltip actually showed. set_item_tooltip now reports rendered=true to the
+//! snapshot only on the frames it displays, so record_check_rendered on the tooltip is the honest
+//! "the tooltip fired on hover" assertion (a hover that produced no tooltip aborts at teardown).
 
 [export]
 def main {
     with_recording_app("examples/tutorial/flat_tooltips.das",
-                       "flat_tooltips.apng", 45) $(app) {
-        let T_SAVE = "TOOLTIP_WIN/SAVE_BTN"
-        let T_LOAD = "TOOLTIP_WIN/LOAD_BTN"
+                       "flat_tooltips.apng", 40) $(app) {
+        let T_SAVE     = "TOOLTIP_WIN/SAVE_BTN"
+        let T_LOAD     = "TOOLTIP_WIN/LOAD_BTN"
+        let T_HELP     = "TOOLTIP_WIN/HELP_GLYPH"
+        let T_SAVE_TIP = "TOOLTIP_WIN/SAVE_TIP"
+        let T_LOAD_TIP = "TOOLTIP_WIN/LOAD_TIP"
+        let T_HELP_TIP = "TOOLTIP_WIN/HELP_TIP"
 
         var snap = wait_for_render(app, T_SAVE, 10.0f)
         if (snap == null) {
-            panic("{T_SAVE} never rendered — wrong app running?")
+            panic("{T_SAVE} never rendered - wrong app running?")
         }
-        let p_save = widget_center(snap, T_SAVE)
-        let p_load = widget_center(snap, T_LOAD)
 
-        //! Initial cursor placement — flips synth_cursor_owned.
-        move_to(app, (60.0f, 40.0f), 600)
+        // ---- Stage 1: hover Save - its tooltip fires ----
+        move_to(app, widget_click_point(snap, T_SAVE), 700)
         sleep(SETTLE_MS)
+        let d1 = say_begin(app, "set_item_tooltip - fires on item hover", T_SAVE,
+            [voice = "A flat tooltip is one line of code right after a widget. Rest the pointer on the Save button and its tooltip appears - no extra layout, no separate scope."])
+        record_check_rendered(app, T_SAVE_TIP, true, 180)
+        sleep(d1)
 
-        // ---- Stage 1: hover SAVE_BTN — tooltip fires ----
-        move_to(app, p_save, 900)
+        // ---- Stage 2: hover Load - the tooltip follows the hovered item ----
+        move_to(app, widget_click_point(snap, T_LOAD), 800)
         sleep(SETTLE_MS)
-        say(app, "set_item_tooltip after a button fires its tooltip on hover. No layout scope, no extra widgets — one line per annotation.", T_SAVE)
+        let d2 = say_begin(app, "each call attaches to the item above it", T_LOAD,
+            [voice = "Each call attaches to the item just before it. Move onto Load and a different tooltip shows - one line per row, written right where you need it."])
+        record_check_rendered(app, T_LOAD_TIP, true, 180)
+        sleep(d2)
 
-        // ---- Stage 2: hover LOAD_BTN — tooltip follows the hovered item ----
-        move_to(app, p_load, 900)
+        // ---- Stage 3: the (?) help-marker idiom ----
+        move_to(app, widget_click_point(snap, T_HELP), 800)
         sleep(SETTLE_MS)
-        say(app, "Each call attaches to the most-recently-submitted item — chain `button(); set_item_tooltip(...)` per row.", T_LOAD)
-
-        // ---- Stage 3: HelpMarker pattern under the "(?)" glyph ----
-        //! The "(?)" glyph is a raw text_disabled call with no ident; its
-        //! position is below LOAD_BTN by ~40px. Hover by visual offset.
-        let p_help = (p_load._0 + 80.0f, p_load._1 + 60.0f)
-        move_to(app, p_help, 900)
-        sleep(SETTLE_MS)
-        say(app, "Disabled `(?)` glyph + set_item_tooltip — the v2 replacement for the imgui_demo HelpMarker helper. Two source lines instead of a multiline helper.", T_LOAD)
+        let d3 = say_begin(app, "the (?) help-marker idiom", T_HELP,
+            [voice = "Put one after a greyed-out question mark and you have a help marker - the same little hint icon you see all over good tools, in just two lines."])
+        record_check_rendered(app, T_HELP_TIP, true, 180)
+        sleep(d3)
     }
 }

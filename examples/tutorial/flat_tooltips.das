@@ -55,20 +55,20 @@ def update() {
     SetNextWindowSize(ImVec2(600.0, 300.0), ImGuiCond.Always)
     window(TOOLTIP_WIN, (text = "Flat tooltips", closable = false,
                          flags = ImGuiWindowFlags.None)) {
-        text("Hover the buttons — tooltips fire on item hover.")
+        text("Hover the buttons - tooltips fire on item hover.")
 
         // set_item_tooltip — fires on the most-recently-submitted item.
         if (button(SAVE_BTN, (text = "Save"))) {
             print("save\n")
         }
-        set_item_tooltip((text = "Persists current state to disk."))
+        set_item_tooltip(SAVE_TIP, (text = "Persists current state to disk."))
 
         spacing(SP_BTNS)
 
         if (button(LOAD_BTN, (text = "Load"))) {
             print("load\n")
         }
-        set_item_tooltip((text = "Restores the last saved state."))
+        set_item_tooltip(LOAD_TIP, (text = "Restores the last saved state."))
 
         spacing(SP_HELP)
 
@@ -76,8 +76,8 @@ def update() {
         // HelpMarker / demo_help_marker helpers in v1 imgui_demo.
         text("Verbose option (with help marker):")
         same_line(SL_HINT)
-        text_disabled("(?)")
-        set_item_tooltip((text = "set_item_tooltip after a disabled '(?)' glyph is the dasImgui replacement for the imgui_demo HelpMarker helper."))
+        text_disabled(HELP_GLYPH, (text = "(?)"))
+        set_item_tooltip(HELP_TIP, (text = "The imgui_demo HelpMarker idiom, in two lines."))
     }
 
     end_of_frame()
