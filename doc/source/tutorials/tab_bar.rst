@@ -9,10 +9,13 @@ clickable headers. ImGui owns active-tab selection internally — the
 boost wrapper just observes — and routes click events to the right
 body. Three things make tabs subtle:
 
-* **Only the active tab's body runs each frame.** Widgets inside
-  inactive tabs are NOT in the snapshot — paths under non-active tabs
-  return 404 to drivers. The container's state (TabBarState /
-  TabItemState) lives outside the body and persists.
+* **Only the active tab's body runs each frame.** An inactive tab's
+  leaves aren't submitted to ImGui, so a snapshot shows them
+  ``rendered:false`` and their container-path key (e.g.
+  ``AUDIO_TAB/A_VOLUME``) only resolves once that tab has been active —
+  switch the tab before reading or writing leaves under it. The
+  container's state (TabBarState / TabItemState) lives outside the body
+  and persists.
 * **There is no ``pending_select`` channel.** ImGui owns selection;
   ``imgui_click`` against a tab_item path is how external drivers switch
   tabs.
@@ -59,10 +62,10 @@ only runs while that tab is active:
        tab_item(INFO_TAB,  ...) { ... }
    }
 
-A snapshot taken while ``AUDIO_TAB`` is active will not list
-``G_WIRE`` under ``GENERAL_TAB`` — the leaf wasn't submitted to ImGui
-that frame. Drivers must switch the active tab first before reading
-or writing leaves underneath.
+A snapshot taken while ``AUDIO_TAB`` is active shows ``G_WIRE`` under
+``GENERAL_TAB`` as ``rendered:false`` — the leaf wasn't submitted to
+ImGui that frame. Drivers must switch the active tab first before
+reading or writing leaves underneath.
 
 Switching tabs from outside
 ===========================
