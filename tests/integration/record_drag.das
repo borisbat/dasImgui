@@ -8,27 +8,20 @@ require imgui/imgui_playwright public
 require daslib/json public
 require daslib/json_boost public
 
-//! Driver script: record ``drag.apng`` against
-//! ``examples/tutorial/drag.das``. Tours four drag forms — scalar float,
-//! scalar int, vector float3, and float range pair — narrating each in
-//! turn and driving one value via ``imgui_force_set`` to show the bidirectional
-//! channel.
-
-let SET_DWELL_MS   = 2200u      //! 2.2s post-imgui_force_set dwell
+//! Driver: record drag.apng against examples/tutorial/drag.das.
+//! Drag forms, each driven the human way (a REAL press-and-scrub, never force_set) and
+//! self-verified — the recording doubles as a test:
+//!   drag_float        -> press inside, scrub right
+//!   drag_int          -> same feel, whole steps
+//!   drag_float3       -> scrub the first handle of the row
+//!   drag_float_range2 -> open the band (high handle), then drag the low into the lo<=hi clamp
+//! Drag widgets scrub by relative motion (no fixed track), so each press lands inside the
+//! frame and the scrub stays in the box; drag_through_voice asserts the value actually MOVED
+//! (a no-op drag aborts the recording at teardown).
 
 def widget_bbox(var snap : JsonValue?; ident : string) : float4 {
     var b = snap?["globals"]?[ident]?["bbox"]
-    return float4(
-        b?["x"] ?? 0.0f,
-        b?["y"] ?? 0.0f,
-        b?["z"] ?? 0.0f,
-        b?["w"] ?? 0.0f
-    )
-}
-
-def widget_center(var snap : JsonValue?; ident : string) : tuple<float; float> {
-    let b = widget_bbox(snap, ident)
-    return ((b.x + b.z) * 0.5f, (b.y + b.w) * 0.5f)
+    return float4(b?["x"] ?? 0.0f, b?["y"] ?? 0.0f, b?["z"] ?? 0.0f, b?["w"] ?? 0.0f)
 }
 
 [export]
@@ -40,48 +33,54 @@ def main {
         let T_VEC3  = "DRAG_WIN/D_VEC3"
         let T_RANGE = "DRAG_WIN/D_RANGE"
 
-        var snap = wait_for_widget(app, T_FLOAT, 10.0f)
+        var snap = wait_for_render(app, T_FLOAT, 10.0f)
         if (snap == null) {
-            panic("{T_FLOAT} never registered — wrong app running?")
+            panic("{T_FLOAT} never rendered - wrong app running?")
         }
-        let p_float = widget_center(snap, T_FLOAT)
-        let p_int   = widget_center(snap, T_INT)
-        let p_vec3  = widget_center(snap, T_VEC3)
-        let p_range = widget_center(snap, T_RANGE)
 
-        //! Initial cursor placement.
-        move_to(app, p_float, 600)
+        // ---- Stage 1: scalar float — press inside the frame and scrub right ----
+        let bbF = widget_bbox(snap, T_FLOAT)
+        let cyF = (bbF.y + bbF.w) * 0.5f
+        move_to(app, (bbF.x + 70.0f, cyF), 700)             // inside the frame, left of center
         sleep(SETTLE_MS)
+        let d1 = say_begin(app, "drag_float - scrub a number", T_FLOAT,
+            [voice = "A drag widget edits a number right in place. Press inside and scrub sideways, and the value follows your motion, faster or slower with the speed you set."])
+        drag_through_voice(app, d1, T_FLOAT, (bbF.x + 210.0f, cyF))
 
-        // ---- Stage 1: narrate scalar float ----
-        say(app, "drag_float(IDENT, (text, speed, format)) — click and drag horizontally to scrub. Bounds = (0, 1) clamps; speed = 0.005 means 0.005 units per pixel.", T_FLOAT)
-
-        // ---- Stage 2: scalar int ----
-        move_to(app, p_int, 900)
+        // ---- Stage 2: scalar int — same feel, whole steps ----
+        let bbI = widget_bbox(snap, T_INT)
+        let cyI = (bbI.y + bbI.w) * 0.5f
+        move_to(app, (bbI.x + 70.0f, cyI), 700)
         sleep(SETTLE_MS)
-        post_command(app, "imgui_force_set", JV((target = T_INT, value = 42)))
-        sleep(SET_DWELL_MS)
-        say(app, "drag_int — same shape, integer steps. format = \"%d\" by default; speed = 1 means one integer per pixel.", T_INT)
+        let d2 = say_begin(app, "drag_int - whole steps", T_INT,
+            [voice = "The integer drag has the very same feel. Scrub it, and the value lands on whole steps, one point per pixel, kept inside its bounds."])
+        drag_through_voice(app, d2, T_INT, (bbI.x + 155.0f, cyI))
 
-        // ---- Stage 3: vector float3 ----
-        move_to(app, p_vec3, 900)
+        // ---- Stage 3: vector float3 — scrub the FIRST handle of the row ----
+        // widget_component_point reads sub_bboxes[0] (component 0's own rect), so we target it
+        // deterministically instead of guessing an x inside the combined widget.
+        let c0 = widget_component_point(snap, T_VEC3, 0)
+        move_to(app, c0, 700)
         sleep(SETTLE_MS)
-        post_command(app, "imgui_force_set", JV((target = T_VEC3, value = (0.5f, 1.0f, 1.5f))))
-        sleep(SET_DWELL_MS)
-        say(app, "drag_float3 — three components on one row. State carries float3 value; bounds clamp every component.", T_VEC3)
+        let d3 = say_begin(app, "drag_float3 - one handle per axis", T_VEC3,
+            [voice = "A vector drag is three numbers in a row, one handle each. Scrub the first, and only that component moves while the others hold still."])
+        drag_through_voice(app, d3, T_VEC3, (c0._0 + 55.0f, c0._1))
 
-        // ---- Stage 4: range pair ----
-        move_to(app, p_range, 900)
+        // ---- Stage 4a: range — open the band by dragging the HIGH handle outward ----
+        // sub_bboxes[1] is the high handle's rect, [0] the low's.
+        let hi = widget_component_point(snap, T_RANGE, 1)
+        move_to(app, hi, 900)
         sleep(SETTLE_MS)
-        say(app, "drag_float_range2 — two handles share one bar. value.x = lo, value.y = hi; ImGui enforces lo <= hi each frame.", T_RANGE)
+        let d4 = say_begin(app, "drag_float_range2 - open the band", T_RANGE,
+            [voice = "A range drag has a low and a high handle on one bar. Drag the right one outward, and the high end rises while the low stays put."])
+        drag_through_voice(app, d4, T_RANGE, (hi._0 + 100.0f, hi._1))
 
-        // ---- Stage 5: drive from outside via imgui_force_set ----
-        post_command(app, "imgui_force_set", JV((target = T_FLOAT, value = 0.75f)))
-        sleep(SET_DWELL_MS)
-        post_command(app, "imgui_force_set", JV((target = T_RANGE, value = (20.0f, 65.0f))))
-        sleep(SET_DWELL_MS)
-        move_to(app, p_float, 900)
+        // ---- Stage 4b: range — drag the LOW handle until it bumps the high (lo <= hi clamp) ----
+        let lo = widget_component_point(snap, T_RANGE, 0)
+        move_to(app, lo, 700)
         sleep(SETTLE_MS)
-        say(app, "imgui_force_set writes through state.pending_value; next frame consumes it. Same channel for scalar (number) or range (two-number tuple).", T_FLOAT)
+        let d5 = say_begin(app, "low cannot pass high", T_RANGE,
+            [voice = "Now drag the left handle to the right. It climbs until it meets the high end and stops, because the low can never cross the high."])
+        drag_through_voice(app, d5, T_RANGE, (lo._0 + 130.0f, lo._1))
     }
 }

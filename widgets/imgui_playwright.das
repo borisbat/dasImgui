@@ -258,8 +258,9 @@ def public widget_click_point(var snap : JsonValue?; ident : string) : tuple<flo
 
 def public widget_component_point(var snap : JsonValue?; ident : string; component : int) : tuple<float; float> {
     //! Center of multi-component widget ``ident``'s sub-rect ``component`` (slider_float2/3/4,
-    //! slider_int2/3/4), read from the ``sub_bboxes`` telemetry — the deterministic way to target a
-    //! single handle of a vector slider, instead of guessing an x within the combined bbox. Falls back
+    //! slider_int2/3/4, drag_float2/3/4, drag_int2/3/4, drag_*_range2), read from the ``sub_bboxes``
+    //! telemetry — the deterministic way to target a single handle of a vector/range widget, instead
+    //! of guessing an x within the combined bbox. Falls back
     //! to ``widget_click_point`` when ``sub_bboxes`` is absent (single-component widget, component out
     //! of range, or a host predating the field).
     let sub = find_widget(snap, ident)?["sub_bboxes"]?[component]
@@ -823,9 +824,11 @@ def public drag_through_voice(app : ImguiApp; dwell : uint; target : string;
     //! Drag analog of ``hold_through_voice``: scrub ``target`` from the CURRENT tracked cursor to
     //! ``to_pos`` UNDER an already-posted voice line, then assert the drag moved ``target.value``.
     //! The caller must have ``move_to``'d onto the handle first — the press starts at the tracked
-    //! cursor, so there is no re-position jump. A short lead lets the box + voice start, the handle
-    //! scrubs slowly (constant ~0.30 px/ms so short and long drags read the same), then the caption
-    //! holds for the rest of the voice. The effect is VERIFIED as a CHANGE from the pre-drag value
+    //! cursor, so there is no re-position jump. The lead scales with the voice line (~1/3 in, bounded
+    //! 700..3000ms) so the scrub lands WHILE the narrator describes it instead of always firing ~0.6s
+    //! in — a continuous drag is timing-sensitive in a way a point click is not. The handle scrubs
+    //! slowly (constant ~0.30 px/ms so short and long drags read the same), then the caption holds for
+    //! the rest of the voice. The effect is VERIFIED as a CHANGE from the pre-drag value
     //! (record_check_changed) — a no-op drag (landed off, force_set removed, widget frozen) aborts
     //! the recording at teardown. ``drag_ms`` overrides the auto-scaled duration when > 0.
     let before_jv = widget_payload_field(snapshot(app), target, "value")
@@ -833,7 +836,7 @@ def public drag_through_voice(app : ImguiApp; dwell : uint; target : string;
     let from_pos = (last_cursor_x, last_cursor_y)
     let dist = max(abs(to_pos._0 - from_pos._0), abs(to_pos._1 - from_pos._1))
     let scrub_ms = drag_ms > 0 ? drag_ms : max(700, int(dist / 0.30f))
-    let lead = dwell > 1400u ? 600u : dwell / 3u
+    let lead = clamp(dwell / 3u, 700u, 3000u)
     sleep(lead)
     var ev : array<JsonValue?>
     ev |> drag_along(0, from_pos, to_pos, scrub_ms, 150)

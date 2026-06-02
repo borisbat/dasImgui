@@ -629,7 +629,7 @@ struct WidgetEntry {
     hex_id : uint                                //! ImGui's GetID() for this widget on this frame
     bbox : float4                                //! packed [x0, y0, x1, y1] — ALWAYS screen-space
     @optional canvas_bbox : float4               //! packed [x0,y0,x1,y1] in a transformed canvas's LOCAL space. Emitted ONLY when the widget was captured under a non-identity snapshot item-transform (e.g. inside a node-editor canvas) — `bbox` is then its screen-space mapping. Absent for the common case where the widget is already screen-space.
-    @optional sub_bboxes : array<float4>         //! per-component sub-rects for multi-component widgets (slider_float2/3/4, slider_int2/3/4): each entry is one handle's screen-space [x0,y0,x1,y1]. Lets a driver target component N deterministically (widget_component_point) instead of guessing x within the combined bbox. Absent for single-component widgets.
+    @optional sub_bboxes : array<float4>         //! per-component sub-rects for multi-component widgets (slider_float2/3/4, slider_int2/3/4, drag_float2/3/4, drag_int2/3/4, and the two-handle drag_*_range2 forms where [0]=lo, [1]=hi): each entry is one handle's screen-space [x0,y0,x1,y1]. Lets a driver target component N deterministically (widget_component_point) instead of guessing x within the combined bbox. Absent for single-component widgets.
     @optional hover : bool                       //! IsItemHovered() this frame
     @optional active : bool                      //! IsItemActive() this frame
     @optional focus : bool                       //! IsItemFocused() this frame
@@ -950,11 +950,13 @@ def private capture_sub_bboxes_into(var entry : WidgetEntry; components : int; i
 
 def public pending_value_finalize_vec(widget_ident : string; kind : string;
                                       var state : auto(ST); components : int; item_width : float) {
-    //! Multi-component variant of ``pending_value_finalize`` for ``slider_float2/3/4`` +
-    //! ``slider_int2/3/4``: identical dispatch wiring, plus per-component ``sub_bboxes`` so a driver
-    //! can target one handle (``widget_component_point``) instead of guessing x within the combined
-    //! bbox. ``item_width`` is ``CalcItemWidth()`` captured at the call site — the width ImGui's
-    //! ``SliderScalarN`` divides among the components.
+    //! Multi-component variant of ``pending_value_finalize`` for the vector / range numeric widgets
+    //! (``slider_float2/3/4``, ``slider_int2/3/4``, ``drag_float2/3/4``, ``drag_int2/3/4``, and the
+    //! two-handle ``drag_*_range2`` forms): identical dispatch wiring, plus per-component ``sub_bboxes``
+    //! so a driver can target one handle (``widget_component_point``) instead of guessing x within the
+    //! combined bbox. ``item_width`` is ``CalcItemWidth()`` captured at the call site — the width ImGui's
+    //! ``SliderScalarN`` / ``DragScalarN`` / ``DragFloatRange2`` divides among the components via
+    //! ``PushMultiItemsWidths``.
     var entry : WidgetEntry
     capture_sub_bboxes_into(entry, components, item_width)
     unsafe {
