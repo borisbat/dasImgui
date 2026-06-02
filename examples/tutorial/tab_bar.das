@@ -73,7 +73,7 @@ def update() {
     window(TB_WIN, (text = "tab_bar tutorial", closable = false,
                     flags = ImGuiWindowFlags.None)) {
 
-        text("Three tab_items + one closable draft tab — drag the strip to reorder.")
+        text("Three tabs plus one closable Draft tab. Click a header to switch.")
         separator()
 
         // Reorderable + TabListPopupButton (the ▼ menu on the right).
@@ -85,7 +85,7 @@ def update() {
             tab_item(GENERAL_TAB, (text = "General", closable = false,
                                    flags = ImGuiTabItemFlags.None)) {
                 text("Only the active tab's body block runs each frame.")
-                text("Switch tabs — checkbox state below survives because the")
+                text("Switch tabs - checkbox state below survives because the")
                 text("[container] state lives outside the body.")
                 checkbox(G_WIRE, (text = "Wireframe"))
                 checkbox(G_LIVE, (text = "Live preview"))
@@ -102,7 +102,7 @@ def update() {
             // ---- Info tab ----
             tab_item(INFO_TAB, (text = "Info", closable = false,
                                 flags = ImGuiTabItemFlags.None)) {
-                text("Tab metadata — read-only.")
+                text(INFO_LEAD, (text = "Tab metadata - read-only."))
                 text("MAIN_TABS.flags = Reorderable | TabListPopupButton")
                 text("Inactive tab bodies do NOT register child widgets.")
             }
@@ -110,14 +110,14 @@ def update() {
             // ---- Draft tab (closable, has X-button) ----
             tab_item(DRAFT_TAB, (text = "Draft", closable = true,
                                  flags = ImGuiTabItemFlags.None)) {
-                text("Draft. Click the X to close. Re-open via imgui_open.")
+                text("Draft. Click the x on the tab header to close it.")
                 text("DRAFT_TAB.open = {DRAFT_TAB.open}")
                 slider_int(D_LINE_LEN, (text = "Line length"))
             }
         }
 
         separator()
-        text("Outside the tab_bar — runs every frame regardless of active tab.")
+        text("Outside the tab_bar - runs every frame regardless of active tab.")
         text("DRAFT_TAB.open is observable from out here: {DRAFT_TAB.open}")
     }
 

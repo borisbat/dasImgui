@@ -8,11 +8,13 @@ require imgui/imgui_playwright public
 require daslib/json public
 require daslib/json_boost public
 
-//! Driver script: record ``tab_bar.apng`` against
-//! ``examples/tutorial/tab_bar.das``. Tours active-tab switching via
-//! imgui_click against tab headers and the closable-X behavior.
-
-let SWITCH_DWELL_MS = 1800u     //! 1.8s post-tab-switch dwell
+//! Driver: record tab_bar.apng against examples/tutorial/tab_bar.das. Tours tab switching the human
+//! way - REAL synth clicks on the tab HEADERS, never a force command - and self-verifies the lesson
+//! the widget teaches: only the active tab's body runs (a switched-away child flips to rendered:false,
+//! the switched-to child renders), [container] state survives a round-trip (the Wireframe box ticked
+//! in General is still on after touring away and back), and a closable tab's x really closes it
+//! (a real click on the header's close glyph flips DRAFT_TAB.open false). A click that fails to
+//! switch / toggle / close aborts the recording at teardown.
 
 def widget_bbox(var snap : JsonValue?; ident : string) : float4 {
     var b = snap?["globals"]?[ident]?["bbox"]
@@ -24,72 +26,97 @@ def widget_bbox(var snap : JsonValue?; ident : string) : float4 {
     )
 }
 
-def widget_center(var snap : JsonValue?; ident : string) : tuple<float; float> {
-    let b = widget_bbox(snap, ident)
-    return ((b.x + b.z) * 0.5f, (b.y + b.w) * 0.5f)
-}
-
 [export]
 def main {
     with_recording_app("examples/tutorial/tab_bar.das",
                        "tab_bar.apng", 60) $(app) {
-        // tab_item DOES capture a header bbox (current_item_bbox after
-        // BeginTabItem), so these paths resolve correctly. The bar itself
-        // (TB_WIN/MAIN_TABS) is stateless_finalize without bbox — anchor
-        // narration at a tab header instead. See PR #67 Copilot round 1.
         let T_GENERAL = "TB_WIN/MAIN_TABS/GENERAL_TAB"
-        let T_AUDIO = "TB_WIN/MAIN_TABS/AUDIO_TAB"
-        let T_INFO = "TB_WIN/MAIN_TABS/INFO_TAB"
-        let T_DRAFT = "TB_WIN/MAIN_TABS/DRAFT_TAB"
+        let T_AUDIO   = "TB_WIN/MAIN_TABS/AUDIO_TAB"
+        let T_INFO    = "TB_WIN/MAIN_TABS/INFO_TAB"
+        let T_DRAFT   = "TB_WIN/MAIN_TABS/DRAFT_TAB"
+        // Active-tab children migrate to the container-path key on first render; an inactive tab's
+        // child is a bare ident with rendered:false. These paths resolve once their tab has been open.
+        let T_WIRE    = "TB_WIN/MAIN_TABS/GENERAL_TAB/G_WIRE"
+        let T_MUTE    = "TB_WIN/MAIN_TABS/AUDIO_TAB/A_MUTE"
+        let T_INFO_LEAD = "TB_WIN/MAIN_TABS/INFO_TAB/INFO_LEAD"
+        let T_DRAFT_LINE = "TB_WIN/MAIN_TABS/DRAFT_TAB/D_LINE_LEN"
 
-        // wait_for_widget gates on existence; wait_for_render passes
-        // through for absent paths.
         var snap = wait_for_widget(app, T_GENERAL, 10.0f)
         if (snap == null) {
-            panic("{T_GENERAL} never registered — wrong app running?")
+            panic("{T_GENERAL} never registered - wrong app running?")
         }
-        let p_general = widget_center(snap, T_GENERAL)
-        let p_audio = widget_center(snap, T_AUDIO)
-        let p_info = widget_center(snap, T_INFO)
-        let p_draft = widget_center(snap, T_DRAFT)
 
-        //! Initial cursor placement.
-        move_to(app, p_general, 600)
+        // ---- Stage 1: General active - toggle Wireframe (leaves survivable state) ----
+        move_to(app, widget_click_point(snap, T_WIRE), 700)
         sleep(SETTLE_MS)
+        hold_through_voice(app, say_begin(app, "only the active tab's body runs", T_WIRE,
+            [voice = "A tab bar shows one panel at a time. The General tab is open, so only its controls are alive. I'll switch Wireframe on here - remember it, we will come back to it."]),
+            [T_WIRE])
 
-        // ---- Stage 1: hover the tab strip ----
-        move_to(app, p_general, 900)
+        // ---- Stage 2: switch to Audio - General body stops, Audio body starts ----
+        move_to(app, widget_click_point(snap, T_AUDIO), 800)
         sleep(SETTLE_MS)
-        say(app, "tab_bar(IDENT, (flags)) hosts tab_item children. Only the active tab's body block runs; ImGui owns active-tab selection internally.", T_GENERAL)
+        // tab_item is not a click-verified kind, so hold_through_voice clicks without auto-checking;
+        // verify the switch ourselves: General's checkbox stops rendering, Audio's starts.
+        hold_through_voice(app, say_begin(app, "click a header to switch", T_AUDIO,
+            [voice = "Click a different tab header and the whole panel changes. The General controls stop running completely, and the Audio panel takes over."]),
+            [T_AUDIO])
+        record_check_rendered(app, T_WIRE, false, 180)
+        record_check_rendered(app, T_MUTE, true, 180)
 
-        // ---- Stage 2: click Audio tab via imgui_click ----
-        post_command(app, "imgui_click", JV((target = T_AUDIO)))
-        sleep(SWITCH_DWELL_MS)
-        move_to(app, p_audio, 700)
+        // ---- Stage 3: in Audio - toggle Mute (the switched-to panel is live) ----
+        move_to(app, widget_click_point(snap, T_AUDIO), 200)   // keep cursor near the strip
         sleep(SETTLE_MS)
-        say(app, "imgui_click against a tab header switches the active tab. The General body stopped registering its checkboxes — only Audio's widgets are in the snapshot now.", T_AUDIO)
-
-        // ---- Stage 3: switch to Info ----
-        post_command(app, "imgui_click", JV((target = T_INFO)))
-        sleep(SWITCH_DWELL_MS)
-        move_to(app, p_info, 700)
+        var snap_audio = snapshot(app)
+        move_to(app, widget_click_point(snap_audio, T_MUTE), 700)
         sleep(SETTLE_MS)
-        say(app, "Tab switching is path-routed — every tab_item is registered under MAIN_TABS/. Drivers don't need access to ImGui internals.", T_INFO)
+        hold_through_voice(app, say_begin(app, "the new panel is interactive", T_MUTE,
+            [voice = "Now that Audio is open its own controls respond. I'll toggle Mute - proof the panel you switched to is fully live, not a picture."]),
+            [T_MUTE])
 
-        // ---- Stage 4: switch to Draft, then close it ----
-        post_command(app, "imgui_click", JV((target = T_DRAFT)))
-        sleep(SWITCH_DWELL_MS)
-        move_to(app, p_draft, 700)
+        // ---- Stage 4: switch to Info - Audio sleeps, Info wakes ----
+        move_to(app, widget_click_point(snap, T_INFO), 800)
         sleep(SETTLE_MS)
-        say(app, "Draft is closable — the X-button next to the label flips state.open=false. Next frame the tab is skipped entirely.", T_DRAFT)
+        hold_through_voice(app, say_begin(app, "one panel runs at a time", T_INFO,
+            [voice = "Info is just another tab. Switching to it puts Audio to sleep and wakes Info. Only one panel ever runs, so the inactive tabs cost you nothing."]),
+            [T_INFO])
+        record_check_rendered(app, T_MUTE, false, 180)
+        record_check_rendered(app, T_INFO_LEAD, true, 180)
 
-        post_command(app, "imgui_close", JV((target = T_DRAFT)))
-        sleep(SWITCH_DWELL_MS)
-        // DRAFT_TAB is gone from the registry now; anchor narration at
-        // GENERAL_TAB (a still-visible tab header) instead.
-        say(app, "imgui_close routes through pending_close — Draft disappears from the strip. imgui_open against the same path re-registers it.", T_GENERAL)
+        // ---- Stage 5: back to General - the Wireframe toggle survived ----
+        move_to(app, widget_click_point(snap, T_GENERAL), 800)
+        sleep(SETTLE_MS)
+        hold_through_voice(app, say_begin(app, "tab state survives the switch", T_GENERAL,
+            [voice = "Here is the payoff. Back in General, the Wireframe box I ticked earlier is still on. Each tab keeps its state outside the panel, so it survives every switch."]),
+            [T_GENERAL])
+        record_check_rendered(app, T_WIRE, true, 180)
+        record_check_value(app, T_WIRE, "value", true, 180)
 
-        post_command(app, "imgui_open", JV((target = T_DRAFT)))
-        sleep(1500u)
+        // ---- Stage 6a: open Draft, then close it with a real click on its x ----
+        move_to(app, widget_click_point(snap, T_DRAFT), 800)
+        sleep(SETTLE_MS)
+        hold_through_voice(app, say_begin(app, "a closable tab has an x", T_DRAFT,
+            [voice = "The Draft tab is closable - see the little x on its header. Let me open it first."]),
+            [T_DRAFT])
+        record_check_rendered(app, T_DRAFT_LINE, true, 180)
+
+        // ---- Stage 6b: click the close glyph (right edge of the active Draft header) ----
+        var snap_draft = snapshot(app)
+        let db = widget_bbox(snap_draft, T_DRAFT)
+        // The close glyph sits ~11px in from the header's right edge at this font scale (verified
+        // live). It is not a registered widget, so click the raw point via imgui_mouse_play.
+        let x_pt = (db.z - 11.0f, (db.y + db.w) * 0.5f)
+        let d6 = say_begin(app, "click the x to close it", T_DRAFT,
+            [voice = "Now click that x, and the tab is gone from the strip. Its open flag flips to false and the panel stops drawing entirely."])
+        let lead = d6 > 1200u ? 600u : d6 / 3u
+        sleep(lead)
+        var ev : array<JsonValue?>
+        click_at(ev, 0, x_pt, 500)
+        post_command(app, "imgui_mouse_play", JV((events = ev)))
+        unsafe { delete ev; }
+        sleep(1300u)                                    // click_at timeline (~1000ms) + close settle
+        record_check_value(app, T_DRAFT, "open", false, 180)
+        let consumed = lead + 1300u
+        sleep(d6 > consumed ? d6 - consumed : 0u)
     }
 }
