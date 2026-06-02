@@ -108,7 +108,7 @@ def update() {
         // scripts targeting the widget by hex_id, and imgui.ini state for
         // this button, stay stable even if HASHED_BTN is later renamed.
         // Telemetry path stays ID_WIN/HASHED_BTN.
-        text("Per-call id= — script-stable ImGui hash:")
+        text("Per-call id= - script-stable ImGui hash:")
         button(HASHED_BTN, (text = "Hashed via id=", id = "stable_v1"))
 
         separator(WI_SEP_3)
@@ -118,7 +118,7 @@ def update() {
         // reference breaks). "rps_stable" is the registry path leaf — the
         // imgui_force_set / imgui_click string used by external drivers. Both the
         // path AND the ImGui hash adopt "rps_stable".
-        text("Per-call path= — script-stable telemetry path:")
+        text("Per-call path= - script-stable telemetry path:")
         slider_float(RPS_PATH, (text = "Speed (path=)",
                                 path = "rps_stable"))
     }
