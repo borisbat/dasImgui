@@ -99,7 +99,7 @@ def update() {
         spacing()
 
         // ---- Stage 3: selectable — N rows, each self-toggles independently ----
-        text("Tags (multi-select — each row toggles its own ToggleState):")
+        text("Tags (multi-select - each row toggles its own ToggleState):")
         for (i in range(length(TAGS))) {
             selectable(D_TAG[i], (text = TAGS[i]))
         }
@@ -107,7 +107,7 @@ def update() {
         spacing()
 
         // ---- Stage 4: selectable_label inside list_box — single-select ----
-        text("Shirt size (single-select — caller-owned int picks active row):")
+        text("Shirt size (single-select - caller-owned int picks active row):")
         list_box(D_SHIRT, (text = "size", size = float2(0.0f, 0.0f))) {
             for (i in range(length(SHIRTS))) {
                 let is_sel = (i == D_SHIRT.value)
