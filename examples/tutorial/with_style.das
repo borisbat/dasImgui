@@ -68,17 +68,23 @@ def update() {
     SetNextWindowSize(ImVec2(640.0f, 440.0f), ImGuiCond.FirstUseEver)
     window(STYLE_WIN, (text = "with_style", closable = false,
                        flags = ImGuiWindowFlags.None)) {
-        text("Mixed color + var, single block:")
+        text("Mixed colors + var, single block:")
+        // A full button restyle sets all three interaction states - base,
+        // hovered, active - so the color holds while the pointer is over it.
         with_style((ImGuiCol.Button, ImVec4(0.85f, 0.20f, 0.20f, 1.0f)),
+                   (ImGuiCol.ButtonHovered, ImVec4(0.95f, 0.30f, 0.30f, 1.0f)),
+                   (ImGuiCol.ButtonActive, ImVec4(0.70f, 0.12f, 0.12f, 1.0f)),
                    (ImGuiStyleVar.FrameRounding, 8.0f)) {
             button(STYLED_BTN, (text = "Red rounded"))
         }
 
         separator(WS_SEP_1)
-        text("Nested with_style — inner stacks on outer:")
+        text("Nested with_style - inner stacks on outer:")
         with_style((ImGuiCol.Text, ImVec4(1.0f, 0.95f, 0.30f, 1.0f))) {
             text("Yellow text inherited from outer scope.")
             with_style((ImGuiCol.Button, ImVec4(0.20f, 0.45f, 0.85f, 1.0f)),
+                       (ImGuiCol.ButtonHovered, ImVec4(0.30f, 0.55f, 0.95f, 1.0f)),
+                       (ImGuiCol.ButtonActive, ImVec4(0.12f, 0.35f, 0.70f, 1.0f)),
                        (ImGuiStyleVar.FrameRounding, 4.0f)) {
                 // Both the outer yellow text and the inner blue/rounded
                 // button are in scope.
@@ -87,7 +93,7 @@ def update() {
         }
 
         separator(WS_SEP_2)
-        text("After with_style — baseline style restored.")
+        text("After with_style - baseline style restored.")
         // If push/pop counts were off, this button would render with a
         // stale color/rounding from the block above. ImGui asserts on a
         // stack imbalance at EndFrame, so the live process would crash

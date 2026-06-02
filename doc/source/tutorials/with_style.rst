@@ -43,9 +43,17 @@ and metric overrides mix freely:
 .. code-block:: das
 
    with_style((ImGuiCol.Button, ImVec4(0.85f, 0.20f, 0.20f, 1.0f)),
+              (ImGuiCol.ButtonHovered, ImVec4(0.95f, 0.30f, 0.30f, 1.0f)),
+              (ImGuiCol.ButtonActive, ImVec4(0.70f, 0.12f, 0.12f, 1.0f)),
               (ImGuiStyleVar.FrameRounding, 8.0f)) {
        button(STYLED_BTN, (text = "Red rounded"))
    }
+
+A full button restyle pushes all three interaction states — ``Button``,
+``ButtonHovered``, ``ButtonActive`` — so the color holds while the pointer
+is over it (push only ``Button`` and the default hover/active theme colors
+show through on interaction). Here they mix with a rounding metric in one
+block.
 
 The macro emits one ``push_style_one(key, val)`` per tuple in source order,
 then ``invoke(blk)``, then a single ``pop_style_n(N)`` that pops the
