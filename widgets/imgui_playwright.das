@@ -849,6 +849,86 @@ def public drag_through_voice(app : ImguiApp; dwell : uint; target : string;
     sleep(dwell > consumed ? dwell - consumed : 0u)
 }
 
+// ImGuiKey codes the recording helpers tap. playwright is transport-only (no imgui native module, so
+// no ImGuiKey enum in scope); the host interprets these ints AS ImGuiKey, so they must match its build.
+let KEY_TAB   : int = 512    // ImGuiKey.Tab
+let KEY_ENTER : int = 525    // ImGuiKey.Enter
+
+// type_into_voice tunables. Every sleep() in type_into_voice is PACING (visual rhythm only);
+// every wait for an effect to LAND (focus, focus-moved, value-committed) is a wait_*/record_check
+// POLL, never a fixed sleep guessing the duration.
+let TYPE_LEAD_MIN_MS   : uint  = 700u    // floor on the pre-type lead (short voice lines)
+let TYPE_LEAD_MAX_MS   : uint  = 3000u   // cap on the pre-type lead (long voice lines)
+let TYPE_PER_CHAR_S    : float = 0.16f   // wall-clock per typed char (keystrokes stay legible)
+let TYPE_MIN_FIELD_S   : float = 0.9f    // floor on one field's typing duration
+let TYPE_FIELD_BEAT_MS : uint  = 180u    // pacing pause after a field fills, before the next
+let CLICK_RELEASE_MS   : int   = 130     // press->release gap of the focusing click
+let TYPE_EFFECT_FRAMES : int   = 120     // poll budget for focus / active-id / value effects
+
+def private snapshot_active_id(var snap : JsonValue?) : string {
+    // io.active_id as a JSON string ("" when nothing is active). String, not int: the id is a hash
+    // that overflows int32, and we only ever compare it for change, never do arithmetic on it.
+    let v = snap?["io"]?["active_id"]
+    return v != null ? write_json(v) : ""
+}
+
+def public type_into_voice(app : ImguiApp; dwell : uint; target : string;
+                           click_pos : tuple<float; float>; cells : array<string>;
+                           expected : auto(T)) {
+    //! Type analog of drag_through_voice: under an already-posted voice line, drive a REAL keyboard
+    //! edit of ``target`` and assert the committed value == ``expected``. CLICKS ``click_pos`` to focus
+    //! the (first) field — a real click, NOT imgui_focus, because ImGui's InputScalar AutoSelectAll
+    //! fires only on activation, so the click both focuses AND selects the existing text (typing then
+    //! REPLACES rather than inserts). Then per ``cells`` entry: type it, Tab to the next field BETWEEN
+    //! entries (vector inputs cycle their components on Tab), and finally Enter to commit. A scalar is
+    //! one cell (``["12.5"]``); a float3 is three. The lead scales with the voice (~1/3 in, bounded)
+    //! so the typing lands while the narrator describes it; the caption holds the rest. A wrong or
+    //! uncommitted value aborts the recording at teardown (record_check_value). The caller must have
+    //! ``move_to``'d ``click_pos`` first so the cursor is already on the field (no teleport).
+    //! Every sleep() here is PACING; focus, focus-moved and value-committed are each POLLED, not slept.
+    let started = ref_time_ticks()
+    let lead = clamp(dwell / 3u, TYPE_LEAD_MIN_MS, TYPE_LEAD_MAX_MS)   // ~1/3 into the line
+    sleep(lead)                                                // PACING: land the click under the voice
+
+    // Real click to focus the (first) field. ImGui InputScalar's AutoSelectAll fires on activation,
+    // so the click both focuses AND selects the current text -> typing REPLACES it.
+    var ev : array<JsonValue?>
+    ev |> push(JV((t_ms = 0,                kind = "button", x = click_pos._0, y = click_pos._1, action = "press")))
+    ev |> push(JV((t_ms = CLICK_RELEASE_MS, kind = "button", x = click_pos._0, y = click_pos._1, action = "release")))
+    post_command(app, "imgui_mouse_play", JV((events = ev)))
+    unsafe { delete ev; }
+    // SYNC: the field is editable once it reports focus — poll for it (no fixed settle sleep).
+    wait_until(app, TYPE_EFFECT_FRAMES) $(var snap) {
+        return snap?["globals"]?[target]?["focus"] ?? false
+    }
+
+    for (i in range(length(cells))) {
+        if (i > 0) {
+            // SYNC: Tab moves focus to the next sub-field. Wait until the ACTIVE widget actually
+            // becomes a fresh one (active_id non-empty and changed) so the next cell lands in the new
+            // field, never the previous — not a fixed sleep guessing the focus moved.
+            let before_active = snapshot_active_id(snapshot(app))
+            key_tap(app, KEY_TAB)
+            wait_until(app, TYPE_EFFECT_FRAMES) $(var snap) {
+                let now = snapshot_active_id(snap)
+                return now != "" && now != "0" && now != before_active
+            }
+        }
+        let cell = cells[i]
+        let type_s = max(TYPE_MIN_FIELD_S, float(length(cell)) * TYPE_PER_CHAR_S)
+        post_command(app, "imgui_key_type", JV((text = cell, total_duration_s = type_s)))
+        wait_for_key_idle(app)                                 // SYNC: this field's chars finished typing
+        sleep(TYPE_FIELD_BEAT_MS)                              // PACING: let the filled field read
+    }
+
+    // SYNC: Enter commits, then record_check_value polls until the value lands (no fixed sleep).
+    key_tap(app, KEY_ENTER)
+    record_check_value(app, target, "value", expected, TYPE_EFFECT_FRAMES)
+
+    let consumed = uint(get_time_usec(started) / 1000)
+    sleep(dwell > consumed ? dwell - consumed : 0u)            // PACING: hold the caption for the rest of the voice
+}
+
 def public wait_for_key_idle(app : ImguiApp; timeout_sec : float = DEFAULT_FRAME_WAIT_SEC) : bool {
     //! Poll ``imgui_key_status`` until ``playing == false`` or timeout; returns true on idle.
     //! Uses one HTTP request per poll (unlike a ``wait_until`` body that pairs a snapshot

@@ -70,7 +70,7 @@ def update() {
                     flags = ImGuiWindowFlags.None)) {
 
         text("Click to focus, type the number, Enter to commit.")
-        text(I_HINT, (text = "Scalar forms have step / step_fast — non-zero shows +/- buttons."))
+        text(I_HINT, (text = "Scalar forms have step / step_fast - non-zero shows +/- buttons."))
         separator()
 
         // ---- Stage 1: scalar float with step buttons ----
