@@ -19,7 +19,7 @@ scope:
 .. code-block:: das
 
    if (button(SAVE_BTN, (text = "Save"))) { /* ... */ }
-   set_item_tooltip((text = "Persists current state to disk."))
+   set_item_tooltip(SAVE_TIP, (text = "Persists current state to disk."))
 
 Chain them one per row — the tooltip attaches to whatever was just
 submitted. No layout scope, no extra widgets, no nested block.
@@ -67,12 +67,12 @@ glyph and shows a tooltip on hover. v2 replaces it with two source lines:
 
    text("Verbose option (with help marker):")
    same_line(SL_HINT)
-   text_disabled("(?)")
-   set_item_tooltip((text = "long-form explanation here"))
+   text_disabled(HELP_GLYPH, (text = "(?)"))
+   set_item_tooltip(HELP_TIP, (text = "short explanation here"))
 
-The ``text_disabled("(?)")`` renders the dim glyph; ``set_item_tooltip``
-attaches the tooltip to that disabled-text item. No helper function, no
-extra abstraction — just two boost rails composed.
+The ``text_disabled(HELP_GLYPH, ...)`` renders the dim glyph;
+``set_item_tooltip`` attaches the tooltip to that disabled-text item. No
+helper function, no extra abstraction — just two boost rails composed.
 
 Standalone vs live
 ==================

@@ -1884,12 +1884,15 @@ def set_item_tooltip(var state : NarrativeState; text : string;
     //! override with `DelayNone`, `Stationary`, `DelayNormal | NoSharedDelay`
     //! etc. for custom hover semantics. ImGui's `if (IsItemHovered(flags))
     //! SetTooltip(text)` idiom — `SetItemTooltip` isn't in the daslang
-    //! bindings, so we inline.
+    //! bindings, so we inline. The widget is finalized (and so reports
+    //! `rendered: true` to the snapshot) only on the frames the tooltip
+    //! actually shows, so the telemetry tracks visibility — a recording can
+    //! self-verify "the tooltip fired on hover" via record_check_rendered.
     state.value := text
     if (IsItemHovered(flags)) {
         SetTooltip(text)
+        narrative_finalize(widget_ident, "set_item_tooltip", state)
     }
-    narrative_finalize(widget_ident, "set_item_tooltip", state)
 }
 
 // ===== Plot lines / histogram (array form) =====

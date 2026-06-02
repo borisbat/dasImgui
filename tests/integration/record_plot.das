@@ -8,27 +8,11 @@ require imgui/imgui_playwright public
 require daslib/json public
 require daslib/json_boost public
 
-//! Driver script: record ``plot.apng`` against
-//! ``examples/tutorial/plot.das``. Tours four sample-plot widgets — two
-//! array-form (plot_lines / plot_histogram) and two lambda-form
-//! (plot_lines_getter / plot_histogram_getter). The subject's
-//! ``g_phase`` advances per frame so the sine waves animate during
-//! narration — read time naturally shows the motion.
-
-def widget_bbox(var snap : JsonValue?; ident : string) : float4 {
-    var b = snap?["globals"]?[ident]?["bbox"]
-    return float4(
-        b?["x"] ?? 0.0f,
-        b?["y"] ?? 0.0f,
-        b?["z"] ?? 0.0f,
-        b?["w"] ?? 0.0f
-    )
-}
-
-def widget_center(var snap : JsonValue?; ident : string) : tuple<float; float> {
-    let b = widget_bbox(snap, ident)
-    return ((b.x + b.z) * 0.5f, (b.y + b.w) * 0.5f)
-}
+//! Driver: record plot.apng against examples/tutorial/plot.das.
+//! Four read-only sample plots, so there is nothing to click - the self-test instead asserts each
+//! plot actually drew with its expected title (record_check_value on the title field; a missing or
+//! renamed plot accumulates a miss and aborts at teardown). The subject advances g_phase per frame,
+//! so the sine wave animates under the narration - read time naturally shows the motion.
 
 [export]
 def main {
@@ -39,35 +23,41 @@ def main {
         let T_LINES_G = "PL_WIN/PL_LINES_G"
         let T_HIST_G  = "PL_WIN/PL_HIST_G"
 
-        var snap = wait_for_widget(app, T_LINES, 10.0f)
+        var snap = wait_for_render(app, T_LINES, 10.0f)
         if (snap == null) {
-            panic("{T_LINES} never registered — wrong app running?")
+            panic("{T_LINES} never rendered - wrong app running?")
         }
-        let p_lines   = widget_center(snap, T_LINES)
-        let p_hist    = widget_center(snap, T_HIST)
-        let p_lines_g = widget_center(snap, T_LINES_G)
-        let p_hist_g  = widget_center(snap, T_HIST_G)
 
-        //! Initial cursor placement.
-        move_to(app, p_lines, 500)
+        // ---- Stage 1: plot_lines (array) - sine wave ----
+        move_to(app, widget_click_point(snap, T_LINES), 500)
         sleep(SETTLE_MS)
+        let d1 = say_begin(app, "plot_lines - an array of samples", T_LINES,
+            [voice = "A plot turns a row of numbers into a picture. This line plot reads a fresh array of samples every frame - here a sine wave - and draws it left to right."])
+        record_check_value(app, T_LINES, "title", "Sine wave", 120)
+        sleep(d1)
 
-        // ---- Stage 1: plot_lines (array) ----
-        say(app, "plot_lines (array form) — pass per-frame array<float>; ImGui copies synchronously. Explicit scale_min / scale_max avoids per-frame autoscale jitter.", T_LINES)
-
-        // ---- Stage 2: plot_histogram (array) ----
-        move_to(app, p_hist, 800)
+        // ---- Stage 2: plot_histogram (array) - same data, bars ----
+        move_to(app, widget_click_point(snap, T_HIST), 800)
         sleep(SETTLE_MS)
-        say(app, "plot_histogram (array form) — same shape as plot_lines, bars instead of polyline. PlotState records title + samples for snapshot.", T_HIST)
+        let d2 = say_begin(app, "plot_histogram - same data, bars", T_HIST,
+            [voice = "The histogram takes the very same kind of array and draws it as bars instead of a line. Same data going in, a different shape coming out."])
+        record_check_value(app, T_HIST, "title", "Histogram", 120)
+        sleep(d2)
 
-        // ---- Stage 3: plot_lines_getter (lambda) ----
-        move_to(app, p_lines_g, 800)
+        // ---- Stage 3: plot_lines_getter (lambda) - a callback, no array ----
+        move_to(app, widget_click_point(snap, T_LINES_G), 800)
         sleep(SETTLE_MS)
-        say(app, "plot_lines_getter (lambda) — callback (idx) : float fires once per sample, synchronously inside the C call. Skips the backing array; great for synthesized signals.", T_LINES_G)
+        let d3 = say_begin(app, "plot_lines_getter - a callback, no array", T_LINES_G,
+            [voice = "You don't always need an array. The getter form calls a small function once per sample, so you can plot a signal computed on the fly without storing it anywhere."])
+        record_check_value(app, T_LINES_G, "title", "sin(i*0.1)", 120)
+        sleep(d3)
 
-        // ---- Stage 4: plot_histogram_getter (lambda) ----
-        move_to(app, p_hist_g, 800)
+        // ---- Stage 4: plot_histogram_getter (lambda) - callback bars ----
+        move_to(app, widget_click_point(snap, T_HIST_G), 800)
         sleep(SETTLE_MS)
-        say(app, "plot_histogram_getter (lambda) — bars from a lambda. Same use-case as plot_lines_getter; pick by visualization style.", T_HIST_G)
+        let d4 = say_begin(app, "plot_histogram_getter - callback bars", T_HIST_G,
+            [voice = "And the same callback trick works for bars. Pick lines or bars purely by which picture reads best for your data."])
+        record_check_value(app, T_HIST_G, "title", "abs(sin(i*0.1))", 120)
+        sleep(d4)
     }
 }
