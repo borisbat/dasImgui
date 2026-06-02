@@ -75,7 +75,7 @@ def update() {
                     flags = ImGuiWindowFlags.None)) {
 
         text("Four edit shapes + one click trigger.")
-        text(CO_HINT, (text = "edit_* is inline; picker_* is the wheel + sliders; color_button is a swatch."))
+        text(CO_HINT, (text = "edit_* is inline; picker_* is the open square + hue bar; color_button is a swatch."))
         separator()
 
         // ---- Stage 1: color_edit3 — inline RGB ----
@@ -97,7 +97,7 @@ def update() {
         spacing()
 
         // ---- Stage 4: color_button — caller-owned color, click trigger ----
-        text("Swatch (click triggers — value is caller-owned, not widget state):")
+        text("Swatch (click triggers - value is caller-owned, not widget state):")
         if (color_button(CO_SWATCH, (desc_id = "##swatch", col = SWATCH_COLOR,
                                      size = float2(96.0f, 48.0f)))) {
             // Hook: open a custom picker popup, copy to clipboard, etc.
