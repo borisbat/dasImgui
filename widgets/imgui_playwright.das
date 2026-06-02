@@ -542,14 +542,19 @@ def public focus(app : ImguiApp; target : string) : JsonValue? {
     return send_imgui_command(app.transport, "imgui_focus", JV((target = target)))
 }
 
-def public key_tap(app : ImguiApp; key : int) {
-    //! Synthesize a complete press+release of an ImGuiKey by integer code.
-    //! Pairs ``imgui_key_press`` + ``imgui_key_release`` — neither verb alone
-    //! does both, so calling only press leaves the key stuck (visible in the
-    //! key_hud overlay and as repeating-input bugs in driven widgets).
-    //! Use ``int(ImGuiKey.Tab)`` / ``int(ImGuiKey.Escape)`` / etc. at the call site.
-    post_command(app, "imgui_key_press",   JV((key = key)))
-    post_command(app, "imgui_key_release", JV((key = key)))
+def public key_tap(app : ImguiApp; key : int; hold_frames : int = 2) {
+    //! Synthesize a discrete press+release of an ImGuiKey by integer code, FRAME-PACED: the key
+    //! is held for ``hold_frames`` frames then released via ``imgui_key_play``'s frame-index
+    //! pacing, so it fires its shortcut/navigation exactly once regardless of frame rate. The
+    //! old wall-clock press+release pair spanned a variable number of frames, so on a slow frame
+    //! (e.g. the recorder's synchronous-APNG capture) the hold crossed ImGui's key-repeat
+    //! threshold and over-fired — one Tab cycling several fields, one Enter committing twice.
+    //! Mirrors ``imgui_key_chord``'s frame-pacing but for any key (no ASCII / modifier restriction).
+    //! Use ``int(ImGuiKey.Tab)`` / ``int(ImGuiKey.Enter)`` / etc. at the call site.
+    post_command(app, "imgui_key_play", JV((frame_paced = true, events = [
+        JV((t_ms = 0,           kind = "press",   key = key)),
+        JV((t_ms = hold_frames, kind = "release", key = key))
+    ])))
 }
 
 // ===== Voiceover sync (record-time, opt-in via a prepared manifest) =====

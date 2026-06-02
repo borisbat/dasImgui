@@ -456,6 +456,14 @@ struct KeyEventWire {
 
 struct KeyPlayArgs {
     events : array<KeyEventWire>
+    // When true, t_ms is read as a FRAME index (one event-group per frame) instead of
+    // wall-clock ms - the same pacing imgui_key_chord uses so a discrete tap is held for a
+    // fixed FRAME count and fires its shortcut exactly once regardless of frame rate. A
+    // wall-clock hold spans a variable number of frames, so on a slow frame (e.g. the
+    // recorder's synchronous-APNG capture) it crosses ImGui's key-repeat threshold and
+    // over-fires - one Tab cycling several fields. Use for non-ASCII discrete taps
+    // (Tab/Enter/arrows) that imgui_key_chord (ASCII-only) can't express.
+    @optional frame_paced : bool = false
 }
 
 def public sort_key_play_events(var events : array<KeyEventWire>) {
@@ -465,12 +473,13 @@ def public sort_key_play_events(var events : array<KeyEventWire>) {
     }
 }
 
-[live_command(description="Play a scripted key/char timeline via ImGui bypass. Args: events array of (t_ms, kind, key, codepoint)")]
+[live_command(description="Play a scripted key/char timeline via ImGui bypass. Args: events array of (t_ms, kind, key, codepoint); optional frame_paced (t_ms as frame index for repeat-proof discrete taps)")]
 def imgui_key_play(input : JsonValue?) : JsonValue? {
     var args = from_JV(input, type<KeyPlayArgs>)
     return JV((error = "no events")) if (empty(args.events))
     sort_key_play_events(args.events)
     reset_key_timeline()
+    key_frame_paced = args.frame_paced   // after reset (which clears it); frame-index pacing for discrete taps
     key_timeline |> reserve(length(args.events))
     for (w in args.events) {
         var ev = KeyEvent(t_ms = w.t_ms, key = w.key, codepoint = w.codepoint)
