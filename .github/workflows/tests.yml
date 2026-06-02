@@ -103,19 +103,6 @@ jobs:
           brew install glfw freetype bison
           echo "/opt/homebrew/opt/bison/bin" >> "$GITHUB_PATH"
 
-      - name: "Install OpenSSL via vcpkg (Windows)"
-        if: matrix.os == 'windows-latest'
-        # libhv pulls in OpenSSL; building it from source needs perl env that
-        # GitHub-hosted Windows runners don't ship working. vcpkg's binary
-        # cache provides a prebuilt openssl, sidestepping the perl Configure
-        # trap. Mirrors daslang's extended_checks.yml.
-        run: |
-          git clone https://github.com/microsoft/vcpkg
-          ./vcpkg/bootstrap-vcpkg.sh
-          ./vcpkg/vcpkg install openssl:x64-windows --binarycaching
-          echo "VCPKG_ROOT=$(pwd)/vcpkg" >> $GITHUB_ENV
-          echo "/c/Strawberry/perl/bin" >> $GITHUB_PATH
-
       - name: "Install CMake and Ninja"
         uses: lukka/get-cmake@latest
 
@@ -124,32 +111,51 @@ jobs:
         # Put cl.exe / link.exe / lib.exe on PATH so the bash build step can
         # drive Ninja with MSVC. ilammy/msvc-dev-cmd exports the dev-env vars to
         # $GITHUB_ENV, which the subsequent bash steps inherit.
+        # MUST run BEFORE the vcpkg step below: msvc-dev-cmd's vcvars sets
+        # VCPKG_ROOT to the VS-bundled vcpkg, so the vcpkg step has to write our
+        # VCPKG_ROOT last for the build to find our prebuilt openssl.
         uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x64
 
+      - name: "Install OpenSSL via vcpkg (Windows)"
+        if: matrix.os == 'windows-latest'
+        # libhv pulls in OpenSSL; vcpkg's prebuilt openssl sidesteps the perl
+        # Configure trap. Runs after msvc-dev-cmd so our VCPKG_ROOT wins (above).
+        run: |
+          git clone https://github.com/microsoft/vcpkg
+          ./vcpkg/bootstrap-vcpkg.sh
+          ./vcpkg/vcpkg install openssl:x64-windows --binarycaching
+          echo "VCPKG_ROOT=$(pwd)/vcpkg" >> $GITHUB_ENV
+          echo "/c/Strawberry/perl/bin" >> $GITHUB_PATH
+
       - name: "Build daslang + daslang-live + shared modules"
         working-directory: daslang-src
         # Ninja on all three OSes (single-config Release, binaries in bin/).
-        # Windows: cl.exe is on PATH via the msvc-dev-cmd step above, and
-        # OpenSSL comes prebuilt from vcpkg (toolchain file) so dasHV skips its
-        # perl+nmake source build. MSBuild (Visual Studio generator) was ~1.5-2x
-        # slower here — Ninja's global dependency graph parallelizes the module
-        # build far better than MSBuild's per-project scheduling.
+        # Windows: cl.exe is on PATH via the msvc-dev-cmd step above; OpenSSL is
+        # prebuilt from vcpkg (toolchain file QUOTED — $VCPKG_ROOT can contain
+        # spaces). MSBuild (VS generator) parallelized the module build ~1.5-2x
+        # slower than Ninja's global dependency graph.
         run: |
           set -eux
-          EXTRA_CMAKE=""
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
-            EXTRA_CMAKE="-DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
+            cmake --no-warn-unused-cli -B./build \
+              -DCMAKE_BUILD_TYPE:STRING=Release \
+              -DDAS_HV_DISABLED=OFF \
+              -DDAS_PUGIXML_DISABLED=OFF \
+              -DDAS_LLVM_DISABLED=ON \
+              -DDAS_GLFW_DISABLED=OFF \
+              -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
+              -G Ninja
+          else
+            cmake --no-warn-unused-cli -B./build \
+              -DCMAKE_BUILD_TYPE:STRING=Release \
+              -DDAS_HV_DISABLED=OFF \
+              -DDAS_PUGIXML_DISABLED=OFF \
+              -DDAS_LLVM_DISABLED=ON \
+              -DDAS_GLFW_DISABLED=OFF \
+              -G Ninja
           fi
-          cmake --no-warn-unused-cli -B./build \
-            -DCMAKE_BUILD_TYPE:STRING=Release \
-            -DDAS_HV_DISABLED=OFF \
-            -DDAS_PUGIXML_DISABLED=OFF \
-            -DDAS_LLVM_DISABLED=ON \
-            -DDAS_GLFW_DISABLED=OFF \
-            $EXTRA_CMAKE \
-            -G Ninja
           # daslang + daslang-live binaries plus the shared-module artifacts
           # daslang-live dlopens at runtime via `require <module>` lines in the
           # test scripts: dasModuleLiveHost (lifecycle API exported via dlsym
