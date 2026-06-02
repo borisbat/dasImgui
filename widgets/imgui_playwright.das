@@ -1149,11 +1149,9 @@ struct private StatusReading {
 }
 
 def private read_status(app : ImguiApp) : StatusReading {
-    //! One ``/status`` read. ``gen`` is the ``generation`` counter, or -1 when
-    //! /status is unreadable / unparseable / omits the field (e.g. a daslang-live
-    //! without POST /reset support, or a JSON-null). ``?? -1`` collapses all of
-    //! those — including a null ``parsed`` — to the sentinel, so callers never
-    //! mistake a missing field for generation 0.
+    // gen = -1 when /status is unreadable / unparseable / omits generation (e.g.
+    // a daslang-live without POST /reset). `?? -1` collapses a null parsed and a
+    // JSON-null alike, so callers never mistake a missing field for generation 0.
     let raw = get_text(app, "/status")
     return StatusReading(gen = -1, has_err = false) if (empty(raw))
     var err : string
@@ -1183,7 +1181,10 @@ def public reset(app : ImguiApp; timeout_sec : float = DEFAULT_RELOAD_TIMEOUT_SE
     }
     if (gen0 < 0) panic("reset: /status never reported a baseline generation within {timeout_sec}s (daslang-live without POST /reset support?)")
     post_signal(app, "/reset")
-    while (get_time_usec(start) < timeout_usec) {
+    // Fresh timer for the convergence window so a slow baseline poll above can't
+    // eat into the time the reset itself gets to land.
+    let reset_start = ref_time_ticks()
+    while (get_time_usec(reset_start) < timeout_usec) {
         let st = read_status(app)
         // Only a real, advanced generation counts as done — a missing/omitted
         // field reads as -1 and is ignored, so we never return on a stale read.
