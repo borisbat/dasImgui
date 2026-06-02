@@ -90,7 +90,7 @@ def update() {
     window(PL_WIN, (text = "plot tutorial", closable = false,
                     flags = ImGuiWindowFlags.None)) {
 
-        text("Read-only sample plots — PlotState records title + samples each frame.")
+        text("Read-only sample plots - PlotState records title + samples each frame.")
         text(PL_HINT, (text = "Array form (lines / histogram) vs lambda form (lines_getter / histogram_getter)."))
         separator()
 
