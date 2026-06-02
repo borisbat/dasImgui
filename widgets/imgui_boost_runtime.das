@@ -967,6 +967,25 @@ def public pending_value_finalize_vec(widget_ident : string; kind : string;
     register_focusable(widget_ident)
 }
 
+def public pending_value_finalize_subs(widget_ident : string; kind : string;
+                                       var state : auto(ST); var subs : array<float4>) {
+    //! ``pending_value_finalize`` plus a caller-BUILT per-item ``sub_bboxes`` array — for widgets whose
+    //! items aren't separately registered and whose rects can't be derived analytically (combo /
+    //! combo_getter popup items, captured one-per-Selectable via ``capture_current_item_rect``). An
+    //! empty ``subs`` (popup closed this frame) leaves ``sub_bboxes`` absent, so ``widget_component_point``
+    //! falls back to the combo box itself (the thing you click to open it). ``subs`` is moved out.
+    var entry : WidgetEntry
+    if (!empty(subs)) {
+        entry.sub_bboxes <- subs
+    }
+    unsafe {
+        widget_finalize(widget_ident, kind, entry,
+                        addr(state),
+                        reinterpret<TypeInfo const?>(typeinfo rtti_typeinfo(type<ST>)))
+    }
+    register_focusable(widget_ident)
+}
+
 def public clear_module_widgets(module_name : string) {
     //! Drop every widget tagged with this module from the long-lived registries (g_widgets / id_to_path / focusable / pending_focus); called from each module's ``[init]`` so hot-reload re-binds cleanly.
     var paths_to_remove <- [for (k, m in keys(g_widgets), values(g_widgets)); k; where m.module_name == module_name]
@@ -1165,6 +1184,17 @@ def public capture_item_bbox(var entry : WidgetEntry; local : float4) {
         screen.z != local.z || screen.w != local.w) {
         entry.canvas_bbox = local
     }
+}
+
+def public capture_current_item_rect() : float4 {
+    //! The just-submitted ImGui item's screen-space rect [x0,y0,x1,y1], mapped through the active
+    //! snapshot item-transform (identity in the common case). For popup/list widgets whose items are
+    //! NOT separately registered (combo popup items): the body captures one rect per item right after
+    //! its Selectable, building the sub_bboxes a driver then targets via widget_component_point.
+    let rmin = GetItemRectMin()
+    let rmax = GetItemRectMax()
+    let local = float4(rmin.x, rmin.y, rmax.x, rmax.y)
+    return empty(g_item_xform_stack) ? local : item_xform_screen(local)
 }
 
 def public widget_finalize(widget_ident : string;

@@ -1208,30 +1208,46 @@ def color_picker4(var state : ColorState4; text : string;
 // Block-arg surfaces (BeginCombo + manual Selectable loop, BeginListBox)
 // are container-shaped and land in 0b.3.
 
+def private constrain_combo_popup(max_items : int) {
+    // Mirror ImGui's Combo() popup-height cap from an item count — only when the caller asked for one
+    // (the default -1 lets ImGui size the popup). Height = N text lines + the popup's window padding.
+    if (max_items <= 0) return
+    let h = GetTextLineHeightWithSpacing() * float(max_items) + GetStyle().WindowPadding.y * 2.0f
+    SetNextWindowSizeConstraints(float2(0.0f, 0.0f), float2(FLT_MAX, h))
+}
+
 [widget]
 def combo(var state : ComboState; text : string; items : array<string>;
           popup_max_height_in_items : int = -1) : bool {
     //! `imgui_force_set {"value": N}` selects the N-th item next frame.
     //! `popup_max_height_in_items = -1` lets ImGui pick a default.
+    //! Built as BeginCombo + a Selectable loop (not the all-in-one Combo) so each open-popup item's
+    //! rect is captured into sub_bboxes — lets a driver click item N via widget_component_point.
     if (state.has_pending) {
         state.value = state.pending_value
         state.has_pending = false
     }
-    state.items_buf |> clear()
-    for (s in items) {
-        peek_data(s) $(arr) {
-            for (b in arr) {
-                state.items_buf |> push(b)
+    let n = length(items)
+    let preview = (state.value >= 0 && state.value < n) ? items[state.value] : ""
+    var changed = false
+    var subs : array<float4>
+    constrain_combo_popup(popup_max_height_in_items)
+    if (BeginCombo(text, preview, ImGuiComboFlags.None)) {
+        for (i in range(n)) {
+            let is_sel = i == state.value
+            if (Selectable(items[i], is_sel)) {
+                state.value = i
+                changed = true
             }
+            if (is_sel) {
+                SetItemDefaultFocus()
+            }
+            subs |> push(capture_current_item_rect())
         }
-        state.items_buf |> push(0u8)
+        EndCombo()
     }
-    state.items_buf |> push(0u8)            // ImGui scans for double-null = end of list
-    let zsv = unsafe(reinterpret<string#>(unsafe(addr(state.items_buf[0]))))
-    let changed = Combo(text, unsafe(addr(state.value)),
-                        zsv, popup_max_height_in_items)
     state.changed = changed
-    pending_value_finalize(widget_ident, "combo", state)
+    pending_value_finalize_subs(widget_ident, "combo", state, subs)
     return changed
 }
 
@@ -1522,14 +1538,41 @@ def combo_getter(var state : ComboState; text : string;
     //! `getter(idx, result)` should set `result` to the idx-th item label
     //! and return true; return false to stop. The lambda fires
     //! synchronously inside the ImGui call.
+    //! BeginCombo + a Selectable loop (each label pulled from `getter`) so popup item rects land in
+    //! sub_bboxes — a driver clicks item N via widget_component_point, same as the array-form combo.
     if (state.has_pending) {
         state.value = state.pending_value
         state.has_pending = false
     }
-    let changed = _builtin_Combo_cb(unsafe(addr(state.value)), text, items_count,
-                                    popup_max_height_in_items, getter)
+    var preview = ""
+    if (state.value >= 0 && state.value < items_count) {
+        var lbl : string
+        if (invoke(getter, state.value, lbl)) {
+            preview = lbl
+        }
+    }
+    var changed = false
+    var subs : array<float4>
+    constrain_combo_popup(popup_max_height_in_items)
+    if (BeginCombo(text, preview, ImGuiComboFlags.None)) {
+        for (i in range(items_count)) {
+            var lbl : string
+            if (invoke(getter, i, lbl)) {
+                let is_sel = i == state.value
+                if (Selectable(lbl, is_sel)) {
+                    state.value = i
+                    changed = true
+                }
+                if (is_sel) {
+                    SetItemDefaultFocus()
+                }
+                subs |> push(capture_current_item_rect())
+            }
+        }
+        EndCombo()
+    }
     state.changed = changed
-    pending_value_finalize(widget_ident, "combo_getter", state)
+    pending_value_finalize_subs(widget_ident, "combo_getter", state, subs)
     return changed
 }
 
