@@ -602,11 +602,15 @@ def tree_node(var state : TreeNodeState; text : string;
     state.flags = flags
     let im_open = TreeNodeEx(text, flags)
     state.opened = im_open
+    // The clickable header (chevron + label) is the IsItem* target right
+    // after TreeNodeEx; capture its rect before the body pushes inner items
+    // so a driver can click the header/arrow like a human (mirrors tab_item).
+    let header_bbox = current_item_bbox()
     if (im_open) {
         invoke(blk)
         TreePop()
     }
-    open_close_finalize(widget_ident, "tree_node", state)
+    open_close_finalize(widget_ident, "tree_node", state, header_bbox)
 }
 
 [container]
