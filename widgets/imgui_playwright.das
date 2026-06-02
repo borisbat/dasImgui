@@ -929,6 +929,55 @@ def public type_into_voice(app : ImguiApp; dwell : uint; target : string;
     sleep(dwell > consumed ? dwell - consumed : 0u)            // PACING: hold the caption for the rest of the voice
 }
 
+// combo_pick_voice tunables. Sleeps below are PACING only; the popup-open and the selection-commit
+// are each POLLED. (Same voice-lead shape as type_into_voice's TYPE_LEAD_*; unify if a third user lands.)
+let COMBO_LEAD_MIN_MS : uint = 700u    // floor on the pre-open lead (short voice lines)
+let COMBO_LEAD_MAX_MS : uint = 3000u   // cap on the pre-open lead (long voice lines)
+let COMBO_OPEN_INSET  : float = 40.0f  // click this far in from the combo's left edge — on the box, not its label
+let COMBO_TRAVEL_MS   : int  = 450     // cursor travel to the combo box, then down to the item
+let COMBO_POLL_FRAMES : int  = 120     // poll budget: popup-items-rendered, then value-committed
+
+def public combo_pick_voice(app : ImguiApp; dwell : uint; target : string; item : int) {
+    //! Open combo ``target`` and click item ``item`` from its popup, under an already-posted voice
+    //! line, then assert ``target.value == item``. Clicks the combo box (inset from the left so it
+    //! never lands on the trailing label), POLLS until the popup renders its per-item ``sub_bboxes``
+    //! (combos are built as BeginCombo + a Selectable loop, so each item has a real rect), travels the
+    //! cursor onto item ``item`` via ``widget_component_point`` and clicks it, then verifies the
+    //! selection. Self-verifying: a missed open or wrong pick aborts the recording at teardown. Every
+    //! sleep is PACING; the open and the commit are polled, never slept.
+    let started = ref_time_ticks()
+    let lead = clamp(dwell / 3u, COMBO_LEAD_MIN_MS, COMBO_LEAD_MAX_MS)   // ~1/3 into the line
+    sleep(lead)                                                // PACING: open under the voice
+    var snap0 = snapshot(app)
+    let bb = snap0?["globals"]?[target]?["bbox"]
+    let bx = bb?["x"] ?? 0.0f
+    let by = bb?["y"] ?? 0.0f
+    let bz = bb?["z"] ?? 0.0f
+    let bw = bb?["w"] ?? 0.0f
+    let open_pos = (bx + min(COMBO_OPEN_INSET, (bz - bx) * 0.15f), (by + bw) * 0.5f)
+    var ev0 : array<JsonValue?>
+    ev0 |> click_at(0, open_pos, COMBO_TRAVEL_MS, 0)
+    post_command(app, "imgui_mouse_play", JV((events = ev0)))
+    unsafe { delete ev0; }
+    // SYNC: let the OPEN click's timeline fully play (its release must fire) before the item click —
+    // a second imgui_mouse_play REPLACES the one in flight, so without this the open's release is lost
+    // and the item click lands on a half-open / wrong-state popup (deterministically dropped the pick).
+    wait_for_mouse_idle(app)
+    // SYNC: the popup is open once item `item`'s sub-rect renders.
+    var opened = wait_until(app, COMBO_POLL_FRAMES) $(var snap) {
+        return find_widget(snap, target)?["sub_bboxes"]?[item] != null
+    }
+    let item_pos = widget_component_point(opened, target, item)
+    var ev1 : array<JsonValue?>
+    ev1 |> click_at(0, item_pos, COMBO_TRAVEL_MS, 0)
+    post_command(app, "imgui_mouse_play", JV((events = ev1)))
+    unsafe { delete ev1; }
+    wait_for_mouse_idle(app)                                            // SYNC: the item click fully played
+    record_check_value(app, target, "value", item, COMBO_POLL_FRAMES)   // SYNC: selection committed
+    let consumed = uint(get_time_usec(started) / 1000)
+    sleep(dwell > consumed ? dwell - consumed : 0u)            // PACING: hold the caption for the rest of the voice
+}
+
 def public wait_for_key_idle(app : ImguiApp; timeout_sec : float = DEFAULT_FRAME_WAIT_SEC) : bool {
     //! Poll ``imgui_key_status`` until ``playing == false`` or timeout; returns true on idle.
     //! Uses one HTTP request per poll (unlike a ``wait_until`` body that pairs a snapshot
