@@ -39,6 +39,12 @@ permissions:
 jobs:
   integration:
     runs-on: ${{ matrix.os }}
+    env:
+      # Cache daslang's C++ object compilation across runs (GitHub Actions cache
+      # backend). The daslang build is a full clean rebuild every run — first run
+      # populates, later runs hit. See the "Set up sccache" step + the
+      # CMAKE_*_COMPILER_LAUNCHER flags on the cmake configure below.
+      SCCACHE_GHA_ENABLED: "true"
     strategy:
       fail-fast: false
       matrix:
@@ -106,6 +112,12 @@ jobs:
       - name: "Install CMake and Ninja"
         uses: lukka/get-cmake@latest
 
+      - name: "Set up sccache"
+        # Installs the sccache binary and wires the GitHub Actions cache backend
+        # (gated by SCCACHE_GHA_ENABLED at the job level). The cmake configure
+        # below routes cl/clang/gcc through it via CMAKE_*_COMPILER_LAUNCHER.
+        uses: mozilla-actions/sccache-action@v0.0.9
+
       - name: "Set up MSVC environment (Windows)"
         if: matrix.os == 'windows-latest'
         # Put cl.exe / link.exe / lib.exe on PATH so the bash build step can
@@ -145,6 +157,8 @@ jobs:
               -DDAS_PUGIXML_DISABLED=OFF \
               -DDAS_LLVM_DISABLED=ON \
               -DDAS_GLFW_DISABLED=OFF \
+              -DCMAKE_C_COMPILER_LAUNCHER=sccache \
+              -DCMAKE_CXX_COMPILER_LAUNCHER=sccache \
               -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
               -G Ninja
           else
@@ -154,6 +168,8 @@ jobs:
               -DDAS_PUGIXML_DISABLED=OFF \
               -DDAS_LLVM_DISABLED=ON \
               -DDAS_GLFW_DISABLED=OFF \
+              -DCMAKE_C_COMPILER_LAUNCHER=sccache \
+              -DCMAKE_CXX_COMPILER_LAUNCHER=sccache \
               -G Ninja
           fi
           # daslang + daslang-live binaries plus the shared-module artifacts
@@ -167,6 +183,7 @@ jobs:
             daslang daslang-live \
             dasModuleLiveHost dasModuleGlfw dasModuleHV \
             dasModulePUGIXML dasModuleStbImage
+          sccache --show-stats
           echo "BIN_DIR=bin" >> "$GITHUB_ENV"
 
       - name: "daspkg install dasImgui (global)"
