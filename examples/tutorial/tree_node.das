@@ -81,7 +81,7 @@ def update() {
     window(TN_WIN, (text = "tree_node tutorial", closable = false,
                     flags = ImGuiWindowFlags.None)) {
 
-        text("Three patterns — DefaultOpen, nested tree_nodes, and OpenOnArrow.")
+        text("Three patterns - DefaultOpen, nested tree_nodes, and OpenOnArrow.")
         separator()
 
         // ---- A: DefaultOpen (chevron down from frame 1) ----
@@ -114,7 +114,7 @@ def update() {
         // label — it stays collapsed. Only the arrow toggles.
         tree_node(ASSETS_TREE, (text = "Assets (OpenOnArrow + DefaultOpen)",
                                 flags = ImGuiTreeNodeFlags.OpenOnArrow | ImGuiTreeNodeFlags.DefaultOpen)) {
-            text(ASSETS_HINT, (text = "OpenOnArrow flag — clicking the LABEL doesn't toggle."))
+            text(ASSETS_HINT, (text = "OpenOnArrow flag - clicking the LABEL doesn't toggle."))
             text("Click the arrow chevron specifically. Useful for")
             text("selectable-row trees where the label is the selection.")
         }
