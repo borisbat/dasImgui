@@ -8,81 +8,85 @@ require imgui/imgui_playwright public
 require daslib/json public
 require daslib/json_boost public
 
-//! Driver script: record ``with_tab_stop.apng``. One shell:
-//!
-//!     bin/Release/daslang.exe -project_root <dasimgui> \
-//!         <dasimgui>/tests/integration/record_with_tab_stop.das
-//!
-//! Demonstrates with_tab_stop(false) by FOCUSING field A and then
-//! pressing TAB three times: A→B, B skips SKIP and lands on C, C→D.
-//! The viewer sees the active-input glow jump fields visibly — the
-//! whole point of with_tab_stop is that the SKIP field is bypassed.
+//! Driver: record with_tab_stop.apng against examples/tutorial/with_tab_stop.das. with_tab_stop(false)
+//! marks the wrapped field as a non-tab-stop, so keyboard Tab cycles A -> B -> C -> D and never lands
+//! on it. Driven like a human: click the first field and type, then Tab between fields (a FRAME-PACED
+//! discrete tap so it fires exactly once - a wall-clock hold trips ImGui key-repeat and over-tabs) and
+//! type again. Self-verifying by the typed VALUES: each reachable field ends holding the word typed
+//! into it (so focus must have landed there), and the wrapped field's text is unchanged - proof Tab
+//! skipped it. A mis-navigation lands a word in the wrong field and aborts the recording at teardown.
 
-def widget_bbox(var snap : JsonValue?; ident : string) : float4 {
-    var b = snap?["globals"]?[ident]?["bbox"]
-    return float4(
-        b?["x"] ?? 0.0f,
-        b?["y"] ?? 0.0f,
-        b?["z"] ?? 0.0f,
-        b?["w"] ?? 0.0f
-    )
+def type_field(app : ImguiApp; text : string) {
+    //! Type `text` into whichever field currently holds focus, paced for legibility (short words).
+    post_command(app, "imgui_key_type", JV((text = text, total_duration_s = 0.7)))
+    wait_for_key_idle(app)
 }
 
-def widget_center(var snap : JsonValue?; ident : string) : tuple<float; float> {
-    let b = widget_bbox(snap, ident)
-    return ((b.x + b.z) * 0.5f, (b.y + b.w) * 0.5f)
+def tab_to(app : ImguiApp; target : string) {
+    //! Frame-paced Tab tap, then wait until `target` reports focus (the next reachable field).
+    key_tap(app, int(ImGuiKey.Tab))
+    wait_for_key_idle(app)
+    wait_until(app, 120) $(var snap) {
+        return snap?["globals"]?[target]?["focus"] ?? false
+    }
 }
 
 [export]
 def main {
     with_recording_app("examples/tutorial/with_tab_stop.das",
-                       "with_tab_stop.apng", 50) $(app) {
+                       "with_tab_stop.apng", 45) $(app) {
         let T_A    = "TS_WIN/TS_FIELD_A"
         let T_B    = "TS_WIN/TS_FIELD_B"
         let T_SKIP = "TS_WIN/TS_FIELD_SKIP"
         let T_C    = "TS_WIN/TS_FIELD_C"
         let T_D    = "TS_WIN/TS_FIELD_D"
 
-        var snap = wait_for_render(app, T_A, 10.0f)
+        var snap = wait_for_widget(app, T_A, 10.0f)
         if (snap == null) {
-            panic("{T_A} never rendered — wrong app running?")
+            panic("{T_A} never registered - wrong app running?")
         }
-        let p_a    = widget_center(snap, T_A)
-        let p_b    = widget_center(snap, T_B)
-        let p_skip = widget_center(snap, T_SKIP)
-        let p_c    = widget_center(snap, T_C)
-        let p_d    = widget_center(snap, T_D)
 
-        // ---- Stage 1: focus Field A ----
-        move_to(app, p_a)
-        sleep(SETTLE_MS)
-        focus(app, T_A)
-        sleep(CLICK_DWELL_MS)
-        say(app, "Focus on Field A — TAB advances to Field B (regular tab-stop).", T_A)
+        // Keyboard-tutorial overlays (body-managed): key_hud shows each Tab keypress,
+        // focus_rect outlines the focused field so the viewer SEES focus jump past SKIP.
+        post_command(app, "imgui_key_hud", JV((enabled = true, show_modifiers = false)))
+        post_command(app, "imgui_focus_rect", JV((enabled = true)))
 
-        // ---- Stage 2: TAB → Field B ----
-        move_to(app, p_b)
+        // ---- Stage 1: click A and type, then Tab to B and type ----
+        move_to(app, widget_click_point(snap, T_A), 600)
         sleep(SETTLE_MS)
-        key_tap(app, int(ImGuiKey.Tab))
-        sleep(CLICK_DWELL_MS)
-        say(app, "TAB pressed — Field B is now focused. Both A and B are inside the regular tab chain.", T_B)
+        let started1 = ref_time_ticks()
+        let d1 = say_begin(app, "Tab walks focus field to field", T_A,
+            [voice = "Keyboard Tab walks focus from one field to the next. I'll click the first field and type, then press Tab and type again - focus steps straight down the form."])
+        sleep(600u)                                  // lead: let the caption + voice start
+        click(app, T_A)                              // real click focuses the first field
+        wait_until(app, 120) $(var s) {
+            return s?["globals"]?[T_A]?["focus"] ?? false
+        }
+        type_field(app, "one")
+        record_check_value(app, T_A, "value", "one", 120)
+        tab_to(app, T_B)
+        type_field(app, "two")
+        record_check_value(app, T_B, "value", "two", 120)
+        let consumed1 = uint(get_time_usec(started1) / 1000)
+        sleep(d1 > consumed1 ? d1 - consumed1 : 0u)
 
-        // ---- Stage 3: TAB → SKIPS SKIP → lands on C ----
-        move_to(app, p_skip)
-        sleep(SETTLE_MS)
-        key_tap(app, int(ImGuiKey.Tab))
-        sleep(CLICK_DWELL_MS)
-        say(app, "TAB pressed again — SKIP is wrapped in with_tab_stop(false), so focus jumps past it directly to Field C.", T_SKIP)
+        // ---- Stage 2: Tab skips the wrapped field -> C, type; Tab -> D, type ----
+        let started2 = ref_time_ticks()
+        let d2 = say_begin(app, "Tab skips the with_tab_stop field", [T_SKIP, T_C],
+            [voice = "The middle field is wrapped in with_tab_stop, so Tab jumps right over it - straight to the next reachable field, and onward. It never lands on the skipped one."])
+        sleep(700u)
+        tab_to(app, T_C)                             // B -> C, skipping SKIP
+        type_field(app, "three")
+        record_check_value(app, T_C, "value", "three", 120)
+        tab_to(app, T_D)
+        type_field(app, "four")
+        record_check_value(app, T_D, "value", "four", 120)
+        // The wrapped field never received a keystroke - its text is unchanged.
+        record_check_value(app, T_SKIP, "value", "(unreachable via keyboard)", 120)
+        let consumed2 = uint(get_time_usec(started2) / 1000)
+        sleep(d2 > consumed2 ? d2 - consumed2 : 0u)
 
-        // ---- Stage 4: TAB → Field D ----
-        move_to(app, p_c)
-        sleep(SETTLE_MS)
-        say(app, "Field C now has the active-input glow. One more TAB advances to D, completing the cycle past the skipped field.", T_C)
-
-        move_to(app, p_d)
-        sleep(SETTLE_MS)
-        key_tap(app, int(ImGuiKey.Tab))
-        sleep(CLICK_DWELL_MS)
-        say(app, "Field D — tab-stop cycle resumes normally after the wrapped block.", T_D)
+        post_command(app, "imgui_key_hud", JV((enabled = false)))
+        post_command(app, "imgui_focus_rect", JV((enabled = false)))
     }
 }
