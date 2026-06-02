@@ -8,30 +8,16 @@ require imgui/imgui_playwright public
 require daslib/json public
 require daslib/json_boost public
 
-//! Driver script: record ``color_button_hover.apng``. One shell:
-//!
-//!     bin/Release/daslang.exe -project_root <dasimgui> \
-//!         <dasimgui>/tests/integration/record_color_button_hover.das
-
-def widget_bbox(var snap : JsonValue?; ident : string) : float4 {
-    var b = snap?["globals"]?[ident]?["bbox"]
-    return float4(
-        b?["x"] ?? 0.0f,
-        b?["y"] ?? 0.0f,
-        b?["z"] ?? 0.0f,
-        b?["w"] ?? 0.0f
-    )
-}
-
-def widget_center(var snap : JsonValue?; ident : string) : tuple<float; float> {
-    let b = widget_bbox(snap, ident)
-    return ((b.x + b.z) * 0.5f, (b.y + b.w) * 0.5f)
-}
+//! Driver: record color_button_hover.apng against examples/tutorial/color_button_hover.das.
+//! color_button_hover is a pure HOVER surface — it returns true only while the pointer rests on the
+//! swatch, with no click or toggle state. So we drive it the human way (move the cursor onto each
+//! swatch, never click) and self-verify that the status line follows the hover (record_check_value,
+//! accumulate-on-miss). The hover-only sibling of the click-trigger color_button (see the color tour).
 
 [export]
 def main {
     with_recording_app("examples/tutorial/color_button_hover.das",
-                       "color_button_hover.apng", 40) $(app) {
+                       "color_button_hover.apng", 35) $(app) {
         let T_RED    = "CBH_WIN/CBH_RED"
         let T_GREEN  = "CBH_WIN/CBH_GREEN"
         let T_BLUE   = "CBH_WIN/CBH_BLUE"
@@ -39,27 +25,33 @@ def main {
 
         var snap = wait_for_render(app, T_RED, 10.0f)
         if (snap == null) {
-            panic("{T_RED} never rendered — wrong app running?")
+            panic("{T_RED} never rendered - wrong app running?")
         }
-        let p_red    = widget_center(snap, T_RED)
-        let p_green  = widget_center(snap, T_GREEN)
-        let p_blue   = widget_center(snap, T_BLUE)
-        let p_status = widget_center(snap, T_STATUS)
 
-        // ---- Stage 1: hover red ----
-        move_to(app, p_red)
-        say(app, "color_button_hover returns true while ImGui considers the swatch hovered.", T_RED)
+        //! Land the cursor on the first swatch (flips synth_cursor_owned; red starts hovering).
+        move_to(app, widget_click_point(snap, T_RED), 600)
+        sleep(SETTLE_MS)
 
-        // ---- Stage 2: hover green ----
-        move_to(app, p_green)
-        say(app, "Move to a new swatch — the return-bool follows the cursor.", T_GREEN)
+        // ---- Stage 1: hover red — the status line starts following ----
+        let d1 = say_begin(app, "color_button_hover - pure hover surface", T_RED,
+            [voice = "A color button can also be just a hover surface. It returns true only while the pointer rests on the swatch - there is no click and no toggle. Watch the status line follow the cursor."])
+        record_check_value(app, T_STATUS, "value", "Hovering: red", 120)
+        sleep(d1)
 
-        // ---- Stage 3: hover blue ----
-        move_to(app, p_blue)
-        say(app, "No click bookkeeping — pure hover surface.", T_BLUE)
+        // ---- Stage 2: hover green — the bool follows the cursor ----
+        move_to(app, widget_click_point(snap, T_GREEN), 800)
+        sleep(SETTLE_MS)
+        let d2 = say_begin(app, "the bool follows the cursor", T_GREEN,
+            [voice = "Move onto another swatch and the return value follows along. Each frame, only the swatch directly under the pointer reports that it is hovered."])
+        record_check_value(app, T_STATUS, "value", "Hovering: green", 120)
+        sleep(d2)
 
-        // ---- Stage 4: highlight the status text ----
-        move_to(app, p_status)
-        say(app, "STATE_MESSAGE updates per-frame from each swatch's hover bool.", T_STATUS)
+        // ---- Stage 3: hover blue — nothing clicked, nothing remembered ----
+        move_to(app, widget_click_point(snap, T_BLUE), 800)
+        sleep(SETTLE_MS)
+        let d3 = say_begin(app, "no click, nothing remembered", T_BLUE,
+            [voice = "There is nothing to click and nothing is stored. Reach for this when the swatch is just a surface for a per-frame effect, like reacting while the mouse is over it."])
+        record_check_value(app, T_STATUS, "value", "Hovering: blue", 120)
+        sleep(d3)
     }
 }

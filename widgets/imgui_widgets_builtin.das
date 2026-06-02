@@ -829,6 +829,16 @@ def drag_int_range2(var state : DragStateRangeInt; text : string;
 
 // ===== Stateful inputs (slider family) =====
 
+// A zero-init bounds (a forgotten bounds=) is a degenerate min==max==0 slider that can't move;
+// substitute ImGui's stock range so a slider with no bounds set is still usable instead of silently
+// dead. Sliders only — drag's (0,0)=unbounded is deliberate and keeps its zero-init default.
+def private slider_range(b : tuple<float; float>) : tuple<float; float> {
+    return b._0 == 0.0f && b._1 == 0.0f ? (0.0f, 1.0f) : b
+}
+def private slider_range(b : tuple<int; int>) : tuple<int; int> {
+    return b._0 == 0 && b._1 == 0 ? (0, 100) : b
+}
+
 [widget]
 def slider_float(var state : SliderStateFloat; text : string;
                  format : string = "%.3f";
@@ -837,7 +847,7 @@ def slider_float(var state : SliderStateFloat; text : string;
         state.value = state.pending_value
         state.has_pending = false
     }
-    let (mn, mx) = state.bounds
+    let (mn, mx) = slider_range(state.bounds)
     let changed = SliderFloat(text, unsafe(addr(state.value)), mn, mx, format, flags)
     state.changed = changed
     pending_value_finalize(widget_ident, "slider_float", state)
@@ -852,7 +862,7 @@ def slider_float2(var state : SliderStateFloat2; text : string;
         state.value = state.pending_value
         state.has_pending = false
     }
-    let (mn, mx) = state.bounds
+    let (mn, mx) = slider_range(state.bounds)
     let item_width = CalcItemWidth()
     let changed = SliderFloat2(text, unsafe(addr(state.value.x)), mn, mx, format, flags)
     state.changed = changed
@@ -868,7 +878,7 @@ def slider_float3(var state : SliderStateFloat3; text : string;
         state.value = state.pending_value
         state.has_pending = false
     }
-    let (mn, mx) = state.bounds
+    let (mn, mx) = slider_range(state.bounds)
     let item_width = CalcItemWidth()
     let changed = SliderFloat3(text, unsafe(addr(state.value.x)), mn, mx, format, flags)
     state.changed = changed
@@ -884,7 +894,7 @@ def slider_float4(var state : SliderStateFloat4; text : string;
         state.value = state.pending_value
         state.has_pending = false
     }
-    let (mn, mx) = state.bounds
+    let (mn, mx) = slider_range(state.bounds)
     let item_width = CalcItemWidth()
     let changed = SliderFloat4(text, unsafe(addr(state.value.x)), mn, mx, format, flags)
     state.changed = changed
@@ -900,7 +910,7 @@ def slider_int(var state : SliderStateInt; text : string;
         state.value = state.pending_value
         state.has_pending = false
     }
-    let (mn, mx) = state.bounds
+    let (mn, mx) = slider_range(state.bounds)
     let changed = SliderInt(text, unsafe(addr(state.value)), mn, mx, format, flags)
     state.changed = changed
     pending_value_finalize(widget_ident, "slider_int", state)
@@ -915,7 +925,7 @@ def slider_int2(var state : SliderStateInt2; text : string;
         state.value = state.pending_value
         state.has_pending = false
     }
-    let (mn, mx) = state.bounds
+    let (mn, mx) = slider_range(state.bounds)
     let item_width = CalcItemWidth()
     let changed = SliderInt2(text, unsafe(addr(state.value.x)), mn, mx, format, flags)
     state.changed = changed
@@ -931,7 +941,7 @@ def slider_int3(var state : SliderStateInt3; text : string;
         state.value = state.pending_value
         state.has_pending = false
     }
-    let (mn, mx) = state.bounds
+    let (mn, mx) = slider_range(state.bounds)
     let item_width = CalcItemWidth()
     let changed = SliderInt3(text, unsafe(addr(state.value.x)), mn, mx, format, flags)
     state.changed = changed
@@ -947,7 +957,7 @@ def slider_int4(var state : SliderStateInt4; text : string;
         state.value = state.pending_value
         state.has_pending = false
     }
-    let (mn, mx) = state.bounds
+    let (mn, mx) = slider_range(state.bounds)
     let item_width = CalcItemWidth()
     let changed = SliderInt4(text, unsafe(addr(state.value.x)), mn, mx, format, flags)
     state.changed = changed
@@ -967,7 +977,7 @@ def vslider_float(var state : SliderStateFloat; text : string;
         state.value = state.pending_value
         state.has_pending = false
     }
-    let (mn, mx) = state.bounds
+    let (mn, mx) = slider_range(state.bounds)
     let changed = VSliderFloat(text, size, unsafe(addr(state.value)), mn, mx, format, flags)
     state.changed = changed
     pending_value_finalize(widget_ident, "vslider_float", state)
@@ -984,7 +994,7 @@ def vslider_int(var state : SliderStateInt; text : string;
         state.value = state.pending_value
         state.has_pending = false
     }
-    let (mn, mx) = state.bounds
+    let (mn, mx) = slider_range(state.bounds)
     let changed = VSliderInt(text, size, unsafe(addr(state.value)), mn, mx, format, flags)
     state.changed = changed
     pending_value_finalize(widget_ident, "vslider_int", state)
