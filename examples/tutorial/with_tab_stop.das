@@ -33,7 +33,7 @@ require imgui/imgui_visual_aids
 
 [export]
 def init() {
-    live_create_window("dasImgui with_tab_stop tutorial", 640, 460)
+    live_create_window("dasImgui with_tab_stop tutorial", 760, 460)
     live_imgui_init(live_window)
     var io & = unsafe(GetIO())
     io.FontGlobalScale = 1.4
@@ -50,23 +50,23 @@ def update() {
     NewFrame()
 
     SetNextWindowPos(ImVec2(40.0f, 40.0f), ImGuiCond.Always)
-    SetNextWindowSize(ImVec2(560.0f, 380.0f), ImGuiCond.Always)
+    SetNextWindowSize(ImVec2(720.0f, 400.0f), ImGuiCond.Always)
     window(TS_WIN, (text = "with_tab_stop", closable = false,
                     flags = ImGuiWindowFlags.None)) {
         text("Press TAB / Shift+TAB to cycle focus.")
-        text("The middle field is wrapped in with_tab_stop(false) — TAB skips it.")
+        text("The middle field is wrapped in with_tab_stop(false) - TAB skips it.")
         separator()
 
-        input_text(TS_FIELD_A, (text = "Field A", init = "alpha"))
-        input_text(TS_FIELD_B, (text = "Field B", init = "beta"))
+        input_text(TS_FIELD_A, (text = "Field A"))
+        input_text(TS_FIELD_B, (text = "Field B"))
 
         with_tab_stop(false) {
             input_text(TS_FIELD_SKIP,
                 (text = "Skipped by TAB", init = "(unreachable via keyboard)"))
         }
 
-        input_text(TS_FIELD_C, (text = "Field C", init = "gamma"))
-        input_text(TS_FIELD_D, (text = "Field D", init = "delta"))
+        input_text(TS_FIELD_C, (text = "Field C"))
+        input_text(TS_FIELD_D, (text = "Field D"))
     }
 
     end_of_frame()
