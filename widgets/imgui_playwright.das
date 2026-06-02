@@ -650,6 +650,25 @@ def public record_check_changed(app : ImguiApp; target : string; field : string;
     return false
 }
 
+def public record_check_rendered(app : ImguiApp; target : string; expected : bool; max_frames : int = 120) : bool {
+    //! Recording-safe "did the gesture show/hide it" verifier: assert ``target``'s rendered-this-frame
+    //! state (``widget_rendered``) equals ``expected`` within ``max_frames``. The robust signal for a
+    //! container whose body is gated on open/close (``tree_node`` / ``collapsing_header``): collapsing a
+    //! tree stops its body drawing, so a child leaf flips to ``rendered:false`` — exactly the "body runs
+    //! only while open" behavior the widget teaches, and readable even when the container's own
+    //! ``opened``/``flags`` are absent from the payload (``@optional`` omits a false ``opened``; an
+    //! OR-combined flag enum currently serializes to nothing). Accumulate-on-miss (surfaced as a
+    //! teardown panic), mirroring ``record_check_value``; ``toggle_tree_voice`` uses it. Returns true on match.
+    let ok = wait_until(app, max_frames) $(var snap) {
+        return widget_rendered(snap, target) == expected
+    } != null
+    if (ok) return true
+    var snap = snapshot(app)
+    let now = widget_rendered(snap, target)
+    g_record_failures |> push("record_check_rendered({target}) gave up after {max_frames} frames:\n  want rendered={expected}, got rendered={now}")
+    return false
+}
+
 def private arm_voiceovers(apng_path : string) : bool {
     //! Load voiceover/<stem>.manifest.json beside apng_path. On success fill g_vo_dur, set
     //! g_vo_active, clear the collection. Returns true when armed.
@@ -974,6 +993,48 @@ def public combo_pick_voice(app : ImguiApp; dwell : uint; target : string; item 
     unsafe { delete ev1; }
     wait_for_mouse_idle(app)                                            // SYNC: the item click fully played
     record_check_value(app, target, "value", item, COMBO_POLL_FRAMES)   // SYNC: selection committed
+    let consumed = uint(get_time_usec(started) / 1000)
+    sleep(dwell > consumed ? dwell - consumed : 0u)            // PACING: hold the caption for the rest of the voice
+}
+
+// toggle_tree_voice tunables. Sleeps below are PACING only; the toggle effect is POLLED via
+// record_check_rendered (child appears/disappears), never slept. The chevron sits at the header's
+// left edge, so the arrow click x is a small inset scaled by the header's own height (font-size aware).
+let TREE_LEAD_MIN_MS : uint  = 700u    // floor on the pre-click lead (short voice lines)
+let TREE_LEAD_MAX_MS : uint  = 3000u   // cap on the pre-click lead (long voice lines)
+let TREE_ARROW_FRAC  : float = 0.6f    // arrow click x = header.x + header_height * frac (chevron is at the left)
+let TREE_TRAVEL_MS   : int   = 450     // cursor travel onto the header before press
+let TREE_POLL_FRAMES : int   = 120     // poll budget: child rendered-state settles after the toggle
+
+def public toggle_tree_voice(app : ImguiApp; dwell : uint; header_target : string; on_arrow : bool;
+                             child_target : string; expect_child_rendered : bool) {
+    //! Click a ``tree_node`` (or ``collapsing_header``) header UNDER an already-posted voice line, then
+    //! assert the toggle landed by checking ``child_target``'s rendered state — the body-runs-only-while-open
+    //! signal (a collapsed node stops drawing its children). ``on_arrow=true`` clicks the chevron (a small
+    //! inset from the header's left edge, scaled by header height); ``on_arrow=false`` clicks the header
+    //! center / label. The distinction is the whole point of ``OpenOnArrow``: arrow toggles, label is a
+    //! no-op — drive both for real and verify each. Requires the header bbox in telemetry (``tree_node``
+    //! captures it via ``current_item_bbox`` since this rail). Self-verifying via ``record_check_rendered``:
+    //! a missed toggle (or a label click that wrongly toggled) aborts the recording at teardown. The caller
+    //! should ``move_to`` the header first so the cursor is already near it. Every sleep is PACING; the
+    //! toggle effect is polled, never slept.
+    let started = ref_time_ticks()
+    let lead = clamp(dwell / 3u, TREE_LEAD_MIN_MS, TREE_LEAD_MAX_MS)   // ~1/3 into the line
+    sleep(lead)                                                // PACING: land the click under the voice
+    var snap = snapshot(app)
+    let bb = snap?["globals"]?[header_target]?["bbox"]
+    let bx = bb?["x"] ?? 0.0f
+    let by = bb?["y"] ?? 0.0f
+    let bz = bb?["z"] ?? 0.0f
+    let bw = bb?["w"] ?? 0.0f
+    let cy = (by + bw) * 0.5f
+    let click_x = on_arrow ? bx + (bw - by) * TREE_ARROW_FRAC : (bx + bz) * 0.5f
+    var ev : array<JsonValue?>
+    ev |> click_at(0, (click_x, cy), TREE_TRAVEL_MS, 0)
+    post_command(app, "imgui_mouse_play", JV((events = ev)))
+    unsafe { delete ev; }
+    wait_for_mouse_idle(app)                                            // SYNC: the click fully played
+    record_check_rendered(app, child_target, expect_child_rendered, TREE_POLL_FRAMES)   // SYNC: toggle landed
     let consumed = uint(get_time_usec(started) / 1000)
     sleep(dwell > consumed ? dwell - consumed : 0u)            // PACING: hold the caption for the rest of the voice
 }

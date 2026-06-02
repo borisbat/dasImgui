@@ -49,10 +49,10 @@ def document_module_imgui_boost_runtime() {
         group_by_regex("Live commands",           mod, %regex~^imgui_(snapshot|click|force_set|open|close|focus|await|mouse_pos|mouse_click|mouse_scroll|key_press|key_release|key_char)$%%),
         group_by_regex("Synthetic input",         mod, %regex~^(synth_mouse_move|synth_mouse_button|synth_mouse_wheel|synth_key_press|synth_key_release|synth_char|release_held_buttons|release_held_keys|get_synth_cursor|get_synth_keys|imgui_synth_tick|user_control_enabled|set_user_control_enabled|set_user_control|register_real_input_toggle|register_synth_frame_hook|register_synth_stop_hook)$%%),
         group_by_regex("Debug logging",           mod, %regex~^(log_section|log_section_on|imgui_log_section|imgui_log_drain)$%%),
-        group_by_regex("Snapshot transform",      mod, %regex~^(push_snapshot_item_transform|pop_snapshot_item_transform|capture_item_bbox)$%%),
+        group_by_regex("Snapshot transform",      mod, %regex~^(push_snapshot_item_transform|pop_snapshot_item_transform|capture_item_bbox|capture_current_item_rect)$%%),
         group_by_regex("Await modifiers",         mod, %regex~^(AwaitModifiers|AwaitArgs|AwaitResult|with_await)$%%),
         group_by_regex("JSON serialization",      mod, %regex~^(widget_entry_jv|state_jv|to_JV|from_JV|JV|serialize).*%%),
-        hide_group(group_by_regex("Finalizers",   mod, %regex~^.*_finalize(_vec)?$%%)),
+        hide_group(group_by_regex("Finalizers",   mod, %regex~^.*_finalize(_vec|_subs)?$%%)),
         hide_group(group_by_regex("Internal",     mod, %regex~^(_|priv_).*%%))
     )
     document("Boost runtime — widget state structs, registry, and dispatcher", mod, "imgui_boost_runtime.rst", groups)
@@ -149,7 +149,7 @@ def document_module_imgui_playwright() {
         group_by_regex("App lifecycle",     mod, %regex~^(with_imgui_app|launch_imgui_app|shutdown|with_recording_app).*%%),
         group_by_regex("Locators / queries", mod, %regex~^(find_widget|widget_exists|widget_payload_field|widget_rendered|widget_click_point|widget_component_point|get_text)$%%),
         group_by_regex("Actions",           mod, %regex~^(click|click_at|right_click|type_text|key_tap|force_set_value|force_set_verified|drag|drag_along|drag_to|focus|open_widget|close_widget|reload|move_to|reset_cursor_pos|resize_window)$%%),
-        group_by_regex("Recording / narration", mod, %regex~^(say|say_begin|say_hash|hold_through_voice|drag_through_voice|type_into_voice|combo_pick_voice|record_check_value|record_check_changed)$%%),
+        group_by_regex("Recording / narration", mod, %regex~^(say|say_begin|say_hash|hold_through_voice|drag_through_voice|type_into_voice|combo_pick_voice|toggle_tree_voice|record_check_value|record_check_changed|record_check_rendered)$%%),
         group_by_regex("Snapshots",         mod, %regex~^(snapshot|expect_value|expect_render).*%%),
         group_by_regex("Polling / await",   mod, %regex~^(wait_until.*|wait_for_.*|await_quiescent|await_probe)$%%),
         group_by_regex("Pause control",     mod, %regex~^(pause|unpause|with_paused)$%%),
