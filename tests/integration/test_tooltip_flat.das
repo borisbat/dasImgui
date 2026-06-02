@@ -27,9 +27,15 @@ def test_tooltip_flat_smoke(t : T?) {
                      "hover button HOVER_BTN registered")
         t |> success(widget_exists(snap, "MAIN_WIN/ALWAYS_BTN"),
                      "always button ALWAYS_BTN registered")
-        // Tooltips are only registered when their gate fires; under headless
-        // drive the cursor isn't hovering anything by default, so they may
-        // be absent. Test stays loose: existence of the host buttons is the
-        // structural gate.
+        // The set_item_tooltip carries its NarrativeState payload to the snapshot even
+        // unhovered (registered at module load), so it's always enumerable.
+        t |> success(widget_exists(snap, "TOOLTIP_ON_BUTTON"),
+                     "hover-gated tooltip registered (payload visible)")
+        // ...but it must report rendered=true only on the frames it actually shows. With no
+        // cursor over HOVER_BTN, its finalize is skipped, so the rendered-this-frame path key
+        // is absent. Guards the finalize-only-when-shown fix: a regression that finalizes the
+        // tooltip unconditionally would surface MAIN_WIN/TOOLTIP_ON_BUTTON as rendered here.
+        t |> success(!widget_rendered(snap, "MAIN_WIN/TOOLTIP_ON_BUTTON"),
+                     "hover-gated tooltip not rendered while unhovered")
     }
 }
