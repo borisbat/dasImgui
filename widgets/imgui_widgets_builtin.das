@@ -104,6 +104,25 @@ def edit_finalize(widget_ident : string; kind : string; var ptr : auto(TT)? impl
     register_focusable(widget_ident)
 }
 
+def edit_finalize_subs(widget_ident : string; kind : string; var ptr : auto(TT)? implicit;
+                       var subs : array<float4>) {
+    //! edit_finalize plus a caller-built per-item sub_bboxes array -- for the external-pointer combo,
+    //! whose open-popup item rects are captured one-per-Selectable via capture_current_item_rect (no
+    //! analytic rect). Empty subs (popup closed this frame) leaves sub_bboxes absent, so a driver's
+    //! widget_component_point falls back to the combo box itself. subs is moved out. Same pointer/ti
+    //! routing as edit_finalize (snapshot + dispatch go through *ptr).
+    var entry : WidgetEntry
+    if (!empty(subs)) {
+        entry.sub_bboxes <- subs
+    }
+    unsafe {
+        widget_finalize(widget_ident, kind, entry,
+                        reinterpret<void?>(ptr),
+                        reinterpret<TypeInfo const?>(typeinfo rtti_typeinfo(type<TT>)))
+    }
+    register_focusable(widget_ident)
+}
+
 def edit_container_open_close_finalize(widget_ident : string; kind : string;
                                        var ptr : bool? implicit;
                                        bbox : float4 = float4(0.0f, 0.0f, 0.0f, 0.0f)) {
@@ -2580,11 +2599,32 @@ def edit_color_picker4(var ptr : float4? implicit; text : string = "";
 def edit_combo(var ptr : int? implicit; text : string = "";
                items : array<string>;
                popup_max_height_in_items : int = -1) : bool {
-    //! ``Combo`` against a caller-owned ``int?`` index. ``items`` is passed as an array of C-string pointers (no per-frame zero-separated buffer; daslang ``string`` already carries the trailing null).
+    //! ``BeginCombo`` + a ``Selectable`` loop against a caller-owned ``int?`` index. Built this way
+    //! (not the all-in-one ``Combo()``) so each open-popup item's rect is captured into sub_bboxes,
+    //! letting a driver click item N via widget_component_point -- exactly like the state-managed
+    //! ``combo``. The picked index is written straight through ``*ptr``.
     let lbl = empty(text) ? widget_ident : text
-    let changed = Combo(lbl, ptr, unsafe(addr(items[0])), length(items),
-                        popup_max_height_in_items)
-    edit_finalize(widget_ident, "edit_combo", ptr)
+    let n = length(items)
+    let cur = unsafe(*ptr)
+    let preview = (cur >= 0 && cur < n) ? items[cur] : ""
+    var changed = false
+    var subs : array<float4>
+    constrain_combo_popup(popup_max_height_in_items)
+    if (BeginCombo(lbl, preview, ImGuiComboFlags.None)) {
+        for (i in range(n)) {
+            let is_sel = i == cur
+            if (Selectable(items[i], is_sel)) {
+                unsafe(*ptr) = i
+                changed = true
+            }
+            if (is_sel) {
+                SetItemDefaultFocus()
+            }
+            subs |> push(capture_current_item_rect())
+        }
+        EndCombo()
+    }
+    edit_finalize_subs(widget_ident, "edit_combo", ptr, subs)
     return changed
 }
 

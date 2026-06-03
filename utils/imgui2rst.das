@@ -72,7 +72,7 @@ def document_module_imgui_widgets_builtin() {
         group_by_regex("Focus & scrolling", mod, %regex~^(set_scroll_here_y|set_keyboard_focus_here|set_item_default_focus)$%%),
         group_by_regex("Logging",         mod, %regex~^(log_to_clipboard|log_finish|log_text)$%%),
         group_by_regex("Status queries",  mod, %regex~^is_active$%%),
-        hide_group(group_by_regex("Finalizers", mod, %regex~^.*_finalize$%%)),
+        hide_group(group_by_regex("Finalizers", mod, %regex~^.*_finalize(_vec|_subs)?$%%)),
         hide_group(group_by_regex("Internal", mod, %regex~^(_|priv_).*%%))
     )
     document("Built-in widgets — inputs, selection, color, plots, output", mod, "imgui_widgets_builtin.rst", groups)
@@ -86,7 +86,7 @@ def document_module_imgui_containers_builtin() {
         group_by_regex("Trees",         mod, %regex~^(tree_node|collapsing_header)$%%),
         group_by_regex("Menus",         mod, %regex~^(menu_bar|menu|menu_item)$%%),
         group_by_regex("Popups",        mod, %regex~^(popup|modal|tooltip|open_popup|open_popup_on_item_click|close_current_popup|is_popup_open)$%%),
-        hide_group(group_by_regex("Finalizers", mod, %regex~^.*_finalize$%%)),
+        hide_group(group_by_regex("Finalizers", mod, %regex~^.*_finalize(_vec|_subs)?$%%)),
         hide_group(group_by_regex("Internal", mod, %regex~^(_|priv_).*%%))
     )
     document("Built-in containers — windows, child regions, tabs, menus, popups", mod, "imgui_containers_builtin.rst", groups)
