@@ -575,7 +575,7 @@ struct DragDropSourceState {
 struct DragDropTargetState {
     //! Backs `drag_drop_target`. Body runs only when a payload-bearing drag
     //! is hovering this target — caller still calls AcceptDragDropPayload inside.
-    @optional _placeholder : bool             //! unused; keeps the struct non-empty for [container] auto-emit
+    accepted : int                            //! running count of drops ImGui delivered here; telemetry rail to self-verify a real drop landed
 }
 
 struct TreeNodeState {

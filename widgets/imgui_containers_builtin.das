@@ -742,10 +742,19 @@ def drag_drop_source(var state : DragDropSourceState; flags : ImGuiDragDropFlags
 def drag_drop_target(var state : DragDropTargetState; blk : block) {
     //! `BeginDragDropTarget()` / `EndDragDropTarget()` — only-on-true.
     //! Body calls `AcceptDragDropPayload(type, flags)` to receive the payload
-    //! when the drag releases over this target.
+    //! when the drag releases over this target. `state.accepted` counts the
+    //! drops ImGui actually delivers here — the body's accept is raw user code,
+    //! invisible to telemetry, so this is the rail a driver/test asserts against.
     let im_open = BeginDragDropTarget()
     if (im_open) {
         invoke(blk)
+        // ImGui flips the active payload's `Delivery` true on the one frame a
+        // drop releases over an accepting target. We only read it inside
+        // `im_open`, so the count is attributed to the hovered target.
+        let pl = GetDragDropPayload()
+        if (pl != null && pl.Delivery) {
+            state.accepted++
+        }
         EndDragDropTarget()
     }
     stateless_finalize(widget_ident, "drag_drop_target", state)
