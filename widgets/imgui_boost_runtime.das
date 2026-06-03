@@ -1257,6 +1257,7 @@ def public register_handle_bbox(tag : string) {
     //! open-container chain still names this split, and ``GetItemRectMin/Max`` / ``GetID(tag)``
     //! still report the handle. Mirrors ``register_radio_site_alias``.
     let alias = widget_path_key("HANDLE")
+    check_unique_render(alias, "splitter_handle")   // loud on a duplicated container ident, like every finalize
     var entry = WidgetEntry(kind = "splitter_handle", hex_id = GetID(tag))
     let rmin = GetItemRectMin()
     let rmax = GetItemRectMax()

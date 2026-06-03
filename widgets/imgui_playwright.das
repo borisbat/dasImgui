@@ -131,12 +131,13 @@ def public drag_along(var events : array<JsonValue?>;
     //! ``to_pos``.
     events |> push(JV((t_ms = t_ms,                                kind = "move",   x = last_cursor_x, y = last_cursor_y)))
     events |> push(JV((t_ms = t_ms + approach_ms,                  kind = "move",   x = from_pos._0,   y = from_pos._1)))
-    // Dwell at from_pos so the press fires while the cursor is still exactly there
-    // (zero drift). Without it the press interpolates toward to_pos and slips off a
-    // thin target (an 8px splitter handle). Same timeline length — the press t is unchanged.
+    // Dwell at from_pos, then press 1ms later. Timestamps STAY strictly increasing —
+    // the host sorts the timeline by t_ms with no tie-break, so a press sharing the
+    // dwell's t_ms could sort first and slip the press off a thin (8px) handle. The
+    // 1ms offset into a drag_ms-long segment is sub-pixel, so the press still lands on target.
     events |> push(JV((t_ms = t_ms + approach_ms + 100,            kind = "move",   x = from_pos._0,   y = from_pos._1)))
-    events |> push(JV((t_ms = t_ms + approach_ms + 100,            kind = "button", button = button,   action = "press")))
-    events |> push(JV((t_ms = t_ms + approach_ms + 100 + drag_ms,  kind = "move",   x = to_pos._0,     y = to_pos._1)))
+    events |> push(JV((t_ms = t_ms + approach_ms + 101,            kind = "button", button = button,   action = "press")))
+    events |> push(JV((t_ms = t_ms + approach_ms + 101 + drag_ms,  kind = "move",   x = to_pos._0,     y = to_pos._1)))
     events |> push(JV((t_ms = t_ms + approach_ms + 200 + drag_ms,  kind = "button", button = button,   action = "release")))
     events |> push(JV((t_ms = t_ms + approach_ms + 300 + drag_ms,  kind = "move",   x = to_pos._0,     y = to_pos._1)))
     last_cursor_x = to_pos._0
@@ -513,17 +514,19 @@ def public drag(app : ImguiApp; target : string;
     let ex = cx + dx
     let ey = cy + dy
     let drag_ms = (steps > 0 ? steps : 1) * 32
-    // Dwell at center BEFORE pressing: the press timestamp coincides with a
-    // move waypoint that still sits at (cx,cy), so the press lands dead-center
-    // with zero interpolation drift. Without the dwell the press fires mid-travel
-    // and a thin target (an 8px splitter handle) is missed entirely.
+    // Dwell at center BEFORE pressing: a move waypoint pins (cx,cy) at t=80, then
+    // the press fires 1ms later. Timestamps are STRICTLY increasing (the host sorts
+    // the timeline by t_ms with no tie-break, so a press sharing the dwell's t_ms
+    // could sort first and defeat it). The 1ms-into-a-drag_ms-long segment leaves the
+    // press essentially dead-center (sub-pixel drift), so it still lands on an 8px
+    // handle — without the dwell the press fires mid-travel and misses entirely.
     var events <- [
         JV((t_ms = 0,             kind = "move",   x = cx, y = cy)),
         JV((t_ms = 80,            kind = "move",   x = cx, y = cy)),
-        JV((t_ms = 80,            kind = "button", button = button, action = "press")),
-        JV((t_ms = 80 + drag_ms,  kind = "move",   x = ex, y = ey)),
-        JV((t_ms = 180 + drag_ms, kind = "button", button = button, action = "release")),
-        JV((t_ms = 280 + drag_ms, kind = "move",   x = ex, y = ey))
+        JV((t_ms = 81,            kind = "button", button = button, action = "press")),
+        JV((t_ms = 81 + drag_ms,  kind = "move",   x = ex, y = ey)),
+        JV((t_ms = 181 + drag_ms, kind = "button", button = button, action = "release")),
+        JV((t_ms = 281 + drag_ms, kind = "move",   x = ex, y = ey))
     ]
     let resp = post_command(app, "imgui_mouse_play", JV((events = events)))
     unsafe { delete events; }

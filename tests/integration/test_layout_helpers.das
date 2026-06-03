@@ -74,6 +74,16 @@ def test_layout_helpers(t : T?) {
             let lb_y1 = lb?["w"] ?? 0.0f
             t |> success(bb_y0 > lb_y1,
                          "split_v: BOTTOM_BTN.top ({bb_y0}) > LEFT_BTN.bottom ({lb_y1})")
+
+            // Fit (regression guard for the dock_left -> split_v line-height overflow):
+            // the bottom pane must render INSIDE the content region, not pushed below the
+            // fold. dock_left's handle spans the full content height, so its bbox bottom
+            // (bbox.w) is the content-region floor. Before split_v was grouped, the top
+            // pane shared the sidebar's full-height line and the bottom pane dropped past it.
+            let region_floor = find_widget(snap0, "LAYOUT_WIN/SIDEBAR/HANDLE")?["bbox"]?["w"] ?? 0.0f
+            let bb_y1 = bb?["w"] ?? 0.0f
+            t |> success(region_floor > 0.0f && bb_y1 <= region_floor + 1.0f,
+                         "split_v fits: BOTTOM_BTN.bottom ({bb_y1}) within content floor ({region_floor})")
         }
         reset(d)
 
