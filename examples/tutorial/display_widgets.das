@@ -41,7 +41,7 @@ var private g_phase : float = 0.0f
 
 [export]
 def init() {
-    live_create_window("dasImgui display widgets", 760, 520)
+    live_create_window("dasImgui display widgets", 940, 680)
     live_imgui_init(live_window)
     var io & = unsafe(GetIO())
     io.FontGlobalScale = 1.4
@@ -66,20 +66,20 @@ def update() {
                          flags = ImGuiWindowFlags.None)) {
         separator_text("progress_bar")
 
-        // Static bar — 33% with auto-formatted overlay.
-        progress_bar((fraction = 0.33f,
-                      size = float2(-1.0f, 0.0f),
-                      overlay = "33%"))
+        // Static bar - 33% with auto-formatted overlay.
+        progress_bar(PB_STATIC, (fraction = 0.33f,
+                                 size = float2(-1.0f, 0.0f),
+                                 overlay = "33%"))
 
-        // Driven bar — sine-wave fraction, default overlay.
-        progress_bar((fraction = driven_frac,
-                      size = float2(-1.0f, 0.0f),
-                      overlay = ""))
+        // Driven bar - sine-wave fraction, default overlay.
+        progress_bar(PB_DRIVEN, (fraction = driven_frac,
+                                 size = float2(-1.0f, 0.0f),
+                                 overlay = ""))
 
         // Fixed-width bar with custom overlay text.
-        progress_bar((fraction = 0.75f,
-                      size = float2(240.0f, 0.0f),
-                      overlay = "loading…"))
+        progress_bar(PB_FIXED, (fraction = 0.75f,
+                                size = float2(240.0f, 0.0f),
+                                overlay = "loading..."))
 
         separator_text("image")
 
@@ -89,20 +89,20 @@ def update() {
         if (font_tex == null) {
             text("Font atlas not ready — wait for first frame.")
         } else {
-            text("image() against the font atlas — varying uv + tint per call.")
-            image((user_texture_id = font_tex,
-                   size = float2(96.0f, 96.0f),
-                   uv0 = float2(0.0f, 0.0f),
-                   uv1 = float2(1.0f, 1.0f),
-                   tint_col = float4(1.0f, 1.0f, 1.0f, 1.0f),
-                   border_col = float4(0.0f, 0.0f, 0.0f, 0.0f)))
+            text("image() against the font atlas - varying uv + tint per call.")
+            image(IMG_PLAIN, (user_texture_id = font_tex,
+                              size = float2(96.0f, 96.0f),
+                              uv0 = float2(0.0f, 0.0f),
+                              uv1 = float2(1.0f, 1.0f),
+                              tint_col = float4(1.0f, 1.0f, 1.0f, 1.0f),
+                              border_col = float4(0.0f, 0.0f, 0.0f, 0.0f)))
             same_line(SL_IMG)
-            image((user_texture_id = font_tex,
-                   size = float2(96.0f, 96.0f),
-                   uv0 = float2(0.0f, 0.0f),
-                   uv1 = float2(1.0f, 1.0f),
-                   tint_col = float4(0.3f, 0.9f, 0.6f, 1.0f),
-                   border_col = float4(1.0f, 1.0f, 1.0f, 0.5f)))
+            image(IMG_TINT, (user_texture_id = font_tex,
+                             size = float2(96.0f, 96.0f),
+                             uv0 = float2(0.0f, 0.0f),
+                             uv1 = float2(1.0f, 1.0f),
+                             tint_col = float4(0.3f, 0.9f, 0.6f, 1.0f),
+                             border_col = float4(1.0f, 1.0f, 1.0f, 0.5f)))
         }
     }
 
