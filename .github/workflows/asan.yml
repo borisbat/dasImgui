@@ -9,6 +9,8 @@ name: ASan (Windows)
 # the crash. Heavy: the ASan build is cold + instrumented; not part of normal CI.
 on:
   workflow_dispatch:
+  push:
+    branches: [bbatkin/ci-crash-capture]
 
 permissions:
   contents: read
