@@ -82,8 +82,8 @@ jobs:
             -DDAS_PUGIXML_DISABLED=OFF \
             -DDAS_LLVM_DISABLED=ON \
             -DDAS_GLFW_DISABLED=OFF \
-            -DCMAKE_C_FLAGS="/DDAS_VEC_SAFE_LOADS=1" \
-            -DCMAKE_CXX_FLAGS="/DDAS_VEC_SAFE_LOADS=1" \
+            -DCMAKE_C_FLAGS=-DDAS_VEC_SAFE_LOADS=1 \
+            -DCMAKE_CXX_FLAGS=-DDAS_VEC_SAFE_LOADS=1 \
             -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
             -G Ninja
           cmake --build ./build --parallel --target \
