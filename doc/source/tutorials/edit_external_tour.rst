@@ -21,23 +21,26 @@ Source: ``examples/tutorial/editing_external.das``.
 What the tour shows
 ===================
 
-Seven external-pointer widgets, each editing a ``var private`` global:
+Seven external-pointer widgets, each editing a ``var private`` global.
+The tour drives every one the way a person would — a real drag, type,
+click, or popup pick — so you can watch the bound global change in the
+readout, which is the whole point of the rail:
 
 * ``edit_slider_float(safe_addr(g_volume), (id = "VOL_SLIDER", text =
-  "Volume", v_min, v_max))`` — driven by a horizontal drag.
+  "Volume", v_min, v_max))`` — drag the handle.
 * ``edit_input_int(safe_addr(g_count), (id = "COUNT_INPUT", text =
-  "Count", step = 1))`` — driven by ``imgui_focus`` + ``imgui_key_type``.
+  "Count", step = 1))`` — click to focus, type a number, Enter.
 * ``edit_checkbox(safe_addr(g_enabled), (id = "ENABLED_CHECK", text =
-  "Enabled"))`` — driven by a click.
-* ``edit_drag_float3(safe_addr(g_pos), (id = "POS_DRAG", ...))`` —
-  driven by ``imgui_force_set`` with a ``float3`` value.
+  "Enabled"))`` — click.
+* ``edit_drag_float3(safe_addr(g_pos), (id = "POS_DRAG", ...))`` — drag
+  the first field; a Drag *scrubs* on click-drag (only a Ctrl+click would
+  enter text), so the gesture is a drag, not a type.
 * ``edit_color_edit3(safe_addr(g_accent), (id = "ACCENT_COLOR", ...))``
-  — driven by ``imgui_force_set`` with a ``float3`` value (RGB).
+  — drag the red channel; the swatch shifts toward red.
 * ``edit_combo(safe_addr(g_quality_idx), (id = "QUALITY_COMBO",
-  items <- g_qualities))`` — driven by ``imgui_force_set`` with an ``int``
-  index.
+  items <- g_qualities))`` — open the popup, click an item.
 * ``edit_slider_angle(safe_addr(g_angle), (id = "ANGLE_SLIDER", ...))``
-  — driven by ``imgui_force_set`` with a radian value (UI displays degrees).
+  — drag the handle (the face shows degrees, the bound variable is radians).
 
 Each widget's read-only sibling under the ``// Readout`` separator
 shows the underlying ``var private`` value updating live with each
@@ -77,10 +80,17 @@ Live (with reload):
 
    daslang-live modules/dasImgui/examples/tutorial/editing_external.das
 
-Drive the widgets from outside via ``imgui_force_set`` / ``imgui_focus`` /
-``imgui_key_type`` / ``imgui_mouse_play`` -- the recorded APNG above
-exercises every shape via
-``tests/integration/record_editing_external.das``.
+The recorded tour above is captured by
+``tests/integration/record_editing_external.das``, which drives every
+widget with real synthetic input -- a drag, a type, a click, a popup pick
+-- and asserts each bound ``var private`` actually moved (the recording is
+also a test). Nothing is ``force_set``: binding to your data is the
+subject, and the proof is that a real gesture writes through the pointer.
+
+That said, an ``edit_*`` widget *can* also be driven externally without
+the gesture -- ``imgui_force_set`` writes the bound pointer directly,
+``imgui_focus`` + ``imgui_key_type`` script the keyboard. That path is the
+subject of :ref:`Driving outside <tutorial_driving_outside>`.
 
 .. seealso::
 
@@ -93,6 +103,6 @@ exercises every shape via
 
    :ref:`Driving outside <tutorial_driving_outside>` — the
    ``imgui_force_set`` / ``imgui_mouse_play`` / ``imgui_key_type`` verbs
-   used by the recording driver above.
+   for driving widgets programmatically.
 
    :ref:`Recording <tutorial_recording>` — the two-shell driver setup.
