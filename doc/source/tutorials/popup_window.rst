@@ -29,6 +29,14 @@ Walkthrough
 
 .. video:: popup_window.mp4
 
+The recording drives both trigger scopes for real: clicking ``Open via
+button`` fires ``open_popup`` and the popup body renders; picking a fruit
+calls ``close_current_popup`` and the ``Last pick`` line updates;
+right-clicking anywhere in the hover region opens the *same* popup through
+the second scope. Each open is verified against the popup body's
+rendered-this-frame state and each pick against the status line, so a
+trigger that failed to open or close the popup would abort the recording.
+
 .. literalinclude:: ../../../examples/tutorial/popup_window.das
    :language: das
    :linenos:
