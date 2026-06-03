@@ -102,7 +102,10 @@ jobs:
         # not see it. DASPKG_EXTRA_CMAKE_FLAGS (experiment hook on the daslang
         # branch) forwards /fsanitize=address to the module's cmake configure.
         env:
-          DASPKG_EXTRA_CMAKE_FLAGS: "-DCMAKE_C_FLAGS=/fsanitize=address -DCMAKE_CXX_FLAGS=/fsanitize=address"
+          # -fsanitize (dash, not /fsanitize) — cl accepts the dash form, and the
+          # leading slash would be mangled by git-bash MSYS env path-conversion
+          # (/fsanitize -> C:/Program Files/Git/fsanitize) when it launches daslang.
+          DASPKG_EXTRA_CMAKE_FLAGS: "-DCMAKE_C_FLAGS=-fsanitize=address -DCMAKE_CXX_FLAGS=-fsanitize=address"
         run: |
           set -eux
           ${BIN_DIR}/daslang utils/daspkg/main.das -- install ../dasImgui --global
