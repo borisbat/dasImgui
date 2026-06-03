@@ -1,0 +1,133 @@
+name: ASan (Windows)
+
+# Experiment (manual dispatch): build daslang + dasImgui modules with MSVC
+# AddressSanitizer and run the integration sweep, to test whether the
+# test_docking_basic 0xC0000409 race is a memory-corruption bug (UAF/overflow
+# in the docking reset() path) that ASan can pinpoint deterministically. ASan
+# catches the bad access at the moment it happens regardless of the race
+# timing, so it can succeed where a live debugger (which perturbs timing) hides
+# the crash. Heavy: the ASan build is cold + instrumented; not part of normal CI.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  asan:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: "Checkout daslang"
+        uses: actions/checkout@v4
+        with:
+          repository: GaijinEntertainment/daScript
+          path: daslang-src
+          ref: master
+
+      - name: "Checkout dasImgui"
+        uses: actions/checkout@v4
+        with:
+          path: dasImgui
+
+      - name: "Exclude workspace from Windows Defender"
+        shell: pwsh
+        continue-on-error: true
+        run: Add-MpPreference -ExclusionPath "${{ github.workspace }}"
+
+      - name: "Install CMake and Ninja"
+        uses: lukka/get-cmake@latest
+
+      - name: "Set up MSVC environment"
+        # vcvars puts cl.exe + the clang_rt.asan_dynamic-x86_64.dll runtime dir on
+        # PATH, so the ASan-instrumented daslang-live children resolve it at load.
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: "Cache vcpkg + openssl"
+        uses: actions/cache@v4
+        with:
+          path: vcpkg
+          key: vcpkg-x64-windows-v1
+
+      - name: "Install OpenSSL via vcpkg"
+        run: |
+          if [ ! -x vcpkg/vcpkg.exe ] && [ ! -x vcpkg/vcpkg ]; then
+            git clone https://github.com/microsoft/vcpkg
+            ./vcpkg/bootstrap-vcpkg.sh
+          fi
+          ./vcpkg/vcpkg install openssl:x64-windows --binarycaching
+          echo "VCPKG_ROOT=$(pwd)/vcpkg" >> $GITHUB_ENV
+          echo "/c/Strawberry/perl/bin" >> $GITHUB_PATH
+
+      - name: "Build daslang + modules (ASan)"
+        working-directory: daslang-src
+        # RelWithDebInfo -> PDBs so the ASan report symbolizes. DAS_USE_SANITIZER
+        # =asan adds /fsanitize=address (CMakeCommon MSVC branch). That branch does
+        # NOT set DAS_VEC_SAFE_LOADS (the clang branch does), so add it here or
+        # daslang's intentional wide SIMD loads trip ASan with false positives.
+        # No sccache: ASan flags miss the cache slot anyway, and instrumented objs
+        # shouldn't pollute it.
+        run: |
+          set -eux
+          cmake --no-warn-unused-cli -B./build \
+            -DCMAKE_BUILD_TYPE:STRING=RelWithDebInfo \
+            -DDAS_USE_SANITIZER=asan \
+            -DDAS_HV_DISABLED=OFF \
+            -DDAS_PUGIXML_DISABLED=OFF \
+            -DDAS_LLVM_DISABLED=ON \
+            -DDAS_GLFW_DISABLED=OFF \
+            -DCMAKE_C_FLAGS="/DDAS_VEC_SAFE_LOADS=1" \
+            -DCMAKE_CXX_FLAGS="/DDAS_VEC_SAFE_LOADS=1" \
+            -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
+            -G Ninja
+          cmake --build ./build --parallel --target \
+            daslang daslang-live \
+            dasModuleLiveHost dasModuleGlfw dasModuleHV \
+            dasModulePUGIXML dasModuleStbImage
+          echo "BIN_DIR=bin" >> "$GITHUB_ENV"
+
+      - name: "daspkg install dasImgui (global)"
+        working-directory: daslang-src
+        run: |
+          set -eux
+          ${BIN_DIR}/daslang utils/daspkg/main.das -- install ../dasImgui --global
+
+      - name: "Run integration sweep under ASan"
+        working-directory: ${{ github.workspace }}/daslang-src
+        # log_path makes every ASan'd process write asan.<pid> on error; halt+abort
+        # so the first detected error reports and dies. `|| true` keeps the step
+        # alive so the report is printed + uploaded even though dastest reports
+        # failure. Same excludes as tests.yml. threads=4 matches the condition
+        # under which the crash reproduces in CI.
+        env:
+          DASLIVE_HV_LOG: stderr
+          ASAN_OPTIONS: "abort_on_error=1:halt_on_error=1:print_stats=0:log_path=D:\\a\\asan\\asan"
+        run: |
+          set -eux
+          mkdir -p /d/a/asan
+          ${BIN_DIR}/daslang dastest/dastest.das -- \
+            --test modules/dasImgui/tests/integration \
+            --timeout 2400 \
+            --isolated-mode \
+            --isolated-mode-threads 4 \
+            --exclude glfw_synth \
+            --exclude key_hud \
+            --exclude inputs_drag --exclude inputs_numeric --exclude inputs_slider \
+            --exclude inputs_color --exclude inputs_choice --exclude inputs_text --exclude indexed_dynamic \
+            --headless || true
+          echo "=== ASan reports ==="
+          ls -la /d/a/asan/ 2>/dev/null || echo "(no asan dir)"
+          for f in /d/a/asan/asan.*; do [ -f "$f" ] && { echo "--- $f ---"; cat "$f"; }; done
+
+      - name: "Upload ASan reports"
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: asan-reports
+          path: D:\a\asan\**
+          if-no-files-found: warn
+          retention-days: 7
