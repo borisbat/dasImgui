@@ -36,7 +36,7 @@ require imgui/imgui_visual_aids
 
 [export]
 def init() {
-    live_create_window("dasImgui boost basics", 640, 320)
+    live_create_window("dasImgui boost basics", 960, 560)
     live_imgui_init(live_window)
     var io & = unsafe(GetIO())
     io.FontGlobalScale = 1.5
@@ -52,6 +52,7 @@ def update() {
     apply_synth_io_override()
     NewFrame()
 
+    SetNextWindowPos(ImVec2(60.0, 60.0), ImGuiCond.Always)
     SetNextWindowSize(ImVec2(560.0, 240.0), ImGuiCond.Always)
     window(BASICS_WIN, (text = "Boost basics", closable = false,
                         flags = ImGuiWindowFlags.None)) {

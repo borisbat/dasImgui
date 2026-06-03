@@ -17,6 +17,12 @@ Walkthrough
 
 .. video:: boost_basics.mp4
 
+The recording drives both pieces of state for real and asserts each effect:
+it drags ``Volume`` and verifies ``VOLUME.value`` *changed* (``drag_through_voice``),
+then clicks ``Bump`` twice and verifies each click registered
+(``hold_through_voice``). A slider that stopped tracking or a button that stopped
+counting would abort the recording.
+
 .. literalinclude:: ../../../examples/tutorial/boost_basics.das
    :language: das
    :linenos:
@@ -39,7 +45,7 @@ The ``require`` block pulls in:
 Init and shutdown
 =================
 
-``init()`` opens a 640x320 GLFW window via ``live_create_window`` and
+``init()`` opens a 960x560 GLFW window via ``live_create_window`` and
 hands its handle to ``live_imgui_init`` so the ImGui context, fonts, and GL
 backend get wired up. ``shutdown()`` reverses the pair in shutdown order.
 
@@ -69,6 +75,7 @@ ImGui's ``Begin``/``End`` pair:
 
 .. code-block:: das
 
+   SetNextWindowPos(ImVec2(60.0, 60.0), ImGuiCond.Always)
    SetNextWindowSize(ImVec2(560.0, 240.0), ImGuiCond.Always)
    window(BASICS_WIN, (text = "Boost basics", closable = false,
                        flags = ImGuiWindowFlags.None)) {
@@ -100,7 +107,7 @@ Two boost macros do the actual work:
 
    VOLUME.bounds = (0.0f, 1.0f)
    slider_float(VOLUME, (text = "Volume"))
-   Text("volume = {VOLUME.value}")
+   text("volume = {VOLUME.value}")
 
 The macro form ``slider_float(VOLUME, ...)`` declares a module global
 ``VOLUME : SliderStateFloat`` the first time it expands. Telemetry
@@ -113,7 +120,7 @@ bounds line is plain assignment to the struct field.
    if (button(BUMP_BTN, (text = "Bump"))) {
        print("bump clicked\n")
    }
-   Text("bumps = {BUMP_BTN.click_count}")
+   text("bumps = {BUMP_BTN.click_count}")
 
 ``button(BUMP_BTN, ...)`` returns ``true`` on the frame the click registers; the
 underlying ``ButtonState`` keeps ``click_count`` updated for later assertions

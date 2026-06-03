@@ -8,24 +8,15 @@ require imgui/imgui_playwright public
 require daslib/json public
 require daslib/json_boost public
 
-//! Driver script: record ``boost_basics.apng`` via :ref:`with_recording_app
-//! <function-imgui_playwright_with_recording_app>`. One shell:
-//!
-//!     bin/Release/daslang.exe -project_root <dasimgui> \
-//!         <dasimgui>/tests/integration/record_boost_basics.das
-//!
-//! Helper spawns daslang-live with ``--imgui-content-scale=1.0`` so the APNG
-//! captures at logical 1x (small file, encoder keeps up). APNG lands at
-//! ``<dasImgui>/doc/source/_static/tutorials/boost_basics.apng``.
+//! Driver: record ``boost_basics.apng`` against ``examples/tutorial/boost_basics.das``.
+//! The smallest dasImgui v2 program - one slider, one button, both backed by daslang
+//! globals. Two voiced, self-verifying beats:
+//!   1. slider - drag Volume; VOLUME.value must CHANGE (drag_through_voice).
+//!   2. button - click Bump twice; each click must register (hold_through_voice).
 
 def widget_bbox(var snap : JsonValue?; ident : string) : float4 {
     var b = snap?["globals"]?[ident]?["bbox"]
-    return float4(
-        b?["x"] ?? 0.0f,
-        b?["y"] ?? 0.0f,
-        b?["z"] ?? 0.0f,
-        b?["w"] ?? 0.0f
-    )
+    return float4(b?["x"] ?? 0.0f, b?["y"] ?? 0.0f, b?["z"] ?? 0.0f, b?["w"] ?? 0.0f)
 }
 
 def widget_center(var snap : JsonValue?; ident : string) : tuple<float; float> {
@@ -36,41 +27,34 @@ def widget_center(var snap : JsonValue?; ident : string) : tuple<float; float> {
 [export]
 def main {
     with_recording_app("examples/tutorial/boost_basics.das",
-                       "boost_basics.apng", 30) $(app) {
-        //! Targets are path-qualified — the `window(BASICS_WIN, ...)` boost
-        //! container pushes its name onto the registry path.
+                       "boost_basics.apng", 35) $(app) {
         let T_VOLUME = "BASICS_WIN/VOLUME"
         let T_BUMP   = "BASICS_WIN/BUMP_BTN"
 
         var snap = wait_for_render(app, T_BUMP, 10.0f)
         if (snap == null) {
-            panic("{T_BUMP} never rendered — wrong app running?")
+            panic("{T_BUMP} never rendered - wrong app running?")
         }
         let p_bump = widget_center(snap, T_BUMP)
-
-        //! Slider drag: 10% to 75% along the slider's bbox width.
         let vol_bb = widget_bbox(snap, T_VOLUME)
         let vol_y  = (vol_bb.y + vol_bb.w) * 0.5f
-        let vol_x0 = vol_bb.x + (vol_bb.z - vol_bb.x) * 0.10f
-        let vol_x1 = vol_bb.x + (vol_bb.z - vol_bb.x) * 0.75f
+        let vol_x0 = vol_bb.x + (vol_bb.z - vol_bb.x) * 0.12f
+        let vol_x1 = vol_bb.x + (vol_bb.z - vol_bb.x) * 0.82f
 
-        // ---- Stage 1: slider drag ----
-        say(app, "VOLUME is a daslang global emitted by the slider macro.", T_VOLUME)
-        var slider_events : array<JsonValue?>
-        slider_events |> drag_along(0, (vol_x0, vol_y), (vol_x1, vol_y), 1400)
-        post_command(app, "imgui_mouse_play", JV((events = slider_events)))
-        sleep(2500u)
+        // Park the cursor at the slider's left and warm up the capture pipeline.
+        move_to(app, (vol_x0, vol_y), 800)
+        sleep(1800u)
 
-        // ---- Stage 2: click the bump button ----
-        move_to(app, p_bump)
-        say(app, "BUMP_BTN.click_count tracks the bumps.", T_BUMP)
-        var bump_events : array<JsonValue?>
-        bump_events |> click_at(0, p_bump)
-        post_command(app, "imgui_mouse_play", JV((events = bump_events)))
-        sleep(1200u)
-        var bump_events2 : array<JsonValue?>
-        bump_events2 |> click_at(0, p_bump)
-        post_command(app, "imgui_mouse_play", JV((events = bump_events2)))
-        sleep(1500u)
+        // ---- Beat 1: slider drives a global ----
+        drag_through_voice(app, say_begin(app, "slider -> VOLUME.value", T_VOLUME,
+            [voice = "A slider drives a daslang global. I drag Volume up, and VOLUME.value rises with it - the same global the text below reads."]),
+            T_VOLUME, (vol_x1, vol_y))
+
+        // ---- Beat 2: button increments a counter ----
+        move_to(app, p_bump, 600)
+        sleep(SETTLE_MS)
+        hold_through_voice(app, say_begin(app, "button -> click_count", T_BUMP,
+            [voice = "A button increments a counter. I click Bump twice, and its click_count reads two - state the program reads straight back."]),
+            [T_BUMP, T_BUMP])
     }
 }
