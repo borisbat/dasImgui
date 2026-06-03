@@ -107,7 +107,12 @@ no clickable "header"). The first-level ``menu()`` children
 headers. Submenu items only register a bbox *while their parent menu is
 open*, so external drivers wanting to click a menu_item have to open the
 parent first (synth click on the header, wait one frame, then click the
-child).
+child). The walkthrough above does exactly this with real clicks, dropping
+straight DOWN the open menu's column onto each item: a diagonal travel to an
+item that sits off-axis from its header would clip a sibling header, and
+ImGui hover-switches the open menu mid-travel (the click then lands in the
+wrong menu). Menu items span the full menu width, so a vertical drop at the
+header's center-x always lands on the item.
 
 Snapshot shape
 ==============
