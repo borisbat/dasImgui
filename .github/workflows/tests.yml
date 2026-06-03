@@ -62,11 +62,11 @@ jobs:
         with:
           repository: GaijinEntertainment/daScript
           path: daslang-src
-          # master now carries PR #2684 (DASLIVE_HV_LOG=stderr env-gated libhv
-          # log routing) and PR #2685 (ref_time_ticks normalized to nanoseconds
-          # on every platform) — both required for this workflow to mean
-          # anything on POSIX runners. Keep on master going forward.
-          ref: master
+          # EXPERIMENT: build daslang from the dastest stderr-capture branch
+          # (daScript PR #2985) so a crashing isolated worker surfaces its
+          # stderr (crash-handler stack / abort / IM_ASSERT) inline in the test
+          # log. Revert to master once #2985 merges.
+          ref: bbatkin/dastest-capture-stderr
 
       - name: "Checkout dasImgui"
         uses: actions/checkout@v4
