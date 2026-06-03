@@ -149,7 +149,7 @@ def document_module_imgui_playwright() {
         group_by_regex("App lifecycle",     mod, %regex~^(with_imgui_app|launch_imgui_app|shutdown|with_recording_app).*%%),
         group_by_regex("Locators / queries", mod, %regex~^(find_widget|widget_exists|widget_payload_field|widget_rendered|widget_click_point|widget_component_point|get_text)$%%),
         group_by_regex("Actions",           mod, %regex~^(click|click_at|right_click|type_text|key_tap|force_set_value|force_set_verified|drag|drag_along|drag_to|focus|open_widget|close_widget|reload|reset|move_to|reset_cursor_pos|resize_window)$%%),
-        group_by_regex("Recording / narration", mod, %regex~^(say|say_begin|say_hash|hold_through_voice|drag_through_voice|type_into_voice|combo_pick_voice|toggle_tree_voice|close_button_voice|record_check_value|record_check_changed|record_check_rendered)$%%),
+        group_by_regex("Recording / narration", mod, %regex~^(say|say_begin|say_hash|hold_through_voice|drag_through_voice|type_into_voice|combo_pick_voice|toggle_tree_voice|close_button_voice|click_render_voice|record_check_value|record_check_changed|record_check_rendered)$%%),
         group_by_regex("Snapshots",         mod, %regex~^(snapshot|expect_value|expect_render).*%%),
         group_by_regex("Polling / await",   mod, %regex~^(wait_until.*|wait_for_.*|await_quiescent|await_probe)$%%),
         group_by_regex("Pause control",     mod, %regex~^(pause|unpause|with_paused)$%%),
