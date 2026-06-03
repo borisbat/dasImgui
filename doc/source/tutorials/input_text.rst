@@ -162,6 +162,11 @@ needs the user's hand.
 Driving from outside
 ====================
 
+The walkthrough above types into every field with **real** synthetic key
+events (a real click to focus, then ``imgui_key_type``), so it exercises
+exactly what a user would: the completion callback fires on Tab, the filter
+narrows the log as you type, and one ``\n`` in the multiline buffer inserts
+exactly one line break. For *scripted* setup that skips the keystrokes,
 ``imgui_force_set`` writes ``state.pending_value`` and the next frame
 overwrites the buffer:
 
