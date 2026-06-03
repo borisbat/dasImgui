@@ -55,6 +55,7 @@ def main {
         // ---- Stage A: bordered, fixed-size child -> wheel scrolls it ----
         move_to(app, p_a_mid, 900)
         sleep(SETTLE_MS)
+        let tA = ref_time_ticks()                           // wall-clock from say_begin, so the dwell ends WITH the voice
         let dA = say_begin(app, "child - bordered, scrollable sub-window", T_A_MID,
             [voice = "A child is a sub window living inside another window. This one has a border and a fixed size, so its rows scroll. I roll the wheel, and the scroll position climbs."])
         let leadA = dA > 1200u ? 600u : dA / 3u
@@ -65,8 +66,8 @@ def main {
         let a0s = a0 != null ? write_json(a0) : ""
         scroll_child_down(app)
         record_check_changed(app, T_A, "scroll", a0s, 200)  // the wheel moved ChildState.scroll
-        let consumedA = leadA + 2200u                       // lead + the paced scroll bursts + poll
-        sleep(dA > consumedA ? dA - consumedA : 0u)
+        let elapsedA = uint(get_time_usec(tA) / 1000)       // real time spent on lead + scroll + verify
+        sleep(dA > elapsedA ? dA - elapsedA : 0u)           // hold the caption for the rest of the voice
 
         // ---- Stage B: AutoResizeY child -> a live checkbox inside it ----
         move_to(app, p_b_vsync, 900)
@@ -78,6 +79,7 @@ def main {
         // ---- Stage C: HorizontalScrollbar child -> wheel scrolls sideways ----
         move_to(app, p_c, 900)
         sleep(SETTLE_MS)
+        let tC = ref_time_ticks()
         let dC = say_begin(app, "child - horizontal scroll for wide content", T_C_LEAF,
             [voice = "The last child turns on a horizontal scrollbar for one very wide line. I roll the wheel sideways, and the horizontal scroll position follows."])
         let leadC = dC > 1200u ? 600u : dC / 3u
@@ -88,8 +90,8 @@ def main {
         let c0s = c0 != null ? write_json(c0) : ""
         scroll_child_right(app)
         record_check_changed(app, T_C, "scroll", c0s, 200)
-        let consumedC = leadC + 2200u
-        sleep(dC > consumedC ? dC - consumedC : 0u)
+        let elapsedC = uint(get_time_usec(tC) / 1000)
+        sleep(dC > elapsedC ? dC - elapsedC : 0u)
     }
 }
 
