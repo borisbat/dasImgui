@@ -8,53 +8,66 @@ require imgui/imgui_playwright public
 require daslib/json public
 require daslib/json_boost public
 
-//! Driver script: record ``display_widgets.apng`` against
-//! ``examples/tutorial/display_widgets.das``. The tutorial renders three
-//! ``progress_bar`` calls and two ``image`` calls inside ``DISPLAY_WIN``.
-//! None of the inner widgets carry an ident (they're [widget]-auto-instanced
-//! anonymously), so the only routable path is the window itself —
-//! the cursor settles over the window center and narrate is anchored to it
-//! while the sine-driven middle bar animates across the recording.
-
-def widget_bbox(var snap : JsonValue?; ident : string) : float4 {
-    var b = snap?["globals"]?[ident]?["bbox"]
-    return float4(
-        b?["x"] ?? 0.0f,
-        b?["y"] ?? 0.0f,
-        b?["z"] ?? 0.0f,
-        b?["w"] ?? 0.0f
-    )
-}
+//! Driver: record ``display_widgets.apng`` against ``examples/tutorial/display_widgets.das``.
+//! These are display-only widgets - no gesture to drive - so the recording proves the
+//! widgets WORK rather than reacting to input: three voiced beats that narrate the
+//! progress bars and images and self-verify their behaviour.
+//!   1. progress_bar - the static bar is on screen (record_check_rendered).
+//!   2. animation    - the sine-driven bar's fraction CHANGES over time
+//!                     (record_check_changed) - the one dynamic behaviour to verify.
+//!   3. image        - both textures are on screen (record_check_rendered).
+//! (The widgets carry explicit idents now, so each is addressable in the snapshot;
+//! the example was anonymous before.)
 
 def widget_center(var snap : JsonValue?; ident : string) : tuple<float; float> {
-    let b = widget_bbox(snap, ident)
-    return ((b.x + b.z) * 0.5f, (b.y + b.w) * 0.5f)
+    let b = snap?["globals"]?[ident]?["bbox"]
+    return (((b?["x"] ?? 0.0f) + (b?["z"] ?? 0.0f)) * 0.5f,
+            ((b?["y"] ?? 0.0f) + (b?["w"] ?? 0.0f)) * 0.5f)
 }
 
 [export]
 def main {
     with_recording_app("examples/tutorial/display_widgets.das",
                        "display_widgets.apng", 45) $(app) {
-        var snap = wait_for_render(app, "DISPLAY_WIN", 10.0f)
+        let PB_STATIC = "DISPLAY_WIN/PB_STATIC"
+        let PB_DRIVEN = "DISPLAY_WIN/PB_DRIVEN"
+        let IMG_PLAIN = "DISPLAY_WIN/IMG_PLAIN"
+        let IMG_TINT  = "DISPLAY_WIN/IMG_TINT"
+
+        var snap = wait_for_render(app, PB_STATIC, 10.0f)
         if (snap == null) {
-            panic("DISPLAY_WIN never rendered — wrong app running?")
+            panic("{PB_STATIC} never rendered - wrong app running?")
         }
-        let p_win = widget_center(snap, "DISPLAY_WIN")
+        let p_static = widget_center(snap, PB_STATIC)
+        let p_driven = widget_center(snap, PB_DRIVEN)
+        let p_img    = widget_center(snap, IMG_TINT)
 
-        //! Initial cursor placement to flip synth_cursor_owned.
-        move_to(app, p_win, 600)
+        // Park the cursor on the bars and warm up the capture pipeline.
+        move_to(app, p_static, 800)
+        sleep(1800u)
+
+        // ---- Beat 1: progress_bar overview ----
+        record_check_rendered(app, PB_STATIC, true, 180)
+        say(app, "progress_bar: fraction + overlay", PB_STATIC,
+            [voice = "progress_bar wraps ImGui's progress bar - a fraction, a size, and overlay text. Here are three: a static thirty-three percent, a live one, and a fixed-width bar."])
+
+        // ---- Beat 2: the sine-driven bar animates (the one dynamic behaviour) ----
+        move_to(app, p_driven, 500)
         sleep(SETTLE_MS)
+        let d2 = say_begin(app, "live fraction, sine-driven", PB_DRIVEN,
+            [voice = "The middle bar's fraction is driven by a sine wave, so it sweeps back and forth - and the snapshot's fraction tracks the visible bar exactly."])
+        let lead = d2 > 1400u ? 700u : d2 / 3u
+        let before = write_json(snapshot(app)?["globals"]?[PB_DRIVEN]?["payload"]?["fraction"])
+        sleep(lead)
+        record_check_changed(app, PB_DRIVEN, "fraction", before, 180)
+        sleep(d2 > lead ? d2 - lead : 0u)
 
-        // ---- Stage 1: progress_bar overview ----
-        say(app, "progress_bar wraps ImGui::ProgressBar — fraction + size + overlay text. Three calls stacked: static 33%, sine-driven, fixed-width with custom overlay.", "DISPLAY_WIN")
-
-        // ---- Stage 2: middle bar animation ----
-        say(app, "The middle bar's fraction is driven by sin(phase) — the snapshot's ProgressBarState.fraction follows the visible bar exactly.", "DISPLAY_WIN")
-
-        // ---- Stage 3: image overview ----
-        say(app, "image wraps ImGui::Image — uv0/uv1 + tint_col + border_col. Both samples use the ImGui font atlas texture; the second one tints green with a half-alpha border.", "DISPLAY_WIN")
-
-        // ---- Stage 4: snapshot path note ----
-        say(app, "Inner widgets are anonymous — only DISPLAY_WIN registers a path in the snapshot. The render proves the widgets fired; per-call state lives in the [widget]'s ImageState / ProgressBarState payload.", "DISPLAY_WIN")
+        // ---- Beat 3: image - display only ----
+        move_to(app, p_img, 700)
+        sleep(SETTLE_MS)
+        record_check_rendered(app, IMG_PLAIN, true, 180)
+        record_check_rendered(app, IMG_TINT, true, 180)
+        say(app, "image: display-only texture", IMG_TINT,
+            [voice = "image paints a texture - no click, just display. The same font atlas, drawn twice: plain, then tinted green with a soft border."])
     }
 }
