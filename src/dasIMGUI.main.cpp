@@ -383,6 +383,17 @@ namespace das {
         ImGui::SetNextWindowSizeConstraints(size_min, size_max);
     }
 
+    void DisableIniPersistence () {
+        // Null IniFilename so ImGui skips loading/saving window geometry from
+        // imgui.ini. Call after CreateContext and BEFORE the first NewFrame:
+        // ImGui loads the ini on the first NewFrame, so a later call only stops
+        // future saves — it won't undo an already-loaded layout. Tutorial/demo
+        // apps call it in init() to start in their documented layout every run.
+        // The bound IniFilename field is `const char*` (read-only from daslang),
+        // so this C++ helper is the only way to clear it.
+        ImGui::GetIO().IniFilename = nullptr;
+    }
+
     ImGuiSortDirection_ GetColumnSortDirection ( const ImGuiTableColumnSortSpecs * specs ) {
         // Takes pointer (not reference) for daslang interop consistency with `GetSortSpec`.
         // The bitfield-stored `SortDirection` is exposed as this free helper because
@@ -568,6 +579,9 @@ namespace das {
         addExtern<DAS_BIND_FUN(das::SetNextWindowSizeConstraintsNoCallback), SimNode_ExtFuncCall, imguiTempFn>(*this,lib,"SetNextWindowSizeConstraints",
             SideEffects::worstDefault,"das::SetNextWindowSizeConstraintsNoCallback")
                 ->args({"size_min","size_max"});
+        // Disable imgui.ini persistence — tutorial/demo apps start fresh each run.
+        addExtern<DAS_BIND_FUN(das::DisableIniPersistence)>(*this,lib,"DisableIniPersistence",
+            SideEffects::worstDefault,"das::DisableIniPersistence");
         // ImGuiTableColumnSortSpecs / ImGuiTableSortSpecs
         addExtern<DAS_BIND_FUN(das::GetColumnSortDirection)>(*this,lib,"GetColumnSortDirection",
             SideEffects::none,"das::GetColumnSortDirection");

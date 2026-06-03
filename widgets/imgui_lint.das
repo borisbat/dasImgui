@@ -37,6 +37,11 @@ let private ALLOWED_IMGUI : table<string> <- {
     // Context / frame lifecycle
     "CreateContext", "DestroyContext", "GetCurrentContext", "SetCurrentContext",
     "NewFrame", "EndFrame", "Render", "GetDrawData",
+    // Settings persistence — nulls IniFilename to disable imgui.ini load/save.
+    // Host-agnostic config call; tutorials opt in (NOT live_imgui_init), calling
+    // it in init() after CreateContext and before the first NewFrame, so the
+    // documented FirstUseEver layout / recording is deterministic every run.
+    "DisableIniPersistence",
     // IO / per-item state queries (post-widget probes — no v2 host needed)
     "GetIO", "GetStyle", "GetVersion",
     "IsItemHovered", "IsItemActive", "IsItemClicked", "IsItemFocused",
