@@ -1143,6 +1143,60 @@ def public reload(app : ImguiApp; timeout_sec : float = DEFAULT_RELOAD_TIMEOUT_S
     panic("reload did not converge on a clean compile within {timeout_sec}s")
 }
 
+struct private StatusReading {
+    gen : int       // /status `generation`, or -1 when no usable reading
+    has_err : bool
+}
+
+def private read_status(app : ImguiApp) : StatusReading {
+    // gen = -1 when /status is unreadable / unparseable / omits generation (e.g.
+    // a daslang-live without POST /reset). `?? -1` collapses a null parsed and a
+    // JSON-null alike, so callers never mistake a missing field for generation 0.
+    let raw = get_text(app, "/status")
+    return StatusReading(gen = -1, has_err = false) if (empty(raw))
+    var err : string
+    let parsed = read_json(raw, err)
+    return StatusReading(gen = parsed?["generation"] ?? -1,
+                         has_err = parsed?["has_error"] ?? false)
+}
+
+def public reset(app : ImguiApp; timeout_sec : float = DEFAULT_RELOAD_TIMEOUT_SEC) : void {
+    //! POST ``/reset`` — re-simulate the already-compiled program into a fresh context
+    //! (no parse / no infer), clearing ``@live`` state for a clean slate. ~100x cheaper
+    //! than ``reload``; use between subtests of one feature instead of respawning the host.
+    //! Polls ``/status`` until the ``generation`` counter advances (a deterministic done
+    //! signal). Panics if the host never reports a baseline generation (e.g. a daslang-live
+    //! without POST /reset support), if a reset advanced generation but left ``has_error``
+    //! set, or on timeout.
+    let start = ref_time_ticks()
+    let timeout_usec = int(timeout_sec * 1000000.0f)
+    // Baseline: require a real generation BEFORE issuing the reset. The host is
+    // already up, so this reads immediately; staying at -1 means /status never
+    // produced a usable generation — surfaced as a hard, fast failure rather
+    // than guessing a baseline (which would mask an unsupported /status schema).
+    var gen0 = -1
+    while (gen0 < 0 && get_time_usec(start) < timeout_usec) {
+        gen0 = read_status(app).gen
+        if (gen0 < 0) sleep(READY_POLL_INTERVAL_MS)
+    }
+    if (gen0 < 0) panic("reset: /status never reported a baseline generation within {timeout_sec}s (daslang-live without POST /reset support?)")
+    post_signal(app, "/reset")
+    // Fresh timer for the convergence window so a slow baseline poll above can't
+    // eat into the time the reset itself gets to land.
+    let reset_start = ref_time_ticks()
+    while (get_time_usec(reset_start) < timeout_usec) {
+        let st = read_status(app)
+        // Only a real, advanced generation counts as done — a missing/omitted
+        // field reads as -1 and is ignored, so we never return on a stale read.
+        if (st.gen >= 0 && st.gen != gen0) {
+            if (st.has_err) panic("reset re-simulate failed (generation advanced but has_error is set)")
+            return
+        }
+        sleep(READY_POLL_INTERVAL_MS)
+    }
+    panic("reset did not converge within {timeout_sec}s")
+}
+
 var private g_headless_parsed : bool = false
 var private g_headless_cached : bool = false
 

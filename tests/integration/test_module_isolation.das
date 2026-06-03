@@ -5,6 +5,7 @@ options no_unused_function_arguments = false
 
 require dastest/testing_boost public
 require daslib/fio
+require daslib/module_path
 require strings
 require math
 
@@ -19,8 +20,6 @@ require math
 //! `imgui_synth` + `imgui_app_glfw` (see project memory
 //! `dasimgui_cpp_glfw_split_deferred`). Until then, the .das layer is the
 //! checkable boundary: imgui_visual_aids names no glfw module directly.
-
-let TARGET = "modules/dasImgui/widgets/imgui_visual_aids.das"
 
 def private starts_with_require(line : string) : bool {
     let trimmed = chop(line, 0, length(line))
@@ -59,9 +58,16 @@ def private file_lines(path : string; var lines : array<string>) : bool {
 
 [test]
 def test_imgui_visual_aids_has_no_direct_glfw_require(t : T?) {
+    // Resolve the target off this test file's own location (3-tier walk),
+    // not cwd — `get_this_module_dir()` returns <root>/tests/integration, so
+    // two dir_name hops give the module root. Mirrors how with_imgui_app
+    // resolves feature paths; works under both CI's installed-junction layout
+    // and a local `-load_module` checkout. Must be called inside a function
+    // (module_path caveat re: -exe top-level let baking).
+    let target = "{dir_name(dir_name(get_this_module_dir()))}/widgets/imgui_visual_aids.das"
     var lines : array<string>
-    let ok = file_lines(TARGET, lines)
-    t |> success(ok, "open {TARGET}")
+    let ok = file_lines(target, lines)
+    t |> success(ok, "open {target}")
     return if (!ok)
 
     var offenders : array<string>
@@ -79,6 +85,6 @@ def test_imgui_visual_aids_has_no_direct_glfw_require(t : T?) {
     t |> equal(length(offenders), 0,
                "imgui_visual_aids must not directly require any GLFW module — see project_dasimgui_cpp_glfw_split_deferred")
     for (off in offenders) {
-        to_log(LOG_ERROR, "test_module_isolation: offending require in {TARGET}: {off}")
+        to_log(LOG_ERROR, "test_module_isolation: offending require in {target}: {off}")
     }
 }
