@@ -31,7 +31,7 @@ require imgui/imgui_visual_aids
 //   with_button_repeat(repeat, blk)      — PushButtonRepeat / PopButtonRepeat
 //   with_clip_rect(min, max, isect, blk) — PushClipRect / PopClipRect
 //
-// They subsume the raw Push/Pop pairs that v2 v2 rules call out as invisible.
+// They subsume the raw Push/Pop pairs that v2's lint flags as invisible.
 //
 // STANDALONE: daslang.exe modules/dasImgui/examples/tutorial/with_disabled.das
 // LIVE:       daslang-live modules/dasImgui/examples/tutorial/with_disabled.das
@@ -76,12 +76,13 @@ def update() {
             }
             slider_float(CHILD_VOL, (text = "Volume"))
         }
+        text("CHILD_SAVE: clicked {CHILD_SAVE.click_count} times")
 
         separator_text("with_button_repeat")
 
         // Inside with_button_repeat(true), holding the button fires click
         // events repeatedly — useful for steppers.
-        text("Hold the button — click_count keeps rising.")
+        text("Hold the button - click_count keeps rising.")
         with_button_repeat(true) {
             if (button(STEP_UP, (text = "+"))) {
                 print("step up: {STEP_UP.click_count}\n")
@@ -96,7 +97,7 @@ def update() {
         // font handle to switch scope-local typography.
         text("with_font(...) swaps the active font for one scope.")
         with_font(GetFont()) {
-            text("Inside the with_font scope.")
+            text(FONT_DEMO, (text = "Inside the with_font scope."))
         }
     }
 
