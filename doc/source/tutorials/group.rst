@@ -27,6 +27,14 @@ Walkthrough
 
 .. video:: group.mp4
 
+The recording walks the three patterns. First it toggles a checkbox in each of
+the two side-by-side blocks — both stay live while ``same_line`` keeps them on
+one row. Then it hovers the middle of the ``[i] Info`` cluster, *not* the button,
+and the tooltip still fires — proof that ``IsItemHovered`` after ``EndGroup``
+reads against the whole group's bounding box. Finally it drags the row's slider
+and the value updates on the line below. Every step is a real synth gesture the
+recording asserts landed.
+
 .. literalinclude:: ../../../examples/tutorial/group.das
    :language: das
    :linenos:
