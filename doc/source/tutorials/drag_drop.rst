@@ -24,6 +24,13 @@ Walkthrough
 
 .. video:: drag_drop.mp4
 
+The recording introduces the source button and the drop target, then performs a
+real drag of the source onto the target. On release the target accepts the
+``MY_INT`` payload — ``Target received value`` flips to ``42`` and
+``Drops accepted`` ticks to ``1``. The drag is synthesized through the same
+synth-mouse pipeline a test would use, and the recording asserts the drop
+actually landed (see *Driving from outside* below).
+
 .. literalinclude:: ../../../examples/features/drag_drop.das
    :language: das
    :linenos:
@@ -113,6 +120,17 @@ resolves on release.
 The lower-level ``drag(app, target, dx, dy, steps)`` is available when
 you want absolute offsets — useful for testing drag-without-drop or
 drag-cancel paths.
+
+**Verifying the drop.** ``drag_drop_target`` surfaces a running ``accepted``
+count in its telemetry payload — it counts the drops ImGui actually delivers
+(``GetDragDropPayload().Delivery``), so a driver or test can assert the drop
+*landed* without reaching into the example's caller-owned globals:
+
+.. code-block:: das
+
+   drag_to(app, "MAIN_WIN/SOURCE_BTN", "MAIN_WIN/TARGET_BTN")
+   // accepted ticks 0 -> 1 on a real delivery over the target
+   wait_for_payload_value(app, "MAIN_WIN/TARGET_DD", "accepted", 1, 300)
 
 Next steps
 ==========
