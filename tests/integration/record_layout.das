@@ -8,96 +8,61 @@ require imgui/imgui_playwright public
 require daslib/json public
 require daslib/json_boost public
 
-//! Driver script: record ``layout.apng``. One shell:
-//!
-//!     bin/Release/daslang.exe -project_root <dasimgui> \
-//!         <dasimgui>/tests/integration/record_layout.das
-//!
-//! Mirrors record_widgets_tour.das.
-
-def widget_bbox(var snap : JsonValue?; ident : string) : float4 {
-    var b = snap?["globals"]?[ident]?["bbox"]
-    return float4(
-        b?["x"] ?? 0.0f,
-        b?["y"] ?? 0.0f,
-        b?["z"] ?? 0.0f,
-        b?["w"] ?? 0.0f
-    )
-}
-
-def widget_center(var snap : JsonValue?; ident : string) : tuple<float; float> {
-    let b = widget_bbox(snap, ident)
-    return ((b.x + b.z) * 0.5f, (b.y + b.w) * 0.5f)
-}
+//! Driver: record ``layout.apng`` against ``examples/tutorial/layout.das``.
+//! Real-input, self-verifying tour of the three boost layout helpers, each
+//! proven by dragging its OWN handle and asserting state.value moved:
+//!   1. dock_left -> drag SIDEBAR/HANDLE right; sidebar width (px) rises
+//!   2. split_h   -> drag SPLIT_MAIN/HANDLE right; left-pane fraction rises
+//!   3. split_v   -> drag SPLIT_VERT/HANDLE down;  top-pane fraction rises
+//! Each split/dock surfaces its 8px drag handle as a ``<container>/HANDLE``
+//! alias (register_handle_bbox), so the cursor grabs the REAL InvisibleButton
+//! and drags it - no imgui_force_set. The handle bboxes reflow after every
+//! drag, so each beat re-resolves its handle centre from a fresh snapshot.
 
 [export]
 def main {
     with_recording_app("examples/tutorial/layout.das",
-                       "layout.apng", 90) $(app) {
-        //! All boost widgets are nested under ``window(LAYOUT_WIN, ...)`` in
-        //! layout.das, so every registered key is path-prefixed. dock_left and
-        //! split_* helpers also appear in the registry but with bbox=(0,0,0,0)
-        //! (the splitter handle is an InvisibleButton not separately registered —
-        //! see test_layout_helpers.das:115-122 TODO). We narrate against and move
-        //! the cursor to a child button in each helper's pane instead.
-        let T_SIDEBAR     = "LAYOUT_WIN/SIDEBAR"
-        let T_SPLIT_MAIN  = "LAYOUT_WIN/SPLIT_VERT/SPLIT_MAIN"
-        let T_SPLIT_VERT  = "LAYOUT_WIN/SPLIT_VERT"
-        let T_EXPLORE_BTN = "LAYOUT_WIN/SIDEBAR/EXPLORE_BTN"
-        let T_FILE_A_BTN  = "LAYOUT_WIN/SPLIT_VERT/SPLIT_MAIN/FILE_A_BTN"
-        let T_CLEAR_BTN   = "LAYOUT_WIN/SPLIT_VERT/CLEAR_BTN"
+                       "layout.apng", 75) $(app) {
+        let T_SIDEBAR = "LAYOUT_WIN/SIDEBAR"                 // dock_left  - value is px width
+        let T_SPLIT_H = "LAYOUT_WIN/SPLIT_VERT/SPLIT_MAIN"   // split_h    - value is left fraction
+        let T_SPLIT_V = "LAYOUT_WIN/SPLIT_VERT"              // split_v    - value is top fraction
+        let H_SIDEBAR = "LAYOUT_WIN/SIDEBAR/HANDLE"
+        let H_SPLIT_H = "LAYOUT_WIN/SPLIT_VERT/SPLIT_MAIN/HANDLE"
+        let H_SPLIT_V = "LAYOUT_WIN/SPLIT_VERT/HANDLE"
 
-        var snap = wait_for_render(app, T_EXPLORE_BTN, 10.0f)
+        var snap = wait_for_render(app, H_SIDEBAR, 10.0f)
         if (snap == null) {
-            panic("{T_EXPLORE_BTN} never rendered — wrong app running?")
+            panic("{H_SIDEBAR} never rendered - wrong app, or a build without register_handle_bbox?")
         }
-        let p_explore = widget_center(snap, T_EXPLORE_BTN)
-        let p_file_a  = widget_center(snap, T_FILE_A_BTN)
-        let p_clear   = widget_center(snap, T_CLEAR_BTN)
 
-        // ---- Stage 1: sidebar (dock_left) ----
-        // Narrate against EXPLORE_BTN (a real bbox inside the sidebar) since
-        // dock_left itself has bbox=(0,0,0,0). Cursor moves into the sidebar.
-        move_to(app, p_explore)
-        say(app, "dock_left fixes a sidebar to the left edge.", T_EXPLORE_BTN)
-        post_command(app, "imgui_force_set", JV((target = T_SIDEBAR, value = 260.0f)))
-        sleep(CLICK_DWELL_MS)
+        //! Initial cursor placement - flips synth_cursor_owned.
+        move_to(app, (40.0f, 30.0f), 600)
+        sleep(SETTLE_MS)
 
-        // ---- Stage 2: horizontal splitter (split_h on top half) ----
-        // Re-resolve FILE_A_BTN bbox; SIDEBAR's resize reflowed the panes.
-        // Narrate against FILE_A_BTN (left split pane) — split_h has no bbox.
-        snap = wait_for_render(app, T_FILE_A_BTN, 3.0f)
-        let p_file_a_now = snap != null ? widget_center(snap, T_FILE_A_BTN) : p_file_a
-        move_to(app, p_file_a_now)
-        say(app, "split_h slices the top into left + right.", T_FILE_A_BTN)
-        post_command(app, "imgui_force_set", JV((target = T_SPLIT_MAIN, value = 0.6f)))
-        sleep(CLICK_DWELL_MS)
+        // ---- Beat 1: dock_left - grab the sidebar's right edge, pull it wider ----
+        let c1 = widget_click_point(snap, H_SIDEBAR)
+        move_to(app, c1, 900)
+        sleep(SETTLE_MS)
+        drag_through_voice(app, say_begin(app, "dock_left - a fixed left rail", H_SIDEBAR,
+            [voice = "We build an editor layout from three composable helpers. The first, dock left, pins a sidebar to the left edge with a draggable border. I grab that border and pull the rail wider."]),
+            T_SIDEBAR, (c1._0 + 70.0f, c1._1))
 
-        // ---- Stage 3: vertical splitter ----
-        // Narrate against CLEAR_BTN (bottom pane) — split_v has no bbox.
-        snap = wait_for_render(app, T_CLEAR_BTN, 3.0f)
-        let p_clear_now = snap != null ? widget_center(snap, T_CLEAR_BTN) : p_clear
-        move_to(app, p_clear_now)
-        say(app, "split_v splits top from bottom.", T_CLEAR_BTN)
-        post_command(app, "imgui_force_set", JV((target = T_SPLIT_VERT, value = 0.45f)))
-        sleep(CLICK_DWELL_MS)
+        // ---- Beat 2: split_h - drag the vertical splitter between the top panes ----
+        snap = snapshot(app)
+        let c2 = widget_click_point(snap, H_SPLIT_H)
+        move_to(app, c2, 900)
+        sleep(SETTLE_MS)
+        drag_through_voice(app, say_begin(app, "split_h - top splits left and right", H_SPLIT_H,
+            [voice = "Inside the main area, split h slices the top into a left pane and a right pane, with a vertical handle between them. I drag the handle, and the two panes resize together."]),
+            T_SPLIT_H, (c2._0 + 60.0f, c2._1))
 
-        // ---- Stage 4: click inside sidebar ----
-        snap = wait_for_render(app, T_EXPLORE_BTN, 3.0f)
-        let p_explore_now = snap != null ? widget_center(snap, T_EXPLORE_BTN) : p_explore
-        say(app, "Each pane clips its widgets cleanly.", T_EXPLORE_BTN)
-        var explore_events : array<JsonValue?>
-        explore_events |> click_at(0, p_explore_now)
-        post_command(app, "imgui_mouse_play", JV((events = explore_events)))
-        sleep(CLICK_DWELL_MS)
-
-        // ---- Stage 5: click inside left-split pane (re-resolve bbox; layout shifted) ----
-        snap = wait_for_render(app, T_FILE_A_BTN, 5.0f)
-        let p_file_a_now2 = snap != null ? widget_center(snap, T_FILE_A_BTN) : p_file_a_now
-        say(app, "Splitters re-flow the panes on every drag.", T_FILE_A_BTN)
-        var file_events : array<JsonValue?>
-        file_events |> click_at(0, p_file_a_now2)
-        post_command(app, "imgui_mouse_play", JV((events = file_events)))
-        sleep(1700u)
+        // ---- Beat 3: split_v - drag the horizontal splitter down ----
+        snap = snapshot(app)
+        let c3 = widget_click_point(snap, H_SPLIT_V)
+        move_to(app, c3, 900)
+        sleep(SETTLE_MS)
+        drag_through_voice(app, say_begin(app, "split_v - top splits from bottom", H_SPLIT_V,
+            [voice = "And split v divides that whole top region from the output pane below, on a horizontal handle. I drag it down, and the editor grows while the output shrinks. Every split stays draggable, and each pane clips its own contents."]),
+            T_SPLIT_V, (c3._0, c3._1 + 55.0f))
     }
 }

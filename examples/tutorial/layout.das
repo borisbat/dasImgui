@@ -90,9 +90,9 @@ def update() {
                             },
                             ${
                                 text("Editor")
-                                text("// drag the splitters")
-                                text("// — the pane bounds")
-                                text("//   stay clipped.")
+                                text("// drag the splitters -")
+                                text("// the pane bounds")
+                                text("// stay clipped.")
                             })
                 },
                 ${
