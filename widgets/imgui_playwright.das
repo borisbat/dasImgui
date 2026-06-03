@@ -131,6 +131,10 @@ def public drag_along(var events : array<JsonValue?>;
     //! ``to_pos``.
     events |> push(JV((t_ms = t_ms,                                kind = "move",   x = last_cursor_x, y = last_cursor_y)))
     events |> push(JV((t_ms = t_ms + approach_ms,                  kind = "move",   x = from_pos._0,   y = from_pos._1)))
+    // Dwell at from_pos so the press fires while the cursor is still exactly there
+    // (zero drift). Without it the press interpolates toward to_pos and slips off a
+    // thin target (an 8px splitter handle). Same timeline length — the press t is unchanged.
+    events |> push(JV((t_ms = t_ms + approach_ms + 100,            kind = "move",   x = from_pos._0,   y = from_pos._1)))
     events |> push(JV((t_ms = t_ms + approach_ms + 100,            kind = "button", button = button,   action = "press")))
     events |> push(JV((t_ms = t_ms + approach_ms + 100 + drag_ms,  kind = "move",   x = to_pos._0,     y = to_pos._1)))
     events |> push(JV((t_ms = t_ms + approach_ms + 200 + drag_ms,  kind = "button", button = button,   action = "release")))
@@ -509,8 +513,13 @@ def public drag(app : ImguiApp; target : string;
     let ex = cx + dx
     let ey = cy + dy
     let drag_ms = (steps > 0 ? steps : 1) * 32
+    // Dwell at center BEFORE pressing: the press timestamp coincides with a
+    // move waypoint that still sits at (cx,cy), so the press lands dead-center
+    // with zero interpolation drift. Without the dwell the press fires mid-travel
+    // and a thin target (an 8px splitter handle) is missed entirely.
     var events <- [
         JV((t_ms = 0,             kind = "move",   x = cx, y = cy)),
+        JV((t_ms = 80,            kind = "move",   x = cx, y = cy)),
         JV((t_ms = 80,            kind = "button", button = button, action = "press")),
         JV((t_ms = 80 + drag_ms,  kind = "move",   x = ex, y = ey)),
         JV((t_ms = 180 + drag_ms, kind = "button", button = button, action = "release")),

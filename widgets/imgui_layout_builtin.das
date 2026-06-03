@@ -40,6 +40,7 @@ def private draggable_handle_v(var state : SliderStateFloat; px_per_unit : float
                                size : ImVec2; tag : string) : bool {
     let cursor_min = GetCursorScreenPos()
     InvisibleButton(tag, size)
+    register_handle_bbox(tag)   // expose handle geometry as <container>/HANDLE for real synth drags
     let cursor_max = ImVec2(cursor_min.x + size.x, cursor_min.y + size.y)
     let hot = IsItemHovered() || IsItemActive()
     if (hot) {
@@ -68,6 +69,7 @@ def private draggable_handle_h(var state : SliderStateFloat; px_per_unit : float
                                size : ImVec2; tag : string) : bool {
     let cursor_min = GetCursorScreenPos()
     InvisibleButton(tag, size)
+    register_handle_bbox(tag)   // expose handle geometry as <container>/HANDLE for real synth drags
     let cursor_max = ImVec2(cursor_min.x + size.x, cursor_min.y + size.y)
     let hot = IsItemHovered() || IsItemActive()
     if (hot) {

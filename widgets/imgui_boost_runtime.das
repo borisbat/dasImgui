@@ -1247,6 +1247,27 @@ def public register_radio_site_alias(widget_ident : string; v_button : int;
     widgets_mark_seen(alias, alias, "radio_button_int", state_addr, ti)
 }
 
+def public register_handle_bbox(tag : string) {
+    //! Surface a split/dock drag-handle's geometry as a child alias ``<container>/HANDLE``,
+    //! so external drivers and recordings can target a REAL synthetic drag at the handle
+    //! instead of only ``imgui_force_set``-ing the fraction. Geometry-only (no state): written
+    //! straight into ``g_registry``, so it rides the per-frame clear and surfaces via
+    //! ``imgui_snapshot``'s registry-only pass with no freshness bookkeeping. Call from inside
+    //! the ``[container]`` body, right after the handle ``InvisibleButton(tag, …)`` — the
+    //! open-container chain still names this split, and ``GetItemRectMin/Max`` / ``GetID(tag)``
+    //! still report the handle. Mirrors ``register_radio_site_alias``.
+    let alias = widget_path_key("HANDLE")
+    var entry = WidgetEntry(kind = "splitter_handle", hex_id = GetID(tag))
+    let rmin = GetItemRectMin()
+    let rmax = GetItemRectMax()
+    capture_item_bbox(entry, float4(rmin.x, rmin.y, rmax.x, rmax.y))
+    entry.hover = IsItemHovered(ImGuiHoveredFlags.None)
+    entry.active = IsItemActive()
+    g_id_to_path[entry.hex_id] = alias
+    g_id_to_bbox[entry.hex_id] = entry.bbox
+    g_registry[alias] <- entry
+}
+
 def private widgets_mark_seen(bare_ident : string; path_key : string;
                               kind : string; state_addr : void?; ti : TypeInfo const?) {
     // First render: migrate the bare-ident entry to its container-aware path_key. Subsequent renders just bump last_seen_frame.
