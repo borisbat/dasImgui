@@ -27,7 +27,8 @@ jobs:
         with:
           repository: GaijinEntertainment/daScript
           path: daslang-src
-          ref: master
+          # experiment branch: dastest stderr-capture + daspkg extra-cmake-flags hook
+          ref: bbatkin/wer-unsuppress-experiment
 
       - name: "Checkout dasImgui"
         uses: actions/checkout@v4
@@ -67,16 +68,16 @@ jobs:
 
       - name: "Build daslang + modules (ASan)"
         working-directory: daslang-src
-        # RelWithDebInfo -> PDBs so the ASan report symbolizes. DAS_USE_SANITIZER
-        # =asan adds /fsanitize=address (CMakeCommon MSVC branch). That branch does
-        # NOT set DAS_VEC_SAFE_LOADS (the clang branch does), so add it here or
-        # daslang's intentional wide SIMD loads trip ASan with false positives.
-        # No sccache: ASan flags miss the cache slot anyway, and instrumented objs
-        # shouldn't pollute it.
+        # Release + /DEBUG for PDBs (so the ASan report symbolizes) — NOT
+        # RelWithDebInfo, which shifted GLFW's header layout and broke the daspkg
+        # module build. DAS_USE_SANITIZER=asan adds /fsanitize=address;
+        # DAS_VEC_SAFE_LOADS=1 avoids ASan false positives on daslang's wide SIMD
+        # loads (CMakeCommon's MSVC branch omits it). No sccache (ASan objs miss
+        # the slot).
         run: |
           set -eux
           cmake --no-warn-unused-cli -B./build \
-            -DCMAKE_BUILD_TYPE:STRING=RelWithDebInfo \
+            -DCMAKE_BUILD_TYPE:STRING=Release \
             -DDAS_USE_SANITIZER=asan \
             -DDAS_HV_DISABLED=OFF \
             -DDAS_PUGIXML_DISABLED=OFF \
@@ -84,6 +85,8 @@ jobs:
             -DDAS_GLFW_DISABLED=OFF \
             -DCMAKE_C_FLAGS=-DDAS_VEC_SAFE_LOADS=1 \
             -DCMAKE_CXX_FLAGS=-DDAS_VEC_SAFE_LOADS=1 \
+            -DCMAKE_EXE_LINKER_FLAGS="/DEBUG /OPT:REF /OPT:ICF" \
+            -DCMAKE_SHARED_LINKER_FLAGS="/DEBUG /OPT:REF /OPT:ICF" \
             -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
             -G Ninja
           cmake --build ./build --parallel --target \
@@ -92,8 +95,14 @@ jobs:
             dasModulePUGIXML dasModuleStbImage
           echo "BIN_DIR=bin" >> "$GITHUB_ENV"
 
-      - name: "daspkg install dasImgui (global)"
+      - name: "daspkg install dasImgui (global, ASan module build)"
         working-directory: daslang-src
+        # ASan-instrument the dasImgui module too — the docking crash is most
+        # likely in imgui C++, which lives in this module; core-only ASan would
+        # not see it. DASPKG_EXTRA_CMAKE_FLAGS (experiment hook on the daslang
+        # branch) forwards /fsanitize=address to the module's cmake configure.
+        env:
+          DASPKG_EXTRA_CMAKE_FLAGS: "-DCMAKE_C_FLAGS=/fsanitize=address -DCMAKE_CXX_FLAGS=/fsanitize=address"
         run: |
           set -eux
           ${BIN_DIR}/daslang utils/daspkg/main.das -- install ../dasImgui --global
