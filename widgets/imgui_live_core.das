@@ -379,7 +379,13 @@ def imgui_key_type(input : JsonValue?) : JsonValue? {
             if (k != 0) {
                 key_timeline |> push(KeyEvent(t_ms = t, kind = KEKind.press, key = k))
             }
-            key_timeline |> push(KeyEvent(t_ms = t, kind = KEKind.char_, codepoint = cp))
+            // Real backends emit a Char event only for printable codepoints; control
+            // chars arrive as a key alone (Enter -> '\n', Tab -> focus). Emitting the
+            // char too double-inserts in InputTextMultiline (the Enter key AND the 0x0A
+            // char each add a newline).
+            if (cp >= 0x20u) {
+                key_timeline |> push(KeyEvent(t_ms = t, kind = KEKind.char_, codepoint = cp))
+            }
             if (k != 0) {
                 key_timeline |> push(KeyEvent(t_ms = t, kind = KEKind.release, key = k))
             }

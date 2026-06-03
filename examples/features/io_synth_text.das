@@ -42,6 +42,8 @@ def update() {
         }
         input_text(DEMO_INPUT, (text = "Type here"))
         text("buffer = {DEMO_INPUT.value}")
+        input_text_multiline(DEMO_MULTI, (text = "Multi", size = float2(0.0f, 70.0f)))
+        text("multi = {DEMO_MULTI.value}")
     }
 
     harness_end_frame()

@@ -49,5 +49,13 @@ def test_imgui_type_text_buffer_fills(t : T?) {
         // per frame means 5 chars take ~5 frames; allow 5s for poll cadence.
         let done = wait_for_string_value(d, "MAIN_WIN/DEMO_INPUT", "value", "hello", 300)
         t |> success(done, "DEMO_INPUT.value reaches 'hello' after L1 keyboard stream")
+
+        // Gate 5: a '\n' in the stream inserts exactly ONE newline in a multiline
+        // buffer. imgui_key_type sends '\n' as the Enter key alone (no 0x0A char),
+        // matching a real backend; emitting the char too would double-insert.
+        let multi = type_text(d, "MAIN_WIN/DEMO_MULTI", "a\nb")
+        t |> equal(multi?["ok"] ?? false, true, "type_text into multiline returned ok")
+        let multi_done = wait_for_string_value(d, "MAIN_WIN/DEMO_MULTI", "value", "a\nb", 300)
+        t |> success(multi_done, "DEMO_MULTI.value == 'a\\nb' (single newline, not doubled)")
     }
 }
