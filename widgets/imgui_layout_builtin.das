@@ -40,6 +40,7 @@ def private draggable_handle_v(var state : SliderStateFloat; px_per_unit : float
                                size : ImVec2; tag : string) : bool {
     let cursor_min = GetCursorScreenPos()
     InvisibleButton(tag, size)
+    register_handle_bbox(tag)   // expose handle geometry as <container>/HANDLE for real synth drags
     let cursor_max = ImVec2(cursor_min.x + size.x, cursor_min.y + size.y)
     let hot = IsItemHovered() || IsItemActive()
     if (hot) {
@@ -68,6 +69,7 @@ def private draggable_handle_h(var state : SliderStateFloat; px_per_unit : float
                                size : ImVec2; tag : string) : bool {
     let cursor_min = GetCursorScreenPos()
     InvisibleButton(tag, size)
+    register_handle_bbox(tag)   // expose handle geometry as <container>/HANDLE for real synth drags
     let cursor_max = ImVec2(cursor_min.x + size.x, cursor_min.y + size.y)
     let hot = IsItemHovered() || IsItemActive()
     if (hot) {
@@ -115,6 +117,9 @@ def split_h(var state : SliderStateFloat; left_blk : block; right_blk : block) {
     if (right_w < 0.0f) {
         right_w = 0.0f
     }
+    // Group the whole split as ONE layout item (see split_v) so a splitter composed
+    // after a full-height SameLine'd sibling stacks/flows as a unit, not line-by-line.
+    BeginGroup()
     BeginChild("{widget_ident}__L", ImVec2(left_w, total_h),
                ImGuiChildFlags.None, ImGuiWindowFlags.None)
     invoke(left_blk)
@@ -129,6 +134,7 @@ def split_h(var state : SliderStateFloat; left_blk : block; right_blk : block) {
                ImGuiChildFlags.None, ImGuiWindowFlags.None)
     invoke(right_blk)
     EndChild()
+    EndGroup()
     pending_value_container_finalize(widget_ident, "split_h", state)
 }
 
@@ -155,6 +161,12 @@ def split_v(var state : SliderStateFloat; top_blk : block; bottom_blk : block) {
     if (bottom_h < 0.0f) {
         bottom_h = 0.0f
     }
+    // Group the whole vertical split so it is ONE layout item. Without this, when
+    // split_v is composed after dock_left's trailing SameLine, the top child shares
+    // a line with the full-height sidebar; closing it then advances the cursor by the
+    // sidebar's line height (not top_h), dropping the handle + bottom pane below the
+    // fold. The group makes the splitter stack internally regardless of the outer line.
+    BeginGroup()
     BeginChild("{widget_ident}__T", ImVec2(total_w, top_h),
                ImGuiChildFlags.None, ImGuiWindowFlags.None)
     invoke(top_blk)
@@ -167,6 +179,7 @@ def split_v(var state : SliderStateFloat; top_blk : block; bottom_blk : block) {
                ImGuiChildFlags.None, ImGuiWindowFlags.None)
     invoke(bottom_blk)
     EndChild()
+    EndGroup()
     pending_value_container_finalize(widget_ident, "split_v", state)
 }
 

@@ -74,6 +74,16 @@ def test_layout_helpers(t : T?) {
             let lb_y1 = lb?["w"] ?? 0.0f
             t |> success(bb_y0 > lb_y1,
                          "split_v: BOTTOM_BTN.top ({bb_y0}) > LEFT_BTN.bottom ({lb_y1})")
+
+            // Fit (regression guard for the dock_left -> split_v line-height overflow):
+            // the bottom pane must render INSIDE the content region, not pushed below the
+            // fold. dock_left's handle spans the full content height, so its bbox bottom
+            // (bbox.w) is the content-region floor. Before split_v was grouped, the top
+            // pane shared the sidebar's full-height line and the bottom pane dropped past it.
+            let region_floor = find_widget(snap0, "LAYOUT_WIN/SIDEBAR/HANDLE")?["bbox"]?["w"] ?? 0.0f
+            let bb_y1 = bb?["w"] ?? 0.0f
+            t |> success(region_floor > 0.0f && bb_y1 <= region_floor + 1.0f,
+                         "split_v fits: BOTTOM_BTN.bottom ({bb_y1}) within content floor ({region_floor})")
         }
         reset(d)
 
@@ -107,14 +117,44 @@ def test_layout_helpers(t : T?) {
             t |> success(rb_x0_now > rb_x0_orig + 10.0f,
                          "L3 force_set_value: RIGHT_BTN.left shifted right ({rb_x0_orig} -> {rb_x0_now})")
         }
+        reset(d)
+
+        t |> run("drag") <| @(t : T?) {
+            // The split handle now surfaces its geometry as a child alias
+            // <split>/HANDLE, so a synth-mouse drag targets it directly — the
+            // L1 coverage gap that used to force imgui_force_set.
+            let HANDLE = "LAYOUT_WIN/SPLIT_VERT/SPLIT_MAIN/HANDLE"
+            var snap0 = wait_for_widget(d, HANDLE, 15.0f)
+            t |> success(snap0 != null, "split_h HANDLE surfaces its bbox")
+            if (snap0 == null) return
+
+            t |> equal(find_widget(snap0, HANDLE)?["kind"] ?? "",
+                       "splitter_handle", "HANDLE registers as 'splitter_handle' kind")
+
+            // Non-degenerate vertical strip between the two panes.
+            let hb = find_widget(snap0, HANDLE)?["bbox"]
+            let hx0 = hb?["x"] ?? 0.0f
+            let hx1 = hb?["z"] ?? 0.0f
+            let hy0 = hb?["y"] ?? 0.0f
+            let hy1 = hb?["w"] ?? 0.0f
+            t |> success(hx1 > hx0 && hy1 > hy0 + 50.0f,
+                         "HANDLE bbox is a tall vertical strip ([{hx0},{hx1}] x [{hy0},{hy1}])")
+
+            let v0 = find_widget(snap0, "LAYOUT_WIN/SPLIT_VERT/SPLIT_MAIN")?["payload"]?["value"] ?? 0.0f
+            let rb0 = find_widget(snap0, "LAYOUT_WIN/SPLIT_VERT/SPLIT_MAIN/RIGHT_BTN")?["bbox"]?["x"] ?? 0.0f
+
+            // Real synth drag of the handle to the right. split_h width is
+            // pixel-driven, so the left fraction must rise — no force_set.
+            let resp = drag(d, HANDLE, 80.0f, 0.0f, 8)
+            t |> equal(resp?["ok"] ?? false, true, "drag(HANDLE, +80) hit the handle")
+
+            let moved = wait_until(d, 300) $(snap) => (find_widget(snap, "LAYOUT_WIN/SPLIT_VERT/SPLIT_MAIN")?["payload"]?["value"] ?? 0.0f) > v0 + 0.02f
+            t |> success(moved != null, "synth drag raised SPLIT_MAIN.value above baseline {v0}")
+
+            var snap1 = snapshot(d)
+            let rb1 = find_widget(snap1, "LAYOUT_WIN/SPLIT_VERT/SPLIT_MAIN/RIGHT_BTN")?["bbox"]?["x"] ?? 0.0f
+            t |> success(rb1 > rb0 + 5.0f,
+                         "synth drag shifted RIGHT_BTN.left right ({rb0} -> {rb1})")
+        }
     }
 }
-
-// TODO: synth-mouse drag test for the split handle. The handle is rendered
-// as an InvisibleButton inside split_h's body — not separately registered in
-// the boost snapshot, so its bbox can't be read from the JSON for synth-mouse
-// targeting. Options: (a) register the handle as a child widget so its bbox
-// surfaces; (b) expose handle screen position via a debug field on the state
-// struct; (c) drive drag through a synthetic L1 command that knows the handle
-// path. Pick when the drag test is needed (it's the only L1 coverage gap for
-// §4.6 — L3 force_set_value coverage is in test_layout_set_value above).

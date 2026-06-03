@@ -42,7 +42,7 @@ def document_module_imgui_boost_runtime() {
     var mod = find_module("imgui_boost_runtime")
     var groups <- array<DocGroup>(
         group_by_regex("Widget state types",      mod, %regex~.*State(Float|Int|Float2|Float3|Float4|Int2|Int3|Int4)?$%%),
-        group_by_regex("Per-frame registry",      mod, %regex~^(WidgetEntry|WidgetMeta|begin_frame|end_frame|end_of_frame|register_widget|register_focusable|register_radio_site_alias|register_end_of_frame_hook|register_post_command_hook|lookup_widget|lookup_state_addr|clear_module_widgets|widget_registered|widget_prelude|widget_rect|with_state|id_to_path|id_to_bbox).*%%),
+        group_by_regex("Per-frame registry",      mod, %regex~^(WidgetEntry|WidgetMeta|begin_frame|end_frame|end_of_frame|register_widget|register_focusable|register_radio_site_alias|register_handle_bbox|register_end_of_frame_hook|register_post_command_hook|lookup_widget|lookup_state_addr|clear_module_widgets|widget_registered|widget_prelude|widget_rect|with_state|id_to_path|id_to_bbox).*%%),
         group_by_regex("Path machinery",          mod, %regex~^(container_path_push|container_path_pop|widget_path_key|container_path_key|active_widget_path)$%%),
         group_by_regex("Coroutines",              mod, %regex~^(advance_coroutines|spawn_coroutine)$%%),
         group_by_regex("Window control",          mod, %regex~^imgui_(dock|undock|dock_reset|set_window_pos|set_window_size)$%%),
