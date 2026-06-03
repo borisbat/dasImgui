@@ -62,11 +62,12 @@ jobs:
         with:
           repository: GaijinEntertainment/daScript
           path: daslang-src
-          # EXPERIMENT: build daslang from the dastest stderr-capture branch
-          # (daScript PR #2985) so a crashing isolated worker surfaces its
-          # stderr (crash-handler stack / abort / IM_ASSERT) inline in the test
-          # log. Revert to master once #2985 merges.
-          ref: bbatkin/dastest-capture-stderr
+          # EXPERIMENT: build daslang from the WER-unsuppress experiment branch
+          # (dastest stderr-capture + env-gated SEM_NOGPFAULTERRORBOX skip). With
+          # DAS_NO_WER_SUPPRESS=1 set on the test step below, WER LocalDumps can
+          # capture the otherwise-silent 0xC0000409 fast-fail in test_docking_basic.
+          # Throwaway — never merges to master.
+          ref: bbatkin/wer-unsuppress-experiment
 
       - name: "Checkout dasImgui"
         uses: actions/checkout@v4
@@ -264,7 +265,12 @@ jobs:
             New-ItemProperty -Path $k -Name DumpType   -Value 2 -PropertyType DWord -Force | Out-Null
             New-ItemProperty -Path $k -Name DumpCount  -Value 30 -PropertyType DWord -Force | Out-Null
           }
-          Write-Output 'WER LocalDumps -> D:\a\dumps (full dumps, daslang/daslang-live)'
+          # DontShowUI: write the dump silently (no WER dialog that would hang a
+          # headless runner). Pairs with DAS_NO_WER_SUPPRESS=1 on the test step,
+          # which makes daslang skip its own SEM_NOGPFAULTERRORBOX so WER fires.
+          $werRoot='HKLM:\SOFTWARE\Microsoft\Windows\Windows Error Reporting'
+          New-ItemProperty -Path $werRoot -Name DontShowUI -Value 1 -PropertyType DWord -Force | Out-Null
+          Write-Output 'WER LocalDumps -> D:\a\dumps (full dumps, daslang/daslang-live); DontShowUI=1'
 
       - name: "Run integration tests (headless)"
         working-directory: ${{ github.workspace }}/daslang-src
@@ -311,6 +317,10 @@ jobs:
         env:
           DASLIVE_HV_LOG: stderr
           DASLIVE_HV_LOG_LEVEL: DEBUG
+          # EXPERIMENT: make daslang skip SEM_NOGPFAULTERRORBOX so WER LocalDumps
+          # can dump the silent 0xC0000409 fast-fail. Inherited by the spawned
+          # dastest workers + daslang-live children.
+          DAS_NO_WER_SUPPRESS: "1"
         run: |
           set -eux
           EXTRA_EXCLUDES=""
