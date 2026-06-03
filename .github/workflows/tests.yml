@@ -28,6 +28,11 @@ on:
     branches: [master]
   pull_request:
   workflow_dispatch:
+    inputs:
+      debug:
+        description: "Open a tmate SSH session on the Windows runner (after build+install, before tests) for interactive crash debugging"
+        type: boolean
+        default: false
 
 concurrency:
   group: tests-${{ github.event.pull_request.number || github.ref }}
@@ -244,7 +249,22 @@ jobs:
           ${BIN_DIR}/daslang utils/daspkg/main.das -- \
             install ../dasImgui --global
 
+      - name: "Debug: tmate SSH session (Windows, manual debug runs only)"
+        # Holds the Windows runner open with an SSH endpoint into the EXACT
+        # environment that fast-fails. Build + daspkg install have already run,
+        # so the repro command can be launched by hand under cdb / pageheap.
+        # limit-access-to-actor: only SSH keys registered on the triggering
+        # account may connect (the connect string is public on this repo).
+        # End the session by disconnecting + `touch continue` in the workspace.
+        if: ${{ inputs.debug && matrix.os == 'windows-latest' }}
+        uses: mxschmitt/action-tmate@v3
+        with:
+          limit-access-to-actor: true
+
       - name: "Run integration tests (headless)"
+        # Skipped on debug dispatches — the env is left clean so the repro can
+        # be driven by hand inside the tmate session above.
+        if: ${{ ! inputs.debug }}
         working-directory: ${{ github.workspace }}/daslang-src
         # `--headless` after dastest's `--` reaches imgui_playwright via
         # get_user_args(); playwright forwards it to every spawned daslang-live
