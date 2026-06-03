@@ -125,6 +125,13 @@ Same convention as the other tutorials.
 Driving from outside
 ====================
 
+The header strip is a real click target — its bbox is captured into the
+snapshot, so a human (or a playwright driver) clicks the chevron to fold
+the body and the X-button to hide the whole strip, exactly as the
+walkthrough above does (every gesture there is a real click, self-verified
+by the body's rendered state). The live commands below drive the same gates
+**without** a click, for remote or scripted control.
+
 To collapse the chevron (body stops rendering; the header strip stays
 visible):
 

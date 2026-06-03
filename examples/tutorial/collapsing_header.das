@@ -76,7 +76,7 @@ def update() {
     window(CH_WIN, (text = "collapsing_header tutorial", closable = false,
                     flags = ImGuiWindowFlags.None)) {
 
-        text("Three collapsing_header variants — basic, closable, default-open.")
+        text("Three collapsing_header variants - basic, closable, default-open.")
         separator()
 
         // ---- A: basic (non-closable) ----
@@ -92,8 +92,9 @@ def update() {
                                         closable = true,
                                         flags = ImGuiTreeNodeFlags.DefaultOpen)) {
             text("X-button on the right of the header strip closes this section.")
-            text("Once closed, the whole row disappears — flip back via")
+            text("Once closed, the whole row disappears - flip back via")
             text("imgui_open against CH_WIN/CLOSABLE_CH.")
+            VOLUME.bounds = (0, 100)
             slider_int(VOLUME, (text = "volume"))
         }
         text("CLOSABLE_CH.open = {CLOSABLE_CH.open}, opened = {CLOSABLE_CH.opened}")
@@ -104,7 +105,7 @@ def update() {
                                        closable = false,
                                        flags = ImGuiTreeNodeFlags.DefaultOpen)) {
             text(STARTUP_HINT, (text = "ImGuiTreeNodeFlags.DefaultOpen makes the chevron expanded"))
-            text("on first render — subsequent frames respect user input.")
+            text("on first render; later frames respect user input.")
         }
     }
 
