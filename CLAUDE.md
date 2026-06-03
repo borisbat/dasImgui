@@ -46,6 +46,8 @@ Artifacts land at the repo root (NOT in `_build/`): `dasModuleImgui.shared_modul
 
 Stop any running `daslang-live` / `imguiApp` consumers before rebuilding — on Windows in particular, the OS holds locks on loaded DLLs.
 
+**Stale-build-dir gotcha (cmake upgrade).** `_build` (and any legacy `build_msvc`) is pinned to the cmake that generated it. After a system cmake upgrade (e.g. 3.24 → 4.3), `cmake --build _build` fails its reconfigure with `.../share/cmake-<old>/Modules/... does not exist`. Fix: delete the stale dir(s) and reconfigure fresh — `rm -rf _build build_msvc && cmake -B _build -S . -DDASLANG_DIR=<daslang>`. (`build/` is the sphinx docs output, NOT a cmake dir — leave it.) The `.shared_module` artifacts at the repo root are untouched by a failed reconfigure, so a rebuild is only needed if the daslang module ABI changed (a `-compile-only` load of any example tells you: clean = still compatible).
+
 ## Running a .das file
 
 Single-shot windowed:
