@@ -1073,6 +1073,26 @@ def public close_button_voice(app : ImguiApp; dwell : uint; header_target : stri
     sleep(dwell > consumed ? dwell - consumed : 0u)            // PACING: hold the caption for the rest of the voice
 }
 
+def public click_render_voice(app : ImguiApp; dwell : uint; click_target : string;
+                              watch_target : string; expect_rendered : bool) {
+    //! Real-click ``click_target`` UNDER an already-posted voice line, then assert ``watch_target``'s
+    //! rendered state == ``expect_rendered`` — the reveal/dismiss rail. ``expect_rendered=true`` is a
+    //! REVEAL (a button that opens a popup/modal: watch a body widget appear); ``expect_rendered=false``
+    //! is a DISMISS (a Yes/No/Apply/menu-item that closes the popup: watch a body widget — often the
+    //! click target itself — disappear). A button whose own click closes the popup can't be verified by
+    //! its click-count (it's gone next frame); the watch-target's render state is the durable signal.
+    //! Self-verifying via ``record_check_rendered``: a missed reveal/dismiss aborts the recording at
+    //! teardown. The caller should ``move_to`` the click target first. Every sleep is PACING; the
+    //! reveal/dismiss is polled, never slept.
+    let started = ref_time_ticks()
+    let lead = clamp(dwell / 3u, TREE_LEAD_MIN_MS, TREE_LEAD_MAX_MS)   // ~1/3 into the line
+    sleep(lead)                                                // PACING: land the click under the voice
+    click(app, click_target)                                  // real animated click (imgui_click coro)
+    record_check_rendered(app, watch_target, expect_rendered, TREE_POLL_FRAMES)   // SYNC: reveal/dismiss landed
+    let consumed = uint(get_time_usec(started) / 1000)
+    sleep(dwell > consumed ? dwell - consumed : 0u)            // PACING: hold the caption for the rest of the voice
+}
+
 def public wait_for_key_idle(app : ImguiApp; timeout_sec : float = DEFAULT_FRAME_WAIT_SEC) : bool {
     //! Poll ``imgui_key_status`` until ``playing == false`` or timeout; returns true on idle.
     //! Uses one HTTP request per poll (unlike a ``wait_until`` body that pairs a snapshot
