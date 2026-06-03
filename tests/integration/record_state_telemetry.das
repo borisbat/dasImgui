@@ -8,77 +8,80 @@ require imgui/imgui_playwright public
 require daslib/json public
 require daslib/json_boost public
 
-//! Driver script: record ``state_telemetry.apng``. One shell:
-//!
-//!     bin/Release/daslang.exe -project_root <dasimgui> \
-//!         <dasimgui>/tests/integration/record_state_telemetry.das
-
-def widget_bbox(var snap : JsonValue?; ident : string) : float4 {
-    var b = snap?["globals"]?[ident]?["bbox"]
-    return float4(
-        b?["x"] ?? 0.0f,
-        b?["y"] ?? 0.0f,
-        b?["z"] ?? 0.0f,
-        b?["w"] ?? 0.0f
-    )
-}
+//! Driver: record ``state_telemetry.apng`` against ``examples/tutorial/state_telemetry.das``.
+//! Widget state lives in daslang globals, not ImGui - so every beat drives a real value
+//! and asserts the snapshot reflects it. Four voiced, self-verifying beats:
+//!   1. auto-emit  - click Save twice; SAVE_BTN.click_count tracks the clicks (hold_through_voice).
+//!   2. dotted flags - force_set SPEED + VOLUME from outside; each value verified (force_set_verified).
+//!   3. text_show  - force_set STATUS_TEXT from outside; the mirror takes the string (force_set_verified).
+//!   4. bump       - click bump; the app rewrites STATUS_TEXT.value from inside (record_check_changed).
 
 def widget_center(var snap : JsonValue?; ident : string) : tuple<float; float> {
-    let b = widget_bbox(snap, ident)
-    return ((b.x + b.z) * 0.5f, (b.y + b.w) * 0.5f)
+    let b = snap?["globals"]?[ident]?["bbox"]
+    return (((b?["x"] ?? 0.0f) + (b?["z"] ?? 0.0f)) * 0.5f,
+            ((b?["y"] ?? 0.0f) + (b?["w"] ?? 0.0f)) * 0.5f)
 }
 
 [export]
 def main {
     with_recording_app("examples/tutorial/state_telemetry.das",
                        "state_telemetry.apng", 60) $(app) {
-        //! Targets are path-qualified — the `window(STATE_WIN, ...)` boost
-        //! container pushes its name onto the registry path.
-        let T_SAVE     = "STATE_WIN/SAVE_BTN"
-        let T_SPEED    = "STATE_WIN/SPEED"
-        let T_VOLUME   = "STATE_WIN/VOLUME"
-        let T_STATUS   = "STATE_WIN/STATUS_TEXT"
-        let T_BUMP     = "STATE_WIN/BUMP_STATUS"
+        let T_SAVE   = "STATE_WIN/SAVE_BTN"
+        let T_SPEED  = "STATE_WIN/SPEED"
+        let T_VOLUME = "STATE_WIN/VOLUME"
+        let T_STATUS = "STATE_WIN/STATUS_TEXT"
+        let T_BUMP   = "STATE_WIN/BUMP_STATUS"
+        let GUTTER   = (840.0f, 320.0f)   // park the cursor off the widgets while values drive from outside
 
         var snap = wait_for_render(app, T_SAVE, 10.0f)
         if (snap == null) {
-            panic("{T_SAVE} never rendered — wrong app running?")
+            panic("{T_SAVE} never rendered - wrong app running?")
         }
-        let p_save   = widget_center(snap, T_SAVE)
-        let p_bump   = widget_center(snap, T_BUMP)
+        let p_save = widget_center(snap, T_SAVE)
+        let p_bump = widget_center(snap, T_BUMP)
 
-        // ---- Stage 1: auto-emit + click_count ----
-        move_to(app, p_save)
-        say(app, "button(SAVE_BTN, ...) auto-emits the SAVE_BTN global.", T_SAVE)
-        var save_events : array<JsonValue?>
-        save_events |> click_at(0, p_save)
-        post_command(app, "imgui_mouse_play", JV((events = save_events)))
-        sleep(1500u)
-        // second click to make click_count tick visibly
-        var save_events2 : array<JsonValue?>
-        save_events2 |> click_at(0, p_save)
-        post_command(app, "imgui_mouse_play", JV((events = save_events2)))
-        sleep(1500u)
+        // Park the cursor on Save and warm up the capture pipeline.
+        move_to(app, p_save, 800)
+        sleep(1800u)
 
-        // ---- Stage 2: dotted flags steer the emitted global ----
-        say(app, "Dotted flags: SPEED.PUBLIC, VOLUME.NOTLIVE.", T_SPEED)
-        // imgui_force_set drives the slider values without simulating a drag.
-        post_command(app, "imgui_force_set", JV((target = T_SPEED, value = 7)))
-        sleep(900u)
-        post_command(app, "imgui_force_set", JV((target = T_VOLUME, value = 0.65f)))
-        sleep(1500u)
+        // ---- Beat 1: auto-emit + click_count ----
+        hold_through_voice(app, say_begin(app, "auto-emit: SAVE_BTN.click_count", T_SAVE,
+            [voice = "Every boost widget emits a daslang global named by its first argument - no declaration to keep in sync. I click Save twice, and SAVE_BTN.click_count reads two."]),
+            [T_SAVE, T_SAVE])
 
-        // ---- Stage 3: text_show + imgui_force_set drives the value from outside ----
-        say(app, "text_show — app-side value mirrored into the snapshot.", T_STATUS)
-        post_command(app, "imgui_force_set", JV((target = T_STATUS, value = "set from outside")))
-        sleep(1500u)
+        // ---- Beat 2: dotted flags steer the global (driven from outside) ----
+        move_to(app, GUTTER, 600)
+        sleep(SETTLE_MS)
+        let d2 = say_begin(app, "dotted flags: SPEED.PUBLIC / VOLUME.NOTLIVE", T_SPEED,
+            [voice = "Dotted flags tune that global - SPEED is public so other modules can read it, Volume opts out of live-reload. I set both from outside, and the values update in place."])
+        let lead2 = d2 > 1600u ? 700u : d2 / 3u
+        sleep(lead2)
+        force_set_verified(app, T_SPEED, 7)
+        sleep(700u)
+        force_set_verified(app, T_VOLUME, 0.75f)
+        let used2 = lead2 + 700u + 120u
+        sleep(d2 > used2 ? d2 - used2 : 0u)
 
-        // ---- Stage 4: bump rewrites STATUS from inside the app ----
-        move_to(app, p_bump)
-        say(app, "Bump rewrites STATUS_TEXT.value from inside the app.", T_BUMP)
-        var bump_events : array<JsonValue?>
-        bump_events |> click_at(0, p_bump)
-        post_command(app, "imgui_mouse_play", JV((events = bump_events)))
-        sleep(2000u)
+        // ---- Beat 3: text_show mirrors an app-side string ----
+        let d3 = say_begin(app, "text_show: driven from outside", T_STATUS,
+            [voice = "text_show mirrors an app-side string into the snapshot. I drive STATUS_TEXT from outside, and it appears here."])
+        let lead3 = d3 > 1400u ? 700u : d3 / 3u
+        sleep(lead3)
+        force_set_verified(app, T_STATUS, "set from outside")
+        let used3 = lead3 + 120u
+        sleep(d3 > used3 ? d3 - used3 : 0u)
+
+        // ---- Beat 4: bump rewrites STATUS_TEXT from inside the app ----
+        move_to(app, p_bump, 600)
+        sleep(SETTLE_MS)
+        let before = write_json(snapshot(app)?["globals"]?[T_STATUS]?["payload"]?["value"])
+        let d4 = say_begin(app, "bump: rewritten from inside", T_BUMP,
+            [voice = "And the app can write it back from inside - clicking bump stamps STATUS_TEXT with the current frame."])
+        let lead4 = d4 > 1400u ? 700u : d4 / 3u
+        sleep(lead4)
+        click(app, T_BUMP)
+        record_check_changed(app, T_STATUS, "value", before, 180)
+        let used4 = lead4 + 500u
+        sleep(d4 > used4 ? d4 - used4 : 0u)
     }
 }
