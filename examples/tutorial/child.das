@@ -69,7 +69,7 @@ def update() {
     window(CHILD_WIN, (text = "child tutorial", closable = false,
                        flags = ImGuiWindowFlags.None)) {
 
-        text("Three child variants — one each for borders, autosize, and h-scroll.")
+        text("Three child variants - one each for borders, autosize, and h-scroll.")
         separator()
 
         // ---- A: bordered, fixed-size, vertical scroll ----
@@ -79,14 +79,14 @@ def update() {
                          child_flags = ImGuiChildFlags.Border,
                          window_flags = ImGuiWindowFlags.None)) {
             for (i in range(20)) {
-                text(SCROLL_ROW[i], (text = "row {i} — content overflows the visible region"))
+                text(SCROLL_ROW[i], (text = "row {i} - content overflows the visible region"))
             }
         }
         text("scroll.y = {SCROLL_A.scroll.y} / {SCROLL_A.scroll_max.y}")
         spacing()
 
         // ---- B: auto-resize Y, FrameStyle (input-group look) ----
-        text("B) AutoResizeY + FrameStyle — height tracks content")
+        text("B) AutoResizeY + FrameStyle - height tracks content")
         child(AUTO_B, (text = "auto_b",
                        size = float2(360.0f, 0.0f),
                        child_flags = ImGuiChildFlags.AutoResizeY | ImGuiChildFlags.FrameStyle,
@@ -102,7 +102,7 @@ def update() {
         spacing()
 
         // ---- C: bordered, horizontal scroll ----
-        text("C) Border + horizontal scroll — wide content")
+        text("C) Border + horizontal scroll - wide content")
         child(SCROLL_C, (text = "scroll_c",
                         size = float2(720.0f, 90.0f),
                         child_flags = ImGuiChildFlags.Border,
