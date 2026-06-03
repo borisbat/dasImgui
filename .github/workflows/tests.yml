@@ -249,13 +249,54 @@ jobs:
           ${BIN_DIR}/daslang utils/daspkg/main.das -- \
             install ../dasImgui --global
 
-      - name: "Debug: tmate SSH session (Windows, manual debug runs only)"
-        # Holds the Windows runner open with an SSH endpoint into the EXACT
-        # environment that fast-fails. Build + daspkg install have already run,
-        # so the repro command can be launched by hand under cdb / pageheap.
-        # limit-access-to-actor: only SSH keys registered on the triggering
-        # account may connect (the connect string is public on this repo).
-        # End the session by disconnecting + `touch continue` in the workspace.
+      - name: "Debug: bring up sshd + authorize key (Windows)"
+        # Real OpenSSH server on the runner so an exec-capable MCP can drive it
+        # (tmate is interactive-only). runneradmin is an Administrator, so the
+        # key MUST go in administrators_authorized_keys with a tight ACL or sshd
+        # silently ignores it. Default shell -> git-bash so exec runs unix-style.
+        if: ${{ inputs.debug && matrix.os == 'windows-latest' }}
+        shell: pwsh
+        run: |
+          $cap = Get-WindowsCapability -Online -Name OpenSSH.Server* | Select-Object -First 1
+          if ($cap -and $cap.State -ne 'Installed') { Add-WindowsCapability -Online -Name $cap.Name }
+          Set-Service -Name sshd -StartupType Manual
+          Start-Service sshd
+          New-ItemProperty -Path "HKLM:\SOFTWARE\OpenSSH" -Name DefaultShell `
+            -Value "C:\Program Files\Git\bin\bash.exe" -PropertyType String -Force | Out-Null
+          New-ItemProperty -Path "HKLM:\SOFTWARE\OpenSSH" -Name DefaultShellCommandOption `
+            -Value "-c" -PropertyType String -Force | Out-Null
+          $ak = "C:\ProgramData\ssh\administrators_authorized_keys"
+          Set-Content -Path $ak -Encoding ascii `
+            -Value "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBR9rIPJ1dtF2WsKH5ii1ihPa/NgTdLVpouSJlqUdhxb claude-mcp"
+          icacls $ak /inheritance:r /grant "SYSTEM:F" /grant "Administrators:F" | Out-Null
+          Restart-Service sshd
+          Get-Service sshd | Format-List Name,Status
+
+      - name: "Debug: open reverse tunnel to wormhole"
+        # Runner phones home: wormhole:2222 -> runner:22. Fixed port => the
+        # controller side connects via a deterministic ProxyJump (wormhole) with
+        # no dynamic endpoint to retrieve. Key is forwarding-only on wormhole.
+        if: ${{ inputs.debug && matrix.os == 'windows-latest' }}
+        env:
+          WH_KEY: ${{ secrets.WORMHOLE_TUNNEL_KEY }}
+          WH_HOST: ${{ secrets.WORMHOLE_HOST }}
+          WH_USER: ${{ secrets.WORMHOLE_USER }}
+        run: |
+          set -eu
+          mkdir -p ~/.ssh
+          printf '%s\n' "$WH_KEY" > ~/.ssh/wh_tunnel
+          chmod 600 ~/.ssh/wh_tunnel
+          ssh -fN -R 2222:localhost:22 \
+            -i ~/.ssh/wh_tunnel \
+            -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=3 \
+            "$WH_USER@$WH_HOST"
+          echo "reverse tunnel up: wormhole:2222 -> runner:22"
+
+      - name: "Debug: tmate SSH session (Windows, hold + human fallback)"
+        # Holds the runner open and gives a human-attachable session if the
+        # MCP-over-tunnel path needs inspecting. End via disconnect + the
+        # `continue` file in the workspace, or just cancel the run.
         if: ${{ inputs.debug && matrix.os == 'windows-latest' }}
         uses: mxschmitt/action-tmate@v3
         with:
