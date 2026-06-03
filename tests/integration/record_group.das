@@ -7,13 +7,17 @@ require imgui public
 require imgui/imgui_playwright public
 require daslib/json public
 require daslib/json_boost public
+require math
 
-//! Driver script: record ``group.apng`` against
-//! ``examples/tutorial/group.das``. Tours three group patterns —
-//! side-by-side via same_line, group-as-hit-target with tooltip, and
-//! the (label | value | button) row composition.
-
-let HOVER_DWELL_MS = 2200u      //! 2.2s tooltip dwell
+//! Driver script: record ``group.apng`` against ``examples/tutorial/group.das``.
+//! Three voiced, self-verifying beats:
+//!   1. Two side-by-side groups — toggle a checkbox in each (both values flip,
+//!      proving each block is live while sharing a row via same_line).
+//!   2. Combined-bbox hit-test — hover the cluster OFF the button; the
+//!      ``GRP_TIP`` tooltip fires (record_check_rendered), proving IsItemHovered
+//!      after EndGroup reports against the whole group bbox.
+//!   3. The (label | value | button) row — drag ROW_SPEED; the value moves.
+//! Each effect is asserted; a no-op aborts the recording at teardown.
 
 def widget_bbox(var snap : JsonValue?; ident : string) : float4 {
     var b = snap?["globals"]?[ident]?["bbox"]
@@ -34,46 +38,43 @@ def widget_center(var snap : JsonValue?; ident : string) : tuple<float; float> {
 def main {
     with_recording_app("examples/tutorial/group.das",
                        "group.apng", 60) $(app) {
-        // Anchor cursor + narration at LEAF widgets inside each group —
-        // group's [container] wrapper finalizes without a bbox. See PR #67
-        // Copilot round 1.
-        let T_LEFT = "GRP_WIN/LEFT_GRP/L_WIRE"
-        let T_RIGHT = "GRP_WIN/RIGHT_GRP/R_VSYNC"
-        let T_HOVER = "GRP_WIN/HOVER_GRP/HOVER_BTN"
-        let T_ROW = "GRP_WIN/ROW_GRP/ROW_RESET"
+        let T_LWIRE     = "GRP_WIN/LEFT_GRP/L_WIRE"
+        let T_VSYNC     = "GRP_WIN/RIGHT_GRP/R_VSYNC"
+        let T_HOVER_BTN = "GRP_WIN/HOVER_GRP/HOVER_BTN"
+        let T_TIP       = "GRP_WIN/GRP_TIP"
+        let T_SPEED     = "GRP_WIN/ROW_GRP/ROW_SPEED"
 
-        // wait_for_widget gates on existence; wait_for_render passes
-        // through for absent paths (widget_rendered defaults to true).
-        var snap = wait_for_widget(app, T_LEFT, 10.0f)
+        var snap = wait_for_widget(app, T_LWIRE, 10.0f)
         if (snap == null) {
-            panic("{T_LEFT} never registered — wrong app running?")
+            panic("{T_LWIRE} never registered — wrong app running?")
         }
-        let p_left = widget_center(snap, T_LEFT)
-        let p_right = widget_center(snap, T_RIGHT)
-        let p_hover = widget_center(snap, T_HOVER)
-        let p_row = widget_center(snap, T_ROW)
 
         //! Initial cursor placement.
-        move_to(app, p_left, 600)
+        move_to(app, widget_center(snap, T_LWIRE), 600)
         sleep(SETTLE_MS)
 
-        // ---- Stage 1: side-by-side groups ----
-        move_to(app, p_left, 900)
-        sleep(SETTLE_MS)
-        say(app, "group(IDENT) wraps BeginGroup/EndGroup. same_line() after a closed group continues from the group's right edge — that's how two stacked column blocks share a row.", T_LEFT)
+        // ---- Beat 1: side-by-side groups (toggle one in each) ----
+        hold_through_voice(app, say_begin(app, "side by side via same_line", [T_LWIRE, T_VSYNC],
+            [voice = "Each group stacks its own widgets, and same line joins the two whole blocks, so they share one row instead of just chaining off the last widget. Both blocks stay fully live."]),
+            [T_LWIRE, T_VSYNC])
 
-        move_to(app, p_right, 700)
+        // ---- Beat 2: combined-bbox hit-test fires the tooltip ----
+        // Hover the cluster's TEXT, well left of the button, so the tooltip can
+        // only fire if the whole-group bbox is the hit-target.
+        let hb = widget_bbox(snapshot(app), T_HOVER_BTN)
+        move_to(app, (hb.x - 70.0f, (hb.y + hb.w) * 0.5f), 900)
         sleep(SETTLE_MS)
-        say(app, "Right group's first text line aligns with the left's — same_line preserved the row baseline. The path push still happens: LEFT_GRP/L_WIRE vs RIGHT_GRP/R_VSYNC.", T_RIGHT)
+        let dwell2 = say_begin(app, "hover anywhere - whole-group hit-test", T_HOVER_BTN,
+            [voice = "Now hover the cluster, but not on the button itself. Anywhere across the icon and the label brings up one tooltip, because the group reports hover over its entire bounding box."])
+        record_check_rendered(app, T_TIP, true, 120)
+        sleep(dwell2)
 
-        // ---- Stage 2: hover the group to fire the combined-bbox tooltip ----
-        move_to(app, p_hover, 900)
-        sleep(HOVER_DWELL_MS)
-        say(app, "IsItemHovered() after EndGroup() reports against the combined bbox — hover anywhere in the [i] Info ... Action row to fire the tooltip.", T_HOVER)
-
-        // ---- Stage 3: the row pattern ----
-        move_to(app, p_row, 900)
+        // ---- Beat 3: the (label | value | button) row ----
+        let speed_c = widget_center(snapshot(app), T_SPEED)
+        move_to(app, speed_c, 800)
         sleep(SETTLE_MS)
-        say(app, "(label | value | button) — common pattern. The group keeps Speed/slider/Reset on one logical row even if the body grows.", T_ROW)
+        drag_through_voice(app, say_begin(app, "label | value | button as one row", T_SPEED,
+            [voice = "And the classic row. A label, a value slider, and a button, kept together as a single unit. Drag the slider, and the value updates on the line just below."]),
+            T_SPEED, (speed_c._0 + 150.0f, speed_c._1))
     }
 }

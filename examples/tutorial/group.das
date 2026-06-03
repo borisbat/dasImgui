@@ -88,7 +88,7 @@ def update() {
         separator()
 
         // ---- B: group as a tooltip hit-test surface ----
-        text("B) Hit-test a whole cluster — hover anywhere in the row below.")
+        text("B) Hit-test a whole cluster - hover anywhere in the row below.")
         group(HOVER_GRP) {
             text("[i] Info")
             same_line()
