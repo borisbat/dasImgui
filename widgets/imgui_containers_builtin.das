@@ -633,23 +633,31 @@ def collapsing_header(var state : CollapsingHeaderState; text : string;
     }
     state.flags = flags
     var im_open : bool
+    // The clickable header strip (chevron + label, plus the X-button when
+    // closable) is the IsItem* target right after CollapsingHeader; capture
+    // its rect before the body pushes inner items so a driver can click the
+    // header/arrow like a human (mirrors tree_node). Stays zero while a
+    // closable section is hidden (no header rendered, nothing to click).
+    var header_bbox = float4(0.0f, 0.0f, 0.0f, 0.0f)
     if (closable) {
         if (state.open) {
             unsafe {
                 im_open = CollapsingHeader(text, addr(state.open), flags)
             }
+            header_bbox = current_item_bbox()
         }
         // If state.open is false, the section is hidden — don't issue the
         // ImGui call. CollapsingHeader-with-p_visible only renders while
         // *p_visible is true; we mirror that gate exactly.
     } else {
         im_open = CollapsingHeader(text, flags)
+        header_bbox = current_item_bbox()
     }
     state.opened = im_open
     if (im_open) {
         invoke(blk)
     }
-    open_close_finalize(widget_ident, "collapsing_header", state)
+    open_close_finalize(widget_ident, "collapsing_header", state, header_bbox)
 }
 
 // ===== Choice block-arg family =====

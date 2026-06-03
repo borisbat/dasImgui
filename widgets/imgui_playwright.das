@@ -1010,6 +1010,7 @@ let TREE_LEAD_MAX_MS : uint  = 3000u   // cap on the pre-click lead (long voice 
 let TREE_ARROW_FRAC  : float = 0.6f    // arrow click x = header.x + header_height * frac (chevron is at the left)
 let TREE_TRAVEL_MS   : int   = 450     // cursor travel onto the header before press
 let TREE_POLL_FRAMES : int   = 120     // poll budget: child rendered-state settles after the toggle
+let CLOSE_BTN_FRAC   : float = 0.5f    // X-button click x = header.z - header_height * frac (X sits at the right edge)
 
 def public toggle_tree_voice(app : ImguiApp; dwell : uint; header_target : string; on_arrow : bool;
                              child_target : string; expect_child_rendered : bool) {
@@ -1040,6 +1041,34 @@ def public toggle_tree_voice(app : ImguiApp; dwell : uint; header_target : strin
     unsafe { delete ev; }
     wait_for_mouse_idle(app)                                            // SYNC: the click fully played
     record_check_rendered(app, child_target, expect_child_rendered, TREE_POLL_FRAMES)   // SYNC: toggle landed
+    let consumed = uint(get_time_usec(started) / 1000)
+    sleep(dwell > consumed ? dwell - consumed : 0u)            // PACING: hold the caption for the rest of the voice
+}
+
+def public close_button_voice(app : ImguiApp; dwell : uint; header_target : string; child_target : string) {
+    //! Click the X-button of a CLOSABLE container header (``collapsing_header`` with ``closable=true``,
+    //! or any closable strip whose header bbox is in telemetry) UNDER an already-posted voice line, then
+    //! assert the whole strip vanished by checking ``child_target`` is no longer rendered — a closable
+    //! header that closes stops drawing its entire body. The X sits a half header-height in from the
+    //! header's right edge (mirrors how ImGui lays the close button out). Self-verifying via
+    //! ``record_check_rendered`` (expect=false): a missed close aborts the recording at teardown. The
+    //! caller should ``move_to`` the header first. Every sleep is PACING; the close is polled, never slept.
+    let started = ref_time_ticks()
+    let lead = clamp(dwell / 3u, TREE_LEAD_MIN_MS, TREE_LEAD_MAX_MS)   // ~1/3 into the line
+    sleep(lead)                                                // PACING: land the click under the voice
+    var snap = snapshot(app)
+    let bb = snap?["globals"]?[header_target]?["bbox"]
+    let by = bb?["y"] ?? 0.0f
+    let bz = bb?["z"] ?? 0.0f
+    let bw = bb?["w"] ?? 0.0f
+    let cy = (by + bw) * 0.5f
+    let click_x = bz - (bw - by) * CLOSE_BTN_FRAC
+    var ev : array<JsonValue?>
+    ev |> click_at(0, (click_x, cy), TREE_TRAVEL_MS, 0)
+    post_command(app, "imgui_mouse_play", JV((events = ev)))
+    unsafe { delete ev; }
+    wait_for_mouse_idle(app)                                            // SYNC: the click fully played
+    record_check_rendered(app, child_target, false, TREE_POLL_FRAMES)  // SYNC: the strip closed
     let consumed = uint(get_time_usec(started) / 1000)
     sleep(dwell > consumed ? dwell - consumed : 0u)            // PACING: hold the caption for the rest of the voice
 }
