@@ -30,10 +30,13 @@ Walkthrough
 
 .. video:: popups.mp4
 
-The recording narrates the widget code with the target visible — the
-popups themselves are right-click-triggered by ImGui's internal
-logic, with no scripted-synth path. To see them open, run the tutorial
-under ``daslang-live`` and right-click the target / window:
+The recording drives both menus with real synthetic right-clicks and
+clicks a menu item from each, self-verifying that the action fired
+(``PO_RENAME`` then ``PO_REFRESH`` flip to ``value = true``). After each
+right-click it **waits for the menu to actually render** before
+travelling onto the item — never a fixed sleep guessing the popup is
+open. To explore live, run the tutorial under ``daslang-live`` and
+right-click the button / empty space yourself:
 
 .. code-block:: bash
 
@@ -81,21 +84,31 @@ popup_context_window — attached to the window
 =============================================
 
 Same shape; attaches to the **enclosing window** instead of a specific
-item. Right-click anywhere inside the window (empty space, between
-widgets, on the title bar) opens the menu:
+item. When a window has *both* an item menu and a window menu, OR in
+``NoOpenOverItems`` so a right-click on an item opens that item's menu
+and only empty space opens the window menu:
 
 .. code-block:: das
 
    window(MAIN_WIN, (text = "...")) {
-       text("Right-click empty space anywhere in this window.")
-       popup_context_window(CTX, (str_id = "ctx_win",
-                                  flags = ImGuiPopupFlags.MouseButtonRight)) {
+       button(TARGET, (text = "Right-click me"))
+       popup_context_item(ITEM_CTX, (str_id = "item_ctx",
+                                     flags = ImGuiPopupFlags.MouseButtonRight)) {
+           if (menu_item(RENAME, (text = "Rename"))) { ... }
+       }
+       popup_context_window(WIN_CTX, (str_id = "win_ctx",
+                                      flags = ImGuiPopupFlags.MouseButtonRight |
+                                              ImGuiPopupFlags.NoOpenOverItems)) {
            if (menu_item(REFRESH, (text = "Refresh"))) { ... }
-           if (menu_item(RESET,   (text = "Reset"))) { ... }
        }
    }
 
-Useful for view-level commands that don't belong on any specific item.
+Without ``NoOpenOverItems`` the window popup opens on **every**
+right-click inside the window — the button's right-click included — so
+the item menu can never open. The flag tells the window popup to ignore
+right-clicks that land on an item, ceding them to that item's own
+context menu. This is the idiomatic pairing whenever a window carries
+both an item menu and a window-wide menu.
 
 Flags
 =====
@@ -105,8 +118,10 @@ Flags
 * ``MouseButtonLeft`` / ``MouseButtonRight`` / ``MouseButtonMiddle`` —
   which button opens. ``Right`` is the conventional default.
 * ``MouseButtonMask_`` — any of the three.
-* ``NoOpenOverItems`` / ``NoOpenOverExistingPopup`` — guard against
-  nested popup chains.
+* ``NoOpenOverItems`` — for ``popup_context_window``: don't open when
+  the right-click lands on an item, so item context menus win (see
+  above).
+* ``NoOpenOverExistingPopup`` — don't open if a popup is already open.
 
 State model — stateless_finalize
 ================================
