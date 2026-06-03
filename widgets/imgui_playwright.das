@@ -686,6 +686,37 @@ def public record_check_rendered(app : ImguiApp; target : string; expected : boo
     return false
 }
 
+def private count_registry_kind(snap : JsonValue?; kind_prefix : string) : int {
+    let globals = snap?["globals"]
+    if (globals == null || !(globals.value is _object)) return 0
+    let plen = length(kind_prefix)
+    var n = 0
+    for (v in values(globals.value as _object)) {
+        let kind = v?["kind"] ?? ""
+        if (length(kind) >= plen && slice(kind, 0, plen) == kind_prefix) {
+            n++
+        }
+    }
+    return n
+}
+
+def public record_check_kind_count(app : ImguiApp; kind_prefix : string; min_count : int; max_frames : int = 120) : bool {
+    //! Recording-safe "did the rail paint" verifier for entries that register under SYNTHESIZED path
+    //! keys rather than a caller-declared ident — drawlist primitives (``[drawlist_prim]``, kind
+    //! ``"add_*"``). Asserts the snapshot registry holds at least ``min_count`` entries whose ``kind``
+    //! starts with ``kind_prefix`` within ``max_frames``. ``record_check_rendered`` targets one ident;
+    //! this counts a kind family — the only honest signal when the call sites have no stable ident.
+    //! Accumulate-on-miss (surfaced as a teardown panic), mirroring ``record_check_rendered``. Returns true on match.
+    let ok = wait_until(app, max_frames) $(var snap) {
+        return count_registry_kind(snap, kind_prefix) >= min_count
+    } != null
+    if (ok) return true
+    var snap = snapshot(app)
+    let got = count_registry_kind(snap, kind_prefix)
+    g_record_failures |> push("record_check_kind_count(kind {kind_prefix}*) gave up after {max_frames} frames:\n  want >= {min_count} entries, got {got}")
+    return false
+}
+
 def private arm_voiceovers(apng_path : string) : bool {
     //! Load voiceover/<stem>.manifest.json beside apng_path. On success fill g_vo_dur, set
     //! g_vo_active, clear the collection. Returns true when armed.

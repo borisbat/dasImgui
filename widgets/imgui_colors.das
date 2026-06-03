@@ -8,9 +8,9 @@ require imgui public
 
 // Stand-alone packer for ImGui's IM_COL32 byte order, decoupled from
 // the legacy v1 `daslib/imgui_boost.das`. Pulls only the imgui module
-// (for the shift constants). dasIMGUI is compiled with
-// `IMGUI_USE_BGRA_PACKED_COLOR`, so `R_SHIFT=16`, `B_SHIFT=0`; the
-// renderer decodes the same word order, so colors round-trip.
+// (for the shift constants). dasIMGUI is compiled in the default RGBA
+// mode (`IMGUI_USE_BGRA_PACKED_COLOR` off), so `R_SHIFT=0`, `B_SHIFT=16`;
+// the renderer decodes the same word order, so colors round-trip.
 
 def rgba(r, g, b, a : int) : uint {
     return ((uint(a) << uint(IM_COL32_A_SHIFT))

@@ -46,7 +46,7 @@ require imgui/imgui_visual_aids
 
 [export]
 def init() {
-    live_create_window("dasImgui drawlist tutorial", 760, 760)
+    live_create_window("dasImgui drawlist tutorial", 1000, 800)
     live_imgui_init(live_window)
     var io & = unsafe(GetIO())
     io.FontGlobalScale = 1.2
@@ -64,7 +64,7 @@ def update() {
 
     SetNextWindowPos(ImVec2(30.0f, 30.0f), ImGuiCond.Always)
     SetNextWindowSize(ImVec2(700.0f, 700.0f), ImGuiCond.Always)
-    window(DRAW_WIN, (text = "drawlist — rail tour", closable = false,
+    window(DRAW_WIN, (text = "drawlist - rail tour", closable = false,
                       flags = ImGuiWindowFlags.None)) {
         text(DRAW_INTRO, (text = "Three scope wrappers + shape primitives (8 originals + v2 extras)."))
         separator()
@@ -96,7 +96,7 @@ def update() {
                                float2(origin.x + 346.0f, origin.y + 196.0f),
                                float2(origin.x + 414.0f, origin.y + 196.0f), green, 2.0f)
             dl |> add_text(float2(origin.x +  16.0f, origin.y + 220.0f), gray,
-                           "add_text — rendered onto the window drawlist")
+                           "add_text - rendered onto the window drawlist")
 
             // ----- v2 additions: shape extras -----
             // Multi-color gradient rect.

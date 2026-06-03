@@ -19,15 +19,10 @@ require math
 
 def public rgba(r, g, b, a : int) : uint {
     //! Pack R/G/B/A bytes into ImGui's IM_COL32 word order. Useful when configuring the tunable color globals by channel rather than hex literal.
-    // Hardcoded shifts to match the runtime ImGui build (standard RGBA mode:
-    // R=0, G=8, B=16, A=24). The `IM_COL32_*_SHIFT` constants exposed via the
-    // C++ bind are stuck at BGRA values (R=16, B=0) — that bind disagrees
-    // with the actual runtime and renders R/B swapped. Source-level fix
-    // keeps every existing dasImgui color literal visually honest.
-    return (uint(r)
-          | (uint(g) << 8u)
-          | (uint(b) << 16u)
-          | (uint(a) << 24u))
+    return ((uint(a) << uint(IM_COL32_A_SHIFT))
+          | (uint(r) << uint(IM_COL32_R_SHIFT))
+          | (uint(g) << uint(IM_COL32_G_SHIFT))
+          | (uint(b) << uint(IM_COL32_B_SHIFT)))
 }
 
 // ===== Tunable knobs (var public) =====
