@@ -8,94 +8,117 @@ require imgui/imgui_playwright public
 require daslib/json public
 require daslib/json_boost public
 
-//! Driver script: record ``popup_window.apng``. One shell:
-//!
-//!     bin/Release/daslang.exe -project_root <dasimgui> \
-//!         <dasimgui>/tests/integration/record_popup_window.das
-
-let RESULT_MS  = 1500u
-let TAIL_MS    = 1500u
-
-def widget_bbox(var snap : JsonValue?; ident : string) : float4 {
-    var b = snap?["globals"]?[ident]?["bbox"]
-    return float4(
-        b?["x"] ?? 0.0f,
-        b?["y"] ?? 0.0f,
-        b?["z"] ?? 0.0f,
-        b?["w"] ?? 0.0f
-    )
-}
+//! Driver: record ``popup_window.apng`` against ``examples/tutorial/popup_window.das``
+//! (the page's literalinclude source, so the video matches the code). Five voiced,
+//! self-verifying beats covering both trigger scopes of the manual-trigger popup:
+//!   1. intro       - popup_window has no auto-trigger; the caller drives open_popup.
+//!   2. click button - open_popup fires; the popup body renders (rendered=true).
+//!   3. pick Apple   - close_current_popup closes it; PW_STATUS -> "Last pick: Apple".
+//!   4. right-click  - the second scope opens on a right-release in the hover region.
+//!   5. pick Banana  - closes again; PW_STATUS -> "Last pick: Banana".
+//! Popups carry no bbox (they float), so open/close is verified through the popup
+//! body item's rendered-this-frame state; the pick is verified through the shared
+//! status line. The menu_label click_count is shared across both scopes (same IDENT
+//! under different with_id), so it is NOT used as a signal here.
 
 def widget_center(var snap : JsonValue?; ident : string) : tuple<float; float> {
-    let b = widget_bbox(snap, ident)
-    return ((b.x + b.z) * 0.5f, (b.y + b.w) * 0.5f)
+    let b = snap?["globals"]?[ident]?["bbox"]
+    return (((b?["x"] ?? 0.0f) + (b?["z"] ?? 0.0f)) * 0.5f,
+            ((b?["y"] ?? 0.0f) + (b?["w"] ?? 0.0f)) * 0.5f)
+}
+
+//! Click ``pt`` (``button`` 0=left/1=right) UNDER an already-posted voice line, then
+//! assert the popup body item ``probe`` is now rendered (the popup opened). The caller
+//! has posted say_begin (whose dwell is passed here) so prepare_recording can scan the
+//! literal voice line at the call site.
+def open_under_voice(app : ImguiApp; dwell : uint; pt : tuple<float; float>;
+                     button : int; probe : string) {
+    let lead = dwell > 1400u ? 650u : dwell / 3u
+    sleep(lead)
+    var ev : array<JsonValue?>
+    ev |> click_at(0, pt, 450, button)
+    post_command(app, "imgui_mouse_play", JV((events = ev)))
+    unsafe { delete ev; }
+    let play = 450u + 450u
+    sleep(play)
+    record_check_rendered(app, probe, true, 180)
+    let consumed = lead + play
+    sleep(dwell > consumed ? dwell - consumed : 0u)
+}
+
+//! Left-click ``pt`` (a popup menu item) UNDER a voice line, then assert the popup
+//! closed (``probe`` no longer rendered) and the shared status line took ``expected``.
+def pick_under_voice(app : ImguiApp; dwell : uint; pt : tuple<float; float>;
+                     status_target : string; expected : string; probe : string) {
+    let lead = dwell > 1400u ? 650u : dwell / 3u
+    sleep(lead)
+    var ev : array<JsonValue?>
+    ev |> click_at(0, pt, 450)
+    post_command(app, "imgui_mouse_play", JV((events = ev)))
+    unsafe { delete ev; }
+    let play = 450u + 450u
+    sleep(play)
+    record_check_value(app, status_target, "value", expected, 180)
+    record_check_rendered(app, probe, false, 180)
+    let consumed = lead + play
+    sleep(dwell > consumed ? dwell - consumed : 0u)
 }
 
 [export]
 def main {
-    with_recording_app("examples/features/popup_window.das",
+    with_recording_app("examples/tutorial/popup_window.das",
                        "popup_window.apng", 50) $(app) {
-        let T_OPEN_BTN = "MAIN_WIN/via_button/OPEN_BTN"
-        let T_HINT     = "MAIN_WIN/via_region/HOVER_HINT"
+        let T_BTN      = "PW_WIN/via_button/PW_BTN"
+        let T_HOVER    = "PW_WIN/via_region/PW_HOVER"
+        let T_STATUS   = "PW_WIN/PW_STATUS"
+        let BTN_APPLE  = "PW_WIN/via_button/PW_BTN_POPUP/PW_APPLE"
+        let REG_BANANA = "PW_WIN/via_region/PW_REG_POPUP/PW_BANANA"
 
-        var snap = wait_for_render(app, T_OPEN_BTN, 10.0f)
+        var snap = wait_for_render(app, T_BTN, 10.0f)
         if (snap == null) {
-            panic("{T_OPEN_BTN} never rendered — wrong app running?")
+            panic("{T_BTN} never rendered - wrong app running?")
         }
-        let p_open  = widget_center(snap, T_OPEN_BTN)
-        let p_hint  = widget_center(snap, T_HINT)
+        let p_btn   = widget_center(snap, T_BTN)
+        let p_hover = widget_center(snap, T_HOVER)
 
-        // ---- Stage 1: introduce the manual-trigger pattern ----
-        move_to(app, p_open)
-        say(app, "popup_window has no auto-trigger — caller drives open_popup.", T_OPEN_BTN)
+        // Warm up the capture pipeline before the first voice (cold-start frames render
+        // slower; absorbing them keeps convert's frame->time map uniform) and park the
+        // cursor on the button where beat 2 clicks.
+        move_to(app, p_btn, 800)
+        sleep(1800u)
 
-        // ---- Stage 2: left-click → BTN_POPUP opens ----
-        var click_events : array<JsonValue?>
-        click_events |> click_at(0, p_open)
-        post_command(app, "imgui_mouse_play", JV((events = click_events)))
-        sleep(RESULT_MS)
-        say(app, "Click fires open_popup(\"fruit_picker\"); popup_window brackets the body.", T_OPEN_BTN)
+        // ---- Beat 1: intro (no action) ----
+        say(app, "popup_window: caller drives open_popup", T_BTN,
+            [voice = "popup_window has no auto-trigger. The caller decides when to open it, from any predicate it likes."])
 
-        // Re-snapshot to find the freshly-opened popup body widget bboxes.
-        // wait_for_widget gates on path EXISTENCE (vs wait_for_render's
-        // `?? true` which silently passes when the indexed-path is absent).
-        var snap2 = wait_for_widget(app,
-            "MAIN_WIN/via_button/BTN_POPUP/PICK_APPLE", 5.0f)
-        if (snap2 == null) {
-            panic("BTN_POPUP body never rendered — click didn't open the popup?")
-        }
-        let p_apple = widget_center(snap2, "MAIN_WIN/via_button/BTN_POPUP/PICK_APPLE")
+        // ---- Beat 2: click the button -> open_popup fires, the body renders ----
+        open_under_voice(app, say_begin(app, "click: open_popup", T_BTN,
+            [voice = "Click the button. The handler calls open_popup, and popup_window brackets the body that appears."]),
+            p_btn, 0, BTN_APPLE)
 
-        // ---- Stage 3: pick a fruit → close_current_popup closes the popup ----
-        var apple_events : array<JsonValue?>
-        apple_events |> click_at(0, p_apple)
-        post_command(app, "imgui_mouse_play", JV((events = apple_events)))
-        sleep(RESULT_MS)
-        say(app, "menu_label fires close_current_popup; popup closes, status updates.", "MAIN_WIN/via_button/BTN_POPUP/PICK_APPLE")
+        // ---- Beat 3: pick Apple -> close_current_popup closes it, status updates ----
+        var s3 = snapshot(app)
+        let p_apple = widget_center(s3, BTN_APPLE)
+        move_to(app, p_apple, 500)
+        sleep(SETTLE_MS)
+        pick_under_voice(app, say_begin(app, "pick: close_current_popup", BTN_APPLE,
+            [voice = "Pick a fruit. The item calls close_current_popup - the popup closes, and the status line updates."]),
+            p_apple, T_STATUS, "Last pick: Apple", BTN_APPLE)
 
-        // ---- Stage 4: highlight the hover-region scope ----
-        move_to(app, p_hint)
-        say(app, "Second scope shares the same str_id; with_id keeps each scope's open state distinct.", T_HINT)
+        // ---- Beat 4: right-click the hover region -> the second scope opens ----
+        move_to(app, p_hover, 600)
+        sleep(SETTLE_MS)
+        open_under_voice(app, say_begin(app, "right-click: no preceding item", T_HOVER,
+            [voice = "The second scope opens on a right-click anywhere in this region - no preceding item required."]),
+            p_hover, 1, REG_BANANA)
 
-        // ---- Stage 5: right-click in the hover region → REG_POPUP opens ----
-        var rclick_events : array<JsonValue?>
-        rclick_events |> click_at(0, p_hint, 500, 1) //! button=1 → right
-        post_command(app, "imgui_mouse_play", JV((events = rclick_events)))
-        sleep(RESULT_MS)
-        say(app, "Right-click on the hover region — no preceding 'item' needed.", T_HINT)
-
-        var snap3 = wait_for_widget(app,
-            "MAIN_WIN/via_region/REG_POPUP/PICK_BANANA", 5.0f)
-        if (snap3 == null) {
-            panic("REG_POPUP body never rendered — right-click didn't open the popup?")
-        }
-        let p_banana = widget_center(snap3,
-            "MAIN_WIN/via_region/REG_POPUP/PICK_BANANA")
-
-        var banana_events : array<JsonValue?>
-        banana_events |> click_at(0, p_banana)
-        post_command(app, "imgui_mouse_play", JV((events = banana_events)))
-        sleep(RESULT_MS)
-        sleep(TAIL_MS)
+        // ---- Beat 5: pick Banana -> closes again, status updates ----
+        var s5 = snapshot(app)
+        let p_banana = widget_center(s5, REG_BANANA)
+        move_to(app, p_banana, 500)
+        sleep(SETTLE_MS)
+        pick_under_voice(app, say_begin(app, "shared str_id, distinct state", REG_BANANA,
+            [voice = "Both scopes share one string id, but with_id keeps each scope's open state distinct."]),
+            p_banana, T_STATUS, "Last pick: Banana", REG_BANANA)
     }
 }
