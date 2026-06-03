@@ -24,6 +24,12 @@ Walkthrough
 
 .. video:: tree_image_misc.mp4
 
+The recording clicks the ``tree_node_ex`` header to expand it - the three
+children appear and the node's returned open bool flips to ``true`` - then
+moves to the display-only ``image``. The expand is verified against that open
+flag and the image against its on-screen presence, so a click that failed to
+open the node would abort the recording.
+
 .. literalinclude:: ../../../examples/tutorial/tree_image_misc.das
    :language: das
    :linenos:

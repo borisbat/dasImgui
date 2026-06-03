@@ -8,27 +8,30 @@ require imgui/imgui_playwright public
 require daslib/json public
 require daslib/json_boost public
 
-//! Driver script: record ``tree_image_misc.apng`` against
-//! ``examples/tutorial/tree_image_misc.das``. Tours two leaf widgets —
-//! tree_node_ex (leaf form; caller pairs TreePop) and image (display
-//! only; no ClickState).
-//!
-//! Stage 1 clicks the tree_node_ex header to expand/collapse so the
-//! recording shows the open/close transition.
-
-def widget_bbox(var snap : JsonValue?; ident : string) : float4 {
-    var b = snap?["globals"]?[ident]?["bbox"]
-    return float4(
-        b?["x"] ?? 0.0f,
-        b?["y"] ?? 0.0f,
-        b?["z"] ?? 0.0f,
-        b?["w"] ?? 0.0f
-    )
-}
+//! Driver: record ``tree_image_misc.apng`` against ``examples/tutorial/tree_image_misc.das``.
+//! Three voiced beats over the two leaf widgets the container forms don't cover:
+//!   1. intro - name both widgets.
+//!   2. tree_node_ex - click the header to expand; the three children appear and
+//!      TI_TREE.opened flips to true (the leaf form's open bool, verified directly -
+//!      the @optional `opened` field is absent while closed, present+true once open).
+//!   3. image - the display-only sibling of image_button; nothing to click, so the
+//!      beat verifies it is on screen (record_check_rendered) while the voice explains.
 
 def widget_center(var snap : JsonValue?; ident : string) : tuple<float; float> {
-    let b = widget_bbox(snap, ident)
-    return ((b.x + b.z) * 0.5f, (b.y + b.w) * 0.5f)
+    let b = snap?["globals"]?[ident]?["bbox"]
+    return (((b?["x"] ?? 0.0f) + (b?["z"] ?? 0.0f)) * 0.5f,
+            ((b?["y"] ?? 0.0f) + (b?["w"] ?? 0.0f)) * 0.5f)
+}
+
+//! Click the tree header UNDER an already-posted voice line, then assert it opened
+//! (TI_TREE.opened == true) - the children render as a side effect.
+def expand_under_voice(app : ImguiApp; dwell : uint; tree : string) {
+    let lead = dwell > 1400u ? 650u : dwell / 3u
+    sleep(lead)
+    post_command(app, "imgui_click", JV((target = tree)))
+    record_check_value(app, tree, "opened", true, 180)
+    let consumed = lead + 500u
+    sleep(dwell > consumed ? dwell - consumed : 0u)
 }
 
 [export]
@@ -40,29 +43,30 @@ def main {
 
         var snap = wait_for_widget(app, T_TREE, 10.0f)
         if (snap == null) {
-            panic("{T_TREE} never registered — wrong app running?")
+            panic("{T_TREE} never registered - wrong app running?")
         }
         let p_tree = widget_center(snap, T_TREE)
 
-        //! Initial cursor placement.
-        move_to(app, p_tree, 500)
+        // Park the cursor on the tree header and warm up the capture pipeline.
+        move_to(app, p_tree, 800)
+        sleep(1800u)
+
+        // ---- Beat 1: intro ----
+        say(app, "tree_node_ex + image", T_TREE,
+            [voice = "Two leaf widgets the container forms don't cover - tree_node_ex, and image."])
+
+        // ---- Beat 2: tree_node_ex - click to expand ----
+        expand_under_voice(app, say_begin(app, "tree_node_ex: leaf form, returns the open bool", T_TREE,
+            [voice = "tree_node_ex is the leaf form. It returns the open bool, and the caller pairs tree_pop. Click the header and the three children appear."]),
+            T_TREE)
+
+        // ---- Beat 3: image - display only ----
+        var s = snapshot(app)
+        let p_img = widget_center(s, T_IMG)
+        move_to(app, p_img, 700)
         sleep(SETTLE_MS)
-
-        // ---- Stage 1: tree_node_ex — click to expand ----
-        post_command(app, "imgui_click", JV((target = T_TREE)))
-        sleep(CLICK_DWELL_MS)
-        say(app, "tree_node_ex — leaf form returns the open bool. Caller pairs tree_pop() inside the truthy branch (unless NoTreePushOnOpen). The container form `tree_node` auto-pairs; reach for `_ex` for explicit flag control.", T_TREE)
-
-        //! Re-snapshot after expand so image bbox is current.
-        snap = wait_for_widget(app, T_IMG, 5.0f)
-        if (snap == null) {
-            panic("{T_IMG} never registered after expand")
-        }
-        let p_img = widget_center(snap, T_IMG)
-
-        // ---- Stage 2: image — display only ----
-        move_to(app, p_img, 800)
-        sleep(SETTLE_MS)
-        say(app, "image — display-only sibling of image_button. ImageState captures size + uv0/uv1 + tint + border for snapshot. For a clickable texture, use image_button (ClickState).", T_IMG)
+        record_check_rendered(app, T_IMG, true, 180)
+        say(app, "image: display-only, paints a texture", T_IMG,
+            [voice = "image is the display-only sibling of image_button. It paints a texture, with no click and no padding."])
     }
 }
