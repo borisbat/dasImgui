@@ -31,8 +31,9 @@ require strings
 //
 // ImGui core ships no rotary control; here we add one. The knob:
 //   - is a single [widget] def at module scope, ~30 lines including drawlist
-//   - plugs into pending_value_finalize unchanged — same state-struct
-//     convention as slider_float, so imgui_force_set / imgui_snapshot just work
+//   - plugs into pending_value_finalize + one [widget_dispatch] — same
+//     state-struct convention as slider_float, so imgui_snapshot reflects it
+//     and imgui_force_set drives it, exactly like a built-in
 //   - uses the canonical InvisibleButton + DrawList pattern for the body
 //
 // Read alongside :ref:`tutorial_widgets_tour` for the built-in catalog.
@@ -55,6 +56,16 @@ struct VolumeKnobState {
     @optional has_pending : bool          //! imgui_force_set queued; consumed next frame
     @optional pending_value : float       //! next-frame value queued by imgui_force_set
     @optional changed : bool              //! true on the frame the widget fired
+}
+
+// imgui_force_set's "set" action queues pending_value (drained in knob() step 1).
+// The dispatch half of the custom-widget rail; pending_value_finalize is the other.
+[widget_dispatch]
+def knob_dispatch(var state : VolumeKnobState; action : string; payload : string) {
+    if (action == "set") {
+        state.pending_value = to_float(payload)
+        state.has_pending = true
+    }
 }
 
 //! Rotary knob — vertical-drag value control with a 270° indicator arc.
@@ -133,7 +144,8 @@ def knob(var state : VolumeKnobState; text : string) : bool {
     let val_pos = ImVec2(center.x - val_size.x * 0.5f, p.y + 94.0f)
     *GetWindowDrawList() |> AddText(val_pos, rgba(170u, 170u, 180u, 255u), val_str)
 
-    // 6. Wire up serializer + imgui_force_set dispatcher. Same call any slider makes.
+    // 6. Register state + serializer (snapshot, and force_set draining). Same call
+    //    any slider makes; the [widget_dispatch] above routes the live "set" in.
     pending_value_finalize(widget_ident, "knob", state)
     return changed
 }
