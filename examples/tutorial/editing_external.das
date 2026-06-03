@@ -62,13 +62,13 @@ let private g_qualities : array<string> <- ["Low", "Medium", "High", "Ultra"]
 
 [export]
 def init() {
-    //! Window sized to keep the APNG recording inside the existing
-    //! 7.5-77 MB band -- the slider drags + color edits change pixels
-    //! every frame, so resolution dominates file size.
-    live_create_window("dasImgui editing_external", 720, 480)
+    //! Sized so all seven editors AND their `var private` readouts fit without
+    //! scrolling -- the readout lines are the proof each gesture wrote through
+    //! the pointer, so they must stay on-screen as the recording drives each one.
+    live_create_window("dasImgui editing_external", 760, 560)
     live_imgui_init(live_window)
     var io & = unsafe(GetIO())
-    io.FontGlobalScale = 1.15
+    io.FontGlobalScale = 1.2
 }
 
 [export]
@@ -82,7 +82,7 @@ def update() {
     NewFrame()
 
     SetNextWindowPos(ImVec2(20.0, 20.0), ImGuiCond.Always)
-    SetNextWindowSize(ImVec2(680.0, 440.0), ImGuiCond.Always)
+    SetNextWindowSize(ImVec2(720.0, 520.0), ImGuiCond.Always)
     window(EDITOR_WIN, (text = "External-data editor", closable = false,
                         flags = ImGuiWindowFlags.None)) {
         text("Every widget below edits a daslang `var private` directly via safe_addr.")

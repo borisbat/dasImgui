@@ -106,6 +106,12 @@ daslang-live binds `DEFAULT_LIVE_PORT = 9090`. **One host per port.** `dastest
 --isolated-mode-threads N` spreads workers across `9090 + worker_index`; a plain sequential run always
 reuses 9090.
 
+**Manually-launched probe host? First disable user control.** A host you launch by hand (CLI or
+`mcp__daslang__live_launch`) starts with user-control ON, so the real OS cursor races GLFW's poll and
+clobbers `io.MousePos` — synth gestures miss and snapshots read the OS cursor. Post
+`set_user_control` `{"enabled":false}` before any synth input. (`with_recording_app` / the dastest
+harness do this for you; a bare probe host does not.)
+
 **Never run two headless suites at once on the same port — and Windows + WSL are NOT separate here.**
 WSL2's `localhostForwarding` (the `.wslconfig` default) mirrors a WSL listener onto Windows
 `localhost`, and Win11 mirrored-networking shares the namespace outright, so `127.0.0.1:9090` is

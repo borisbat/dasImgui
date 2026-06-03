@@ -52,6 +52,7 @@ Build `daslang-live` once, launch the tutorial's feature file, and probe it thro
 <daslang>/bin/Release/daslang-live -project_root <dasimgui> examples/tutorial/<scene>.das
 ```
 
+- **FIRST, `mcp__daslang__live_command name="set_user_control" args='{"enabled":false}'`** — a manually-launched probe host has user-control ON, so the real OS cursor races GLFW's poll and clobbers `io.MousePos`; your synth gesture then lands at the wrong place (or not at all) and the snapshot's `mouse_pos` reads the OS cursor, not your synth pos. `with_recording_app` posts this for you; a manual probe host does NOT — set it by hand before any `imgui_mouse_play` / `imgui_click`.
 - `mcp__daslang__live_command name="imgui_snapshot"` — read the widget bboxes / payload (real coords + current values).
 - `imgui_mouse_play` (events array) / `imgui_click` / `imgui_focus` / `imgui_key_type` — try the gesture.
 - `mcp__daslang__live_command name="screenshot"` → `Read` the PNG — confirm the gesture produced the effect (handle moved, counter ticked, menu opened).
@@ -165,7 +166,7 @@ Key points:
 
 Widgets you don't click — slider / drag / input / color — are driven the way a human would: **drag the handle** (`drag` / `drag_to` / `drag_along`) or **focus + type** (`type_text`), then assert the resulting value with `expect_value` (or `wait_for_*_value`). A drag asserts the value *moved* (direction / approximate target, since the value follows track geometry); a type asserts the field equals what was typed. A stage that left the value unchanged is a failure (accumulate-on-miss → teardown panic, same as clicks).
 
-**Do NOT `force_set` to shortcut these** — `force_set` writes the state directly and skips the gesture the tutorial exists to show (synthetic ≠ real). `force_set_verified` is reserved for the one case where the *subject* of the tutorial is programmatic / external driving (e.g. `driving_outside`, `edit_external_tour`'s external-pointer rail) — there the `imgui_force_set` verb is itself what's being taught. If a stage wants a verified drag/type wrapper with `hold_through_voice`'s ergonomics, add it to `imgui_playwright.das` (a framework rail → its own PR).
+**Do NOT `force_set` to shortcut these** — `force_set` writes the state directly and skips the gesture the tutorial exists to show (synthetic ≠ real). `force_set_verified` is reserved for the one case where the *subject* of the tutorial is the `imgui_force_set` verb itself (`driving_outside`). The `edit_*` external-pointer rail (`edit_external_tour`) is NOT that case — its subject is binding a widget to caller-owned data, and the proof of the rail is that a *real* drag / type / pick writes through the pointer, so it is driven for real (`drag_through_voice` / `type_into_voice` / `combo_pick_voice`) like any other widget. If a stage wants a verified drag/type wrapper with `hold_through_voice`'s ergonomics, add it to `imgui_playwright.das` (a framework rail → its own PR).
 
 ## Resolving widget coords
 
