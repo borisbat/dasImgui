@@ -44,6 +44,12 @@ Walkthrough
 
 .. video:: layout_primitives.mp4
 
+The markers render nothing, so the recording's self-check is that each *named*
+marker fired: it narrates the ``same_line`` row while asserting the three
+buttons and both ``same_line`` markers are on screen, then the ``spacing`` and
+``new_line`` markers in turn (``record_check_rendered`` on each). A marker that
+silently dropped out of the layout would abort the recording.
+
 .. literalinclude:: ../../../examples/tutorial/layout_primitives.das
    :language: das
    :linenos:

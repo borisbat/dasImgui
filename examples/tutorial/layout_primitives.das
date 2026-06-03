@@ -32,7 +32,7 @@ require imgui/imgui_visual_aids
 
 [export]
 def init() {
-    live_create_window("dasImgui layout primitives", 720, 480)
+    live_create_window("dasImgui layout primitives", 1000, 640)
     live_imgui_init(live_window)
     var io & = unsafe(GetIO())
     io.FontGlobalScale = 1.4
@@ -52,7 +52,7 @@ def update() {
     SetNextWindowSize(ImVec2(600.0, 360.0), ImGuiCond.Always)
     window(LAYOUT_WIN, (text = "Layout primitives", closable = false,
                         flags = ImGuiWindowFlags.None)) {
-        text("Three buttons on one row — same_line() keeps them inline.")
+        text("Three buttons on one row - same_line() keeps them inline.")
         if (button(BTN_A, (text = "A"))) {
             print("A\n")
         }
