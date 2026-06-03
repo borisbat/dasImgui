@@ -8,92 +8,91 @@ require imgui/imgui_playwright public
 require daslib/json public
 require daslib/json_boost public
 
-//! Driver script: record ``custom_widgets.apng``. One shell:
-//!
-//!     bin/Release/daslang.exe -project_root <dasimgui> \
-//!         <dasimgui>/tests/integration/record_custom_widgets.das
+//! Driver: record ``custom_widgets.apng`` against
+//! ``examples/tutorial/custom_widgets.das``. Real-input, self-verifying tour of
+//! a custom [widget] (a rotary knob) on a mixer panel:
+//!   1. DRAG the Master knob along its arc -> value rises 0 -> 0.5
+//!   2. DRAG the Treble knob up a little   -> value rises 0 -> ~0.33
+//!   3. imgui_force_set Bass               -> force_set IS the subject here, so
+//!      it is the real input; verify the value took
+//!   4. click the ordinary Reset button    -> every knob snaps to its default
+//!      (assert Bass returned from -0.5 to 0)
+//! The knob disc sits in the TOP third of its 72x112 hitbox, so its centre is
+//! (bbox.x + 36, bbox.y + 36) - NOT the bbox centre. Drag endpoints ride a
+//! radius-25 arc around that, kept clear of the 90-deg bottom dead zone.
 
-def widget_bbox(var snap : JsonValue?; ident : string) : float4 {
-    //! Pull (x_min, y_min, x_max, y_max) out of the snapshot for one widget.
+let KNOB_R = 25.0f
+
+//! Centre of the knob disc within its hitbox (top third), not the bbox centre.
+def knob_center(var snap : JsonValue?; ident : string) : tuple<float; float> {
     var b = snap?["globals"]?[ident]?["bbox"]
-    return float4(
-        b?["x"] ?? 0.0f,
-        b?["y"] ?? 0.0f,
-        b?["z"] ?? 0.0f,
-        b?["w"] ?? 0.0f
-    )
-}
-
-def widget_center(var snap : JsonValue?; ident : string) : tuple<float; float> {
-    let b = widget_bbox(snap, ident)
-    return ((b.x + b.z) * 0.5f, (b.y + b.w) * 0.5f)
+    return ((b?["x"] ?? 0.0f) + 36.0f, (b?["y"] ?? 0.0f) + 36.0f)
 }
 
 [export]
 def main {
     with_recording_app("examples/tutorial/custom_widgets.das",
-                       "custom_widgets.apng", 45) $(app) {
-        // ---- Resolve widget centers from a snapshot ----
+                       "custom_widgets.apng", 55) $(app) {
         let T_MASTER = "MIXER_WIN/MASTER"
         let T_TREBLE = "MIXER_WIN/TREBLE"
         let T_BASS   = "MIXER_WIN/BASS"
         let T_RESET  = "MIXER_WIN/RESET_BTN"
+
         var snap = wait_for_render(app, T_RESET, 10.0f)
         if (snap == null) {
-            panic("{T_RESET} never rendered — wrong app running?")
+            panic("{T_RESET} never rendered - wrong app running?")
         }
-        let p_master = widget_center(snap, T_MASTER)
-        let p_treble = widget_center(snap, T_TREBLE)
-        let p_bass   = widget_center(snap, T_BASS)
-        let p_reset  = widget_center(snap, T_RESET)
+        let c_master = knob_center(snap, T_MASTER)
+        let c_treble = knob_center(snap, T_TREBLE)
+        let c_bass   = knob_center(snap, T_BASS)
+        let p_reset  = widget_click_point(snap, T_RESET)
 
-        // The knob is angular: atan2(mouse - center) drives value directly.
-        // Drag endpoints must stay in the active 270° arc (i.e. NOT in the
-        // 90° dead zone at the bottom). Straight lines through center are the
-        // hazard — pick endpoints with the same sign of dy (both above center).
-        //
-        // MASTER (bounds 0..1, starts at 0): drag from "7 o'clock" position
-        // (matches starting value, no press-jump) up and over to "12 o'clock".
-        // Value sweeps 0 → 0.5.
-        let r = 22.0f
-        let drag_start_master = (p_master._0 - r * 0.707f, p_master._1 + r * 0.707f)
-        let drag_end_master   = (p_master._0,              p_master._1 - r)
+        // Arc endpoints. atan2(mouse - centre) drives the value, so the cursor
+        // must ride the active 270-deg arc (top + sides), never the bottom gap.
+        let diag = KNOB_R * 0.707f
+        // MASTER (0..1, starts 0): 7 o'clock (frac 0) -> 12 o'clock (frac 0.5).
+        let master_start = (c_master._0 - diag, c_master._1 + diag)
+        let master_end   = (c_master._0,        c_master._1 - KNOB_R)
+        // TREBLE (-1..1, starts 0 = 12 o'clock): 12 o'clock -> 2 o'clock (~+0.33).
+        let treble_start = (c_treble._0,        c_treble._1 - KNOB_R)
+        let treble_end   = (c_treble._0 + diag, c_treble._1 - diag)
 
-        // TREBLE (bounds -1..1, starts at 0): drag from "12" to "2 o'clock".
-        // Value sweeps 0 → 0.33 — visible without crossing dead zone.
-        let drag_start_treble = (p_treble._0,              p_treble._1 - r)
-        let drag_end_treble   = (p_treble._0 + r * 0.707f, p_treble._1 - r * 0.707f)
+        //! Initial cursor placement - flips synth_cursor_owned.
+        move_to(app, (40.0f, 30.0f), 600)
+        sleep(SETTLE_MS)
 
-        // ---- Narrate then act — one beat per knob ----
+        // ---- Beat 1: drag MASTER along its arc -> value 0 -> 0.5 ----
+        move_to(app, master_start, 800)
+        sleep(SETTLE_MS)
+        drag_through_voice(app, say_begin(app, "[widget] - a custom rotary knob", T_MASTER,
+            [voice = "There is no built-in rotary knob, so we made our own. It is a single widget definition, a hitbox plus a few draw calls. I drag the Master knob, and its value rises with the angle."]),
+            T_MASTER, master_end)
 
-        // Beat 1: drag MASTER from 7 o'clock to 12 — value rises 0 → 0.5
-        move_to(app, p_master)
-        say(app, "ImGui ships no rotary widget. We add one with [widget].", T_MASTER)
-        var ev_master : array<JsonValue?>
-        ev_master |> drag_along(0, drag_start_master, drag_end_master, 1200)
-        post_command(app, "imgui_mouse_play", JV((events = ev_master)))
-        sleep(2000u)
+        // ---- Beat 2: drag TREBLE up a little -> value 0 -> ~0.33 ----
+        move_to(app, treble_start, 800)
+        sleep(SETTLE_MS)
+        drag_through_voice(app, say_begin(app, "same state layout as slider_float", T_TREBLE,
+            [voice = "The knob reuses the exact state layout a slider uses, so the same value plumbing just works. Here is Treble, dragged up a little."]),
+            T_TREBLE, treble_end)
 
-        // Beat 2: drag TREBLE from 12 to 2 o'clock — value rises 0 → ~0.33
-        move_to(app, p_treble)
-        say(app, "State struct matches slider_float — pending_value_finalize Just Works.", T_TREBLE)
-        var ev_treble : array<JsonValue?>
-        ev_treble |> drag_along(0, drag_start_treble, drag_end_treble, 1200)
-        post_command(app, "imgui_mouse_play", JV((events = ev_treble)))
-        sleep(2000u)
+        // ---- Beat 3: imgui_force_set Bass (force_set IS the subject) ----
+        move_to(app, c_bass, 800)
+        sleep(SETTLE_MS)
+        let t3 = ref_time_ticks()
+        let d3 = say_begin(app, "imgui_force_set drives it too", T_BASS,
+            [voice = "A live command can set the value from outside as well. That takes one small dispatch hook, just a few lines, and then force set drives Bass directly."])
+        let lead3 = d3 > 1200u ? 700u : d3 / 3u
+        sleep(lead3)
+        force_set_verified(app, T_BASS, -0.5f)              // the value took; -0.5 is non-zero so it is always present
+        let e3 = uint(get_time_usec(t3) / 1000)
+        sleep(d3 > e3 ? d3 - e3 : 0u)
 
-        // Beat 3: imgui_force_set BASS — show that the live API path works on custom widgets too
-        move_to(app, p_bass)
-        say(app, "imgui_force_set drives custom widgets the same way — no extra wiring.", T_BASS)
-        post_command(app, "imgui_force_set", JV((target = T_BASS, value = -0.5f)))
-        sleep(2000u)
-
-        // Beat 4: click RESET_BTN — ordinary built-in on the same panel
-        move_to(app, p_reset)
-        say(app, "RESET_BTN is an ordinary built-in button — same registry.", T_RESET)
-        var ev_reset : array<JsonValue?>
-        ev_reset |> click_at(0, p_reset)
-        post_command(app, "imgui_mouse_play", JV((events = ev_reset)))
-        sleep(1500u)
+        // ---- Beat 4: click Reset -> every knob snaps to its default ----
+        move_to(app, p_reset, 800)
+        sleep(SETTLE_MS)
+        hold_through_voice(app, say_begin(app, "Reset - an ordinary built-in button", T_RESET,
+            [voice = "And an ordinary button sits on the same panel. I click Reset, and every knob snaps back to its default."]),
+            [T_RESET])
+        record_check_value(app, T_BASS, "value", 0.0f, 120) // Reset returned Bass from -0.5 to its default 0
     }
 }

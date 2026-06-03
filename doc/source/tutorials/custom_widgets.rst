@@ -18,6 +18,17 @@ Walkthrough
 
 .. video:: custom_widgets.mp4
 
+The recording drives the custom knob with real synthetic input and
+self-verifies. It **drags** the Master knob along its 270° arc (asserting
+``value`` rose off 0), drags Treble up a little (same assertion), then
+drives Bass via ``imgui_force_set`` — the one place ``force_set`` *is* the
+subject, so it counts as the real input — and asserts the value took. Finally it
+clicks the ordinary ``Reset`` button and asserts Bass snapped from −0.5
+back to its default 0, proving the live API and a plain built-in both
+operate on the custom widget unchanged. (The arc drag rides a radius-25
+circle around the knob disc's centre, which sits in the top third of the
+hitbox — ``bbox.x + 36, bbox.y + 36`` — clear of the bottom dead zone.)
+
 .. literalinclude:: ../../../examples/tutorial/custom_widgets.das
    :language: das
    :linenos:
