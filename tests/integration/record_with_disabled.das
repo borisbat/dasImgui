@@ -8,84 +8,88 @@ require imgui/imgui_playwright public
 require daslib/json public
 require daslib/json_boost public
 
-//! Driver script: record ``with_disabled.apng`` against
-//! ``examples/tutorial/with_disabled.das``. Tour of the stateless
-//! scope-wrappers: ``with_disabled``, ``with_button_repeat``, ``with_font``.
-//! The recording flips ENABLED_MASTER on, shows the CHILD_* widgets transition
-//! from greyed → active, CLICKS CHILD_SAVE to prove the toggle made it
-//! interactive, then exercises STEP_UP under with_button_repeat to make
-//! click_count climb visibly.
-
-let RESULT_MS  = 2000u          //! 2s post-click dwell
-
-def widget_bbox(var snap : JsonValue?; ident : string) : float4 {
-    var b = snap?["globals"]?[ident]?["bbox"]
-    return float4(
-        b?["x"] ?? 0.0f,
-        b?["y"] ?? 0.0f,
-        b?["z"] ?? 0.0f,
-        b?["w"] ?? 0.0f
-    )
-}
-
-def widget_center(var snap : JsonValue?; ident : string) : tuple<float; float> {
-    let b = widget_bbox(snap, ident)
-    return ((b.x + b.z) * 0.5f, (b.y + b.w) * 0.5f)
-}
+//! Driver: record ``with_disabled.apng`` against
+//! ``examples/tutorial/with_disabled.das``. Real-input, self-verifying tour of
+//! the stateless scope-wrappers, anchored on the with_disabled inert -> live
+//! contrast:
+//!   1. checkbox off  -> CHILD_SAVE is greyed; a click is IGNORED (proven inert by 3)
+//!   2. click the checkbox -> value flips true (with_disabled's argument becomes false)
+//!   3. click CHILD_SAVE -> click_count is now EXACTLY 1, so the stage-1 click never counted
+//!   4. press-and-hold STEP_UP under with_button_repeat -> the count climbs TWICE
+//!      (one press ticks once; two distinct climbs prove genuine repeat)
+//!   5. with_font / with_clip_rect closer (same push-on-enter / pop-on-exit shape)
 
 [export]
 def main {
     with_recording_app("examples/tutorial/with_disabled.das",
                        "with_disabled.apng", 60) $(app) {
         let T_ENABLED = "SCOPES_WIN/ENABLED_MASTER"
-        let T_CHILD_SAVE = "SCOPES_WIN/CHILD_SAVE"
-        let T_STEP_UP = "SCOPES_WIN/STEP_UP"
+        let T_SAVE    = "SCOPES_WIN/CHILD_SAVE"
+        let T_STEP    = "SCOPES_WIN/STEP_UP"
+        let T_FONT    = "SCOPES_WIN/FONT_DEMO"
 
         var snap = wait_for_render(app, T_ENABLED, 10.0f)
         if (snap == null) {
-            panic("{T_ENABLED} never rendered — wrong app running?")
+            panic("{T_ENABLED} never rendered - wrong app running?")
         }
-        let p_enabled = widget_center(snap, T_ENABLED)
-        let p_child_save = widget_center(snap, T_CHILD_SAVE)
-        let p_step = widget_center(snap, T_STEP_UP)
+        let p_enabled = widget_click_point(snap, T_ENABLED)   // checkbox: the glyph, where the click lands
+        let p_save    = widget_click_point(snap, T_SAVE)
+        let p_step    = widget_click_point(snap, T_STEP)
 
-        //! Initial cursor placement — flips synth_cursor_owned.
+        //! Initial cursor placement - flips synth_cursor_owned.
         move_to(app, (60.0f, 40.0f), 600)
         sleep(SETTLE_MS)
 
-        // ---- Stage 1: hover greyed CHILD_SAVE — with_disabled in effect ----
-        move_to(app, p_child_save, 900)
+        // ---- Stage 1: disabled -> a click does nothing (proven inert by stage 3) ----
+        move_to(app, p_save, 900)
         sleep(SETTLE_MS)
-        say(app, "ENABLED_MASTER is off — with_disabled(!ENABLED_MASTER.value) wraps CHILD_SAVE/LOAD/VOL in BeginDisabled. They render greyed and clicks are inert.", T_CHILD_SAVE)
+        let d1 = say_begin(app, "with_disabled - greyed, click ignored", T_SAVE,
+            [voice = "These buttons live inside a with disabled block, tied to the checkbox above. The checkbox is off, so they are greyed out. Watch me click Save. Nothing happens."])
+        let lead1 = d1 > 1200u ? 600u : d1 / 3u
+        sleep(lead1)
+        click(app, T_SAVE)                                    // lands on a disabled button -> no ripple, no count
+        sleep(d1 > lead1 ? d1 - lead1 : 0u)
 
-        // ---- Stage 2: flip ENABLED_MASTER on ----
+        // ---- Stage 2: flip the gate -> with_disabled's argument becomes false ----
         move_to(app, p_enabled, 900)
         sleep(SETTLE_MS)
-        say(app, "Click ENABLED_MASTER — the bool flips, with_disabled's argument becomes false next frame, and child widgets become live.", T_ENABLED)
-        var enable_events : array<JsonValue?>
-        enable_events |> click_at(0, p_enabled, 250)
-        post_command(app, "imgui_mouse_play", JV((events = enable_events)))
-        sleep(RESULT_MS)
+        hold_through_voice(app, say_begin(app, "enable the group", T_ENABLED,
+            [voice = "Now I turn the checkbox on. The block's argument flips to false, and the whole group wakes up."]),
+            [T_ENABLED])
 
-        // ---- Stage 3: CHILD_SAVE is live now — click it to prove the flip ----
-        move_to(app, p_child_save, 900)
+        // ---- Stage 3: same button, now live -> click_count == 1 (so stage 1 was inert) ----
+        move_to(app, p_save, 900)
         sleep(SETTLE_MS)
-        say(app, "Same widget, no code change — the scope wrapper's argument drives the disabled state. Click CHILD_SAVE: click_count increments now (it didn't before).", T_CHILD_SAVE)
-        var save_events : array<JsonValue?>
-        save_events |> click_at(0, p_child_save, 250)
-        post_command(app, "imgui_mouse_play", JV((events = save_events)))
-        sleep(RESULT_MS)
+        hold_through_voice(app, say_begin(app, "now live - counter ticks to 1", T_SAVE,
+            [voice = "Same Save button, no code change. This time the click lands, and the counter ticks up to one."]),
+            [T_SAVE])
+        record_check_value(app, T_SAVE, "click_count", 1, 120)   // EXACTLY one: the greyed click in stage 1 never registered
 
-        // ---- Stage 4: with_button_repeat on STEP_UP — held click_count climb ----
+        // ---- Stage 4: with_button_repeat -> a held press fires again and again ----
         move_to(app, p_step, 900)
         sleep(SETTLE_MS)
-        say(app, "with_button_repeat(true) wraps STEP_UP — holding the button fires click events at ImGui's repeat rate. click_count climbs visibly in the state readout below.", T_STEP_UP)
-        //! ImGui's button_repeat needs ONE long press, not multiple discrete
-        //! clicks — repeat fires while a single press is held. drag_along
-        //! with from_pos == to_pos emits a 3-second hold at p_step.
-        var step_events : array<JsonValue?>
-        step_events |> drag_along(0, p_step, p_step, 3000, 250)
-        post_command(app, "imgui_mouse_play", JV((events = step_events)))
-        sleep(4500u)
+        let d4 = say_begin(app, "with_button_repeat - hold to repeat", T_STEP,
+            [voice = "This plus button sits inside with button repeat. I press and hold, and instead of one click it fires over and over. The counter races up."])
+        let lead4 = d4 > 1500u ? 700u : d4 / 3u
+        sleep(lead4)
+        //! A single 3s press-hold (from == to): with_button_repeat turns the held
+        //! press into a stream of clicks at ImGui's repeat rate.
+        var hold_ev : array<JsonValue?>
+        hold_ev |> drag_along(0, p_step, p_step, 3000, 300)
+        post_command(app, "imgui_mouse_play", JV((events = hold_ev)))
+        unsafe { delete hold_ev; }
+        let hold_play = 300u + 100u + 3000u + 200u + 300u        // drag_along timeline span (ms)
+        // Prove genuine REPEAT, not one click: the count climbs off zero, then climbs AGAIN.
+        record_check_changed(app, T_STEP, "click_count", "", 400)
+        var msnap = snapshot(app)
+        let mid = widget_payload_field(msnap, T_STEP, "click_count")
+        record_check_changed(app, T_STEP, "click_count", mid != null ? write_json(mid) : "", 400)
+        // The checks returned early (mid-hold); let the full hold play out and the voice finish.
+        let body4 = d4 > lead4 ? d4 - lead4 : 0u
+        sleep(hold_play > body4 ? hold_play : body4)
+
+        // ---- Stage 5: family closer - font + clip_rect share the scope shape ----
+        say(app, "with_font / with_clip_rect - push on enter, pop on exit", T_FONT,
+            [voice = "The same shape wraps the font and the clip rectangle. Each pushes its setting when the block opens, and pops it when the block ends."])
     }
 }

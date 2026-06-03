@@ -39,6 +39,16 @@ Walkthrough
 
 .. video:: with_disabled.mp4
 
+The recording drives the ``with_disabled`` contrast with real synthetic
+input and self-verifies each step. While the checkbox is off it clicks the
+greyed ``Save`` button — nothing happens. It then ticks the checkbox on
+(asserting the value flipped), clicks ``Save`` again, and asserts
+``CHILD_SAVE.click_count`` is now **exactly one** — proving the earlier
+greyed click never registered. Finally it presses and holds the ``+``
+button under ``with_button_repeat`` and asserts the counter climbs *twice*
+under the single hold — a genuine repeat stream, not one click. Any step
+that failed to land would abort the recording.
+
 .. literalinclude:: ../../../examples/tutorial/with_disabled.das
    :language: das
    :linenos:
