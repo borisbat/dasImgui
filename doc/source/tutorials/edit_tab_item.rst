@@ -33,6 +33,14 @@ Walkthrough
 
 .. video:: edit_tab_item.mp4
 
+The recording drives the bind end to end with real gestures. First it clicks
+the external **show B** checkbox and the beta tab vanishes outright - header
+and body both gone. Then it closes **alpha** with the X on its own tab header,
+and the **show A** checkbox flips itself off in response: the X and the
+checkbox write the very same bool. Finally it ticks both boxes back on and
+every tab returns. Each step is asserted - a checkbox that didn't flip, a tab
+that didn't hide, or an X that didn't back-propagate would abort the recording.
+
 .. literalinclude:: ../../../examples/tutorial/edit_tab_item.das
    :language: das
    :linenos:

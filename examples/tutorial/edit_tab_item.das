@@ -77,7 +77,7 @@ def update() {
     window(ET_WIN, (text = "edit_tab_item tutorial", closable = false,
                     flags = ImGuiWindowFlags.None)) {
 
-        text("Caller-owned visibility bool — the X button on each tab writes it.")
+        text("Caller-owned visibility bool - the X button on each tab writes it.")
         text(ET_HINT, (text = "Checkboxes below also drive the SAME bools. Bidir-bound on g_tab_*_open."))
         separator()
 
@@ -97,17 +97,17 @@ def update() {
             edit_tab_item(safe_addr(g_tab_a_open),
                           (id = "ET_TAB_A", text = "alpha",
                            flags = ImGuiTabItemFlags.None)) {
-                text(ET_BODY_A, (text = "alpha tab body — close me with the X."))
+                text(ET_BODY_A, (text = "alpha tab body - close me with the X."))
             }
             edit_tab_item(safe_addr(g_tab_b_open),
                           (id = "ET_TAB_B", text = "beta",
                            flags = ImGuiTabItemFlags.None)) {
-                text(ET_BODY_B, (text = "beta tab body — close me with the X."))
+                text(ET_BODY_B, (text = "beta tab body - close me with the X."))
             }
             edit_tab_item(safe_addr(g_tab_c_open),
                           (id = "ET_TAB_C", text = "gamma",
                            flags = ImGuiTabItemFlags.None)) {
-                text(ET_BODY_C, (text = "gamma tab body — close me with the X."))
+                text(ET_BODY_C, (text = "gamma tab body - close me with the X."))
             }
         }
         spacing()
