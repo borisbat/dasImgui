@@ -67,8 +67,11 @@ var PRESET_ROW : table<int; ClickState>
 
 [export]
 def init() {
-    live_create_window("dasImgui driving_outside tutorial", 720, 540)
+    live_create_window("dasImgui driving_outside tutorial", 880, 620)
     live_imgui_init(live_window)
+    // Deterministic FirstUseEver layout for the recording: disable imgui.ini so a prior
+    // session's window pos/size can't drift the framing. Tutorial-scoped on purpose.
+    DisableIniPersistence()
     var io & = unsafe(GetIO())
     io.FontGlobalScale = 1.5
 }
@@ -126,7 +129,7 @@ def update() {
         separator(DR_SEP_4)
 
         // ---- A popup — opened/closed via `imgui_open` / `imgui_close` ----
-        text("STATUS_POPUP — driven by imgui_open / imgui_close.")
+        text("STATUS_POPUP - driven by imgui_open / imgui_close.")
         popup(STATUS_POPUP, (text = "StatusPopup",
                              flags = ImGuiWindowFlags.None)) {
             text("Driven from outside via imgui_open.")
