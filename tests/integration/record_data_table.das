@@ -8,89 +8,112 @@ require imgui/imgui_playwright public
 require daslib/json public
 require daslib/json_boost public
 
-//! Driver script: record ``data_table.apng``. One shell:
-//!
-//!     bin/Release/daslang.exe -project_root <dasimgui> \
-//!         <dasimgui>/tests/integration/record_data_table.das
-//!
-//! Demonstrates Sortable table by CLICKING column headers (Name then
-//! Type) — viewer sees the row order shuffle each click as
-//! ``sort_specs() $(specs) { sort_rows(specs) }`` fires. Headers don't
-//! have boost-registered idents (TableHeadersRow is ImGui-internal), so
-//! the click position is computed by offset from each column's row-0 cell.
+//! Driver: record ``data_table.apng`` against ``examples/tutorial/data_table.das``.
+//! Four voiced, self-verifying beats that drive ImGui's sortable-table API by
+//! clicking the REAL column headers (the gesture the tutorial teaches, NOT a
+//! programmatic re-sort) and asserting the row order actually changed:
+//!   1. intro       - the grid boots sorted by Name ascending (DefaultSort).
+//!   2. Name click  - flips ascending -> descending; DT_NAME[0] alpha -> zeta.
+//!   3. Type click  - single-column re-sort replaces the key; DT_NAME[0] -> delta.
+//!   4. Shift+Value - SortMulti adds a secondary key; DT_NAME[1] beta -> zeta
+//!                    (Type stays primary, ties break by value).
+//! Column headers aren't boost-registered widgets (TableHeadersRow is
+//! ImGui-internal), so the click point is computed from each column's row-0
+//! cell: x = cell-left + inset (headers are left-aligned, like the cells),
+//! y = cell-top - header_dy. The sort is verified through the rendered cell
+//! text (``payload.value``), which tracks ROWS after the in-place sort_rows().
 
-def widget_bbox(var snap : JsonValue?; ident : string) : float4 {
-    var b = snap?["globals"]?[ident]?["bbox"]
-    return float4(
-        b?["x"] ?? 0.0f,
-        b?["y"] ?? 0.0f,
-        b?["z"] ?? 0.0f,
-        b?["w"] ?? 0.0f
-    )
+let SHIFT_KEY = int(ImGuiKey.LeftShift)
+
+def col_header(var snap : JsonValue?; cell : string; header_dy : float) : tuple<float; float> {
+    let b = snap?["globals"]?[cell]?["bbox"]
+    return ((b?["x"] ?? 0.0f) + 22.0f, (b?["y"] ?? 0.0f) - header_dy)
 }
 
-def widget_center(var snap : JsonValue?; ident : string) : tuple<float; float> {
-    let b = widget_bbox(snap, ident)
-    return ((b.x + b.z) * 0.5f, (b.y + b.w) * 0.5f)
+//! Click ``pt`` (a column header) UNDER an already-posted voice line, then assert
+//! the sort callback reordered ``verify_target`` to ``expected``. ``shift`` holds
+//! LeftShift across the click for the SortMulti beat. The caller has posted
+//! say_begin (whose dwell is passed here) so prepare_recording can scan the
+//! literal voice line at the call site - mirrors window_size_constraints' split.
+def sort_under_voice(app : ImguiApp; dwell : uint; pt : tuple<float; float>;
+                     shift : bool; verify_target : string; expected : string) {
+    let lead = dwell > 1400u ? 650u : dwell / 3u
+    sleep(lead)
+    if (shift) {
+        post_command(app, "imgui_key_press", JV((key = SHIFT_KEY)))
+    }
+    var ev : array<JsonValue?>
+    ev |> click_at(0, pt, 450)
+    post_command(app, "imgui_mouse_play", JV((events = ev)))
+    unsafe { delete ev; }
+    let play = 450u + 400u   // travel-to-header + settle for the re-sort to land
+    sleep(play)
+    if (shift) {
+        post_command(app, "imgui_key_release", JV((key = SHIFT_KEY)))
+    }
+    record_check_value(app, verify_target, "value", expected, 180)
+    let consumed = lead + play
+    sleep(dwell > consumed ? dwell - consumed : 0u)
 }
 
 [export]
 def main {
     with_recording_app("examples/tutorial/data_table.das",
-                       "data_table.apng", 60) $(app) {
-        // Window-prefixed registry paths for the cells we'll narrate.
-        let T_TABLE = "DT_WIN/DT_TABLE"
+                       "data_table.apng", 55) $(app) {
         let T_NAME0 = "DT_WIN/DT_TABLE/DT_NAME[0]"
+        let T_NAME1 = "DT_WIN/DT_TABLE/DT_NAME[1]"
         let T_KIND0 = "DT_WIN/DT_TABLE/DT_KIND[0]"
         let T_VAL0  = "DT_WIN/DT_TABLE/DT_VAL[0]"
-        let T_VAL5  = "DT_WIN/DT_TABLE/DT_VAL[5]"
+        // Caption anchors: bottom-row cells of each column. The narrate box scores
+        // "below" the anchor with zero overlaps (the empty table region under the
+        // six rows), so it parks there instead of covering the clickable header
+        // row; the connector still points at the column being sorted.
+        let C_NAME  = "DT_WIN/DT_TABLE/DT_NAME[5]"
+        let C_KIND  = "DT_WIN/DT_TABLE/DT_KIND[5]"
+        let C_VAL   = "DT_WIN/DT_TABLE/DT_VAL[5]"
 
         var snap = wait_for_widget(app, T_NAME0, 10.0f)
         if (snap == null) {
-            panic("{T_NAME0} never rendered — wrong app running?")
+            panic("{T_NAME0} never rendered - wrong app running?")
         }
-        let p_table = widget_center(snap, T_TABLE)
-        let p_name0 = widget_center(snap, T_NAME0)
-        let p_kind0 = widget_center(snap, T_KIND0)
-        let p_val0  = widget_center(snap, T_VAL0)
-        let p_val5  = widget_center(snap, T_VAL5)
 
-        // Header row sits directly above row 0 by ~22 ImGui-default px.
-        let header_dy = 22.0f
-        let p_name_hdr = (p_name0._0, p_name0._1 - header_dy)
-        let p_kind_hdr = (p_kind0._0, p_kind0._1 - header_dy)
+        // Header sits ~14px above row 0's top edge; the click x is the column's
+        // row-0 cell left + a small inset (column-left is stable across sorts,
+        // unlike the text-extent-dependent cell center).
+        let header_dy = 14.0f
+        let p_name_hdr = col_header(snap, T_NAME0, header_dy)
+        let p_kind_hdr = col_header(snap, T_KIND0, header_dy)
+        let p_val_hdr  = col_header(snap, T_VAL0, header_dy)
 
-        // ---- Stage 1: announce the container ----
-        move_to(app, p_table)
-        sleep(SETTLE_MS)
-        say(app, "data_table — boost container around ImGui BeginTable/EndTable. Flags here: Sortable | SortMulti | Resizable | Reorderable | Hideable | RowBg.", T_TABLE)
+        // Light the modifier strip so the Shift pill is visible on the multi-sort beat.
+        post_command(app, "imgui_key_hud", JV((enabled = true, show_modifiers = true)))
 
-        // ---- Stage 2: per-column cell visit shows the column structure ----
-        move_to(app, p_name0)
-        sleep(SETTLE_MS)
-        say(app, "table_set_column_index(0) puts the cursor in the Name column. Per-row IDs (DT_NAME[i]) make each cell individually addressable.", T_NAME0)
+        // Warm up the capture pipeline before the first voice. Cold-start frames
+        // render slower; counting them under the first beat skews convert's single
+        // frame->time map. A brief settled intro on the Name header absorbs them and
+        // leaves the cursor parked where beat 2 clicks.
+        move_to(app, p_name_hdr, 800)
+        sleep(1800u)
 
-        move_to(app, p_val5)
-        sleep(SETTLE_MS)
-        say(app, "Six rows × three columns; the last cell (DT_VAL[5]=0.001) anchors the Value column. Sort order is currently the seed order.", T_VAL5)
+        // ---- Beat 1: intro (no action) - the grid boots sorted by Name ascending ----
+        say(app, "sortable grid - sorted by name", C_NAME,
+            [voice = "This is a data table - a sortable grid wrapping ImGui's tables. Six rows, three columns, and it starts sorted by name."])
 
-        // ---- Stage 3: click Name header — fires sort_specs() $(specs) callback ----
-        var name_sort_events : array<JsonValue?>
-        name_sort_events |> click_at(0, p_name_hdr, 700)
-        post_command(app, "imgui_mouse_play", JV((events = name_sort_events)))
-        sleep(CLICK_DWELL_MS)
-        say(app, "Click the Name header — sort_specs() fires, sort_rows() runs the comparator, ROWS is sorted by name ascending. Click again to flip to descending.", T_NAME0)
+        // ---- Beat 2: click Name header - ascending flips to descending ----
+        sort_under_voice(app, say_begin(app, "click header: flip the sort", C_NAME,
+            [voice = "Click a column header to sort by it. Click Name again and ascending flips to descending - now Z to A."]),
+            p_name_hdr, false, T_NAME0, "zeta")
 
-        // ---- Stage 4: click Type header — re-sort by Type, watch rows shuffle ----
-        var kind_sort_events : array<JsonValue?>
-        kind_sort_events |> click_at(0, p_kind_hdr, 700)
-        post_command(app, "imgui_mouse_play", JV((events = kind_sort_events)))
-        sleep(CLICK_DWELL_MS)
-        say(app, "Click the Type header — sort_specs reports the new column_user_id, comparator routes on it, rows re-sort by type. column_user_id (not column_index) makes the sort survive column reorder.", T_KIND0)
+        // ---- Beat 3: click Type header - single-column sort replaces the key ----
+        sort_under_voice(app, say_begin(app, "click another column", C_KIND,
+            [voice = "Click a different header and the whole grid re-sorts by that column. Now it is grouped by type, bool first."]),
+            p_kind_hdr, false, T_NAME0, "delta")
 
-        // ---- Stage 5: callout the SortMulti / Reorderable / Hideable features ----
-        move_to(app, p_table)
-        sleep(SETTLE_MS)
-        say(app, "Try live: Shift+click a second header for SortMulti (secondary sort key). Drag a header to reorder. Right-click for the Hideable column toggle.", T_TABLE)
+        // ---- Beat 4: Shift+click Value header - SortMulti adds a secondary key ----
+        sort_under_voice(app, say_begin(app, "Shift+click: multi-column sort", C_VAL,
+            [voice = "Hold Shift and click a second header to add it as a secondary key. Type stays primary; within each type, rows now break ties by value."]),
+            p_val_hdr, true, T_NAME1, "zeta")
+
+        post_command(app, "imgui_key_hud", JV((enabled = false)))
     }
 }

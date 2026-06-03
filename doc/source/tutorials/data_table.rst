@@ -28,6 +28,13 @@ Walkthrough
 
 .. video:: data_table.mp4
 
+The recording drives the sortable shape by clicking the real column headers:
+clicking ``Name`` flips the active sort ascending to descending; clicking
+``Type`` replaces the key and re-groups the rows by type; and **Shift+clicking**
+``Value`` adds it as a secondary key (the ``2`` badge), so within each type the
+rows break ties by value. Each click is verified against the re-rendered cell
+text, so a header click that failed to re-sort would abort the recording.
+
 .. literalinclude:: ../../../examples/tutorial/data_table.das
    :language: das
    :linenos:

@@ -125,8 +125,12 @@ var DT_VAL : table<int; NarrativeState>
 
 [export]
 def init() {
-    live_create_window("dasImgui data_table tutorial", 720, 460)
+    live_create_window("dasImgui data_table tutorial", 860, 540)
     live_imgui_init(live_window)
+    // Deterministic FirstUseEver layout for the recording: disable imgui.ini so a
+    // prior session's window pos/size can't drift the framing. Tutorial-scoped on
+    // purpose - not a blanket change to live_imgui_init.
+    DisableIniPersistence()
     var io & = unsafe(GetIO())
     io.FontGlobalScale = 1.4
 }
