@@ -119,10 +119,13 @@ jobs:
         # under which the crash reproduces in CI.
         env:
           DASLIVE_HV_LOG: stderr
-          ASAN_OPTIONS: "abort_on_error=1:halt_on_error=1:print_stats=0:log_path=D:\\a\\asan\\asan"
+          # log_path MUST be colon-free: ASAN_OPTIONS parses ':' as its option
+          # separator, so an absolute Windows path (D:\...) makes ASan read
+          # `log_path=D` then choke ("expected '=' in ASAN_OPTIONS"). Use a
+          # relative path — reports land in the cwd (daslang-src) as asan_report.<pid>.
+          ASAN_OPTIONS: "abort_on_error=1:halt_on_error=1:print_stats=0:log_path=asan_report"
         run: |
           set -eux
-          mkdir -p /d/a/asan
           ${BIN_DIR}/daslang dastest/dastest.das -- \
             --test modules/dasImgui/tests/integration \
             --timeout 2400 \
@@ -134,14 +137,14 @@ jobs:
             --exclude inputs_color --exclude inputs_choice --exclude inputs_text --exclude indexed_dynamic \
             --headless || true
           echo "=== ASan reports ==="
-          ls -la /d/a/asan/ 2>/dev/null || echo "(no asan dir)"
-          for f in /d/a/asan/asan.*; do [ -f "$f" ] && { echo "--- $f ---"; cat "$f"; }; done
+          ls -la asan_report.* 2>/dev/null || echo "(no asan reports)"
+          for f in asan_report.*; do [ -f "$f" ] && { echo "--- $f ---"; cat "$f"; }; done
 
       - name: "Upload ASan reports"
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: asan-reports
-          path: D:\a\asan\**
+          path: ${{ github.workspace }}/daslang-src/asan_report.*
           if-no-files-found: warn
           retention-days: 7
