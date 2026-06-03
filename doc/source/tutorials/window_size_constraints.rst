@@ -36,6 +36,14 @@ Walkthrough
 
 .. video:: window_size_constraints.mp4
 
+The recording drags each window by its bottom-right corner - the real
+"drag border" gesture - to a shape that violates its constraint, and the
+callback snaps it back: the first window, dragged to a wide-short rectangle,
+springs to a 400x400 square; the second, dragged tall, collapses to 480x270
+(16:9); the third, dragged off-grid, lands on 350x200 (nearest 50). Each
+snapped size is asserted - a drag that didn't resize, or a callback that
+didn't reshape the request, aborts the recording.
+
 .. literalinclude:: ../../../examples/tutorial/window_size_constraints.das
    :language: das
    :linenos:

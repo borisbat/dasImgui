@@ -63,6 +63,11 @@ var private STEP_CN : ImGuiSizeConstraints
 def init() {
     live_create_window("dasImgui window_size_constraints tutorial", 980, 560)
     live_imgui_init(live_window)
+    // This tutorial relies on FirstUseEver window sizes; disable imgui.ini so the
+    // documented layout (and the recording) is deterministic every run instead of
+    // restoring whatever a prior session left. Tutorial-scoped on purpose — not a
+    // blanket change to live_imgui_init.
+    DisableIniPersistence()
     var io & = unsafe(GetIO())
     io.FontGlobalScale = 1.2
 
@@ -104,7 +109,7 @@ def update() {
     window(SQUARE_WIN, (text = "Square", closable = false,
                         flags = ImGuiWindowFlags.None)) {
         let s = SQUARE_WIN.size
-        text(SQUARE_TEXT, (text = "Drag border — always square.\n"
+        text(SQUARE_TEXT, (text = "Drag border - always square.\n"
                                 + "Size: {int(s.x)} x {int(s.y)}"))
     }
 
@@ -116,7 +121,7 @@ def update() {
     window(ASPECT_WIN, (text = "Aspect 16:9", closable = false,
                         flags = ImGuiWindowFlags.None)) {
         let s = ASPECT_WIN.size
-        text(ASPECT_TEXT, (text = "Drag border — height tracks width / 16:9.\n"
+        text(ASPECT_TEXT, (text = "Drag border - height tracks width / 16:9.\n"
                                 + "Size: {int(s.x)} x {int(s.y)}"))
     }
 
@@ -128,7 +133,7 @@ def update() {
     window(STEP_WIN, (text = "Step 50", closable = false,
                       flags = ImGuiWindowFlags.None)) {
         let s = STEP_WIN.size
-        text(STEP_TEXT, (text = "Drag border — both dims snap to 50 px.\n"
+        text(STEP_TEXT, (text = "Drag border - both dims snap to 50 px.\n"
                               + "Size: {int(s.x)} x {int(s.y)}"))
     }
 
