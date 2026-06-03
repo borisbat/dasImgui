@@ -124,7 +124,7 @@ def update() {
         separator()
 
         // ---- Stage 6: text_filter — incl,-excl token filter ----
-        text("text_filter — type 'info' or '-debug' to filter the log:")
+        text("text_filter - type 'info' or '-debug' to filter the log:")
         text_filter(IT_FILTER)
         for (i in range(length(LOG_LINES))) {
             if (passes_filter(IT_FILTER, LOG_LINES[i])) {
