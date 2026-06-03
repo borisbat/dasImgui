@@ -1093,6 +1093,38 @@ def public click_render_voice(app : ImguiApp; dwell : uint; click_target : strin
     sleep(dwell > consumed ? dwell - consumed : 0u)            // PACING: hold the caption for the rest of the voice
 }
 
+def public menu_pick_voice(app : ImguiApp; dwell : uint; header_target : string; item_target : string) {
+    //! Open a menu-bar menu (``header_target``, e.g. ``MAIN_BAR/FILE_MENU``) and pick an item inside it
+    //! (``item_target``) UNDER an already-posted voice line, navigating the way a human does: click the
+    //! header, then drop STRAIGHT DOWN the menu's column onto the item. A direct click on the item would
+    //! travel diagonally from the header across the menu bar and clip a SIBLING menu header — ImGui
+    //! hover-switches the open menu mid-travel and the click lands in the wrong menu. The vertical drop
+    //! stays inside the open menu's column (menu items span the full menu width, so the header's center-x
+    //! lands on the item) and never crosses a sibling. Self-verifying via ``record_check_rendered``: the
+    //! item must render after the header click (menu opened) and stop rendering after the item click (pick
+    //! landed + menu closed), or the recording aborts at teardown. The caller should ``move_to`` the
+    //! header's column (directly below the header, below the bar) first so the open-click travels vertically.
+    //! Every sleep is PACING; the open/close are polled, never slept.
+    let started = ref_time_ticks()
+    let lead = clamp(dwell / 3u, TREE_LEAD_MIN_MS, TREE_LEAD_MAX_MS)   // ~1/3 into the line
+    sleep(lead)                                                // PACING: land the clicks under the voice
+    click(app, header_target)                                 // open the menu (caller staged below it)
+    record_check_rendered(app, item_target, true, TREE_POLL_FRAMES)   // SYNC: menu opened
+    var snap = snapshot(app)
+    let hb = snap?["globals"]?[header_target]?["bbox"]
+    let hcx = ((hb?["x"] ?? 0.0f) + (hb?["z"] ?? 0.0f)) * 0.5f
+    let ib = snap?["globals"]?[item_target]?["bbox"]
+    let icy = ((ib?["y"] ?? 0.0f) + (ib?["w"] ?? 0.0f)) * 0.5f
+    var ev : array<JsonValue?>
+    ev |> click_at(0, (hcx, icy), TREE_TRAVEL_MS, 0)          // vertical drop down the column, then click
+    post_command(app, "imgui_mouse_play", JV((events = ev)))
+    unsafe { delete ev; }
+    wait_for_mouse_idle(app)                                            // SYNC: the click fully played
+    record_check_rendered(app, item_target, false, TREE_POLL_FRAMES)  // SYNC: pick landed, menu closed
+    let consumed = uint(get_time_usec(started) / 1000)
+    sleep(dwell > consumed ? dwell - consumed : 0u)            // PACING: hold the caption for the rest of the voice
+}
+
 def public wait_for_key_idle(app : ImguiApp; timeout_sec : float = DEFAULT_FRAME_WAIT_SEC) : bool {
     //! Poll ``imgui_key_status`` until ``playing == false`` or timeout; returns true on idle.
     //! Uses one HTTP request per poll (unlike a ``wait_until`` body that pairs a snapshot
