@@ -46,11 +46,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # windows-latest: a /GS stack-smash fast-fail (0xC0000409) in the docking
-        # reset() path triggers ONLY under the full 4-worker concurrent load
-        # (test_docking_basic). The test step runs Windows at 3 workers as a
-        # TEMPORARY workaround (stays under the threshold → green) while the root
-        # cause is investigated (ASan); see the worker-count note in the run step.
+        # windows-latest: test_docking_basic intermittently fast-fails with a /GS
+        # stack-smash (0xC0000409) in the docking reset() path. Dropping to 3
+        # isolated workers did NOT avoid it (still crashes), so the worker-count
+        # workaround is dropped — root cause under investigation via ASan.
         os: [ubuntu-latest, macos-latest, windows-latest]
     defaults:
       run:
@@ -304,13 +303,6 @@ jobs:
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
             EXTRA_EXCLUDES="--exclude inputs_drag --exclude inputs_numeric --exclude inputs_slider --exclude inputs_color --exclude inputs_choice --exclude inputs_text --exclude indexed_dynamic"
             DASTEST_TIMEOUT=1800
-            # TEMPORARY WORKAROUND: Windows fast-fails (0xC0000409, a /GS stack
-            # smash in the docking reset() path) only under the full 4-worker
-            # concurrent load — test_docking_basic. 3 workers stays under the
-            # threshold and runs green, unblocking merge. Restore to 4 once the
-            # root cause is fixed (ASan investigation in progress; the daScript
-            # dastest stderr-capture fix is PR #2985).
-            THREADS=3
           fi
           ${BIN_DIR}/daslang dastest/dastest.das -- \
             --test modules/dasImgui/tests/integration \
