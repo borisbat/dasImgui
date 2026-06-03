@@ -8,121 +8,115 @@ require imgui/imgui_playwright public
 require daslib/json public
 require daslib/json_boost public
 
-//! Driver script: record ``edit_external_tour.apng``. One shell:
-//!
-//!     bin/Release/daslang.exe -project_root <dasimgui> \
-//!         <dasimgui>/tests/integration/record_edit_external.das
-//!
-//! Walks the boost-v2 external-pointer rail:
-//!   1. edit_slider_float -- drag along bbox
-//!   2. edit_input_int -- focus + key_type
-//!   3. edit_checkbox -- click
-//!   4. edit_drag_float3 -- imgui_force_set vector
-//!   5. edit_color_edit3 -- imgui_force_set float3
-//!   6. edit_combo -- imgui_force_set int
-//!   7. edit_slider_angle -- imgui_force_set radians
+//! Driver: record edit_external_tour.apng against examples/tutorial/editing_external.das.
+//! The edit_* family edits caller-owned data through a `T?` pointer (safe_addr), so the proof of
+//! the rail is that a REAL gesture on the widget writes straight through to a `var private` global
+//! (printed live in the readout). Every stage is driven the human way and self-verified -- the
+//! recording doubles as a test; a no-op aborts at teardown. NOTHING is force_set (the now-existing
+//! drag/type/combo rails make every shape drivable, so this is no longer a force_set scene):
+//!   edit_slider_float  -> drag the handle           (value moved)
+//!   edit_input_int     -> click, type "42", Enter   (value == 42)
+//!   edit_checkbox      -> click                      (bool flips)
+//!   edit_drag_float3   -> drag the first field       (float3 changed; a Drag scrubs, never types)
+//!   edit_color_edit3   -> drag the red channel       (float3 changed; swatch shifts)
+//!   edit_combo         -> open + click item 2        (index == 2)
+//!   edit_slider_angle  -> drag the handle            (radian value moved)
 
-let RESULT_MS  = 2000u
-let TAIL_MS    = 1500u
-
-def widget_bbox(var snap : JsonValue?; ident : string) : float4 {
+def bbox_of(var snap : JsonValue?; ident : string) : float4 {
     var b = snap?["globals"]?[ident]?["bbox"]
-    return float4(
-        b?["x"] ?? 0.0f,
-        b?["y"] ?? 0.0f,
-        b?["z"] ?? 0.0f,
-        b?["w"] ?? 0.0f
-    )
+    return float4(b?["x"] ?? 0.0f, b?["y"] ?? 0.0f, b?["z"] ?? 0.0f, b?["w"] ?? 0.0f)
 }
 
-def widget_center(var snap : JsonValue?; ident : string) : tuple<float; float> {
-    let b = widget_bbox(snap, ident)
-    return ((b.x + b.z) * 0.5f, (b.y + b.w) * 0.5f)
+// Point at fractional (fx, fy) inside a bbox -- rides the widget's real rect instead of hard pixels.
+def frac_point(bb : float4; fx : float; fy : float) : tuple<float; float> {
+    return (bb.x + (bb.z - bb.x) * fx, bb.y + (bb.w - bb.y) * fy)
+}
+
+// Click point inside an input's editable text field -- left of the trailing +/- step buttons.
+def field_click(bb : float4) : tuple<float; float> {
+    return (bb.x + 42.0f, (bb.y + bb.w) * 0.5f)
 }
 
 [export]
 def main {
     with_recording_app("examples/tutorial/editing_external.das",
-                       "edit_external_tour.apng", 75) $(app) {
-        var snap = wait_for_render(app, "EDITOR_WIN/VOL_SLIDER", 10.0f)
+                       "edit_external_tour.apng", 90) $(app) {
+        let T_VOL     = "EDITOR_WIN/VOL_SLIDER"
+        let T_COUNT   = "EDITOR_WIN/COUNT_INPUT"
+        let T_ENABLED = "EDITOR_WIN/ENABLED_CHECK"
+        let T_POS     = "EDITOR_WIN/POS_DRAG"
+        let T_COLOR   = "EDITOR_WIN/ACCENT_COLOR"
+        let T_COMBO   = "EDITOR_WIN/QUALITY_COMBO"
+        let T_ANGLE   = "EDITOR_WIN/ANGLE_SLIDER"
+
+        var snap = wait_for_render(app, T_VOL, 10.0f)
         if (snap == null) {
-            panic("EDITOR_WIN/VOL_SLIDER never rendered -- wrong app?")
+            panic("{T_VOL} never rendered - wrong app running?")
         }
 
-        let p_count   = widget_center(snap, "EDITOR_WIN/COUNT_INPUT")
-        let p_enabled = widget_center(snap, "EDITOR_WIN/ENABLED_CHECK")
-        let p_pos     = widget_center(snap, "EDITOR_WIN/POS_DRAG")
-        let p_color   = widget_center(snap, "EDITOR_WIN/ACCENT_COLOR")
-        let p_combo   = widget_center(snap, "EDITOR_WIN/QUALITY_COMBO")
-        let p_angle   = widget_center(snap, "EDITOR_WIN/ANGLE_SLIDER")
+        // Type stages pop each synth key as a fading keycap so the viewer sees the keystrokes.
+        post_command(app, "imgui_key_hud", JV((enabled = true, show_modifiers = false)))
 
-        //! VOL_SLIDER: drag from 20% -> 75% along its bbox.
-        let vol_bb = widget_bbox(snap, "EDITOR_WIN/VOL_SLIDER")
-        let vol_y  = (vol_bb.y + vol_bb.w) * 0.5f
-        let vol_x0 = vol_bb.x + (vol_bb.z - vol_bb.x) * 0.20f
-        let vol_x1 = vol_bb.x + (vol_bb.z - vol_bb.x) * 0.75f
+        // ---- Intro: the rail (static, no action) ----
+        say(app, "edit_* - widgets that edit YOUR data", T_VOL,
+            [voice = "Most widgets keep their own state. The edit family is different. Each one edits a variable you already have, reaching it through a pointer you pass with safe address. Watch every gesture write straight through to my own variables in the readout below."])
 
-        //! Initial cursor placement (flips synth_cursor_owned).
-        move_to(app, (400.0f, 360.0f), 600)
+        // ---- Stage 1: edit_slider_float - drag the handle ----
+        let bb1 = bbox_of(snap, T_VOL)
+        let cy1 = (bb1.y + bb1.w) * 0.5f
+        move_to(app, (bb1.x + 0.50f * (bb1.z - bb1.x), cy1), 600)   // onto the handle (value 0.5 -> mid)
         sleep(SETTLE_MS)
+        let d1 = say_begin(app, "edit_slider_float - drag, value follows", T_VOL,
+            [voice = "Drag the volume slider, and the floating point variable behind it moves with the handle. The widget is writing through the pointer, not into a copy of its own."])
+        drag_through_voice(app, d1, T_VOL, (bb1.x + 0.85f * (bb1.z - bb1.x), cy1))
 
-        // ---- Stage 1: edit_slider_float drag ----
-        move_to(app, (vol_x0, vol_y), 900)
+        // ---- Stage 2: edit_input_int - click, type, Enter ----
+        let p2 = field_click(bbox_of(snap, T_COUNT))
+        move_to(app, p2, 700)
         sleep(SETTLE_MS)
-        say(app, "edit_slider_float -- drag updates the external float through safe_addr.", "EDITOR_WIN/VOL_SLIDER")
-        var slider_events : array<JsonValue?>
-        slider_events |> drag_along(0, (vol_x0, vol_y), (vol_x1, vol_y), 1200, 400)
-        post_command(app, "imgui_mouse_play", JV((events = slider_events)))
-        sleep(uint(2200))
-        sleep(RESULT_MS)
+        let d2 = say_begin(app, "edit_input_int - type your int", T_COUNT,
+            [voice = "Click the count field and type a new number. It commits straight into my integer variable, the same one printed below."])
+        type_into_voice(app, d2, T_COUNT, p2, ["42"], 42)
 
-        // ---- Stage 2: edit_input_int focus + type ----
-        move_to(app, p_count, 900)
+        // ---- Stage 3: edit_checkbox - click flips the bool ----
+        move_to(app, widget_click_point(snap, T_ENABLED), 700)
         sleep(SETTLE_MS)
-        say(app, "edit_input_int -- focus and type into the external int.", "EDITOR_WIN/COUNT_INPUT")
-        post_command(app, "imgui_focus", JV((target = "EDITOR_WIN/COUNT_INPUT")))
-        sleep(400u)
-        post_command(app, "imgui_key_type", JV((text = "42", total_duration_s = 1.2f)))
-        sleep(RESULT_MS)
+        let d3 = say_begin(app, "edit_checkbox - flip your bool", T_ENABLED,
+            [voice = "The checkbox edits a plain boolean. Click it and the value flips from true to false in place."])
+        hold_through_voice(app, d3, [T_ENABLED])
 
-        // ---- Stage 3: edit_checkbox click ----
-        move_to(app, p_enabled, 900)
+        // ---- Stage 4: edit_drag_float3 - drag the first field (a Drag scrubs; click would NOT type) ----
+        let bb4 = bbox_of(snap, T_POS)
+        move_to(app, frac_point(bb4, 0.08f, 0.5f), 700)
         sleep(SETTLE_MS)
-        say(app, "edit_checkbox -- click toggles the external bool.", "EDITOR_WIN/ENABLED_CHECK")
-        var check_events : array<JsonValue?>
-        check_events |> click_at(0, p_enabled, 250)
-        post_command(app, "imgui_mouse_play", JV((events = check_events)))
-        sleep(RESULT_MS)
+        let d4 = say_begin(app, "edit_drag_float3 - scrub one axis", T_POS,
+            [voice = "A vector editor binds to all three components of my position. Drag the first field and only that axis scrubs, while the other two hold steady."])
+        drag_through_voice(app, d4, T_POS, frac_point(bb4, 0.22f, 0.5f))
 
-        // ---- Stage 4: edit_drag_float3 via imgui_force_set ----
-        move_to(app, p_pos, 900)
+        // ---- Stage 5: edit_color_edit3 - drag the red channel ----
+        let bb5 = bbox_of(snap, T_COLOR)
+        move_to(app, frac_point(bb5, 0.08f, 0.5f), 700)
         sleep(SETTLE_MS)
-        say(app, "edit_drag_float3 -- vector write via imgui_force_set + unsafe(reinterpret).", "EDITOR_WIN/POS_DRAG")
-        post_command(app, "imgui_force_set", JV((target = "EDITOR_WIN/POS_DRAG",
-                                           value = float3(1.5f, 2.5f, 3.5f))))
-        sleep(RESULT_MS)
+        let d5 = say_begin(app, "edit_color_edit3 - scrub a channel", T_COLOR,
+            [voice = "The color editor binds to a color of mine. Drag the red channel up and the swatch shifts toward red as the value climbs."])
+        drag_through_voice(app, d5, T_COLOR, frac_point(bb5, 0.22f, 0.5f))
 
-        // ---- Stage 5: edit_color_edit3 via imgui_force_set ----
-        move_to(app, p_color, 900)
+        // ---- Stage 6: edit_combo - open and pick item 2 ----
+        move_to(app, frac_point(bbox_of(snap, T_COMBO), 0.5f, 0.5f), 700)
         sleep(SETTLE_MS)
-        say(app, "edit_color_edit3 -- float3 round-trips into the swatch.", "EDITOR_WIN/ACCENT_COLOR")
-        post_command(app, "imgui_force_set", JV((target = "EDITOR_WIN/ACCENT_COLOR",
-                                           value = float3(0.35f, 0.70f, 0.90f))))
-        sleep(RESULT_MS)
+        let d6 = say_begin(app, "edit_combo - pick an index", T_COMBO,
+            [voice = "The combo writes an index. Open it and choose a quality preset, and my index variable jumps to the row you picked."])
+        combo_pick_voice(app, d6, T_COMBO, 2)              // High
 
-        // ---- Stage 6: edit_combo via imgui_force_set ----
-        move_to(app, p_combo, 900)
+        // ---- Stage 7: edit_slider_angle - drag the handle ----
+        let bb7 = bbox_of(snap, T_ANGLE)
+        let cy7 = (bb7.y + bb7.w) * 0.5f
+        move_to(app, (bb7.x + 0.50f * (bb7.z - bb7.x), cy7), 700)   // onto the handle (0 rad -> mid)
         sleep(SETTLE_MS)
-        say(app, "edit_combo -- pick a preset by index (popup item bboxes need a click first).", "EDITOR_WIN/QUALITY_COMBO")
-        post_command(app, "imgui_force_set", JV((target = "EDITOR_WIN/QUALITY_COMBO", value = 2)))
-        sleep(RESULT_MS)
+        let d7 = say_begin(app, "edit_slider_angle - degrees over radians", T_ANGLE,
+            [voice = "Last, an angle slider. It shows degrees on the face, but the variable underneath is in radians. Drag it and the radian value swings along."])
+        drag_through_voice(app, d7, T_ANGLE, (bb7.x + 0.78f * (bb7.z - bb7.x), cy7))
 
-        // ---- Stage 7: edit_slider_angle via imgui_force_set ----
-        move_to(app, p_angle, 900)
-        sleep(SETTLE_MS)
-        say(app, "edit_slider_angle -- radians under the hood; UI shows degrees.", "EDITOR_WIN/ANGLE_SLIDER")
-        post_command(app, "imgui_force_set", JV((target = "EDITOR_WIN/ANGLE_SLIDER", value = 1.0f)))
-        sleep(RESULT_MS)
-        sleep(TAIL_MS)
+        post_command(app, "imgui_key_hud", JV((enabled = false)))
     }
 }
