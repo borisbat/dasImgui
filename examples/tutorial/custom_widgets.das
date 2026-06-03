@@ -60,10 +60,15 @@ struct VolumeKnobState {
 
 // imgui_force_set's "set" action queues pending_value (drained in knob() step 1).
 // The dispatch half of the custom-widget rail; pending_value_finalize is the other.
+// payload is JSON (built by write_json), so parse it with sscan_json_at exactly
+// like the built-in value dispatchers (pending_value_apply, imgui_widgets_builtin.das).
 [widget_dispatch]
 def knob_dispatch(var state : VolumeKnobState; action : string; payload : string) {
     if (action == "set") {
-        state.pending_value = to_float(payload)
+        unsafe {
+            sscan_json_at(payload, addr(state.pending_value),
+                          *reinterpret<TypeInfo const?>(typeinfo rtti_typeinfo(type<float>)))
+        }
         state.has_pending = true
     }
 }

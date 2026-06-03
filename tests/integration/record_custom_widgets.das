@@ -80,7 +80,7 @@ def main {
         sleep(SETTLE_MS)
         let t3 = ref_time_ticks()
         let d3 = say_begin(app, "imgui_force_set drives it too", T_BASS,
-            [voice = "Because the layout matches, a single live command sets the value from outside, with no extra wiring. Here it drives Bass."])
+            [voice = "A live command can set the value from outside as well. That takes one small dispatch hook, just a few lines, and then force set drives Bass directly."])
         let lead3 = d3 > 1200u ? 700u : d3 / 3u
         sleep(lead3)
         force_set_verified(app, T_BASS, -0.5f)              // the value took; -0.5 is non-zero so it is always present
