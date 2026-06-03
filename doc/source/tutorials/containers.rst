@@ -34,6 +34,17 @@ Walkthrough
 
 .. video:: containers.mp4
 
+The recording drives all four containers with real synthetic input and
+self-verifies each step. It flips the General tab's ``WIRE`` checkbox,
+then **clicks the Audio tab header** and asserts the switch by its effect:
+``AUDIO_TAB``'s ``MUTE`` starts rendering while ``GENERAL_TAB``'s ``WIRE``
+*stops* — a direct proof that only the open tab's body runs. It opens the
+popup from the button's ``pending_open`` flag (asserting the popup body
+appears), toggles the ``VSync`` checkbox inside it, closes it with the
+popup's own ``Close`` button (asserting the body stops), and finally hovers
+the button to bring up the ``item_tooltip``. Any step that failed to land
+aborts the recording.
+
 .. literalinclude:: ../../../examples/tutorial/containers.das
    :language: das
    :linenos:
@@ -100,7 +111,10 @@ while ``GENERAL_TAB`` is active won't list any ``AUDIO_TAB`` children.
 ``TabItemState.pending_open`` controls the closable-tab visibility
 (skip BeginTabItem entirely when ``open=false``), but it does NOT
 programmatically select the active tab — that's an ImGui internal
-state, set by clicking the tab header.
+state, set by clicking the tab header. Each ``tab_item`` registers its
+header's bbox, so a driver switches tabs the way a user does: an
+``imgui_click`` on the ``tab_item`` target (e.g.
+``CONT_WIN/MAIN_TABS/AUDIO_TAB``) lands on the header and selects it.
 
 popup
 =====

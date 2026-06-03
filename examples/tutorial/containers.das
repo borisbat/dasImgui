@@ -92,7 +92,7 @@ def update() {
             tab_item(INFO_TAB, (text = "Info", closable = false,
                                 flags = ImGuiTabItemFlags.None)) {
                 text("containers tutorial")
-                text("each tab is a block — exclusive render")
+                text("each tab is a block - exclusive render")
             }
         }
 
@@ -103,7 +103,7 @@ def update() {
         // next frame when ImGui sees `pending_open = true` and runs its
         // OpenPopup() call. The same channel handles imgui_open from
         // outside (curl example in the DRIVE block).
-        text("Popup — open via pending_open or imgui_open:")
+        text("Popup - open via pending_open or imgui_open:")
         if (button(OPEN_POPUP_BTN, (text = "Open options"))) {
             OPTIONS_POPUP.pending_open = true
         }
@@ -123,7 +123,7 @@ def update() {
         // ---- item_tooltip — hover-gated overlay ----
         // BeginItemTooltip auto-checks IsItemHovered() under the hood, so
         // the block only runs while the previous widget is hovered.
-        text("Tooltip — hover the button below:")
+        text("Tooltip - hover the button below:")
         button(HOVER_BTN, (text = "Hover me"))
         item_tooltip(HOVER_TIP) {
             text("This text appears on hover.")
