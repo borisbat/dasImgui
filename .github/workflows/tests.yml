@@ -191,6 +191,8 @@ jobs:
               -DDAS_GLFW_DISABLED=OFF \
               -DCMAKE_C_COMPILER_LAUNCHER=sccache \
               -DCMAKE_CXX_COMPILER_LAUNCHER=sccache \
+              -DCMAKE_EXE_LINKER_FLAGS="/DEBUG /OPT:REF /OPT:ICF" \
+              -DCMAKE_SHARED_LINKER_FLAGS="/DEBUG /OPT:REF /OPT:ICF" \
               -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" \
               -G Ninja
           else
@@ -243,6 +245,26 @@ jobs:
           set -eux
           ${BIN_DIR}/daslang utils/daspkg/main.das -- \
             install ../dasImgui --global
+
+      - name: "Configure crash dumps (Windows)"
+        # WER LocalDumps: on any fast-fail / unhandled crash of daslang(-live),
+        # the OS writes a full dump to D:\a\dumps (post-mortem, zero runtime
+        # overhead so the timing-sensitive docking race is preserved). PDBs are
+        # emitted alongside the binaries (linker /DEBUG above), so the uploaded
+        # dump symbolizes. WerSvc is running on the hosted runner image.
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path 'D:\a\dumps' | Out-Null
+          $b='HKLM:\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps'
+          foreach($e in @('daslang-live.exe','daslang.exe')){
+            $k=Join-Path $b $e
+            New-Item -Path $k -Force | Out-Null
+            New-ItemProperty -Path $k -Name DumpFolder -Value 'D:\a\dumps' -PropertyType ExpandString -Force | Out-Null
+            New-ItemProperty -Path $k -Name DumpType   -Value 2 -PropertyType DWord -Force | Out-Null
+            New-ItemProperty -Path $k -Name DumpCount  -Value 30 -PropertyType DWord -Force | Out-Null
+          }
+          Write-Output 'WER LocalDumps -> D:\a\dumps (full dumps, daslang/daslang-live)'
 
       - name: "Run integration tests (headless)"
         working-directory: ${{ github.workspace }}/daslang-src
@@ -314,3 +336,24 @@ jobs:
             --exclude key_hud \
             $EXTRA_EXCLUDES \
             --headless
+
+      - name: "Collect WER fault events (Windows)"
+        # Even if a dump fails to write, the Application log records the faulting
+        # module + offset + exception code. Export it alongside the dumps.
+        if: always() && matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path 'D:\a\dumps' | Out-Null
+          Get-WinEvent -FilterHashtable @{LogName='Application'; StartTime=(Get-Date).AddMinutes(-45)} -ErrorAction SilentlyContinue |
+            Where-Object { $_.ProviderName -match 'Application Error|Windows Error Reporting' -or $_.Id -in 1000,1001 } |
+            Format-List TimeCreated,Id,ProviderName,Message | Out-File 'D:\a\dumps\wer_events.txt' -Encoding utf8
+          Get-ChildItem 'D:\a\dumps' -ErrorAction SilentlyContinue | Format-Table Name,Length,LastWriteTime
+
+      - name: "Upload crash dumps + WER log (Windows)"
+        if: always() && matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-crash-dumps
+          path: D:\a\dumps\**
+          if-no-files-found: warn
+          retention-days: 7
