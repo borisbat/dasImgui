@@ -146,7 +146,10 @@ Same convention as the other tutorials.
 Driving from outside
 ====================
 
-The modal opens / closes from any control surface:
+The walkthrough above opens each modal by clicking its trigger button and
+dismisses it by clicking Yes / No / Apply — every gesture is a real click,
+self-verified by the modal body appearing or vanishing. The live commands
+below drive the same lifecycle directly, for remote or scripted control:
 
 .. code-block:: bash
 
