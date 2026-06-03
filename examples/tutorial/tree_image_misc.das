@@ -50,7 +50,7 @@ require imgui/imgui_visual_aids
 
 [export]
 def init() {
-    live_create_window("dasImgui tree_node_ex + image tutorial", 800, 660)
+    live_create_window("dasImgui tree_node_ex + image tutorial", 980, 720)
     live_imgui_init(live_window)
     var io & = unsafe(GetIO())
     io.FontGlobalScale = 1.4
@@ -76,7 +76,7 @@ def update() {
         separator()
 
         // ---- Stage 1: tree_node_ex — leaf form, caller controls TreePop ----
-        text("tree_node_ex (leaf form — caller pairs TreePop):")
+        text("tree_node_ex (leaf form - caller pairs TreePop):")
         if (tree_node_ex(TI_TREE, (text = "Group", flags = ImGuiTreeNodeFlags.None))) {
             text("  child A")
             text("  child B")
@@ -86,7 +86,7 @@ def update() {
         spacing()
 
         // ---- Stage 2: image — display, no click ----
-        text("image (display widget — paints a texture; no ClickState):")
+        text("image (display widget - paints a texture; no ClickState):")
         let io & = unsafe(GetIO())
         let font_tex = io.Fonts.TexID
         if (font_tex != null) {
@@ -96,7 +96,7 @@ def update() {
                            uv1 = float2(1.0f, 1.0f),
                            tint_col = float4(1.0f, 1.0f, 1.0f, 1.0f),
                            border_col = float4(0.6f, 0.6f, 0.6f, 1.0f)))
-            text("font atlas at 128x128 — no click, no padding; cf image_button.")
+            text("font atlas at 128x128 - no click, no padding; cf image_button.")
         }
     }
 
