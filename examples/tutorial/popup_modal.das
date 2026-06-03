@@ -69,7 +69,7 @@ def update() {
     window(PM_WIN, (text = "popup_modal tutorial", closable = false,
                     flags = ImGuiWindowFlags.None)) {
 
-        text("Two modals — a Yes/No confirm and a closable settings dialog.")
+        text("Two modals - a Yes/No confirm and a closable settings dialog.")
         separator()
 
         // ---- A: trigger the confirm modal ----
@@ -114,6 +114,7 @@ def update() {
             separator()
             checkbox(S_AUTOSAVE, (text = "Auto-save every 5 minutes"))
             checkbox(S_TELEMETRY, (text = "Send anonymous telemetry"))
+            S_MAX_FPS.bounds = (30, 240)
             slider_int(S_MAX_FPS, (text = "Max FPS cap"))
             separator()
             if (button(S_APPLY, (text = "Apply"))) {
