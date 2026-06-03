@@ -17,6 +17,15 @@ Walkthrough
 
 .. video:: layout.mp4
 
+The recording drives the layout with **real synthetic drags** on the splitter
+handles — no ``imgui_force_set``. It grabs the sidebar's right edge and pulls it
+wider (asserting ``SIDEBAR``'s pixel width rose), drags the vertical handle
+between the Files and Editor panes (left-pane fraction rose), then drags the
+horizontal handle down so the editor grows and the output shrinks (top fraction
+rose). Each handle surfaces its own bbox as a ``<container>/HANDLE`` alias in the
+snapshot, so the cursor targets the real 8 px ``InvisibleButton``; a drag that
+moved nothing aborts the recording at teardown.
+
 .. literalinclude:: ../../../examples/tutorial/layout.das
    :language: das
    :linenos:
@@ -89,13 +98,20 @@ Every helper's state struct is targetable by name. Drag without a mouse:
 
 .. code-block:: bash
 
-   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"SIDEBAR","value":260.0}}' \
+   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"LAYOUT_WIN/SIDEBAR","value":260.0}}' \
         localhost:9090/command
-   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"SPLIT_MAIN","value":0.6}}' \
+   curl -X POST -d '{"name":"imgui_force_set","args":{"target":"LAYOUT_WIN/SPLIT_VERT/SPLIT_MAIN","value":0.6}}' \
         localhost:9090/command
 
 ``value`` is the same type the user would set by dragging — pixels for
-``dock_*``, fraction for ``split_*``.
+``dock_*``, fraction for ``split_*``. Targets are path-qualified by the
+enclosing ``window``/``split`` chain (no bare ``SIDEBAR``).
+
+Each helper also exposes its drag handle's geometry as a ``<container>/HANDLE``
+alias in the snapshot, so a driver can perform a **real** drag instead of
+setting the fraction directly — ``LAYOUT_WIN/SIDEBAR/HANDLE`` and likewise for
+each split. The ``drag`` playwright helper targets it by bbox centre; this is
+how the recording above drives every split.
 
 Scope wrappers
 ==============
@@ -133,8 +149,8 @@ Feature demos: ``examples/features/with_indent.das``,
 ``examples/features/with_item_width.das``,
 ``examples/features/with_text_wrap_pos.das``.
 
-Standalone vs live
-==================
+Next steps
+==========
 
 Docking is next — full ImGui dockspaces and the dock helpers that ride on
 top of them.
