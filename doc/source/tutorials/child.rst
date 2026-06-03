@@ -29,6 +29,15 @@ Walkthrough
 
 .. video:: child.mp4
 
+The recording drives each of the three children with real synthetic input
+and self-verifies. It parks the cursor inside the bordered child **A** and
+wheel-scrolls it, asserting ``SCROLL_A``'s ``scroll`` payload actually
+moved; toggles the ``VSync`` checkbox inside the AutoResizeY child **B**;
+then wheel-scrolls the horizontal child **C** sideways, asserting
+``SCROLL_C``'s ``scroll`` moved. The scroll assertions read the boost
+layer's per-frame ``scroll`` telemetry directly — a no-op scroll (cursor
+not over the child, wheel not attributed) would abort the recording.
+
 .. literalinclude:: ../../../examples/tutorial/child.das
    :language: das
    :linenos:
