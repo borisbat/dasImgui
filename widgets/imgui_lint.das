@@ -125,6 +125,10 @@ let private ALLOWED_IMGUI : table<string> <- {
     "RenderColorRectWithAlphaCheckerboard", "RenderMouseCursor",
     "RenderArrow", "RenderBullet", "RenderCheckMark",
     "RenderArrowPointingAt", "RenderArrowDockMenu",
+    // Render*Clipped / Ellipsis text helpers — bound via manual C++ wrappers
+    // (dasIMGUI.main.cpp) that pin text_end/text_size_if_known to nullptr, since a
+    // daslang string can't pass the NULL these need (a non-null "" over-reads → crash).
+    "RenderTextClipped", "RenderTextClippedEx", "RenderTextEllipsis",
     // Vertex-shading draw helpers cherry-picked from imgui_internal.h (family 2).
     // Write over already-created ImDrawList vertices — host-agnostic, no v2 state.
     // Bound via bind_imgui.das internal_allow_func.

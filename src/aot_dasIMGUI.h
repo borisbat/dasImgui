@@ -39,6 +39,16 @@ namespace das {
     DAS_MOD_API void AddText( ImDrawList & drawList, const ImVec2& pos, ImU32 col, const char* text );
     DAS_MOD_API void AddText2( ImDrawList & drawList, const ImFont* font, float font_size, const ImVec2& pos, ImU32 col,
         const char* text_begin, float wrap_width = 0.0f, const ImVec4* cpu_fine_clip_rect = nullptr);
+    // imgui_internal.h Render*Clipped / Ellipsis text helpers — text_end is forced to
+    // nullptr (a daslang string can't express the NULL these need for "auto-strlen";
+    // a non-null "" over-reads past the buffer → crash). text_size_if_known is forced
+    // to nullptr (let ImGui compute it — identical result, it is only a perf hint).
+    DAS_MOD_API void RenderTextClippedW( const ImVec2& pos_min, const ImVec2& pos_max, const char* text,
+        const ImVec2& align, const ImRect* clip_rect );
+    DAS_MOD_API void RenderTextClippedExW( ImDrawList* draw_list, const ImVec2& pos_min, const ImVec2& pos_max,
+        const char* text, const ImVec2& align, const ImRect* clip_rect );
+    DAS_MOD_API void RenderTextEllipsisW( ImDrawList* draw_list, const ImVec2& pos_min, const ImVec2& pos_max,
+        float clip_max_x, float ellipsis_max_x, const char* text );
     DAS_MOD_API ImColor HSV(float h, float s, float v, float a = 1.0f);
     DAS_MOD_API void ImGTB_Append ( ImGuiTextBuffer & buf, const char * txt );
     DAS_MOD_API int ImGTB_At ( ImGuiTextBuffer & buf, int32_t index );
