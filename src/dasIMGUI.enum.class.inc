@@ -1033,3 +1033,17 @@ public:
 	}
 };
 
+// from imgui_internal.h:1594:6
+class Enumeration_ImGuiNavHighlightFlags_ : public das::Enumeration {
+public:
+	Enumeration_ImGuiNavHighlightFlags_() : das::Enumeration("ImGuiNavHighlightFlags") {
+		external = true;
+		cppName = "ImGuiNavHighlightFlags_";
+		baseType = (das::Type) das::ToBasicType<int>::type;
+		addIEx("None", "ImGuiNavHighlightFlags_None", int64_t(ImGuiNavHighlightFlags_::ImGuiNavHighlightFlags_None), das::LineInfo());
+		addIEx("Compact", "ImGuiNavHighlightFlags_Compact", int64_t(ImGuiNavHighlightFlags_::ImGuiNavHighlightFlags_Compact), das::LineInfo());
+		addIEx("AlwaysDraw", "ImGuiNavHighlightFlags_AlwaysDraw", int64_t(ImGuiNavHighlightFlags_::ImGuiNavHighlightFlags_AlwaysDraw), das::LineInfo());
+		addIEx("NoRounding", "ImGuiNavHighlightFlags_NoRounding", int64_t(ImGuiNavHighlightFlags_::ImGuiNavHighlightFlags_NoRounding), das::LineInfo());
+	}
+};
+
