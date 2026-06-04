@@ -38,7 +38,6 @@ def update() {
     if (!harness_begin_frame()) return
     harness_new_frame()
 
-    let ink  = rgba(232u, 232u, 240u, 255u)
     let edge = rgba(120u, 180u, 240u, 255u)
 
     SetNextWindowSize(ImVec2(720.0, 500.0), ImGuiCond.Always)
