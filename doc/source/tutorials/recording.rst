@@ -45,6 +45,11 @@ The driver
 
 .. video:: recording.mp4
 
+The video below is produced by the driver listed under it — the meta loop closes
+on itself. It drags ``Volume`` (asserting the value moved) and clicks ``Save``
+(asserting the click landed), narrating the recipe as it goes; a silently-broken
+beat would abort the recording instead of shipping.
+
 .. literalinclude:: ../../../tests/integration/record_recording.das
    :language: das
    :linenos:
@@ -85,18 +90,23 @@ the timeline.
    resolved via :code:`get_this_module_dir()` so caller cwd is
    irrelevant.
 
-4. **Body-owned: narrate, then act — repeat.** The locked pacing rule:
+4. **Body-owned: narrate, act, verify — repeat.** Each beat pairs an
+   ear-first caption with a real gesture and a self-check:
 
-   .. code-block:: text
-
-      frames = 180   →  3.0 s of visible narrate
-      sleep  = 3500u →  narrate disappears with ~500 ms gap
-      sleep  = 1500u →  result-dwell after the action
-
-   :code:`frames` counts the APP's frame counter (60 fps under vsync),
-   NOT the recorder's fps. So :code:`frames = 180` is 3 seconds of
-   real time, regardless of whether the recorder is at 30 fps or
-   60 fps.
+   * :code:`say_begin(app, caption, target, [voice = "..."])` posts the
+     caption box and returns the voiceover's length, so the beat is
+     *paced by the spoken line* — no hand-tuned frame counts. The terse
+     on-screen :code:`caption` is decoupled from the natural spoken
+     :code:`voice` (which keys the TTS manifest). Both must be ASCII —
+     the bundled ImGui font has no em-dash / arrow / smart-quote glyph,
+     so non-ASCII renders as tofu.
+   * The gesture runs UNDER the voice and is VERIFIED:
+     :code:`drag_through_voice` scrubs a slider and asserts the value
+     changed; :code:`hold_through_voice` clicks and asserts the effect
+     registered; :code:`force_set_verified` drives a value from outside
+     and asserts it took. A no-op accumulates a miss and the recording
+     aborts at teardown (``g_record_failures`` panic) — a silently
+     broken demo never ships. The driver below is exactly this shape.
 
 5. **Helper-owned: ``record_stop`` + shutdown.** When the body
    returns, the helper posts :code:`record_stop` (flushes the writer,
