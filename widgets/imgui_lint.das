@@ -31,7 +31,6 @@ module imgui_lint shared private
 //! cleanly when targeted directly (MCP compile_check, lint, format_file).
 
 require daslib/ast_boost
-require strings
 
 let private ALLOWED_IMGUI : table<string> <- {
     // Context / frame lifecycle
