@@ -115,7 +115,14 @@ let private ALLOWED_IMGUI : table<string> <- {
     "DockBuilderSetNodeSize", "DockBuilderSetNodePos",
     "DockBuilderSplitNode", "DockBuilderDockWindow", "DockBuilderFinish",
     "DockBuilderGetNode", "DockBuilderCopyNode",
-    "DockSpace", "DockSpaceOverViewport", "GetID"
+    "DockSpace", "DockSpaceOverViewport", "GetID",
+    // Low-level draw primitives cherry-picked from imgui_internal.h (family 1).
+    // Host-agnostic: they render directly into an ImDrawList / the current
+    // window with no v2 host state. Bound via bind_imgui.das internal_allow_func.
+    "RenderFrame", "RenderFrameBorder", "RenderText", "RenderTextWrapped",
+    "RenderColorRectWithAlphaCheckerboard", "RenderMouseCursor",
+    "RenderArrow", "RenderBullet", "RenderCheckMark",
+    "RenderArrowPointingAt", "RenderArrowDockMenu"
 }
 
 class ImguiLintVisitor : AstVisitor {
