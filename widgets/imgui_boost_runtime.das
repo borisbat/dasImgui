@@ -1764,6 +1764,19 @@ def public imgui_synth_tick() {
             // with a stuck button.
             var io & = unsafe(GetIO())
             io |> ClearEventsQueue()
+            // Seize the cursor at its current position. ImGui_ImplGlfw_NewFrame keeps
+            // polling glfwGetCursorPos every frame regardless of the detached callbacks,
+            // so unless we own the cursor the gated re-assert below is skipped until the
+            // first synth move and the real position bleeds in (hover/move stay live while
+            // buttons are detached). Owning it here freezes position so synth fully owns IO.
+            if (!synth_cursor_owned) {
+                if (IsMousePosValid(null)) {
+                    let cur = GetMousePos()
+                    mouse_cursor_x = cur.x
+                    mouse_cursor_y = cur.y
+                }
+                synth_cursor_owned = true
+            }
         }
     }
     // Advance the live-side timeline playback (mouse/key), which calls the synth_* primitives above.
