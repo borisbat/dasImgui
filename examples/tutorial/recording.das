@@ -52,8 +52,9 @@ require imgui/imgui_visual_aids
 
 [export]
 def init() {
-    live_create_window("dasImgui recording tutorial", 600, 380)
+    live_create_window("dasImgui recording tutorial", 940, 560)
     live_imgui_init(live_window)
+    DisableIniPersistence()
     var io & = unsafe(GetIO())
     io.FontGlobalScale = 1.5
 }
@@ -72,7 +73,7 @@ def update() {
     SetNextWindowSize(ImVec2(520.0f, 280.0f), ImGuiCond.FirstUseEver)
     window(REC_WIN, (text = "subject", closable = false,
                      flags = ImGuiWindowFlags.None)) {
-        text("Tiny subject — driver narrates what's happening.")
+        text("Tiny subject - driver narrates what's happening.")
         slider_float(VOLUME, (text = "Volume"))
         if (button(SAVE_BTN, (text = "Save"))) {}
         text("SAVE_BTN.click_count = {SAVE_BTN.click_count}")

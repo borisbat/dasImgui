@@ -8,36 +8,19 @@ require imgui/imgui_playwright public
 require daslib/json public
 require daslib/json_boost public
 
-//! Driver script: record ``recording.apng`` — also the tutorial topic,
-//! the RST walks every line below. One shell:
-//!
-//!     bin/Release/daslang.exe -project_root <dasimgui> \
-//!         <dasimgui>/tests/integration/record_recording.das
-//!
-//! :ref:`with_recording_app <function-imgui_playwright_with_recording_app>`
-//! spawns daslang-live on the tutorial, passes ``--imgui-content-scale=1.0``
-//! and ``--no-hdpi-framebuffer`` so capture stays at logical 1x even on
-//! retina, toggles visual aids around the body, posts ``record_start`` /
-//! ``record_stop``, drives shutdown. APNG lands at
-//! ``<dasImgui>/doc/source/_static/tutorials/recording.apng``.
+//! Driver: record ``recording.apng`` against ``examples/tutorial/recording.das``.
+//! This is the META tutorial - the driver IS the artifact that teaches recording.
+//! It demonstrates the recipe every other recording uses (narrate caption + cursor
+//! trail + scripted gesture + self-verify) on a tiny subject, and verifies each:
+//!   1. scripted drag  - VOLUME.value must CHANGE (drag_through_voice).
+//!   2. scripted click - SAVE_BTN must register (hold_through_voice).
 
 def widget_bbox(var snap : JsonValue?; ident : string) : float4 {
-    //! Pull (x_min, y_min, x_max, y_max) out of the snapshot for one
-    //! widget. The `?[...]` chain returns null on a missing path; the
-    //! `?? 0.0f` coalesces missing axes to zero so callers don't have
-    //! to null-check each component.
     var b = snap?["globals"]?[ident]?["bbox"]
-    return float4(
-        b?["x"] ?? 0.0f,
-        b?["y"] ?? 0.0f,
-        b?["z"] ?? 0.0f,
-        b?["w"] ?? 0.0f
-    )
+    return float4(b?["x"] ?? 0.0f, b?["y"] ?? 0.0f, b?["z"] ?? 0.0f, b?["w"] ?? 0.0f)
 }
 
 def widget_center(var snap : JsonValue?; ident : string) : tuple<float; float> {
-    //! Cursor-target helper — the driver moves the synth cursor to the
-    //! center of the widget's bbox so the trail visibly travels to it.
     let b = widget_bbox(snap, ident)
     return ((b.x + b.z) * 0.5f, (b.y + b.w) * 0.5f)
 }
@@ -45,42 +28,34 @@ def widget_center(var snap : JsonValue?; ident : string) : tuple<float; float> {
 [export]
 def main {
     with_recording_app("examples/tutorial/recording.das",
-                       "recording.apng", 30) $(app) {
-        // ---- Resolve widget centers from a snapshot ----
-        // wait_for_render polls imgui_snapshot until the named widget
-        // appears (covers the cold-start gap where the subject is up but
-        // the first frame hasn't rendered). 10s timeout is generous.
+                       "recording.apng", 35) $(app) {
         let T_VOLUME = "REC_WIN/VOLUME"
         let T_SAVE   = "REC_WIN/SAVE_BTN"
+
         var snap = wait_for_render(app, T_SAVE, 10.0f)
         if (snap == null) {
-            panic("{T_SAVE} never rendered — wrong app running?")
+            panic("{T_SAVE} never rendered - wrong app running?")
         }
-        let p_volume = widget_center(snap, T_VOLUME)
-        let p_save   = widget_center(snap, T_SAVE)
-
-        // Volume drag: 15% to 80% along the slider's bbox width.
+        let p_save = widget_center(snap, T_SAVE)
         let vol_bb = widget_bbox(snap, T_VOLUME)
         let vol_y  = (vol_bb.y + vol_bb.w) * 0.5f
         let vol_x0 = vol_bb.x + (vol_bb.z - vol_bb.x) * 0.15f
         let vol_x1 = vol_bb.x + (vol_bb.z - vol_bb.x) * 0.80f
 
-        // ---- Narrate then act — repeat ----
+        // Park the cursor at the slider's left and warm up the capture pipeline.
+        move_to(app, (vol_x0, vol_y), 800)
+        sleep(1800u)
 
-        // Stage 1: slider drag
-        move_to(app, p_volume)
-        say(app, "imgui_narrate posts a sticky-note over a target.", T_VOLUME)
-        var slider_events : array<JsonValue?>
-        slider_events |> drag_along(0, (vol_x0, vol_y), (vol_x1, vol_y), 1400)
-        post_command(app, "imgui_mouse_play", JV((events = slider_events)))
-        sleep(2500u)
+        // ---- Beat 1: the recipe - narrate, trail, scripted drag ----
+        drag_through_voice(app, say_begin(app, "narrate + scripted drag", T_VOLUME,
+            [voice = "This is the recording recipe itself. A driver shows a caption box, moves the cursor along a trail, and scripts a real drag - here the Volume slider, and the snapshot confirms the value moved."]),
+            T_VOLUME, (vol_x1, vol_y))
 
-        // Stage 2: click the button
-        move_to(app, p_save)
-        say(app, "imgui_mouse_play feeds a scripted timeline of events.", T_SAVE)
-        var save_events : array<JsonValue?>
-        save_events |> click_at(0, p_save)
-        post_command(app, "imgui_mouse_play", JV((events = save_events)))
-        sleep(1500u)
+        // ---- Beat 2: scripted click + self-verify ----
+        move_to(app, p_save, 600)
+        sleep(SETTLE_MS)
+        hold_through_voice(app, say_begin(app, "scripted click + verify", T_SAVE,
+            [voice = "Then it scripts a click and asserts the effect landed. Every recording you have seen is this recipe - narrate, move, act, verify - so a demo that quietly broke aborts instead of shipping."]),
+            [T_SAVE])
     }
 }
