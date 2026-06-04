@@ -86,18 +86,16 @@ void Module_dasIMGUI::initFunctions_29() {
 	addCtorAndUsing<ImGuiPlatformIO>(*this,lib,"ImGuiPlatformIO","ImGuiPlatformIO");
 	addCtorAndUsing<ImGuiPlatformMonitor>(*this,lib,"ImGuiPlatformMonitor","ImGuiPlatformMonitor");
 	addCtorAndUsing<ImGuiPlatformImeData>(*this,lib,"ImGuiPlatformImeData","ImGuiPlatformImeData");
-// from imgui_internal.h:3396:29
-	makeExtern< void (*)(int,bool) , ImGui::PushItemFlag , SimNode_ExtFuncCall , imguiTempFn>(lib,"PushItemFlag","ImGui::PushItemFlag")
-		->args({"option","enabled"})
+// from imgui_internal.h:3388:29
+	makeExtern< ImVec2 (*)(ImVec2,float,float) , ImGui::CalcItemSize , SimNode_ExtFuncCall , imguiTempFn>(lib,"CalcItemSize","ImGui::CalcItemSize")
+		->args({"size","default_w","default_h"})
 		->addToModule(*this, SideEffects::worstDefault);
-// from imgui_internal.h:3397:29
-	makeExtern< void (*)() , ImGui::PopItemFlag , SimNode_ExtFuncCall , imguiTempFn>(lib,"PopItemFlag","ImGui::PopItemFlag")
+// from imgui_internal.h:3389:29
+	makeExtern< float (*)(const ImVec2 &,float) , ImGui::CalcWrapWidthForPos , SimNode_ExtFuncCall , imguiTempFn>(lib,"CalcWrapWidthForPos","ImGui::CalcWrapWidthForPos")
+		->args({"pos","wrap_pos_x"})
 		->addToModule(*this, SideEffects::worstDefault);
-// from imgui_internal.h:3719:29
-	makeExtern< void (*)(ImVec2,const char *,const char *,bool) , ImGui::RenderText , SimNode_ExtFuncCall , imguiTempFn>(lib,"RenderText","ImGui::RenderText")
-		->args({"pos","text","text_end","hide_text_after_hash"})
-		->arg_init(2,new ExprConstString(""))
-		->arg_init(3,new ExprConstBool(true))
+// from imgui_internal.h:3392:29
+	makeExtern< ImVec2 (*)() , ImGui::GetContentRegionMaxAbs , SimNode_ExtFuncCall , imguiTempFn>(lib,"GetContentRegionMaxAbs","ImGui::GetContentRegionMaxAbs")
 		->addToModule(*this, SideEffects::worstDefault);
 }
 }

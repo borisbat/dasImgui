@@ -130,7 +130,11 @@ let private ALLOWED_IMGUI : table<string> <- {
     // Write over already-created ImDrawList vertices — host-agnostic, no v2 state.
     // Bound via bind_imgui.das internal_allow_func.
     "ShadeVertsLinearColorGradientKeepAlpha", "ShadeVertsLinearUV",
-    "ShadeVertsTransformPos"
+    "ShadeVertsTransformPos",
+    // Layout-geometry calculators cherry-picked from imgui_internal.h (family 4).
+    // Pure side-effect-free geometry math (ImVec2/float in, ImVec2/float out) —
+    // host-agnostic, no v2 state. Bound via bind_imgui.das internal_allow_func.
+    "CalcItemSize", "CalcWrapWidthForPos", "GetContentRegionMaxAbs"
 }
 
 class ImguiLintVisitor : AstVisitor {

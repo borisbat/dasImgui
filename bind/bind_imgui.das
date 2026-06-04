@@ -144,6 +144,14 @@ class ImguiGen : CppGenBind {
         // an internal enum (ImGuiItemFlags_) into internal_allow_enum; v2 surface is
         // the with_item_flag scope guard (imgui_scope_builtin.das), mirroring
         // with_disabled — a push/pop pair, not a raw allow-list call.
+        //
+        // Family 4 — layout-geometry calculators (CalcItemSize / CalcWrapWidthForPos /
+        // GetContentRegionMaxAbs). Pure, side-effect-free geometry math that custom-
+        // widget code uses to size/position items the same way the built-in widgets
+        // do. Every arg/result is an already-bound public type (ImVec2, float), so no
+        // internal struct/enum is pulled in; one-shot calls, so they go raw on the
+        // ALLOWED_IMGUI allow-list (no scope guard). ItemSize is deliberately NOT
+        // here: it carries an inline ImRect overload that the arg gate would not skip.
         internal_allow_func <- {
             "ImGui::RenderFrame", "ImGui::RenderFrameBorder",
             "ImGui::RenderText", "ImGui::RenderTextWrapped",
@@ -152,7 +160,9 @@ class ImguiGen : CppGenBind {
             "ImGui::RenderArrowPointingAt", "ImGui::RenderArrowDockMenu",
             "ImGui::ShadeVertsLinearColorGradientKeepAlpha", "ImGui::ShadeVertsLinearUV",
             "ImGui::ShadeVertsTransformPos",
-            "ImGui::PushItemFlag", "ImGui::PopItemFlag"
+            "ImGui::PushItemFlag", "ImGui::PopItemFlag",
+            "ImGui::CalcItemSize", "ImGui::CalcWrapWidthForPos",
+            "ImGui::GetContentRegionMaxAbs"
         }
         internal_allow_enum <- {
             "ImGuiItemFlags_"

@@ -12,6 +12,19 @@
 namespace das {
 #include "dasIMGUI.func.aot.decl.inc"
 void Module_dasIMGUI::initFunctions_30() {
+// from imgui_internal.h:3396:29
+	makeExtern< void (*)(int,bool) , ImGui::PushItemFlag , SimNode_ExtFuncCall , imguiTempFn>(lib,"PushItemFlag","ImGui::PushItemFlag")
+		->args({"option","enabled"})
+		->addToModule(*this, SideEffects::worstDefault);
+// from imgui_internal.h:3397:29
+	makeExtern< void (*)() , ImGui::PopItemFlag , SimNode_ExtFuncCall , imguiTempFn>(lib,"PopItemFlag","ImGui::PopItemFlag")
+		->addToModule(*this, SideEffects::worstDefault);
+// from imgui_internal.h:3719:29
+	makeExtern< void (*)(ImVec2,const char *,const char *,bool) , ImGui::RenderText , SimNode_ExtFuncCall , imguiTempFn>(lib,"RenderText","ImGui::RenderText")
+		->args({"pos","text","text_end","hide_text_after_hash"})
+		->arg_init(2,new ExprConstString(""))
+		->arg_init(3,new ExprConstBool(true))
+		->addToModule(*this, SideEffects::worstDefault);
 // from imgui_internal.h:3720:29
 	makeExtern< void (*)(ImVec2,const char *,const char *,float) , ImGui::RenderTextWrapped , SimNode_ExtFuncCall , imguiTempFn>(lib,"RenderTextWrapped","ImGui::RenderTextWrapped")
 		->args({"pos","text","text_end","wrap_width"})
