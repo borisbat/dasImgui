@@ -17,6 +17,15 @@ Walkthrough
 
 .. video:: widgets_tour.mp4
 
+The recording is voiced and self-verifying: each stage speaks a line while a
+**real** gesture fires under it and is asserted — typing into the name field
+(committed value checked), dragging ``VOLUME`` (value must change), clicking
+``MUTED`` (toggle must register), opening the ``QUALITY`` combo and picking
+*High* (selection verified), setting ``TINT`` from the API (``color_edit3``'s
+picker is mouse-only, so the tour drives it via ``force_set`` and verifies the
+swatch took), and clicking *Save* (click must register). A silently broken
+stage aborts the recording at teardown instead of shipping.
+
 .. literalinclude:: ../../../examples/tutorial/widgets_tour.das
    :language: das
    :linenos:
