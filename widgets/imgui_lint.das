@@ -62,6 +62,9 @@ let private ALLOWED_IMGUI : table<string> <- {
     // Circle Tessellation preview tooltip to label each sample with its
     // auto-segment count.
     "_CalcCircleAutoSegmentCount",
+    // ImVector size accessor (read-only) — e.g. length(dl.VtxBuffer) gives the
+    // vertex-index range that the ShadeVerts* family (family 2) operates over.
+    "length",
     // Cursor / layout queries (read-only)
     "GetCursorPos", "GetCursorPosX", "GetCursorPosY",
     "GetCursorScreenPos", "GetCursorStartPos",
