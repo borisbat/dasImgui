@@ -19,16 +19,14 @@ void Module_dasIMGUI::initFunctions_14() {
 // from imgui.h:854:29
 	makeExtern< unsigned int (*)(unsigned int,const ImVec2 &,int,const ImGuiWindowClass *) , ImGui::DockSpace , SimNode_ExtFuncCall , imguiTempFn>(lib,"DockSpace","ImGui::DockSpace")
 		->args({"id","size","flags","window_class"})
-		->arg_type(2,makeType<ImGuiDockNodeFlags_>(lib))
-		->arg_init(2,new ExprConstEnumeration(0,makeType<ImGuiDockNodeFlags_>(lib)))
+		->arg_init(2,new ExprConstInt(0))
 		->arg_init(3,new ExprConstPtr())
 		->addToModule(*this, SideEffects::worstDefault);
 // from imgui.h:855:29
 	makeExtern< unsigned int (*)(const ImGuiViewport *,int,const ImGuiWindowClass *) , ImGui::DockSpaceOverViewport , SimNode_ExtFuncCall , imguiTempFn>(lib,"DockSpaceOverViewport","ImGui::DockSpaceOverViewport")
 		->args({"viewport","flags","window_class"})
 		->arg_init(0,new ExprConstPtr())
-		->arg_type(1,makeType<ImGuiDockNodeFlags_>(lib))
-		->arg_init(1,new ExprConstEnumeration(0,makeType<ImGuiDockNodeFlags_>(lib)))
+		->arg_init(1,new ExprConstInt(0))
 		->arg_init(2,new ExprConstPtr())
 		->addToModule(*this, SideEffects::worstDefault);
 // from imgui.h:856:29

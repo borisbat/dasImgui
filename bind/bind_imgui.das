@@ -158,30 +158,26 @@ class ImguiGen : CppGenBind {
         // parse_Struct only runs at decl time, so prevFileName is the struct's
         // own file. Internal-only structs are no-op'd, so the opaque types that
         // imgui.h forward-declares keep their dummies.
-        if (is_internal() && !key_exists(internal_allow_struct, struct_name)) {
-            return
-        }
+        if (is_internal() && !key_exists(internal_allow_struct, struct_name)) return
         CppGenBind`parse_Struct(self, c, struct_name)
     }
     def override skip_enum(ns_en, en : string) {
-        if (is_internal()) {
-            return !key_exists(internal_allow_enum, ns_en)
-        }
+        if (is_internal()) return !key_exists(internal_allow_enum, ns_en)
         return AnyGenBind`skip_enum(self, ns_en, en)
     }
     def override skip_anyFunction(var c : CXCursor; isMethod : bool) {
-        if (AnyGenBind`skip_anyFunction(self, c, isMethod)) {
-            return true
-        }
+        if (AnyGenBind`skip_anyFunction(self, c, isMethod)) return true
         let function_name = namespace_name(string(clang_getCursorSpelling(c)))
         if (imgui_skip_func |> key_exists(function_name)) {
             to_log(LOG_INFO, "skipping IMGUI blocked function {function_name} at {clang_getCursorLocationDescription(c)}")
             return true
         }
-        if (is_internal() && !key_exists(internal_allow_func, function_name)) {
-            return true
-        }
-        return false
+        return is_internal() && !key_exists(internal_allow_func, function_name)
+    }
+    def override keep_c_arg_type(funcName, argName : string; argIndex : int) : bool {
+        // DockSpace/DockSpaceOverViewport ship a public `flags : int` signature that predates
+        // enum-typed flag args; keep them int so existing callers (and the docking wrapper) don't break.
+        return (funcName == "DockSpace" || funcName == "DockSpaceOverViewport") && argName == "flags"
     }
     def override isArgByValue(name : string) {
         return true
@@ -199,13 +195,13 @@ def main {
         print_help(get_command_info(type<Config>), "bind_imgui")
         return
     }
-    var cfg <- r |> move_unwrap
+    let cfg <- r |> move_unwrap
     if (cfg.help) {
         print_help(get_command_info(type<Config>), "bind_imgui")
         return
     }
     var cgb = new ImguiGen("dasIMGUI", "imgui", "imgui_internal.h", cfg)
-    defer <| $() {
+    defer() {
         unsafe {
             delete cgb
         }
