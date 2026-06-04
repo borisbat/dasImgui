@@ -84,7 +84,7 @@ def bump_counter(input : JsonValue?) : JsonValue? {
 }
 
 [live_command(description = "Reset the custom counter to 0.")]
-def reset_counter(input : JsonValue?) : JsonValue? {
+def reset_counter(_input : JsonValue?) : JsonValue? {
     g_custom_counter = 0
     return JV((ok = true, counter = 0))
 }
@@ -112,8 +112,9 @@ def init() {
     // window + ImGui context, reload re-uses the preserved ImGui context
     // and skips the duplicate CreateContext call (see live_imgui_init
     // body in imgui_live.das).
-    live_create_window("dasImgui live_reload tutorial", 720, 540)
+    live_create_window("dasImgui live_reload tutorial", 1040, 720)
     live_imgui_init(live_window)
+    DisableIniPersistence()
     var io & = unsafe(GetIO())
     io.FontGlobalScale = 1.5
 
@@ -149,7 +150,11 @@ def update() {
         separator(LR_SEP_1)
 
         // ---- The custom counter, driven from outside via [live_command] ----
-        text("g_custom_counter = {g_custom_counter}")
+        // Mirror the @live counter into a text_show so the snapshot can address
+        // it (the recording asserts the [live_command]s moved it). g_custom_counter
+        // is still the plain @live var; this is just the readout.
+        CTR_TEXT.value := "g_custom_counter = {g_custom_counter}"
+        text_show(CTR_TEXT)
         text("  - @live, preserved across reload")
         text("  - mutated externally by `bump_counter` / `reset_counter`")
 

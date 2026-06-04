@@ -41,6 +41,14 @@ Walkthrough
 
 .. video:: live_reload.mp4
 
+The recording can't trigger a reload, so it exercises the observable surface and
+asserts each piece: it force-sets the ``@live`` ``VOLUME`` slider and verifies the
+value (``force_set_verified``), clicks the ``@live`` ``PING_BTN`` twice and verifies
+``click_count`` (``hold_through_voice``), then calls the user-defined ``bump_counter``
+and ``reset_counter`` ``[live_command]`` endpoints from outside and verifies the
+counter climbs to 7 and back to 0 (``record_check_value`` on the snapshot readout).
+A command that stopped reaching the running program would abort the recording.
+
 .. literalinclude:: ../../../examples/tutorial/live_reload.das
    :language: das
    :linenos:
