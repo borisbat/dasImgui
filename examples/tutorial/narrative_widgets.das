@@ -57,30 +57,32 @@ def update() {
     SetNextWindowSize(ImVec2(640.0, 480.0), ImGuiCond.Always)
     window(NARRATIVE_WIN, (text = "Narrative widgets", closable = false,
                            flags = ImGuiWindowFlags.None)) {
-        // Plain text. NarrativeState.value mirrors the call-site string.
-        text("text() — one line, telemetry-visible.")
+        // Each call passes an explicit ident so the widget registers at
+        // NARRATIVE_WIN/<ident> and a snapshot can assert "the label says what
+        // I expect". NarrativeState.value mirrors the call-site string.
+        text(PLAIN_LINE, (text = "text() - one line, telemetry-visible."))
 
         // text_wrapped reflows to the window's content edge.
-        text_wrapped("text_wrapped() reflows long strings to the window's right edge. Resize the window and the layout follows; the snapshot still carries the full source string regardless of wrapping.")
+        text_wrapped(WRAPPED_LINE, (text = "text_wrapped() reflows long strings to the window's right edge. Resize the window and the layout follows; the snapshot still carries the full source string regardless of wrapping."))
 
-        separator_text("Color and emphasis")
+        separator_text(SEP_COLOR, (text = "Color and emphasis"))
 
-        // Colored / disabled — visual variants, same payload shape.
-        text_colored((color = float4(0.7f, 0.9f, 0.4f, 1.0f),
-                      text = "text_colored() with an inline float4 color."))
-        text_disabled("text_disabled() — greyed for non-actionable hints.")
+        // Colored / disabled - visual variants, same payload shape.
+        text_colored(COLORED_LINE, (color = float4(0.7f, 0.9f, 0.4f, 1.0f),
+                                    text = "text_colored() with an inline float4 color."))
+        text_disabled(DISABLED_LINE, (text = "text_disabled() - greyed for non-actionable hints."))
 
-        separator_text("Bulleted lines")
+        separator_text(SEP_BULLET, (text = "Bulleted lines"))
 
         // bullet() emits the marker glyph; bullet_text() bundles marker + text.
         bullet(BULLET_MARK)
-        bullet_text("First point of interest.")
-        bullet_text("Second point — bullet glyph + text in one call.")
+        bullet_text(BULLET_FIRST, (text = "First point of interest."))
+        bullet_text(BULLET_SECOND, (text = "Second point - bullet glyph plus text in one call."))
 
-        separator_text("Label/value pair")
+        separator_text(SEP_LABEL, (text = "Label/value pair"))
 
-        // label_text — two-string display, both strings echo into the payload.
-        label_text((key = "Version", value = "v2.0-detour"))
+        // label_text - two-string display, both strings echo into the payload.
+        label_text(VERSION_LABEL, (key = "Version", value = "v2.0-detour"))
     }
 
     end_of_frame()

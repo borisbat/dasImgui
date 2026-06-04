@@ -10,22 +10,28 @@ All share a ``NarrativeState`` (or ``LabelTextState``) payload that echoes
 the call-site string back into the snapshot, so playwright tests can
 assert "the label says what I expect" without any layout state.
 
+Every rail accepts an optional leading ident. Pass one — ``text(IDENT,
+(text = "..."))`` — and the widget registers at ``NARRATIVE_WIN/IDENT`` so a
+snapshot can target it by name; omit it — ``text("...")`` — and it registers
+under an auto-generated source-line key instead. This tutorial passes an
+ident on every call so each line is assertable.
+
 The nine rails:
 
-* ``text("...")`` — one line of plain text. Implemented via
+* ``text(IDENT, (text = "..."))`` — one line of plain text. Implemented via
   ``TextUnformatted`` (no printf-style format expansion).
-* ``text_unformatted("...")`` — explicit alias for ``text``; identical
-  implementation. Exists so call sites can signal intent.
-* ``text_wrapped("...")`` — reflows long strings to the window's content
-  edge.
-* ``text_colored((color = float4(...), text = ...))`` — colored variant.
-* ``text_disabled("...")`` — greyed for non-actionable hints.
-* ``bullet(IDENT)`` — bullet glyph alone (the only narrative widget that
-  takes an ident).
-* ``bullet_text("...")`` — bullet glyph + text bundled.
-* ``label_text((key = ..., value = ...))`` — two-string display, both
+* ``text_unformatted(IDENT, (text = "..."))`` — explicit alias for ``text``;
+  identical implementation. Exists so call sites can signal intent.
+* ``text_wrapped(IDENT, (text = "..."))`` — reflows long strings to the
+  window's content edge.
+* ``text_colored(IDENT, (color = float4(...), text = ...))`` — colored variant.
+* ``text_disabled(IDENT, (text = "..."))`` — greyed for non-actionable hints.
+* ``bullet(IDENT)`` — bullet glyph alone.
+* ``bullet_text(IDENT, (text = "..."))`` — bullet glyph + text bundled.
+* ``label_text(IDENT, (key = ..., value = ...))`` — two-string display, both
   echoed into the payload.
-* ``separator_text("...")`` — horizontal rule with a centered label.
+* ``separator_text(IDENT, (text = "..."))`` — horizontal rule with a centered
+  label.
 
 Source: ``examples/tutorial/narrative_widgets.das``.
 
@@ -34,6 +40,12 @@ Walkthrough
 ************
 
 .. video:: narrative_widgets.mp4
+
+These widgets take no input, so the recording is a voiced, self-verifying
+tour: each beat narrates a group while the cursor points at it and asserts
+the widget rendered and echoed its call-site string into the snapshot — the
+"the label says what I expect" claim made concrete. A missing or wrong value
+aborts the recording at teardown instead of shipping.
 
 .. literalinclude:: ../../../examples/tutorial/narrative_widgets.das
    :language: das
@@ -78,23 +90,21 @@ Bullets
 
 ``bullet(IDENT)`` emits the marker glyph alone — useful when you want
 custom content (a colored swatch, an icon) immediately after the bullet.
-The ident is required because ``bullet`` is the one narrative widget that
-gets its own snapshot entry (the others are anonymous).
 
-``bullet_text("...")`` is the bundled form — glyph + text in one call,
-no ident, no separate snapshot entry. Use this 95% of the time; reach
-for ``bullet(IDENT)`` + ``same_line`` + custom-glyph only when you
-genuinely need the manual layout.
+``bullet_text(IDENT, (text = "..."))`` is the bundled form — glyph + text
+in one call. Use this 95% of the time; reach for ``bullet(IDENT)`` +
+``same_line`` + custom-glyph only when you genuinely need the manual
+layout.
 
 label_text
 ==========
 
-``label_text((key, value))`` is ImGui's two-column property-sheet format
-— ``key`` renders in the left label gutter, ``value`` in the right
-column. The visual order matches ``LabelText("Version", "v2.0-detour")``
-from the C++ side ("Version" on the left, "v2.0-detour" on the right).
-Both strings round-trip through the snapshot payload, so snapshot-driven
-property tests get both halves for assertion.
+``label_text((key, value))`` maps to ImGui's ``LabelText(key, value)``.
+ImGui draws the value text on the left and the key as a label to its
+right — so ``(key = "Version", value = "v2.0-detour")`` renders
+``v2.0-detour`` on the left with ``Version`` to its right. Both strings
+round-trip through the snapshot payload, so snapshot-driven property
+tests get both halves for assertion.
 
 separator_text
 ==============
@@ -107,15 +117,16 @@ name")``.
 Snapshot shape
 ==============
 
-All narrative widgets register entries under ``NARRATIVE_WIN/IDENT`` (for
-the ident-having ones) or stay anonymous (for the rest). Anonymous calls
-still bump the parent container's payload, but they don't surface a
-distinct path.
+With an ident, a narrative widget registers at ``NARRATIVE_WIN/IDENT`` —
+a stable path you can pull a field from. Without one it still surfaces a
+path, but keyed by source line (``NARRATIVE_WIN/:61:8``), which shifts when
+you edit the file; pass an ident whenever a test or driver needs to target
+the line.
 
 .. code-block:: bash
 
    curl -X POST -d '{"name":"imgui_snapshot"}' localhost:9090/command \
-       | jq '.globals."NARRATIVE_WIN/BULLET_MARK".payload.value'
+       | jq '.globals."NARRATIVE_WIN/VERSION_LABEL".payload.value'
 
 .. seealso::
 
