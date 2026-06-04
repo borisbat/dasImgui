@@ -319,6 +319,23 @@ namespace das {
         drawList.AddText(font,font_size,pos,col,text_begin,nullptr,wrap_width,cpu_fine_clip_rect);
     }
 
+    // imgui_internal.h Render*Clipped / Ellipsis — see aot_dasIMGUI.h for why
+    // text_end / text_size_if_known are pinned to nullptr.
+    void RenderTextClippedW( const ImVec2& pos_min, const ImVec2& pos_max, const char* text,
+        const ImVec2& align, const ImRect* clip_rect ) {
+        ImGui::RenderTextClipped(pos_min, pos_max, text, nullptr, nullptr, align, clip_rect);
+    }
+
+    void RenderTextClippedExW( ImDrawList* draw_list, const ImVec2& pos_min, const ImVec2& pos_max,
+        const char* text, const ImVec2& align, const ImRect* clip_rect ) {
+        ImGui::RenderTextClippedEx(draw_list, pos_min, pos_max, text, nullptr, nullptr, align, clip_rect);
+    }
+
+    void RenderTextEllipsisW( ImDrawList* draw_list, const ImVec2& pos_min, const ImVec2& pos_max,
+        float clip_max_x, float ellipsis_max_x, const char* text ) {
+        ImGui::RenderTextEllipsis(draw_list, pos_min, pos_max, clip_max_x, ellipsis_max_x, text, nullptr, nullptr);
+    }
+
     // ImColor
 
     ImColor HSV(float h, float s, float v, float a) {
@@ -514,6 +531,22 @@ namespace das {
                 ->args({"drawList","font","font_size","pos","col","text","wrap_width","cpu_fine_clip_rect"})
                     ->arg_init(6,new ExprConstFloat(0.0f))
                     ->arg_init(7,new ExprConstPtr());
+        // imgui_internal.h Render*Clipped / Ellipsis text helpers (wrappers pin text_end
+        // + text_size_if_known to nullptr — see das:: defs above). align defaults to
+        // ImVec2(0,0), clip_rect to null, so the common call is just (pos_min,pos_max,text).
+        addExtern<DAS_BIND_FUN(das::RenderTextClippedW), SimNode_ExtFuncCall, imguiTempFn>(*this, lib, "RenderTextClipped",
+            SideEffects::worstDefault, "das::RenderTextClippedW")
+                ->args({"pos_min","pos_max","text","align","clip_rect"})
+                    ->arg_init(3,new ExprCall(LineInfo(),"ImVec2"))
+                    ->arg_init(4,new ExprConstPtr());
+        addExtern<DAS_BIND_FUN(das::RenderTextClippedExW), SimNode_ExtFuncCall, imguiTempFn>(*this, lib, "RenderTextClippedEx",
+            SideEffects::worstDefault, "das::RenderTextClippedExW")
+                ->args({"draw_list","pos_min","pos_max","text","align","clip_rect"})
+                    ->arg_init(4,new ExprCall(LineInfo(),"ImVec2"))
+                    ->arg_init(5,new ExprConstPtr());
+        addExtern<DAS_BIND_FUN(das::RenderTextEllipsisW), SimNode_ExtFuncCall, imguiTempFn>(*this, lib, "RenderTextEllipsis",
+            SideEffects::worstDefault, "das::RenderTextEllipsisW")
+                ->args({"draw_list","pos_min","pos_max","clip_max_x","ellipsis_max_x","text"});
         // variadic functions
         addExtern<DAS_BIND_FUN(das::Text)>(*this,lib,"Text",
             SideEffects::worstDefault,"das::Text");
