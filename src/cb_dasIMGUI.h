@@ -73,6 +73,40 @@ template<> struct WrapArgType<const ImVec2&> { using type = const WrapArgType<Im
 template <> struct JitConstRefByValue<const ImVec4&> { enum { value = true }; };
 template<> struct WrapArgType<const ImVec4&> { using type = const WrapArgType<ImVec4>::type&; };
 
+// ImRect (imgui_internal.h) is { ImVec2 Min; ImVec2 Max } — 4 contiguous floats,
+// layout-identical to float4/vec4f, so it aliases to float4 like ImVec4 and internal
+// rect-taking helpers (ItemSize, RenderTextClipped, ...) bind without pulling ImRect
+// in as a struct. Unlike ImVec4 it has no x/y/z/w members, so the Wrap*Arg path can't
+// reuse WrapVec4Arg (which defaults its field pointer to &T::x) — bridge vec4f<->ImRect
+// by memcpy instead.
+static_assert(sizeof(ImRect) == sizeof(float) * 4, "ImRect must be 4 contiguous floats to alias float4");
+template <> struct typeFactory<ImRect> {
+	static TypeDeclPtr make(const ModuleLibrary &) {
+		auto t = new TypeDecl(Type::tFloat4);
+		t->alias = "ImRect";
+		t->aotAlias = true;
+		return t;
+	}
+};
+template <> struct typeName<ImRect> { constexpr static const char * name() { return "ImRect"; } };
+template <> struct cast_arg<const ImRect &> {
+    static __forceinline ImRect to ( Context & ctx, SimNode * node ) {
+        vec4f res = node->eval(ctx);
+        ImRect r; memcpy(&r,&res,sizeof(ImRect));
+        return r;
+    }
+};
+template<> struct cast <ImRect> : cast_fVec<ImRect> {};
+template<> struct WrapType<ImRect> { enum { value = true }; typedef vec4f type; typedef vec4f rettype; };
+struct WrapImRectArg : ImRect {
+    __forceinline WrapImRectArg(vec4f t) { memcpy(static_cast<ImRect*>(this), &t, sizeof(ImRect)); }
+    __forceinline operator vec4f() const { vec4f r; memcpy(&r, static_cast<const ImRect*>(this), sizeof(ImRect)); return r; }
+};
+template<> struct WrapArgType<ImRect> { typedef WrapImRectArg type; };
+template<> struct WrapRetType<ImRect> { typedef WrapImRectArg type; };
+template <> struct JitConstRefByValue<const ImRect&> { enum { value = true }; };
+template<> struct WrapArgType<const ImRect&> { using type = const WrapArgType<ImRect>::type&; };
+
 template <>
 struct typeName<char> {
     static string name() {

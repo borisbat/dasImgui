@@ -31,7 +31,6 @@ module imgui_lint shared private
 //! cleanly when targeted directly (MCP compile_check, lint, format_file).
 
 require daslib/ast_boost
-require strings
 
 let private ALLOWED_IMGUI : table<string> <- {
     // Context / frame lifecycle
@@ -130,7 +129,13 @@ let private ALLOWED_IMGUI : table<string> <- {
     // Write over already-created ImDrawList vertices — host-agnostic, no v2 state.
     // Bound via bind_imgui.das internal_allow_func.
     "ShadeVertsLinearColorGradientKeepAlpha", "ShadeVertsLinearUV",
-    "ShadeVertsTransformPos"
+    "ShadeVertsTransformPos",
+    // Item / layout helpers cherry-picked from imgui_internal.h (family 4).
+    // Geometry math (CalcItemSize/CalcWrapWidthForPos/GetContentRegionMaxAbs) plus
+    // ItemSize (reserve layout space for a custom-drawn item) — host-agnostic, no v2
+    // state. Bound via bind_imgui.das internal_allow_func; ImRect arg of ItemSize's
+    // rect overload is aliased to float4 (cb_dasIMGUI.h).
+    "CalcItemSize", "CalcWrapWidthForPos", "GetContentRegionMaxAbs", "ItemSize"
 }
 
 class ImguiLintVisitor : AstVisitor {

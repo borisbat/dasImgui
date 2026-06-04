@@ -68,7 +68,11 @@ class ImguiGen : CppGenBind {
         aot_alias <- {
             "ImVec2"    =>  true,
             "ImVec4"    =>  true,
-            "ImColor"   =>  true
+            "ImColor"   =>  true,
+            // ImRect (imgui_internal.h) is { ImVec2 Min; ImVec2 Max } — 4 floats,
+            // aliased to float4 like ImVec4 (glue in src/cb_dasIMGUI.h /
+            // aot_dasIMGUI.h). Lets internal rect-taking helpers bind directly.
+            "ImRect"    =>  true
         }
         alias2type <- {
             "ImGuiCol"                  => "ImGuiCol_",
@@ -144,6 +148,14 @@ class ImguiGen : CppGenBind {
         // an internal enum (ImGuiItemFlags_) into internal_allow_enum; v2 surface is
         // the with_item_flag scope guard (imgui_scope_builtin.das), mirroring
         // with_disabled — a push/pop pair, not a raw allow-list call.
+        //
+        // Family 4 — item / layout helpers (CalcItemSize / CalcWrapWidthForPos /
+        // GetContentRegionMaxAbs / ItemSize). The three calculators are pure geometry
+        // math (ImVec2/float in/out); ItemSize is NOT side-effect-free — it reserves
+        // layout space (advances the cursor) the way built-in widgets do. ItemSize also
+        // carries an inline ImRect overload; ImRect is now aliased to float4 (added to
+        // aot_alias above + glue in cb_dasIMGUI.h), so BOTH overloads bind cleanly.
+        // One-shot calls, raw on the ALLOWED_IMGUI allow-list (no scope guard).
         internal_allow_func <- {
             "ImGui::RenderFrame", "ImGui::RenderFrameBorder",
             "ImGui::RenderText", "ImGui::RenderTextWrapped",
@@ -152,7 +164,9 @@ class ImguiGen : CppGenBind {
             "ImGui::RenderArrowPointingAt", "ImGui::RenderArrowDockMenu",
             "ImGui::ShadeVertsLinearColorGradientKeepAlpha", "ImGui::ShadeVertsLinearUV",
             "ImGui::ShadeVertsTransformPos",
-            "ImGui::PushItemFlag", "ImGui::PopItemFlag"
+            "ImGui::PushItemFlag", "ImGui::PopItemFlag",
+            "ImGui::CalcItemSize", "ImGui::CalcWrapWidthForPos",
+            "ImGui::GetContentRegionMaxAbs", "ImGui::ItemSize"
         }
         internal_allow_enum <- {
             "ImGuiItemFlags_"
