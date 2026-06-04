@@ -44,8 +44,9 @@ require imgui/imgui_visual_aids
 
 [export]
 def init() {
-    live_create_window("Phase 4 — visual aids tour", 1000, 640)
+    live_create_window("visual aids tour", 1000, 640)
     live_imgui_init(live_window)
+    DisableIniPersistence()
     var io & = unsafe(GetIO())
     io.FontGlobalScale = 1.5
 }
