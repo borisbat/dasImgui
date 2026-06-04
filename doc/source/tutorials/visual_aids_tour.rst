@@ -43,6 +43,13 @@ Walkthrough
 
 .. video:: visual_aids_tour.mp4
 
+The recording is voiced and self-verifying: each beat speaks a line while a
+**real** gesture fires under it and is asserted — clicking the highlight and
+narrate buttons (the click must register), scrubbing ``VOLUME`` (the value must
+change), and typing into ``NAME_INPUT`` then clearing it with Ctrl+A /
+Backspace (the buffer must end empty). A silently broken beat aborts the
+recording at teardown instead of shipping.
+
 .. literalinclude:: ../../../examples/tutorial/visual_aids_tour.das
    :language: das
    :linenos:
@@ -60,11 +67,13 @@ The subject has two ``window(...)`` containers:
   each aid in-process so you can iterate without a separate driver
   shell.
 
-In the recording at the top, the driver bypasses the controls window
-entirely — it calls ``imgui_highlight`` / ``imgui_mouse_trail`` /
-``imgui_narrate`` / ``imgui_focus`` / ``imgui_key_type`` directly via
-live commands. The buttons exist so a user dropped into ``daslang-live``
-can drive every aid by hand for exploration.
+In the recording at the top, the driver drives the mouse aids **through**
+the controls window — it clicks ``BTN_HIGHLIGHT_*`` and ``BTN_NARRATE_*``
+for real (each click verified), so the buttons' own handlers fire
+``highlight`` / ``narrate``. The keyboard overlays (``imgui_key_hud`` /
+``imgui_focus_rect``) and the typing/chords are posted as direct live
+commands. The buttons exist so a user dropped into ``daslang-live`` can
+drive every aid by hand for exploration too.
 
 Highlight
 =========
@@ -78,9 +87,9 @@ A colored rectangle drawn around a widget's bbox for N frames:
 
 Highlights are short by design — long enough for "look here" to
 register, short enough that two consecutive highlights compose
-visually rather than queue. The recording fires three highlights in
-~2 seconds; the third lands while the first is still fading. Tunable
-defaults live in ``imgui_visual_aids.das``
+visually rather than queue. The recording clicks the three highlight
+buttons in turn (status, volume, save), each flashing a rect on the
+matching widget. Tunable defaults live in ``imgui_visual_aids.das``
 (``highlight_default_frames``, ``highlight_color``).
 
 Mouse trail
@@ -158,13 +167,13 @@ Beyond the mouse-focused aids:
 * ``imgui_key_hud`` pops a keycap label at bottom-center for every
   synthesized key event. ``imgui_focus_rect`` draws a colored
   rectangle around whichever widget has keyboard focus right now.
-* The recording's second half exercises both: ``imgui_focus`` on
+* The recording's second half exercises both: a real click on
   ``NAME_INPUT`` lights the focus rect, then ``imgui_key_type`` types
   "Hello, World!" into the input — every keycap pops at the bottom
   with the matching mod-strip flash on H, W, and ! (auto-shift keys).
-  Then ``imgui_key_chord`` fires Ctrl+A — Ctrl pill lights up while
-  the "A" keycap pops. Finally a Backspace clears the (selected)
-  buffer.
+  The committed value is verified. Then ``imgui_key_chord`` fires
+  Ctrl+A — Ctrl pill lights up while the "A" keycap pops — and a
+  Backspace clears the (selected) buffer, verified empty.
 * All three keyboard live commands route through the L1 synth IO
   layer described in :ref:`tutorial_driving_outside`.
 
@@ -205,7 +214,7 @@ the keyboard tour) through the playwright transport instead of curl.
 
    Full source: :download:`examples/tutorial/visual_aids_tour.das <../../../examples/tutorial/visual_aids_tour.das>`
 
-   Driver: :download:`tests/integration/record_visual_aids_tour.das <../../../tests/integration/record_visual_aids_tour.das>` — the Phase 4/5 keeper, walks every aid through a 30-second tour.
+   Driver: :download:`tests/integration/record_visual_aids_tour.das <../../../tests/integration/record_visual_aids_tour.das>` — the voiced, self-verifying tour that walks every aid in turn.
 
    Implementation: ``modules/dasImgui/widgets/imgui_visual_aids.das`` —
    the full surface plus narrate auto-fit, key HUD, focus rect.
