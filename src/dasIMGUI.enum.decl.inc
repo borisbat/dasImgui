@@ -73,3 +73,5 @@ DAS_BASE_BIND_ENUM_GEN(ImFontAtlasFlags_,ImFontAtlasFlags);
 
 DAS_BASE_BIND_ENUM_GEN(ImGuiViewportFlags_,ImGuiViewportFlags);
 
+DAS_BASE_BIND_ENUM_GEN(ImGuiItemFlags_,ImGuiItemFlags);
+

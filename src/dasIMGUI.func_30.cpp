@@ -12,6 +12,16 @@
 namespace das {
 #include "dasIMGUI.func.aot.decl.inc"
 void Module_dasIMGUI::initFunctions_30() {
+// from imgui_internal.h:3720:29
+	makeExtern< void (*)(ImVec2,const char *,const char *,float) , ImGui::RenderTextWrapped , SimNode_ExtFuncCall , imguiTempFn>(lib,"RenderTextWrapped","ImGui::RenderTextWrapped")
+		->args({"pos","text","text_end","wrap_width"})
+		->addToModule(*this, SideEffects::worstDefault);
+// from imgui_internal.h:3724:29
+	makeExtern< void (*)(ImVec2,ImVec2,unsigned int,bool,float) , ImGui::RenderFrame , SimNode_ExtFuncCall , imguiTempFn>(lib,"RenderFrame","ImGui::RenderFrame")
+		->args({"p_min","p_max","fill_col","border","rounding"})
+		->arg_init(3,new ExprConstBool(true))
+		->arg_init(4,new ExprConstFloat(0))
+		->addToModule(*this, SideEffects::worstDefault);
 // from imgui_internal.h:3725:29
 	makeExtern< void (*)(ImVec2,ImVec2,float) , ImGui::RenderFrameBorder , SimNode_ExtFuncCall , imguiTempFn>(lib,"RenderFrameBorder","ImGui::RenderFrameBorder")
 		->args({"p_min","p_max","rounding"})

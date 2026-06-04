@@ -38,3 +38,4 @@ DAS_BIND_ENUM_CAST(ImDrawFlags_);
 DAS_BIND_ENUM_CAST(ImDrawListFlags_);
 DAS_BIND_ENUM_CAST(ImFontAtlasFlags_);
 DAS_BIND_ENUM_CAST(ImGuiViewportFlags_);
+DAS_BIND_ENUM_CAST(ImGuiItemFlags_);

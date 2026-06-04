@@ -139,6 +139,11 @@ class ImguiGen : CppGenBind {
         // Family 2 — ShadeVerts* vertex-shading helpers. Same discipline: every arg
         // is already bound (ImDrawList*, int, ImVec2, ImU32, float, bool), so no
         // internal type is pulled in. They write over already-created draw vertices.
+        //
+        // Family 3 — PushItemFlag/PopItemFlag item-flag stack. First family pulling
+        // an internal enum (ImGuiItemFlags_) into internal_allow_enum; v2 surface is
+        // the with_item_flag scope guard (imgui_scope_builtin.das), mirroring
+        // with_disabled — a push/pop pair, not a raw allow-list call.
         internal_allow_func <- {
             "ImGui::RenderFrame", "ImGui::RenderFrameBorder",
             "ImGui::RenderText", "ImGui::RenderTextWrapped",
@@ -146,7 +151,11 @@ class ImguiGen : CppGenBind {
             "ImGui::RenderArrow", "ImGui::RenderBullet", "ImGui::RenderCheckMark",
             "ImGui::RenderArrowPointingAt", "ImGui::RenderArrowDockMenu",
             "ImGui::ShadeVertsLinearColorGradientKeepAlpha", "ImGui::ShadeVertsLinearUV",
-            "ImGui::ShadeVertsTransformPos"
+            "ImGui::ShadeVertsTransformPos",
+            "ImGui::PushItemFlag", "ImGui::PopItemFlag"
+        }
+        internal_allow_enum <- {
+            "ImGuiItemFlags_"
         }
     }
     def is_internal : bool {
