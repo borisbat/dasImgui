@@ -592,6 +592,10 @@ def private glyph_for_imgui_key(kc : int) : string {
     if (kc == int(ImGuiKey.LeftCtrl)  || kc == int(ImGuiKey.RightCtrl)) return "Ctrl"
     if (kc == int(ImGuiKey.LeftAlt)   || kc == int(ImGuiKey.RightAlt)) return "Alt"
     if (kc == int(ImGuiKey.LeftSuper) || kc == int(ImGuiKey.RightSuper)) return "Cmd"
+    // Letter keys arrive as raw keycodes from a chord (no codepoint, unlike typing), so map
+    // them to their glyph here too - otherwise a Ctrl+D pops only the "Ctrl" keycap.
+    if (kc >= int(ImGuiKey.A) && kc <= int(ImGuiKey.Z))
+        return build_string() $(writer) { writer |> write_char('A' + (kc - int(ImGuiKey.A))) }
     return ""    // unknown — caller skips the trace
 }
 
@@ -832,17 +836,19 @@ def imgui_cursor_sprite(input : JsonValue?) : JsonValue? {
 }
 
 struct KeyHudArgs {
-    @optional enabled         : bool = true
-    @optional show_modifiers  : bool = true
+    @optional enabled         : bool  = true
+    @optional show_modifiers  : bool  = true
+    @optional keycap_fade_s   : float = 0.7f   // how long each keycap lingers before fading out
 }
 
-[live_command(description="Toggle the keycap + modifier-strip HUD. Pops a keycap at bottom-center for every synth key event and lights up Ctrl/Shift/Alt/Cmd pills while held.")]
+[live_command(description="Toggle the keycap + modifier-strip HUD. Pops a keycap at bottom-center for every synth key event and lights up Ctrl/Shift/Alt/Cmd pills while held. keycap_fade_s sets how long each keycap lingers (default 0.7).")]
 def imgui_key_hud(input : JsonValue?) : JsonValue? {
-    //! ``[live_command]`` toggle for the bottom-center keycap HUD + Ctrl/Shift/Alt/Cmd modifier strip. Args: ``enabled``, ``show_modifiers``.
+    //! ``[live_command]`` toggle for the bottom-center keycap HUD + Ctrl/Shift/Alt/Cmd modifier strip. Args: ``enabled``, ``show_modifiers``, ``keycap_fade_s`` (seconds a keycap lingers - bump it so a chord stays readable while a voice line names it).
     let args = from_JV(input, type<KeyHudArgs>)
     key_hud_enabled = args.enabled
     key_hud_show_modifiers = args.show_modifiers
-    return JV((ok = true, enabled = args.enabled, show_modifiers = args.show_modifiers))
+    key_hud_keycap_fade_s = args.keycap_fade_s
+    return JV((ok = true, enabled = args.enabled, show_modifiers = args.show_modifiers, keycap_fade_s = args.keycap_fade_s))
 }
 
 struct FocusRectArgs {
