@@ -39,6 +39,9 @@ struct Config {
     @clarg_doc = "Silence appended after each spoken line, milliseconds"
     gap_ms : int = 500
 
+    @clarg_doc = "Asset root whose doc/source/_static/tutorials/voiceover/ receives the manifest + wavs (default: dasImgui's module root). Pass the consumer package root for a non-dasImgui driver (e.g. a dasImguiNodeEditor recording) so the manifest lands beside where its APNG will be written."
+    asset_root : string
+
     @clarg_short = "?"
     @clarg_doc = "Show help and exit"
     help : bool
@@ -153,7 +156,12 @@ def main : int {
     }
     to_log(LOG_INFO, "[prepare] scanned {cfg.driver}: apng={g_apng}, {length(g_lines)} say() line(s)\n")
     let apng_stem = stem(g_apng)
-    let vo_dir = path_join(path_join(dasimgui_module_root(), RECORD_ASSET_REL), "voiceover")
+    // Manifest + wavs must land beside where the APNG will be written (arm_voiceovers reads
+    // dir_name(apng)/voiceover at record time). dasImgui drivers root the APNG under dasImgui's
+    // module root; a consumer package (e.g. dasImguiNodeEditor) roots it under its own, so it
+    // passes --asset-root to point the voiceover dir there.
+    let root = empty(cfg.asset_root) ? dasimgui_module_root() : cfg.asset_root
+    let vo_dir = path_join(path_join(root, RECORD_ASSET_REL), "voiceover")
     mkdir_rec(vo_dir)
     let client = openai_client(cfg.base_url)
     var manifest = VoManifest(voice = cfg.voice, gap_ms = cfg.gap_ms)
