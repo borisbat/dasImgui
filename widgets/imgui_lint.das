@@ -122,7 +122,12 @@ let private ALLOWED_IMGUI : table<string> <- {
     "RenderFrame", "RenderFrameBorder", "RenderText", "RenderTextWrapped",
     "RenderColorRectWithAlphaCheckerboard", "RenderMouseCursor",
     "RenderArrow", "RenderBullet", "RenderCheckMark",
-    "RenderArrowPointingAt", "RenderArrowDockMenu"
+    "RenderArrowPointingAt", "RenderArrowDockMenu",
+    // Vertex-shading draw helpers cherry-picked from imgui_internal.h (family 2).
+    // Write over already-created ImDrawList vertices — host-agnostic, no v2 state.
+    // Bound via bind_imgui.das internal_allow_func.
+    "ShadeVertsLinearColorGradientKeepAlpha", "ShadeVertsLinearUV",
+    "ShadeVertsTransformPos"
 }
 
 class ImguiLintVisitor : AstVisitor {
