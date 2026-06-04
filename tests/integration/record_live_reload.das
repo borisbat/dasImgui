@@ -8,24 +8,18 @@ require imgui/imgui_playwright public
 require daslib/json public
 require daslib/json_boost public
 
-//! Driver script: record ``live_reload.apng``. One shell:
-//!
-//!     bin/Release/daslang.exe -project_root <dasimgui> \
-//!         <dasimgui>/tests/integration/record_live_reload.das
-
-def widget_bbox(var snap : JsonValue?; ident : string) : float4 {
-    var b = snap?["globals"]?[ident]?["bbox"]
-    return float4(
-        b?["x"] ?? 0.0f,
-        b?["y"] ?? 0.0f,
-        b?["z"] ?? 0.0f,
-        b?["w"] ?? 0.0f
-    )
-}
+//! Driver: record ``live_reload.apng`` against ``examples/tutorial/live_reload.das``.
+//! The daslang-live surface - @live state and custom [live_command]s. The recording
+//! can't trigger a reload, so it exercises the OBSERVABLE surface and verifies each:
+//!   1. VOLUME    - @live slider, set from outside (force_set_verified).
+//!   2. PING_BTN  - @live click_count, clicked twice (hold_through_voice).
+//!   3. bump_counter - user [live_command] climbs the counter (CTR_TEXT -> "...= 7").
+//!   4. reset_counter - user [live_command] zeroes it (CTR_TEXT -> "...= 0").
 
 def widget_center(var snap : JsonValue?; ident : string) : tuple<float; float> {
-    let b = widget_bbox(snap, ident)
-    return ((b.x + b.z) * 0.5f, (b.y + b.w) * 0.5f)
+    let b = snap?["globals"]?[ident]?["bbox"]
+    return (((b?["x"] ?? 0.0f) + (b?["z"] ?? 0.0f)) * 0.5f,
+            ((b?["y"] ?? 0.0f) + (b?["w"] ?? 0.0f)) * 0.5f)
 }
 
 [export]
@@ -34,44 +28,58 @@ def main {
                        "live_reload.apng", 60) $(app) {
         let T_VOLUME = "LIVE_WIN/VOLUME"
         let T_PING   = "LIVE_WIN/PING_BTN"
+        let T_CTR    = "LIVE_WIN/CTR_TEXT"
+        let GUTTER   = (840.0f, 320.0f)   // park off the widgets while [live_command]s drive from outside
 
         var snap = wait_for_render(app, T_VOLUME, 10.0f)
         if (snap == null) {
-            panic("{T_VOLUME} never rendered — wrong app running?")
+            panic("{T_VOLUME} never rendered - wrong app running?")
         }
-        let p_ping   = widget_center(snap, T_PING)
         let p_volume = widget_center(snap, T_VOLUME)
+        let p_ping   = widget_center(snap, T_PING)
 
-        // ---- Stage 1: VOLUME (@live slider, preserved across reload) ----
-        move_to(app, p_volume)
-        say(app, "VOLUME is @live — value preserved across reload.", T_VOLUME)
-        post_command(app, "imgui_force_set", JV((target = T_VOLUME, value = 0.65f)))
-        sleep(CLICK_DWELL_MS)
+        // Park the cursor on the slider and warm up the capture pipeline.
+        move_to(app, p_volume, 800)
+        sleep(1800u)
 
-        // ---- Stage 2: PING button — ClickState's @live click_count ----
-        move_to(app, p_ping)
-        say(app, "PING_BTN.click_count is @live too.", T_PING)
-        var ping_events : array<JsonValue?>
-        ping_events |> click_at(0, p_ping)
-        post_command(app, "imgui_mouse_play", JV((events = ping_events)))
-        sleep(1200u)
-        var ping_events2 : array<JsonValue?>
-        ping_events2 |> click_at(0, p_ping)
-        post_command(app, "imgui_mouse_play", JV((events = ping_events2)))
-        sleep(CLICK_DWELL_MS)
+        // ---- Beat 1: @live slider, set from outside ----
+        let d1 = say_begin(app, "VOLUME: @live, set from outside", T_VOLUME,
+            [voice = "Live reload preserves @live state across an edit. Volume is an @live slider - I set it from outside, and the value would carry across a reload."])
+        let lead1 = d1 > 1500u ? 700u : d1 / 3u
+        sleep(lead1)
+        force_set_verified(app, T_VOLUME, 0.65f)
+        let used1 = lead1 + 120u
+        sleep(d1 > used1 ? d1 - used1 : 0u)
 
-        // ---- Stage 3: custom [live_command] — bump_counter via curl ----
-        say(app, "bump_counter is a user-defined [live_command].", T_PING)
+        // ---- Beat 2: @live click_count ----
+        move_to(app, p_ping, 600)
+        sleep(SETTLE_MS)
+        hold_through_voice(app, say_begin(app, "PING_BTN: @live click_count", T_PING,
+            [voice = "Click counts are @live too. I ping twice, and PING_BTN.click_count holds at two - it would survive a reload the same way."]),
+            [T_PING, T_PING])
+
+        // ---- Beat 3: custom [live_command] climbs the counter ----
+        move_to(app, GUTTER, 600)
+        sleep(SETTLE_MS)
+        let d3 = say_begin(app, "bump_counter: custom [live_command]", T_CTR,
+            [voice = "bump_counter is a user-defined live command - an HTTP endpoint the running app exposes. I call it from outside, and the counter climbs."])
+        let lead3 = d3 > 1500u ? 700u : d3 / 3u
+        sleep(lead3)
         post_command(app, "bump_counter", JV((by = 1)))
-        sleep(800u)
-        post_command(app, "bump_counter", JV((by = 5)))
-        sleep(800u)
-        post_command(app, "bump_counter", JV((by = 1)))
-        sleep(CLICK_DWELL_MS)
+        sleep(700u)
+        post_command(app, "bump_counter", JV((by = 6)))
+        record_check_value(app, T_CTR, "value", "g_custom_counter = 7", 180)
+        let used3 = lead3 + 700u + 120u
+        sleep(d3 > used3 ? d3 - used3 : 0u)
 
-        // ---- Stage 4: reset_counter — same surface, different handler ----
-        say(app, "reset_counter — same surface, app-defined endpoint.", T_PING)
+        // ---- Beat 4: another [live_command] zeroes it ----
+        let d4 = say_begin(app, "reset_counter: same surface", T_CTR,
+            [voice = "And reset_counter, another custom command on the same surface, sets it back to zero."])
+        let lead4 = d4 > 1400u ? 700u : d4 / 3u
+        sleep(lead4)
         post_command(app, "reset_counter", null)
-        sleep(CLICK_DWELL_MS)
+        record_check_value(app, T_CTR, "value", "g_custom_counter = 0", 180)
+        let used4 = lead4 + 120u
+        sleep(d4 > used4 ? d4 - used4 : 0u)
     }
 }
