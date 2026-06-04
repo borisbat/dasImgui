@@ -66,12 +66,12 @@ fi
 echo "pre-push: using $DASLANG"
 echo "pre-push: daslang source: $DASLANG_SRC"
 
-# Formatter: whole tree, verify-only (CI parity).
-echo "pre-push: formatter --verify ..."
-"$DASLANG" "$DASLANG_SRC/utils/das-fmt/dasfmt.das" -- --path "$ROOT" --verify
-
-# Lint: only .das files changed in the pushed range vs remote tip
-# (mirrors CI's `git diff origin/<base>...HEAD`).
+# Lint + format both run on only the .das files changed in the pushed range vs
+# remote tip (mirrors CI's `git diff origin/<base>...HEAD`). The formatter is
+# scoped to the changed set ON PURPOSE — a whole-tree `--path "$ROOT"` walk
+# follows junctions (e.g. a daspkg-install self-junction under the gitignored
+# modules/) and verifies gitignored build/ artifacts, bricking every push. CI
+# has no whole-tree format gate either; this keeps local in lockstep with it.
 ZERO40="0000000000000000000000000000000000000000"
 ZERO64="0000000000000000000000000000000000000000000000000000000000000000"
 RANGES=()
@@ -100,9 +100,15 @@ while IFS= read -r line; do
 done < <(git diff --name-only --diff-filter=AM "${RANGES[@]}" -- '*.das' | sort -u)
 
 if [ ${#CHANGED[@]} -eq 0 ]; then
-    echo "pre-push: no .das files changed; skipping lint"
+    echo "pre-push: no .das files changed; skipping lint + format"
     exit 0
 fi
+
+# Formatter: verify only the changed .das files (scoped, not whole-tree — see note above).
+echo "pre-push: formatter --verify (${#CHANGED[@]} changed .das) ..."
+FMT_ARGS=()
+for f in "${CHANGED[@]}"; do FMT_ARGS+=(--path "$f"); done
+"$DASLANG" "$DASLANG_SRC/utils/das-fmt/dasfmt.das" -- "${FMT_ARGS[@]}" --verify
 
 echo "pre-push: linting ${#CHANGED[@]} .das file(s)"
 # `-load_module $ROOT` lets the lint resolve `require imgui/*` for dasImgui's
