@@ -130,10 +130,12 @@ let private ALLOWED_IMGUI : table<string> <- {
     // Bound via bind_imgui.das internal_allow_func.
     "ShadeVertsLinearColorGradientKeepAlpha", "ShadeVertsLinearUV",
     "ShadeVertsTransformPos",
-    // Layout-geometry calculators cherry-picked from imgui_internal.h (family 4).
-    // Pure side-effect-free geometry math (ImVec2/float in, ImVec2/float out) —
-    // host-agnostic, no v2 state. Bound via bind_imgui.das internal_allow_func.
-    "CalcItemSize", "CalcWrapWidthForPos", "GetContentRegionMaxAbs"
+    // Item / layout helpers cherry-picked from imgui_internal.h (family 4).
+    // Geometry math (CalcItemSize/CalcWrapWidthForPos/GetContentRegionMaxAbs) plus
+    // ItemSize (reserve layout space for a custom-drawn item) — host-agnostic, no v2
+    // state. Bound via bind_imgui.das internal_allow_func; ImRect arg of ItemSize's
+    // rect overload is aliased to float4 (cb_dasIMGUI.h).
+    "CalcItemSize", "CalcWrapWidthForPos", "GetContentRegionMaxAbs", "ItemSize"
 }
 
 class ImguiLintVisitor : AstVisitor {

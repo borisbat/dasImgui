@@ -3,20 +3,21 @@ options gen2
 require imgui/imgui_harness
 
 // =============================================================================
-// FEATURE: internal_layout_calc — exercises the imgui_internal.h layout-geometry
-//          calculator family (#4, bound via bind_imgui.das internal_allow_func).
-//          These are pure, side-effect-free helpers that custom-widget code uses
-//          to size and position items the same way the built-in widgets do. Every
-//          argument and result is an already-bound public type (ImVec2, float), so
-//          no internal struct/enum is pulled in; they are one-shot calls and sit
-//          raw on the ALLOWED_IMGUI allow-list (like families 1-2), not behind a
-//          scope guard. This is the "binding is usable" gate for family #4 — it
+// FEATURE: internal_layout_calc — exercises the imgui_internal.h item / layout
+//          helper family (#4, bound via bind_imgui.das internal_allow_func). These
+//          help custom-widget code size and position items the same way the built-in
+//          widgets do. Args/results are already-bound public types (ImVec2, float);
+//          ItemSize's rect overload takes ImRect, now aliased to float4 (glue in
+//          cb_dasIMGUI.h), so no internal struct is pulled in as a real type. One-shot
+//          calls, raw on the ALLOWED_IMGUI allow-list (like families 1-2), not behind
+//          a scope guard. This is the "binding is usable" gate for family #4 — it
 //          calls the real bound API at runtime, not just compiles it.
 // SHOWS:   CalcItemSize (resolve a requested size against defaults — three cases
 //          drawn at their resolved pixel size), CalcWrapWidthForPos (the wrap
-//          width behind PushTextWrapPos, drawn as a measured span), and
+//          width behind PushTextWrapPos, drawn as a measured span),
 //          GetContentRegionMaxAbs (the content region's absolute far corner,
-//          marked with a crosshair).
+//          marked with a crosshair), and ItemSize (reserve layout space for a
+//          custom-drawn box so the next widget flows directly below it).
 // STANDALONE: daslang.exe modules/dasImgui/examples/features/internal_layout_calc.das
 // HEADLESS:   daslang.exe modules/dasImgui/examples/features/internal_layout_calc.das -- --headless --headless-frames=60
 // LIVE:       daslang-live modules/dasImgui/examples/features/internal_layout_calc.das
@@ -24,7 +25,7 @@ require imgui/imgui_harness
 
 [export]
 def init() {
-    harness_init("internal_layout_calc - imgui_internal.h layout calculators", 760, 600)
+    harness_init("internal_layout_calc - imgui_internal.h layout helpers", 760, 690)
     var io & = unsafe(GetIO())
     io.FontGlobalScale = 1.25
 }
@@ -40,7 +41,7 @@ def update() {
     let span  = rgba(90u, 220u, 130u, 255u)
     let mark  = rgba(240u, 180u, 70u, 255u)
 
-    SetNextWindowSize(ImVec2(720.0, 560.0), ImGuiCond.Always)
+    SetNextWindowSize(ImVec2(720.0, 650.0), ImGuiCond.Always)
     window(LAYOUT_WIN, (text = "internal_layout_calc", closable = false,
                         flags = ImGuiWindowFlags.None)) {
         text("imgui_internal.h layout-geometry calculators - pure sizing/position math.")
@@ -104,7 +105,23 @@ def update() {
         }
         dummy(SPACER3, ImVec2(700.0, 64.0))
         separator()
-        text("All three readouts come from imgui_internal.h layout calculators (family #4).")
+
+        // ItemSize - reserve layout space for a custom-drawn item (advances the
+        // cursor without registering an item, unlike dummy). The text below flows
+        // directly under the reserved box.
+        text("ItemSize reserves layout space for a custom-drawn box:")
+        let o4 = GetCursorScreenPos()
+        let box = ImVec2(300.0, 34.0)
+        with_window_drawlist() $(var dl) {
+            dl |> add_rect_filled(ImVec2(o4.x, o4.y), ImVec2(o4.x + box.x, o4.y + box.y), fill)
+            dl |> add_rect(ImVec2(o4.x, o4.y), ImVec2(o4.x + box.x, o4.y + box.y), edge,
+                           0.0, ImDrawFlags.None, 2.0)
+            dl |> add_text(ImVec2(o4.x + 8.0, o4.y + 9.0), ink, "custom box - footprint reserved by ItemSize")
+        }
+        ItemSize(box)
+        text("this line flows directly below the ItemSize-reserved box.")
+        separator()
+        text("All four readouts come from imgui_internal.h item/layout helpers (family #4).")
     }
 
     harness_end_frame()

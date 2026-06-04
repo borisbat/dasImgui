@@ -12,6 +12,13 @@
 namespace das {
 #include "dasIMGUI.func.aot.decl.inc"
 void Module_dasIMGUI::initFunctions_30() {
+// from imgui_internal.h:3389:29
+	makeExtern< float (*)(const ImVec2 &,float) , ImGui::CalcWrapWidthForPos , SimNode_ExtFuncCall , imguiTempFn>(lib,"CalcWrapWidthForPos","ImGui::CalcWrapWidthForPos")
+		->args({"pos","wrap_pos_x"})
+		->addToModule(*this, SideEffects::worstDefault);
+// from imgui_internal.h:3392:29
+	makeExtern< ImVec2 (*)() , ImGui::GetContentRegionMaxAbs , SimNode_ExtFuncCall , imguiTempFn>(lib,"GetContentRegionMaxAbs","ImGui::GetContentRegionMaxAbs")
+		->addToModule(*this, SideEffects::worstDefault);
 // from imgui_internal.h:3396:29
 	makeExtern< void (*)(int,bool) , ImGui::PushItemFlag , SimNode_ExtFuncCall , imguiTempFn>(lib,"PushItemFlag","ImGui::PushItemFlag")
 		->args({"option","enabled"})
