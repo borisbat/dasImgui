@@ -36,6 +36,13 @@ Walkthrough
 
 .. video:: drawlist.mp4
 
+The recording is a display-only tour - no gesture to drive - so the self-check
+is on the *output*: it narrates each scope wrapper while asserting the registry
+holds the painted primitives (``record_check_kind_count`` over the ``add_*``
+kind family, since drawlist call sites register under synthesized path keys
+rather than caller idents) plus the window / foreground-label widgets on screen.
+A rail that stopped painting would abort the recording.
+
 .. literalinclude:: ../../../examples/tutorial/drawlist.das
    :language: das
    :linenos:
