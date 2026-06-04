@@ -52,8 +52,9 @@ require imgui/imgui_visual_aids
 
 [export]
 def init() {
-    live_create_window("dasImgui state_telemetry tutorial", 720, 540)
+    live_create_window("dasImgui state_telemetry tutorial", 1040, 720)
     live_imgui_init(live_window)
+    DisableIniPersistence()
     var io & = unsafe(GetIO())
     io.FontGlobalScale = 1.5
 }
@@ -110,7 +111,7 @@ def update() {
         // from outside, and the snapshot exposes it under the standard
         // payload.value field — so integration tests can assert against
         // computed status strings the same way they assert slider values.
-        text("text_show — app-driven status reaches the snapshot:")
+        text("text_show - app-driven status reaches the snapshot:")
         text_show(STATUS_TEXT)
 
         // The bump button writes a computed string into STATUS_TEXT.value.

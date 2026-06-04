@@ -31,6 +31,14 @@ Walkthrough
 
 .. video:: state_telemetry.mp4
 
+The recording drives every channel and asserts the snapshot followed: it clicks
+``Save`` twice and verifies ``SAVE_BTN.click_count`` (``hold_through_voice``),
+force-sets ``SPEED`` and ``VOLUME`` from outside and verifies each value
+(``force_set_verified``), force-sets ``STATUS_TEXT`` and verifies the mirror took
+the string, then clicks ``bump`` and verifies the app rewrote ``STATUS_TEXT.value``
+from inside (``record_check_changed``). Any channel that stopped reaching the
+snapshot would abort the recording.
+
 .. literalinclude:: ../../../examples/tutorial/state_telemetry.das
    :language: das
    :linenos:
@@ -60,7 +68,7 @@ Once emitted, the global behaves like any other daslang global —
 .. code-block:: das
 
    if (button(SAVE_BTN, (text = "Save"))) { ... }
-   Text("SAVE_BTN.click_count = {SAVE_BTN.click_count}")
+   text("SAVE_BTN.click_count = {SAVE_BTN.click_count}")
 
 Two distinct value channels are available:
 
