@@ -592,6 +592,10 @@ def private glyph_for_imgui_key(kc : int) : string {
     if (kc == int(ImGuiKey.LeftCtrl)  || kc == int(ImGuiKey.RightCtrl)) return "Ctrl"
     if (kc == int(ImGuiKey.LeftAlt)   || kc == int(ImGuiKey.RightAlt)) return "Alt"
     if (kc == int(ImGuiKey.LeftSuper) || kc == int(ImGuiKey.RightSuper)) return "Cmd"
+    // Letter keys arrive as raw keycodes from a chord (no codepoint, unlike typing), so map
+    // them to their glyph here too - otherwise a Ctrl+D pops only the "Ctrl" keycap.
+    if (kc >= int(ImGuiKey.A) && kc <= int(ImGuiKey.Z))
+        return build_string() $(writer) { writer |> write_char('A' + (kc - int(ImGuiKey.A))) }
     return ""    // unknown — caller skips the trace
 }
 
