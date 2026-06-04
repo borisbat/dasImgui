@@ -150,11 +150,11 @@ class ImguiGen : CppGenBind {
         // with_disabled — a push/pop pair, not a raw allow-list call.
         //
         // Family 4 — item / layout helpers (CalcItemSize / CalcWrapWidthForPos /
-        // GetContentRegionMaxAbs / ItemSize). Side-effect-free geometry math plus
-        // ItemSize (reserve layout space for a custom-drawn item, the way built-in
-        // widgets do). The three calculators are pure (ImVec2/float in/out). ItemSize
-        // carries an inline ImRect overload; ImRect is now aliased to float4 (added
-        // to aot_alias above + glue in cb_dasIMGUI.h), so BOTH overloads bind cleanly.
+        // GetContentRegionMaxAbs / ItemSize). The three calculators are pure geometry
+        // math (ImVec2/float in/out); ItemSize is NOT side-effect-free — it reserves
+        // layout space (advances the cursor) the way built-in widgets do. ItemSize also
+        // carries an inline ImRect overload; ImRect is now aliased to float4 (added to
+        // aot_alias above + glue in cb_dasIMGUI.h), so BOTH overloads bind cleanly.
         // One-shot calls, raw on the ALLOWED_IMGUI allow-list (no scope guard).
         internal_allow_func <- {
             "ImGui::RenderFrame", "ImGui::RenderFrameBorder",

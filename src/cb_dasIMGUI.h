@@ -79,6 +79,7 @@ template<> struct WrapArgType<const ImVec4&> { using type = const WrapArgType<Im
 // in as a struct. Unlike ImVec4 it has no x/y/z/w members, so the Wrap*Arg path can't
 // reuse WrapVec4Arg (which defaults its field pointer to &T::x) — bridge vec4f<->ImRect
 // by memcpy instead.
+static_assert(sizeof(ImRect) == sizeof(float) * 4, "ImRect must be 4 contiguous floats to alias float4");
 template <> struct typeFactory<ImRect> {
 	static TypeDeclPtr make(const ModuleLibrary &) {
 		auto t = new TypeDecl(Type::tFloat4);
