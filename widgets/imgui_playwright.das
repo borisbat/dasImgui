@@ -667,6 +667,22 @@ def public record_check_changed(app : ImguiApp; target : string; field : string;
     return false
 }
 
+def public record_check_unchanged(app : ImguiApp; target : string; field : string; before : string) : bool {
+    //! Recording-safe "the gesture left it alone" verifier - the mirror of ``record_check_changed``.
+    //! Asserts ``target.payload[field]``'s JSON still EQUALS ``before`` (the value captured before the
+    //! gesture). This is the honest self-test for a NEGATIVE claim - e.g. a node OUTSIDE a group does
+    //! NOT move when the group is dragged. Unlike ``record_check_changed`` there is no event to wait
+    //! for, so the caller must settle the gesture first (``wait_for_mouse_idle``); this then compares
+    //! once. Accumulate-on-miss (surfaced as a teardown panic), mirroring ``record_check_changed``.
+    //! Returns true when the value is still ``before``.
+    var snap = snapshot(app)
+    let v = widget_payload_field(snap, target, field)
+    let now = v != null ? write_json(v) : ""
+    if (now == before) return true
+    g_record_failures |> push("record_check_unchanged({target}.{field}):\n  expected it to stay {before}\n  but the gesture moved it to {now}")
+    return false
+}
+
 def public record_check_rendered(app : ImguiApp; target : string; expected : bool; max_frames : int = 120) : bool {
     //! Recording-safe "did the gesture show/hide it" verifier: assert ``target``'s rendered-this-frame
     //! state (``widget_rendered``) equals ``expected`` within ``max_frames``. The robust signal for a
