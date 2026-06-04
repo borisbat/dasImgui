@@ -265,7 +265,8 @@ struct ImGuiWindowClass_GeneratedAnnotation : ManagedStructureAnnotation<ImGuiWi
 			.adjustAot("das_reinterpret<ImGuiViewportFlags_>::pass(",")");
 		addField<ImGuiTabItemFlags_,offsetof(ManagedType,TabItemFlagsOverrideSet)>("TabItemFlagsOverrideSet","TabItemFlagsOverrideSet")
 			.adjustAot("das_reinterpret<ImGuiTabItemFlags_>::pass(",")");
-		addField<DAS_BIND_MANAGED_FIELD(DockNodeFlagsOverrideSet)>("DockNodeFlagsOverrideSet","DockNodeFlagsOverrideSet");
+		addField<ImGuiDockNodeFlags_,offsetof(ManagedType,DockNodeFlagsOverrideSet)>("DockNodeFlagsOverrideSet","DockNodeFlagsOverrideSet")
+			.adjustAot("das_reinterpret<ImGuiDockNodeFlags_>::pass(",")");
 		addField<DAS_BIND_MANAGED_FIELD(DockingAlwaysTabBar)>("DockingAlwaysTabBar","DockingAlwaysTabBar");
 		addField<DAS_BIND_MANAGED_FIELD(DockingAllowUnclassed)>("DockingAllowUnclassed","DockingAllowUnclassed");
 	}
@@ -308,13 +309,6 @@ struct ImGuiTextFilter_ImGuiTextRange_GeneratedAnnotation : ManagedStructureAnno
 
 // from imgui.h:2482:8
 struct ImGuiTextFilter_GeneratedAnnotation : ManagedStructureAnnotation<ImGuiTextFilter> {
-	// MANUAL PATCH: marks ImGuiTextFilter as locally-allocatable + globally-
-	// initializable so daslang state structs can hold one inline. cbind_boost
-	// only emits isLocal + canBePlacedInContainer for `local_type_names`
-	// entries (see bind_imgui.das); the trivial-ctor + copy overrides below
-	// have to be re-applied after every regen. ImGuiTextFilter is bitwise
-	// zero-init-safe (empty InputBuf, empty Filters ImVector, CountGrep=0)
-	// and its copy ctor is well-defined.
 	virtual bool isLocal() const override { return true; }
 	virtual bool canBePlacedInContainer() const override { return true; }
 	virtual bool hasNonTrivialCtor() const override { return false; }

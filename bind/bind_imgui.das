@@ -30,11 +30,14 @@ class ImguiGen : CppGenBind {
     override func_to_stdout = false
     override generate_constant_decl = true
     imgui_skip_func : table<string; bool>
+    // imgui_internal.h allow-lists — curated, grown one family per commit.
+    // A symbol from imgui_internal.h is bound only if it appears here; everything
+    // else internal is skipped, so the public imgui.h surface stays unchanged and
+    // the opaque forward-declared types (ImGuiContext, ...) keep their dummies.
+    internal_allow_func : table<string>
+    internal_allow_struct : table<string>
+    internal_allow_enum : table<string>
     def ImguiGen(mod_name : string, das_mod_name : string, pfn : string, cfg : Config) {
-        bind_root = cfg.output
-        bind_module = mod_name
-        bind_das_module = das_mod_name
-        prefix = cfg.prefix
         let i_imgui = "{get_das_root()}/modules/dasImgui/imgui/"
         let args <- array<string>(
             "-xc++-header",
@@ -42,9 +45,19 @@ class ImguiGen : CppGenBind {
             "-I{get_full_file_name(i_imgui)}",
             "-DIMGUI_DISABLE_OBSOLETE_FUNCTIONS"
         )
+        // CppGenBind constructor runs init_args(...) + setDefaultFiles()
+        super(pfn, cfg.input, args)
+        bind_root = cfg.output
+        bind_module = mod_name
+        bind_das_module = das_mod_name
+        prefix = cfg.prefix
         func_per_chunk = 20
-        init_args(pfn, cfg.input, args)
+        // We parse imgui_internal.h (which includes imgui.h), but constant
+        // generation regexes the file's raw #defines — pin it to imgui.h so
+        // dasIMGUI.const.inc stays identical to the imgui.h-only output.
+        CONST_FILE_NAMES <- [ "{PARSE_FILE_PREFIX}imgui.h" ]
         init_rename()
+        init_internal()
         setDefaultFiles()
         openAllFiles()
     }
@@ -99,6 +112,12 @@ class ImguiGen : CppGenBind {
             "ImGuiTableColumnSortSpecs" => true,
             "ImGuiTextFilter" => true,
             "Config" => true}
+        // ImGuiTextFilter is bitwise zero-init-safe (empty InputBuf, empty Filters
+        // ImVector, CountGrep=0) with a well-defined copy ctor, so daslang state
+        // structs can hold one inline. Emitted by the binder now (was a manual
+        // post-regen patch on src/dasIMGUI.struct.class.inc).
+        trivial_ctor_type_names <- {"ImGuiTextFilter" => true}
+        copyable_type_names <- {"ImGuiTextFilter" => true}
         imgui_skip_func <- {
             "ImGui::TextUnformatted" => true,
             "ImGuiTextFilter::PassFilter" => true,
@@ -112,16 +131,53 @@ class ImguiGen : CppGenBind {
             enums_with_flags.insert(v, true)
         }
     }
-    def override skip_anyFunction(var c : CXCursor; isMethod : bool) {
-        if (AnyGenBind`skip_anyFunction(self, c, isMethod)) {
-            return true
+    def init_internal {
+        // Family 1 — Render* draw helpers from imgui_internal.h. Every argument is
+        // an already-bound public type (ImVec2, ImU32, ImDrawList*, ImGuiDir,
+        // ImGuiMouseCursor, ImDrawFlags), so no internal struct/enum is pulled in.
+        internal_allow_func <- {
+            "ImGui::RenderFrame", "ImGui::RenderFrameBorder",
+            "ImGui::RenderText", "ImGui::RenderTextWrapped",
+            "ImGui::RenderColorRectWithAlphaCheckerboard", "ImGui::RenderMouseCursor",
+            "ImGui::RenderArrow", "ImGui::RenderBullet", "ImGui::RenderCheckMark",
+            "ImGui::RenderArrowPointingAt", "ImGui::RenderArrowDockMenu"
         }
+    }
+    def is_internal : bool {
+        return prevFileName |> ends_with("imgui_internal.h")
+    }
+    def override skip_file(fname : string) : bool {
+        // accept imgui.h AND imgui_internal.h; internal symbols are then gated down
+        // to the curated allow-lists by skip_struct / skip_enum / skip_anyFunction
+        return !(fname |> ends_with("imgui.h") || fname |> ends_with("imgui_internal.h"))
+    }
+    def override parse_Struct(var c : CXCursor; struct_name : string) {
+        // Gate the struct *declaration* here, not via skip_struct — skip_struct is
+        // also consulted by skip_type for referenced arg types, where a public
+        // type (ImVec2, ImDrawList) used by an internal function must stay bound.
+        // parse_Struct only runs at decl time, so prevFileName is the struct's
+        // own file. Internal-only structs are no-op'd, so the opaque types that
+        // imgui.h forward-declares keep their dummies.
+        if (is_internal() && !key_exists(internal_allow_struct, struct_name)) return
+        CppGenBind`parse_Struct(self, c, struct_name)
+    }
+    def override skip_enum(ns_en, en : string) {
+        if (is_internal()) return !key_exists(internal_allow_enum, ns_en)
+        return AnyGenBind`skip_enum(self, ns_en, en)
+    }
+    def override skip_anyFunction(var c : CXCursor; isMethod : bool) {
+        if (AnyGenBind`skip_anyFunction(self, c, isMethod)) return true
         let function_name = namespace_name(string(clang_getCursorSpelling(c)))
         if (imgui_skip_func |> key_exists(function_name)) {
             to_log(LOG_INFO, "skipping IMGUI blocked function {function_name} at {clang_getCursorLocationDescription(c)}")
             return true
         }
-        return false
+        return is_internal() && !key_exists(internal_allow_func, function_name)
+    }
+    def override keep_c_arg_type(funcName, argName : string; argIndex : int) : bool {
+        // DockSpace/DockSpaceOverViewport ship a public `flags : int` signature that predates
+        // enum-typed flag args; keep them int so existing callers (and the docking wrapper) don't break.
+        return (funcName == "DockSpace" || funcName == "DockSpaceOverViewport") && argName == "flags"
     }
     def override isArgByValue(name : string) {
         return true
@@ -139,13 +195,13 @@ def main {
         print_help(get_command_info(type<Config>), "bind_imgui")
         return
     }
-    var cfg <- r |> move_unwrap
+    let cfg <- r |> move_unwrap
     if (cfg.help) {
         print_help(get_command_info(type<Config>), "bind_imgui")
         return
     }
-    var cgb = new ImguiGen("dasIMGUI", "imgui", "imgui.h", cfg)
-    defer <| $() {
+    var cgb = new ImguiGen("dasIMGUI", "imgui", "imgui_internal.h", cfg)
+    defer() {
         unsafe {
             delete cgb
         }
