@@ -11,9 +11,11 @@ require imgui/imgui_harness
 //          NoTabStop already have with_disabled / with_button_repeat / with_tab_stop.
 //          This is the "binding is usable" gate for family #3 — it calls the real
 //          bound API at runtime, not just compiles it.
-// SHOWS:   MixedValue (checkbox drawn as an indeterminate dash), ReadOnly (slider
-//          highlights but ignores drags), AllowOverlap (a wide button yields hover
-//          to a small button placed on top of it).
+// SHOWS:   MixedValue (checkbox drawn as an indeterminate dash), ReadOnly | NoNav
+//          (slider ignores drags + is skipped by nav — two flags combined with the
+//          | operator from imgui_enums, since ImGuiItemFlags is an internal enum the
+//          binder gave no flag-ops), AllowOverlap (a wide button yields hover to a
+//          small button placed on top of it).
 // STANDALONE: daslang.exe modules/dasImgui/examples/features/internal_item_flag.das
 // HEADLESS:   daslang.exe modules/dasImgui/examples/features/internal_item_flag.das -- --headless --headless-frames=60
 // LIVE:       daslang-live modules/dasImgui/examples/features/internal_item_flag.das
@@ -47,12 +49,14 @@ def update() {
         }
         separator()
 
-        // ReadOnly — the slider still hovers/highlights, but its value never moves
-        // when dragged.
-        text("ReadOnly:")
+        // ReadOnly | NoNav — two flags combined into one push via the | operator
+        // (imgui_enums). ReadOnly freezes the value on drag; NoNav skips the slider
+        // in keyboard/gamepad navigation. ImGuiItemFlags is an internal enum, so its
+        // bitwise | comes from imgui_enums, not the binder's addEnumFlagOps.
+        text("ReadOnly | NoNav (flags combined with the | operator):")
         slider_float(SL_RW, (text = "editable"))
-        with_item_flag(ImGuiItemFlags.ReadOnly, true) {
-            slider_float(SL_RO, (text = "read-only (drag does nothing)"))
+        with_item_flag(ImGuiItemFlags.ReadOnly | ImGuiItemFlags.NoNav, true) {
+            slider_float(SL_RO, (text = "read-only (drag does nothing), skipped by nav"))
         }
         separator()
 

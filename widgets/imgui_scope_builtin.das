@@ -6,6 +6,7 @@ module imgui_scope_builtin shared
 
 require imgui public
 require imgui/imgui_boost_runtime public
+require imgui/imgui_enums public
 
 def public with_indent(amount : float; blk : block) {
     //! Run ``blk`` with ``Indent(amount)`` applied; matching ``Unindent(amount)`` on return.
