@@ -7,12 +7,17 @@ Narrative + layout primitives
 A one-window tour of the read-only widget families: narrative text,
 layout primitives, display widgets, and the flat tooltip form. Each
 widget renders into a single panel sized for an APNG recording; the
-driver scrolls a cursor across them with ``imgui_narrate`` calls
-explaining what each one does.
+driver moves a cursor across them with a spoken line per group.
 
 Source: ``examples/tutorial/narrative_layout_tour.das``.
 
 .. video:: narrative_layout_tour.mp4
+
+The recording is voiced and self-verifying: most of these widgets take no
+input, so each beat narrates a group while the cursor points and asserts the
+widget rendered and echoed its string. The final beat rests the cursor on the
+button and asserts the flat tooltip actually fired. A missing or wrong value
+aborts the recording at teardown instead of shipping.
 
 What the tour shows
 ===================
@@ -55,9 +60,9 @@ Live (with reload):
    daslang-live modules/dasImgui/examples/tutorial/narrative_layout_tour.das
 
 The standalone form opens a window with the static layout. The driver
-under ``tests/integration/record_narrative_layout_tour.das`` posts
-the recorded narrate calls when run as a two-shell driver — see
-:doc:`recording`.
+under ``tests/integration/record_narrative_layout_tour.das`` spawns it,
+speaks a line per group while pointing the cursor, and verifies each
+widget — see :doc:`recording`.
 
 Idents matter for recordings
 ============================

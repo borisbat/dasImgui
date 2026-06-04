@@ -23,7 +23,7 @@ require imgui/imgui_visual_aids
 // A single panel that shows narrative + layout + display + flat-tooltip
 // widgets together, sized for an APNG recording. Paired driver:
 //
-//   modules/dasImgui/tests/integration/record_boost_narrative_layout.das
+//   modules/dasImgui/tests/integration/record_narrative_layout_tour.das
 //
 // All idents are intentionally short and stable so the driver can grab their
 // bboxes by name. The driver narrates each stage with imgui_narrate; this
@@ -66,7 +66,7 @@ def update() {
     window(TOUR_WIN, (text = "Narrative + layout tour",
                       closable = false, flags = ImGuiWindowFlags.None)) {
         // ---- Stage 1: plain text ----
-        text(INTRO, (text = "Plain text() — one line, telemetry-visible."))
+        text(INTRO, (text = "Plain text() - one line, telemetry-visible."))
 
         // ---- Stage 2: wrapped text ----
         text_wrapped(WRAP, (text = "text_wrapped() reflows to the window's right edge. Long strings flow naturally; the snapshot carries the full source string regardless of how the renderer wraps it."))
@@ -74,10 +74,10 @@ def update() {
         // ---- Stage 3: colored / disabled ----
         text_colored(COLORED, (color = float4(0.7f, 0.9f, 0.4f, 1.0f),
                                text = "text_colored() with an inline float4."))
-        text_disabled(DISABLED, (text = "text_disabled() — greyed for hints."))
+        text_disabled(DISABLED, (text = "text_disabled() - greyed for hints."))
 
         // ---- Stage 4: bullet ----
-        bullet_text(BULLET_LINE, (text = "bullet_text() — marker + text in one call."))
+        bullet_text(BULLET_LINE, (text = "bullet_text() - marker + text in one call."))
 
         // ---- Stage 5: label/value pair ----
         label_text(LABEL_VERSION, (key = "Version", value = "v2.0-detour"))
@@ -97,7 +97,7 @@ def update() {
         if (button(HOVER_TIP, (text = "Hover me"))) {
             print("clicked\n")
         }
-        set_item_tooltip(HOVER_TIP_TOOL, (text = "set_item_tooltip — fires on previous-item hover."))
+        set_item_tooltip(HOVER_TIP_TOOL, (text = "set_item_tooltip - fires on previous-item hover."))
     }
 
     end_of_frame()
