@@ -81,6 +81,10 @@ def setup_default_layout(dock_id : uint) {
 def init() {
     live_create_window("dasImgui docking tutorial", 1024, 720)
     live_imgui_init(live_window)
+    // Docking layout persists to imgui.ini; disable that so the recording always
+    // starts from setup_default_layout's seeded 3-pane arrangement (a leftover
+    // ini from a prior run would otherwise override the seed non-deterministically).
+    DisableIniPersistence()
     var io & = unsafe(GetIO())
     io.FontGlobalScale = 1.5
     // The single flag that turns docking on for the whole session. Without
@@ -117,7 +121,7 @@ def update() {
         dock_window(SOURCE, (text = "Source", closable = false,
                              flags = ImGuiWindowFlags.None)) {
             text("// drag tabs to rearrange")
-            text("// — layout sticks via imgui.ini")
+            text("// - layout sticks via imgui.ini")
             button(SAVE_BTN, (text = "Save"))
         }
         dock_window(OUTPUT, (text = "Output", closable = true,

@@ -22,6 +22,16 @@ Walkthrough
 
 .. video:: docking.mp4
 
+The recording is voiced and self-verifying, and it docks the way a *user* does
+— no programmatic shortcuts. It drives two REAL synthetic mouse drags: it grabs
+the node splitter between Explorer and Source and drags it to widen the left
+pane, then grabs Output's tab and drags it onto Source to stack the two as tabs.
+The synthetic mouse drives ImGui's ``SplitterBehavior`` and its
+window-move + dock-preview + drop path exactly like a hand on the mouse would.
+Each drag asserts the layout actually moved (the resized pane's ``size`` changed;
+the re-docked panel's ``dock_id`` changed); a no-op drag aborts the recording at
+teardown rather than shipping a clip where nothing happened.
+
 .. literalinclude:: ../../../examples/tutorial/docking.das
    :language: das
    :linenos:
