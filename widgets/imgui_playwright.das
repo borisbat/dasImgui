@@ -679,7 +679,11 @@ def public record_check_unchanged(app : ImguiApp; target : string; field : strin
     let v = widget_payload_field(snap, target, field)
     let now = v != null ? write_json(v) : ""
     if (now == before) return true
-    g_record_failures |> push("record_check_unchanged({target}.{field}):\n  expected it to stay {before}\n  but the gesture moved it to {now}")
+    // Compare on the raw "" sentinel, but render a missing field as <missing> in the
+    // diagnostic (matching record_check_changed), so an empty value reads unambiguously.
+    let now_disp = empty(now) ? "<missing>" : now
+    let before_disp = empty(before) ? "<missing>" : before
+    g_record_failures |> push("record_check_unchanged({target}.{field}):\n  expected it to stay {before_disp}\n  but the gesture moved it to {now_disp}")
     return false
 }
 
