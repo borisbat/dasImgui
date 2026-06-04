@@ -166,10 +166,16 @@ class ImguiGen : CppGenBind {
             "ImGui::ShadeVertsTransformPos",
             "ImGui::PushItemFlag", "ImGui::PopItemFlag",
             "ImGui::CalcItemSize", "ImGui::CalcWrapWidthForPos",
-            "ImGui::GetContentRegionMaxAbs", "ImGui::ItemSize"
+            "ImGui::GetContentRegionMaxAbs", "ImGui::ItemSize",
+            // Family 1-complete — Render* helpers that were dropped from family 1
+            // because they take an ImRect; now that ImRect is aliased to float4
+            // (#166) they bind directly. RenderNavHighlight also pulls the
+            // ImGuiNavHighlightFlags_ enum (bound as int arg, like PushItemFlag).
+            "ImGui::RenderDragDropTargetRect", "ImGui::RenderNavHighlight",
+            "ImGui::RenderRectFilledRangeH", "ImGui::RenderRectFilledWithHole"
         }
         internal_allow_enum <- {
-            "ImGuiItemFlags_"
+            "ImGuiItemFlags_", "ImGuiNavHighlightFlags_"
         }
     }
     def is_internal : bool {

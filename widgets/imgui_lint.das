@@ -135,7 +135,13 @@ let private ALLOWED_IMGUI : table<string> <- {
     // ItemSize (reserve layout space for a custom-drawn item) — host-agnostic, no v2
     // state. Bound via bind_imgui.das internal_allow_func; ImRect arg of ItemSize's
     // rect overload is aliased to float4 (cb_dasIMGUI.h).
-    "CalcItemSize", "CalcWrapWidthForPos", "GetContentRegionMaxAbs", "ItemSize"
+    "CalcItemSize", "CalcWrapWidthForPos", "GetContentRegionMaxAbs", "ItemSize",
+    // Family 1-complete — Render* helpers that take an ImRect, dropped from family 1
+    // until ImRect was aliased to float4 (#166). RenderDragDropTargetRect/RenderNavHighlight
+    // draw into the current window; RenderRectFilledRangeH/WithHole take an ImDrawList.
+    // Host-agnostic, no v2 state. Bound via bind_imgui.das internal_allow_func.
+    "RenderDragDropTargetRect", "RenderNavHighlight",
+    "RenderRectFilledRangeH", "RenderRectFilledWithHole"
 }
 
 class ImguiLintVisitor : AstVisitor {
