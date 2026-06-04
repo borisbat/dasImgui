@@ -37,6 +37,7 @@ addEnumeration(new Enumeration_ImDrawFlags_());
 addEnumeration(new Enumeration_ImDrawListFlags_());
 addEnumeration(new Enumeration_ImFontAtlasFlags_());
 addEnumeration(new Enumeration_ImGuiViewportFlags_());
+addEnumeration(new Enumeration_ImGuiItemFlags_());
 addEnumFlagOps<ImGuiWindowFlags_>(*this,lib,"ImGuiWindowFlags_");
 addEnumFlagOps<ImGuiChildFlags_>(*this,lib,"ImGuiChildFlags_");
 addEnumFlagOps<ImGuiInputTextFlags_>(*this,lib,"ImGuiInputTextFlags_");

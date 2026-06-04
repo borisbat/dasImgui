@@ -1010,3 +1010,26 @@ public:
 	}
 };
 
+// from imgui_internal.h:823:6
+class Enumeration_ImGuiItemFlags_ : public das::Enumeration {
+public:
+	Enumeration_ImGuiItemFlags_() : das::Enumeration("ImGuiItemFlags") {
+		external = true;
+		cppName = "ImGuiItemFlags_";
+		baseType = (das::Type) das::ToBasicType<int>::type;
+		addIEx("None", "ImGuiItemFlags_None", int64_t(ImGuiItemFlags_::ImGuiItemFlags_None), das::LineInfo());
+		addIEx("NoTabStop", "ImGuiItemFlags_NoTabStop", int64_t(ImGuiItemFlags_::ImGuiItemFlags_NoTabStop), das::LineInfo());
+		addIEx("ButtonRepeat", "ImGuiItemFlags_ButtonRepeat", int64_t(ImGuiItemFlags_::ImGuiItemFlags_ButtonRepeat), das::LineInfo());
+		addIEx("Disabled", "ImGuiItemFlags_Disabled", int64_t(ImGuiItemFlags_::ImGuiItemFlags_Disabled), das::LineInfo());
+		addIEx("NoNav", "ImGuiItemFlags_NoNav", int64_t(ImGuiItemFlags_::ImGuiItemFlags_NoNav), das::LineInfo());
+		addIEx("NoNavDefaultFocus", "ImGuiItemFlags_NoNavDefaultFocus", int64_t(ImGuiItemFlags_::ImGuiItemFlags_NoNavDefaultFocus), das::LineInfo());
+		addIEx("SelectableDontClosePopup", "ImGuiItemFlags_SelectableDontClosePopup", int64_t(ImGuiItemFlags_::ImGuiItemFlags_SelectableDontClosePopup), das::LineInfo());
+		addIEx("MixedValue", "ImGuiItemFlags_MixedValue", int64_t(ImGuiItemFlags_::ImGuiItemFlags_MixedValue), das::LineInfo());
+		addIEx("ReadOnly", "ImGuiItemFlags_ReadOnly", int64_t(ImGuiItemFlags_::ImGuiItemFlags_ReadOnly), das::LineInfo());
+		addIEx("NoWindowHoverableCheck", "ImGuiItemFlags_NoWindowHoverableCheck", int64_t(ImGuiItemFlags_::ImGuiItemFlags_NoWindowHoverableCheck), das::LineInfo());
+		addIEx("AllowOverlap", "ImGuiItemFlags_AllowOverlap", int64_t(ImGuiItemFlags_::ImGuiItemFlags_AllowOverlap), das::LineInfo());
+		addIEx("Inputable", "ImGuiItemFlags_Inputable", int64_t(ImGuiItemFlags_::ImGuiItemFlags_Inputable), das::LineInfo());
+		addIEx("HasSelectionUserData", "ImGuiItemFlags_HasSelectionUserData", int64_t(ImGuiItemFlags_::ImGuiItemFlags_HasSelectionUserData), das::LineInfo());
+	}
+};
+

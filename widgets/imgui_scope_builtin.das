@@ -72,3 +72,11 @@ def public with_tab_stop(tab_stop : bool; blk : block) {
     invoke(blk)
     PopTabStop()
 }
+
+def public with_item_flag(flag : ImGuiItemFlags; enabled : bool; blk : block) {
+    //! Run ``blk`` with ``PushItemFlag(flag, enabled)`` applied; matching ``PopItemFlag()`` on return.
+    //! For internal item flags lacking a dedicated guard (``AllowOverlap``, ``NoNav``, ``MixedValue``, ``ReadOnly``).
+    PushItemFlag(int(flag), enabled)
+    invoke(blk)
+    PopItemFlag()
+}
