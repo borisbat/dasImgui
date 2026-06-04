@@ -135,12 +135,18 @@ class ImguiGen : CppGenBind {
         // Family 1 — Render* draw helpers from imgui_internal.h. Every argument is
         // an already-bound public type (ImVec2, ImU32, ImDrawList*, ImGuiDir,
         // ImGuiMouseCursor, ImDrawFlags), so no internal struct/enum is pulled in.
+        //
+        // Family 2 — ShadeVerts* vertex-shading helpers. Same discipline: every arg
+        // is already bound (ImDrawList*, int, ImVec2, ImU32, float, bool), so no
+        // internal type is pulled in. They write over already-created draw vertices.
         internal_allow_func <- {
             "ImGui::RenderFrame", "ImGui::RenderFrameBorder",
             "ImGui::RenderText", "ImGui::RenderTextWrapped",
             "ImGui::RenderColorRectWithAlphaCheckerboard", "ImGui::RenderMouseCursor",
             "ImGui::RenderArrow", "ImGui::RenderBullet", "ImGui::RenderCheckMark",
-            "ImGui::RenderArrowPointingAt", "ImGui::RenderArrowDockMenu"
+            "ImGui::RenderArrowPointingAt", "ImGui::RenderArrowDockMenu",
+            "ImGui::ShadeVertsLinearColorGradientKeepAlpha", "ImGui::ShadeVertsLinearUV",
+            "ImGui::ShadeVertsTransformPos"
         }
     }
     def is_internal : bool {

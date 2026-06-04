@@ -62,6 +62,9 @@ let private ALLOWED_IMGUI : table<string> <- {
     // Circle Tessellation preview tooltip to label each sample with its
     // auto-segment count.
     "_CalcCircleAutoSegmentCount",
+    // ImVector size accessor (read-only) — e.g. length(dl.VtxBuffer) gives the
+    // vertex-index range that the ShadeVerts* family (family 2) operates over.
+    "length",
     // Cursor / layout queries (read-only)
     "GetCursorPos", "GetCursorPosX", "GetCursorPosY",
     "GetCursorScreenPos", "GetCursorStartPos",
@@ -122,7 +125,12 @@ let private ALLOWED_IMGUI : table<string> <- {
     "RenderFrame", "RenderFrameBorder", "RenderText", "RenderTextWrapped",
     "RenderColorRectWithAlphaCheckerboard", "RenderMouseCursor",
     "RenderArrow", "RenderBullet", "RenderCheckMark",
-    "RenderArrowPointingAt", "RenderArrowDockMenu"
+    "RenderArrowPointingAt", "RenderArrowDockMenu",
+    // Vertex-shading draw helpers cherry-picked from imgui_internal.h (family 2).
+    // Write over already-created ImDrawList vertices — host-agnostic, no v2 state.
+    // Bound via bind_imgui.das internal_allow_func.
+    "ShadeVertsLinearColorGradientKeepAlpha", "ShadeVertsLinearUV",
+    "ShadeVertsTransformPos"
 }
 
 class ImguiLintVisitor : AstVisitor {
