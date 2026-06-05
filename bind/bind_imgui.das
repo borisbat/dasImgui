@@ -216,7 +216,18 @@ class ImguiGen : CppGenBind {
             "ImGui::OpenPopupEx", "ImGui::ClosePopupToLevel", "ImGui::ClosePopupsExceptModals",
             "ImGui::IsPopupOpen", "ImGui::BeginPopupEx",
             "ImGui::BeginTooltipEx", "ImGui::BeginTooltipHidden",
-            "ImGui::BeginMenuEx", "ImGui::MenuItemEx"
+            "ImGui::BeginMenuEx", "ImGui::MenuItemEx",
+            // Internal item hit-test / rounding geometry helpers — the building
+            // blocks a custom-widget author needs below the public widget API.
+            // All take ImRect (aliased to float4) + ImGuiID(uint); ItemHoverable
+            // also takes ImGuiItemFlags (internal enum, binds as int like
+            // PushItemFlag); CalcRoundingFlagsForRectInRect returns ImDrawFlags
+            // (public enum). No nullable pointers / ImGuiWindow* — they read the
+            // current window implicitly. ItemAdd is deliberately NOT here: its
+            // nav_bb is a nullable ImRect* (no-lost-functionality DISCUSS — pinning
+            // it to null would drop the separate-nav-rect feature).
+            "ImGui::ItemHoverable", "ImGui::IsClippedEx",
+            "ImGui::CalcRoundingFlagsForRectInRect"
         }
         internal_allow_enum <- {
             "ImGuiItemFlags_", "ImGuiNavHighlightFlags_", "ImGuiTooltipFlags_"

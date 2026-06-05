@@ -169,7 +169,13 @@ let private ALLOWED_IMGUI : table<string> <- {
     // guards (imgui_scope_builtin.das). MenuItemEx is the icon/shortcut
     // escape hatch alongside the wrapped `menu_item` widget.
     "OpenPopupEx", "ClosePopupToLevel", "ClosePopupsExceptModals",
-    "IsPopupOpen", "MenuItemEx"
+    "IsPopupOpen", "MenuItemEx",
+    // Internal item hit-test / rounding geometry one-shots cherry-picked from
+    // imgui_internal.h. Host-agnostic helpers for custom-widget code: hit-test
+    // a rect (ItemHoverable), test whether it is clipped (IsClippedEx), compute
+    // which corners to round for a rect inset in another (CalcRoundingFlagsForRectInRect).
+    // Bound via bind_imgui.das internal_allow_func.
+    "ItemHoverable", "IsClippedEx", "CalcRoundingFlagsForRectInRect"
 }
 
 class ImguiLintVisitor : AstVisitor {
