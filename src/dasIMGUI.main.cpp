@@ -388,6 +388,16 @@ namespace das {
         ImGui::SeparatorTextEx(id, label, nullptr, extra_width);
     }
 
+    // imgui_internal.h LogRenderedText — inject text into the active log (the primitive
+    // widgets call to capture their own rendered text). ref_pos is pinned to nullptr:
+    // its only effect is position-driven newline insertion keyed off a widget's screen
+    // Y (the internal widget path); from das, embed '\n' in `text` for line breaks — the
+    // splitter turns it into real newlines + tree indentation. text_end -> nullptr like
+    // TextEx (a daslang string can't express the NULL).
+    void LogRenderedTextW( const char* text ) {
+        ImGui::LogRenderedText(nullptr, text, nullptr);
+    }
+
     // ImColor
 
     ImColor HSV(float h, float s, float v, float a) {
@@ -648,6 +658,11 @@ namespace das {
             SideEffects::worstDefault, "das::SeparatorTextExW")
                 ->args({"id","label","extra_width"})
                     ->arg_init(2,new ExprConstFloat(0.0f));
+        // imgui_internal.h LogRenderedText — manual log injection; ref_pos / text_end
+        // pinned to nullptr (embed '\n' in text for line breaks).
+        addExtern<DAS_BIND_FUN(das::LogRenderedTextW), SimNode_ExtFuncCall, imguiTempFn>(*this, lib, "LogRenderedText",
+            SideEffects::worstDefault, "das::LogRenderedTextW")
+                ->args({"text"});
         // variadic functions
         addExtern<DAS_BIND_FUN(das::Text)>(*this,lib,"Text",
             SideEffects::worstDefault,"das::Text");

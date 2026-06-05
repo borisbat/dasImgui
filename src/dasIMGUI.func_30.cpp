@@ -64,6 +64,14 @@ void Module_dasIMGUI::initFunctions_30() {
 // from imgui_internal.h:3397:29
 	makeExtern< void (*)() , ImGui::PopItemFlag , SimNode_ExtFuncCall , imguiTempFn>(lib,"PopItemFlag","ImGui::PopItemFlag")
 		->addToModule(*this, SideEffects::worstDefault);
+// from imgui_internal.h:3401:29
+	makeExtern< void (*)(ImGuiLogType,int) , ImGui::LogBegin , SimNode_ExtFuncCall , imguiTempFn>(lib,"LogBegin","ImGui::LogBegin")
+		->args({"type","auto_open_depth"})
+		->addToModule(*this, SideEffects::worstDefault);
+// from imgui_internal.h:3404:29
+	makeExtern< void (*)(const char *,const char *) , ImGui::LogSetNextTextDecoration , SimNode_ExtFuncCall , imguiTempFn>(lib,"LogSetNextTextDecoration","ImGui::LogSetNextTextDecoration")
+		->args({"prefix","suffix"})
+		->addToModule(*this, SideEffects::worstDefault);
 // from imgui_internal.h:3408:29
 	makeExtern< void (*)(unsigned int,int) , ImGui::OpenPopupEx , SimNode_ExtFuncCall , imguiTempFn>(lib,"OpenPopupEx","ImGui::OpenPopupEx")
 		->args({"id","popup_flags"})
@@ -86,14 +94,6 @@ void Module_dasIMGUI::initFunctions_30() {
 	makeExtern< bool (*)(unsigned int,int) , ImGui::BeginPopupEx , SimNode_ExtFuncCall , imguiTempFn>(lib,"BeginPopupEx","ImGui::BeginPopupEx")
 		->args({"id","extra_flags"})
 		->arg_type(1,makeType<ImGuiWindowFlags_>(lib))
-		->addToModule(*this, SideEffects::worstDefault);
-// from imgui_internal.h:3414:29
-	makeExtern< bool (*)(int,int) , ImGui::BeginTooltipEx , SimNode_ExtFuncCall , imguiTempFn>(lib,"BeginTooltipEx","ImGui::BeginTooltipEx")
-		->args({"tooltip_flags","extra_window_flags"})
-		->arg_type(1,makeType<ImGuiWindowFlags_>(lib))
-		->addToModule(*this, SideEffects::worstDefault);
-// from imgui_internal.h:3415:29
-	makeExtern< bool (*)() , ImGui::BeginTooltipHidden , SimNode_ExtFuncCall , imguiTempFn>(lib,"BeginTooltipHidden","ImGui::BeginTooltipHidden")
 		->addToModule(*this, SideEffects::worstDefault);
 }
 }

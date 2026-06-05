@@ -147,6 +147,9 @@ class ImguiGen : CppGenBind {
         // ImGuiAxis's tag has no trailing underscore but its values are ImGuiAxis_X /
         // ImGuiAxis_Y, so strip the full "ImGuiAxis_" prefix (default would leave "_X").
         enum_prefix |> insert("ImGuiAxis", "ImGuiAxis_")
+        // ImGuiLogType — same shape as ImGuiAxis: tag has no trailing underscore but its
+        // values are ImGuiLogType_TTY etc., so strip the full "ImGuiLogType_" prefix.
+        enum_prefix |> insert("ImGuiLogType", "ImGuiLogType_")
         // Family 1 — Render* draw helpers from imgui_internal.h. Every argument is
         // an already-bound public type (ImVec2, ImU32, ImDrawList*, ImGuiDir,
         // ImGuiMouseCursor, ImDrawFlags), so no internal struct/enum is pulled in.
@@ -273,7 +276,14 @@ class ImguiGen : CppGenBind {
             // render a custom preview for a BeginCombo opened with CustomPreview. All
             // public types. Surface = with_combo_popup / with_custom_preview_combo /
             // with_combo_preview scope guards (imgui_scope_builtin.das).
-            "ImGui::BeginComboPopup", "ImGui::BeginComboPreview", "ImGui::EndComboPreview"
+            "ImGui::BeginComboPopup", "ImGui::BeginComboPreview", "ImGui::EndComboPreview",
+            // Logging/capture — the text-capture primitives the public Log* API is
+            // built on. LogBegin(type, auto_open_depth) starts a capture to the chosen
+            // target (closed by the public LogFinish; surface = the with_log guard in
+            // imgui_scope_builtin.das). LogSetNextTextDecoration(prefix, suffix) wraps
+            // the next captured text. LogRenderedText (nullable ref_pos / text_end) is a
+            // manual C++ wrapper (dasIMGUI.main.cpp).
+            "ImGui::LogBegin", "ImGui::LogSetNextTextDecoration"
         }
         internal_allow_enum <- {
             "ImGuiItemFlags_", "ImGuiNavHighlightFlags_", "ImGuiTooltipFlags_",
@@ -289,7 +299,10 @@ class ImguiGen : CppGenBind {
             // ImGuiComboFlagsPrivate_ = the single internal combo flag CustomPreview
             // (enables BeginComboPreview). Combined into the public ImGuiComboFlags
             // inside the with_custom_preview_combo guard (imgui_scope_builtin.das).
-            "ImGuiComboFlagsPrivate_"
+            "ImGuiComboFlagsPrivate_",
+            // ImGuiLogType (None/TTY/File/Buffer/Clipboard) selects LogBegin's capture
+            // target. Plain enum, tag has no trailing underscore (prefix override below).
+            "ImGuiLogType"
         }
     }
     def is_internal : bool {

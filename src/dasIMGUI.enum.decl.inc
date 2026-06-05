@@ -85,6 +85,8 @@ DAS_BASE_BIND_ENUM_GEN(ImGuiTextFlags_,ImGuiTextFlags);
 
 DAS_BASE_BIND_ENUM_GEN(ImGuiTooltipFlags_,ImGuiTooltipFlags);
 
+DAS_BASE_BIND_ENUM_GEN(ImGuiLogType,ImGuiLogType);
+
 DAS_BASE_BIND_ENUM_GEN(ImGuiAxis,ImGuiAxis);
 
 DAS_BASE_BIND_ENUM_GEN(ImGuiNavHighlightFlags_,ImGuiNavHighlightFlags);
