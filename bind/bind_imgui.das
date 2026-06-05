@@ -250,7 +250,14 @@ class ImguiGen : CppGenBind {
             // arg). Its lower-level sibling ScrollbarEx (ImS64* scroll out-param) and
             // SplitterBehavior (float* size1/size2 out-params) are manual C++ wrappers
             // (dasIMGUI.main.cpp) so the out-params come back through int64& / float&.
-            "ImGui::Scrollbar"
+            "ImGui::Scrollbar",
+            // Tree-node state machine. TreeNodeSetOpen imperatively sets a node's
+            // open state by ID; TreeNodeUpdateNextOpen consumes a pending
+            // SetNextItemOpen() and returns the resolved open state. Both pure
+            // ImGuiID(uint)/bool/ImGuiTreeNodeFlags(public). The lower-level
+            // TreeNodeBehavior (nullable label_end -> C++ wrapper) is in
+            // dasIMGUI.main.cpp; pairs with the already-bound TreePushOverrideID.
+            "ImGui::TreeNodeSetOpen", "ImGui::TreeNodeUpdateNextOpen"
         }
         internal_allow_enum <- {
             "ImGuiItemFlags_", "ImGuiNavHighlightFlags_", "ImGuiTooltipFlags_",
