@@ -179,7 +179,13 @@ let private ALLOWED_IMGUI : table<string> <- {
     // Internal *Ex buttons with behavior flags (Repeat / PressedOnClick / …, from the
     // ImGuiButtonFlagsPrivate_ enum combined via the imgui_enums.das cross-enum `|`).
     // Raw escape hatches next to the wrapped `button` / `arrow_button` widgets.
-    "ButtonEx", "ArrowButtonEx"
+    "ButtonEx", "ArrowButtonEx",
+    // Custom-widget primitives — reserve layout + register an item (ItemAdd, two
+    // overloads) and run the press/hover/hold state machine over a rect
+    // (ButtonBehavior). Bound via manual C++ wrappers (dasIMGUI.main.cpp): ItemAdd's
+    // optional nav rect is a clean by-value overload, ButtonBehavior's two state
+    // outputs come back through bool& args.
+    "ItemAdd", "ButtonBehavior"
 }
 
 class ImguiLintVisitor : AstVisitor {
