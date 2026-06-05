@@ -53,8 +53,13 @@ def test_inputs_color_smoke(t : T?) {
         t |> success(wait_for_int_value(d, "MAIN_WIN/PALETTE_RED", "click_count", red_count_before + 1, 300),
                      "imgui_click bumps PALETTE_RED.click_count")
 
+        // Two clicks must NOT race: a second imgui_click coroutine posted while the
+        // first's release is still in flight replaces it, under-counting to 1. Gate
+        // on mouse-idle between (and after) so both press+release pairs fully land.
         click(d, "MAIN_WIN/PALETTE_GREEN")
+        t |> success(wait_for_mouse_idle(d, 10.0f), "first PALETTE_GREEN click drains before second")
         click(d, "MAIN_WIN/PALETTE_GREEN")
+        t |> success(wait_for_mouse_idle(d, 10.0f), "second PALETTE_GREEN click drains before count")
         t |> success(wait_for_int_value(d, "MAIN_WIN/PALETTE_GREEN", "click_count", 2, 300),
                      "two imgui_clicks accumulate on PALETTE_GREEN.click_count")
 

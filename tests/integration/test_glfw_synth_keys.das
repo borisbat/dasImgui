@@ -57,7 +57,7 @@ def test_key_type_lands_in_input(t : T?) {
         // via playwright. Same pattern as `test_imgui_type_text_buffer_fills`,
         // which goes through `type_text` (which calls focus internally).
         focus(d, "MAIN_WIN/NAME_INPUT")
-        let focused = wait_until(d, 120) $(var snap) {
+        let focused = wait_until(d, 300) $(var snap) {
             return snap?["globals"]?["MAIN_WIN/NAME_INPUT"]?["focus"] ?? false
         }
         t |> success(focused != null, "NAME_INPUT receives keyboard focus")

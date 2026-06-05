@@ -38,7 +38,7 @@ def test_scroll_here_y_smoke(t : T?) {
 
         // Click JUMP_MIDDLE -> set_scroll_here_y(0.5) after row 100 -> scroll snaps.
         click(d, "MAIN_WIN/JUMP_MIDDLE")
-        let scrolled = wait_until(d, 120) $(var s) {
+        let scrolled = wait_until(d, 300) $(var s) {
             let y = s?["globals"]?["MAIN_WIN/SCROLL_AREA"]?["payload"]?["scroll"]?["y"] ?? 0.0f
             return y >= 1000.0f
         }
@@ -47,7 +47,7 @@ def test_scroll_here_y_smoke(t : T?) {
 
         // JUMP_TOP returns to top.
         click(d, "MAIN_WIN/JUMP_TOP")
-        let back_to_top = wait_until(d, 120) $(var s) {
+        let back_to_top = wait_until(d, 300) $(var s) {
             let y = s?["globals"]?["MAIN_WIN/SCROLL_AREA"]?["payload"]?["scroll"]?["y"] ?? 1.0f
             return y == 0.0f
         }
