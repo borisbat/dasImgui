@@ -45,6 +45,11 @@ def test_drag_drop_smoke(t : T?) {
         t |> equal(resp?["ok"] ?? false, true,
                    "drag_to response.ok == true")
 
+        // Gate on the gesture fully landing (mouse released, drag coroutine
+        // drained) before the value poll — don't lean on the poll window to
+        // absorb the play on a starved render thread.
+        t |> success(wait_for_mouse_idle(d, 10.0f), "drag gesture drains before accept gate")
+
         // The drop must actually LAND: drag_drop_target.accepted ticks 0 -> 1.
         // This is the real semantic the visual demo used to be the only proof of.
         let landed = wait_for_payload_value(d, "MAIN_WIN/TARGET_DD", "accepted", 1, 300)

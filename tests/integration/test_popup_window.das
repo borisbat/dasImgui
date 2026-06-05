@@ -44,11 +44,10 @@ def test_popup_window(t : T?) {
             // popup_window brackets the body on the next frame, so PICK_APPLE
             // appears in the snapshot at the scoped path.
             click(d, "MAIN_WIN/via_button/OPEN_BTN")
-            // wait for path EXISTENCE — widget_rendered's `?? true` falsely
-            // passes when the indexed-path doesn't exist (popup still closed).
-            var snap_open = wait_until(d, 300) $(var snap) {
-                return widget_exists(snap, "MAIN_WIN/via_button/BTN_POPUP/PICK_APPLE")
-            }
+            // Popups are re-showable, so gate on actual paint — wait_for_visible is
+            // exists AND rendered-this-frame. (widget_rendered now requires existence,
+            // so it no longer false-passes for an absent path.)
+            var snap_open = wait_for_visible(d, "MAIN_WIN/via_button/BTN_POPUP/PICK_APPLE", 5.0f)
             t |> success(snap_open != null,
                          "click OPEN_BTN opens BTN_POPUP body (PICK_APPLE visible)")
         }

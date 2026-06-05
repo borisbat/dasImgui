@@ -56,6 +56,10 @@ def test_imgui_drag_value_changes(t : T?) {
         t |> equal(drag_resp?["value"] ?? "", "MAIN_WIN/DEMO_SLIDER",
                    "drag response.value = target ident (Result wire)")
 
+        // Gate the play to completion before polling value, instead of leaning
+        // on the 5s poll window to absorb the drag timeline.
+        t |> success(wait_for_mouse_idle(d, 10.0f), "drag timeline drains before value gate")
+
         // Gate 4: after the drag completes (mouse released), the slider
         // value should have moved away from 0. End-to-end proof that L1
         // mouse-down → moves → mouse-up reached the widget and drove its

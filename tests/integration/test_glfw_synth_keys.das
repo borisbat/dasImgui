@@ -147,8 +147,13 @@ def test_key_stop_aborts(t : T?) {
         let stopped = post_command(d, "key_stop", null)
         t |> equal(stopped?["stopped"] ?? false, true, "key_stop reports stopped=true")
 
-        let halted = post_command(d, "key_status", null)
-        t |> equal(halted?["playing"] ?? true, false, "key_status.playing == false after stop")
+        // Gate the stop taking effect (it may clear across a frame boundary)
+        // rather than reading key_status synchronously.
+        let halted = wait_until(d, 60) $(var snap) {
+            let s = post_command(d, "key_status", null)
+            return !(s?["playing"] ?? true)
+        }
+        t |> success(halted != null, "key_status.playing == false after stop")
     }
 }
 

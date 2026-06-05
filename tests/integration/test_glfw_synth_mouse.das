@@ -160,8 +160,13 @@ def test_mouse_stop_aborts(t : T?) {
         let stopped = post_command(d, "mouse_stop", null)
         t |> equal(stopped?["stopped"] ?? false, true, "mouse_stop reports stopped=true")
 
-        let halted = post_command(d, "mouse_status", null)
-        t |> equal(halted?["playing"] ?? true, false, "mouse_status.playing == false after stop")
+        // Gate the stop taking effect (it may clear across a frame boundary)
+        // rather than reading mouse_status synchronously.
+        let halted = wait_until(d, 60) $(var snap) {
+            let s = post_command(d, "mouse_status", null)
+            return !(s?["playing"] ?? true)
+        }
+        t |> success(halted != null, "mouse_status.playing == false after stop")
     }
 }
 
@@ -181,11 +186,16 @@ def test_synth_cursor_ownership_sticky(t : T?) {
         }
         let s0 = post_command(d, "mouse_status", null)
         t |> equal(s0?["cursor_owned"] ?? true, false, "cursor_owned starts false")
-        // Single synth event flips ownership.
+        // Single synth event flips ownership. Gate on cursor_owned converging
+        // rather than reading mouse_status synchronously after the one-shot.
         post_command(d, "mouse_pos", JV((x = 100.0f, y = 100.0f)))
+        let owned = wait_until(d, 60) $(var snap) {
+            let s = post_command(d, "mouse_status", null)
+            return s?["cursor_owned"] ?? false
+        }
+        t |> success(owned != null, "cursor_owned flips true after mouse_pos")
         let s1 = post_command(d, "mouse_status", null)
-        t |> equal(s1?["cursor_owned"] ?? false, true,  "cursor_owned flips true after mouse_pos")
-        t |> equal(s1?["playing"]      ?? true,  false, "mouse_status.playing is false (mouse_pos is one-shot)")
+        t |> equal(s1?["playing"] ?? true, false, "mouse_status.playing is false (mouse_pos is one-shot)")
         // Run a short timeline, wait for drain, ownership stays.
         var events <- [
             JV((t_ms = 0,  kind = "move", x = 50.0f,  y = 50.0f)),

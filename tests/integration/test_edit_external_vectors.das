@@ -29,10 +29,18 @@ def test_edit_external_vectors_smoke(t : T?) {
         // imgui_force_set on a float3 — write {x,y,z} and verify the snapshot
         // reports back the same components.
         force_set_value(d, "MAIN_WIN/SF3", JV((x = 0.7f, y = 0.8f, z = 0.9f)))
+        // Gate on the written component VALUES, not just field presence: SF3 already
+        // exposes a non-null float3 before the write, so a presence-only predicate
+        // passes on the pre-write snapshot and the round-trip isn't actually proven.
         let after = wait_until(d, 300) $(var s) {
             let xv = widget_payload_field(s, "MAIN_WIN/SF3", "value")
-            return xv != null && xv?["x"] != null
+            let x = xv?["x"] ?? 0.0lf
+            let y = xv?["y"] ?? 0.0lf
+            let z = xv?["z"] ?? 0.0lf
+            return (x > 0.69lf && x < 0.71lf &&
+                    y > 0.79lf && y < 0.81lf &&
+                    z > 0.89lf && z < 0.91lf)
         }
-        t |> success(after != null, "edit_slider_float3 write round-trips")
+        t |> success(after != null, "edit_slider_float3 write round-trips to (0.7, 0.8, 0.9)")
     }
 }
