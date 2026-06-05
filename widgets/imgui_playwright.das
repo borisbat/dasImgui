@@ -183,33 +183,21 @@ def public wait_until_ready(app : ImguiApp; timeout_sec : float) : bool {
     let start = ref_time_ticks()
     let timeout_usec = int(timeout_sec * 1000000.0f)
     while (get_time_usec(start) < timeout_usec) {
-        var ok = false
-        GET("{app.base_url}/status") $(resp) {
-            if (resp != null && resp.status_code == http_status.OK) {
-                ok = true
-            }
-        }
-        if (ok) return true
+        if (http_get("{app.base_url}/status").status == int(http_status.OK)) return true
         sleep(READY_POLL_INTERVAL_MS)
     }
     return false
 }
 
 def public get_text(app : ImguiApp; uri : string) : string {
-    //! GET `uri`; return the raw response body or "".
-    var out : string
-    GET("{app.base_url}{uri}") $(resp) {
-        if (resp != null) {
-            out = string(resp.body)
-        }
-    }
-    return out
+    //! GET `uri`; return the raw response body or "" (bounded by the per-request timeout).
+    return http_get("{app.base_url}{uri}").body
 }
 
 def private post_signal(app : ImguiApp; uri : string) {
-    POST("{app.base_url}{uri}", "", {"Content-Type" => "application/json"}) $(_resp) {
-        // intentionally drop the response — caller polled /status to confirm
-    }
+    // Caller polls /status to confirm the effect; the response is dropped, but the
+    // per-request timeout still bounds a wedged host.
+    let _ = http_post("{app.base_url}{uri}", "")
 }
 
 // ===== Command dispatch =====
