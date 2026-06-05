@@ -12,6 +12,19 @@
 namespace das {
 #include "dasIMGUI.func.aot.decl.inc"
 void Module_dasIMGUI::initFunctions_32() {
+// from imgui_internal.h:3737:29
+	makeExtern< void (*)(ImDrawList *,const ImRect &,unsigned int,float,float,float) , ImGui::RenderRectFilledRangeH , SimNode_ExtFuncCall , imguiTempFn>(lib,"RenderRectFilledRangeH","ImGui::RenderRectFilledRangeH")
+		->args({"draw_list","rect","col","x_start_norm","x_end_norm","rounding"})
+		->addToModule(*this, SideEffects::worstDefault);
+// from imgui_internal.h:3738:29
+	makeExtern< void (*)(ImDrawList *,const ImRect &,const ImRect &,unsigned int,float) , ImGui::RenderRectFilledWithHole , SimNode_ExtFuncCall , imguiTempFn>(lib,"RenderRectFilledWithHole","ImGui::RenderRectFilledWithHole")
+		->args({"draw_list","outer","inner","col","rounding"})
+		->addToModule(*this, SideEffects::worstDefault);
+// from imgui_internal.h:3739:29
+	makeExtern< int (*)(const ImRect &,const ImRect &,float) , ImGui::CalcRoundingFlagsForRectInRect , SimNode_ExtFuncCall , imguiTempFn>(lib,"CalcRoundingFlagsForRectInRect","ImGui::CalcRoundingFlagsForRectInRect")
+		->args({"r_in","r_outer","threshold"})
+		->res_type(makeType<ImDrawFlags_>(lib))
+		->addToModule(*this, SideEffects::worstDefault);
 // from imgui_internal.h:3767:29
 	makeExtern< void (*)(unsigned int) , ImGui::TreePushOverrideID , SimNode_ExtFuncCall , imguiTempFn>(lib,"TreePushOverrideID","ImGui::TreePushOverrideID")
 		->args({"id"})

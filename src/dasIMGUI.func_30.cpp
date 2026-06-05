@@ -38,6 +38,14 @@ void Module_dasIMGUI::initFunctions_30() {
 		->args({"bb","text_baseline_y"})
 		->arg_init(1,new ExprConstFloat(-1))
 		->addToModule(*this, SideEffects::worstDefault);
+// from imgui_internal.h:3384:29
+	makeExtern< bool (*)(const ImRect &,unsigned int,int) , ImGui::ItemHoverable , SimNode_ExtFuncCall , imguiTempFn>(lib,"ItemHoverable","ImGui::ItemHoverable")
+		->args({"bb","id","item_flags"})
+		->addToModule(*this, SideEffects::worstDefault);
+// from imgui_internal.h:3386:29
+	makeExtern< bool (*)(const ImRect &,unsigned int) , ImGui::IsClippedEx , SimNode_ExtFuncCall , imguiTempFn>(lib,"IsClippedEx","ImGui::IsClippedEx")
+		->args({"bb","id"})
+		->addToModule(*this, SideEffects::worstDefault);
 // from imgui_internal.h:3388:29
 	makeExtern< ImVec2 (*)(ImVec2,float,float) , ImGui::CalcItemSize , SimNode_ExtFuncCall , imguiTempFn>(lib,"CalcItemSize","ImGui::CalcItemSize")
 		->args({"size","default_w","default_h"})
@@ -86,18 +94,6 @@ void Module_dasIMGUI::initFunctions_30() {
 		->addToModule(*this, SideEffects::worstDefault);
 // from imgui_internal.h:3415:29
 	makeExtern< bool (*)() , ImGui::BeginTooltipHidden , SimNode_ExtFuncCall , imguiTempFn>(lib,"BeginTooltipHidden","ImGui::BeginTooltipHidden")
-		->addToModule(*this, SideEffects::worstDefault);
-// from imgui_internal.h:3425:29
-	makeExtern< bool (*)(const char *,const char *,bool) , ImGui::BeginMenuEx , SimNode_ExtFuncCall , imguiTempFn>(lib,"BeginMenuEx","ImGui::BeginMenuEx")
-		->args({"label","icon","enabled"})
-		->arg_init(2,new ExprConstBool(true))
-		->addToModule(*this, SideEffects::worstDefault);
-// from imgui_internal.h:3426:29
-	makeExtern< bool (*)(const char *,const char *,const char *,bool,bool) , ImGui::MenuItemEx , SimNode_ExtFuncCall , imguiTempFn>(lib,"MenuItemEx","ImGui::MenuItemEx")
-		->args({"label","icon","shortcut","selected","enabled"})
-		->arg_init(2,new ExprConstString(""))
-		->arg_init(3,new ExprConstBool(false))
-		->arg_init(4,new ExprConstBool(true))
 		->addToModule(*this, SideEffects::worstDefault);
 }
 }

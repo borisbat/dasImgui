@@ -12,6 +12,18 @@
 namespace das {
 #include "dasIMGUI.func.aot.decl.inc"
 void Module_dasIMGUI::initFunctions_31() {
+// from imgui_internal.h:3425:29
+	makeExtern< bool (*)(const char *,const char *,bool) , ImGui::BeginMenuEx , SimNode_ExtFuncCall , imguiTempFn>(lib,"BeginMenuEx","ImGui::BeginMenuEx")
+		->args({"label","icon","enabled"})
+		->arg_init(2,new ExprConstBool(true))
+		->addToModule(*this, SideEffects::worstDefault);
+// from imgui_internal.h:3426:29
+	makeExtern< bool (*)(const char *,const char *,const char *,bool,bool) , ImGui::MenuItemEx , SimNode_ExtFuncCall , imguiTempFn>(lib,"MenuItemEx","ImGui::MenuItemEx")
+		->args({"label","icon","shortcut","selected","enabled"})
+		->arg_init(2,new ExprConstString(""))
+		->arg_init(3,new ExprConstBool(false))
+		->arg_init(4,new ExprConstBool(true))
+		->addToModule(*this, SideEffects::worstDefault);
 // from imgui_internal.h:3455:29
 	makeExtern< void (*)() , ImGui::FocusItem , SimNode_ExtFuncCall , imguiTempFn>(lib,"FocusItem","ImGui::FocusItem")
 		->addToModule(*this, SideEffects::worstDefault);
@@ -93,14 +105,6 @@ void Module_dasIMGUI::initFunctions_31() {
 // from imgui_internal.h:3736:29
 	makeExtern< void (*)(ImDrawList *,ImVec2,float,unsigned int) , ImGui::RenderArrowDockMenu , SimNode_ExtFuncCall , imguiTempFn>(lib,"RenderArrowDockMenu","ImGui::RenderArrowDockMenu")
 		->args({"draw_list","p_min","sz","col"})
-		->addToModule(*this, SideEffects::worstDefault);
-// from imgui_internal.h:3737:29
-	makeExtern< void (*)(ImDrawList *,const ImRect &,unsigned int,float,float,float) , ImGui::RenderRectFilledRangeH , SimNode_ExtFuncCall , imguiTempFn>(lib,"RenderRectFilledRangeH","ImGui::RenderRectFilledRangeH")
-		->args({"draw_list","rect","col","x_start_norm","x_end_norm","rounding"})
-		->addToModule(*this, SideEffects::worstDefault);
-// from imgui_internal.h:3738:29
-	makeExtern< void (*)(ImDrawList *,const ImRect &,const ImRect &,unsigned int,float) , ImGui::RenderRectFilledWithHole , SimNode_ExtFuncCall , imguiTempFn>(lib,"RenderRectFilledWithHole","ImGui::RenderRectFilledWithHole")
-		->args({"draw_list","outer","inner","col","rounding"})
 		->addToModule(*this, SideEffects::worstDefault);
 }
 }
