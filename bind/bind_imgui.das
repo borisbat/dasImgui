@@ -268,7 +268,8 @@ class ImguiGen : CppGenBind {
             "ImGui::SeparatorEx",
             // Combo internals — the low-level combo dropdown the public combo is
             // built on. BeginComboPopup(popup_id, bb, flags) opens the dropdown for a
-            // self-managed box (pairs with EndPopup); BeginComboPreview / EndComboPreview
+            // self-managed box (closes with EndCombo, NOT EndPopup — it bumps
+            // g.BeginComboDepth and only EndCombo unwinds it); BeginComboPreview / EndComboPreview
             // render a custom preview for a BeginCombo opened with CustomPreview. All
             // public types. Surface = with_combo_popup / with_custom_preview_combo /
             // with_combo_preview scope guards (imgui_scope_builtin.das).
