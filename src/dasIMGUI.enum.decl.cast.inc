@@ -41,4 +41,5 @@ DAS_BIND_ENUM_CAST(ImGuiViewportFlags_);
 DAS_BIND_ENUM_CAST(ImGuiItemFlags_);
 DAS_BIND_ENUM_CAST(ImGuiButtonFlagsPrivate_);
 DAS_BIND_ENUM_CAST(ImGuiTooltipFlags_);
+DAS_BIND_ENUM_CAST(ImGuiAxis);
 DAS_BIND_ENUM_CAST(ImGuiNavHighlightFlags_);

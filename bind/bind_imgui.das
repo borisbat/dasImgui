@@ -141,6 +141,9 @@ class ImguiGen : CppGenBind {
         // enum name. Override the strip-prefix so they bind as ImGuiButtonFlagsPrivate.Repeat
         // etc. (else enum_entry_name leaves the full `ImGuiButtonFlags_Repeat`).
         enum_prefix |> insert("ImGuiButtonFlagsPrivate_", "ImGuiButtonFlags")
+        // ImGuiAxis's tag has no trailing underscore but its values are ImGuiAxis_X /
+        // ImGuiAxis_Y, so strip the full "ImGuiAxis_" prefix (default would leave "_X").
+        enum_prefix |> insert("ImGuiAxis", "ImGuiAxis_")
         // Family 1 — Render* draw helpers from imgui_internal.h. Every argument is
         // an already-bound public type (ImVec2, ImU32, ImDrawList*, ImGuiDir,
         // ImGuiMouseCursor, ImDrawFlags), so no internal struct/enum is pulled in.
@@ -241,11 +244,20 @@ class ImguiGen : CppGenBind {
             // (bool* out-params) and ItemAdd (nullable nav_bb -> C++ wrapper) are the
             // custom-widget primitives, deferred to the next family. ImageButtonEx is
             // texture-centric (ImTextureID = void*), deferred to an image family.
-            "ImGui::ButtonEx", "ImGui::ArrowButtonEx"
+            "ImGui::ButtonEx", "ImGui::ArrowButtonEx",
+            // Axis-aligned interactive layout primitives. Scrollbar(axis) draws the
+            // current window's scrollbar on the given axis — binds raw (one ImGuiAxis
+            // arg). Its lower-level sibling ScrollbarEx (ImS64* scroll out-param) and
+            // SplitterBehavior (float* size1/size2 out-params) are manual C++ wrappers
+            // (dasIMGUI.main.cpp) so the out-params come back through int64& / float&.
+            "ImGui::Scrollbar"
         }
         internal_allow_enum <- {
             "ImGuiItemFlags_", "ImGuiNavHighlightFlags_", "ImGuiTooltipFlags_",
-            "ImGuiButtonFlagsPrivate_"
+            "ImGuiButtonFlagsPrivate_",
+            // Axis selector (None=-1 / X=0 / Y=1) for the scrollbar / splitter
+            // behavior primitives. Plain enum, tag has no trailing underscore.
+            "ImGuiAxis"
         }
     }
     def is_internal : bool {
