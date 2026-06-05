@@ -172,7 +172,18 @@ class ImguiGen : CppGenBind {
             // (#166) they bind directly. RenderNavHighlight also pulls the
             // ImGuiNavHighlightFlags_ enum (bound as int arg, like PushItemFlag).
             "ImGui::RenderDragDropTargetRect", "ImGui::RenderNavHighlight",
-            "ImGui::RenderRectFilledRangeH", "ImGui::RenderRectFilledWithHole"
+            "ImGui::RenderRectFilledRangeH", "ImGui::RenderRectFilledWithHole",
+            // ID-stack seed / override helpers. Pure ImGuiID(uint)/const char*/int
+            // in, ImGuiID/void out — no internal struct, enum, or nullable pointer.
+            // GetIDWithSeed's two-pointer overload mirrors the public GetID(begin,end):
+            // both halves are required, so it is NOT a text_end wrapper case. One
+            // allow-list entry covers both GetIDWithSeed overloads (gate keys on the
+            // bare spelling). GetActiveID is deliberately NOT here — it is already
+            // bound via the das::GetActiveID manual wrapper (Phase 2.1, predates this
+            // allow-list); re-adding it would double-bind "GetActiveID".
+            "ImGui::GetFocusID", "ImGui::GetHoveredID",
+            "ImGui::KeepAliveID", "ImGui::MarkItemEdited", "ImGui::PushOverrideID",
+            "ImGui::GetIDWithSeed", "ImGui::TreePushOverrideID"
         }
         internal_allow_enum <- {
             "ImGuiItemFlags_", "ImGuiNavHighlightFlags_"

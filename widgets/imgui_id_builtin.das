@@ -16,3 +16,15 @@ def public with_id(s : string; blk : block) {
     PopID()
     container_path_pop()
 }
+
+def public with_override_id(id : uint; blk : block) {
+    //! Run ``blk`` with raw ``id`` pushed via ``PushOverrideID`` (as-is, NOT
+    //! hash-combined like ``with_id``), popped on return. For stable, explicitly
+    //! controlled IDs — custom widgets, addressing into ImGuiStorage, or seeding a
+    //! string ID (``GetID`` under the override equals ``GetIDWithSeed(.., id)``).
+    container_path_push("{id}")
+    PushOverrideID(id)
+    invoke(blk)
+    PopID()
+    container_path_pop()
+}

@@ -145,7 +145,13 @@ let private ALLOWED_IMGUI : table<string> <- {
     // draw into the current window; RenderRectFilledRangeH/WithHole take an ImDrawList.
     // Host-agnostic, no v2 state. Bound via bind_imgui.das internal_allow_func.
     "RenderDragDropTargetRect", "RenderNavHighlight",
-    "RenderRectFilledRangeH", "RenderRectFilledWithHole"
+    "RenderRectFilledRangeH", "RenderRectFilledWithHole",
+    // ID-stack seed / override helpers cherry-picked from imgui_internal.h.
+    // Host-agnostic: hash/seed an ImGuiID, query the active/hovered/focus ID, or
+    // push a raw override onto the ID stack. Bound via bind_imgui.das
+    // internal_allow_func. GetActiveID is bound separately (das::GetActiveID wrapper).
+    "GetFocusID", "GetHoveredID", "KeepAliveID", "MarkItemEdited",
+    "PushOverrideID", "GetIDWithSeed", "TreePushOverrideID"
 }
 
 class ImguiLintVisitor : AstVisitor {
