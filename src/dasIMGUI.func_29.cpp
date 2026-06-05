@@ -86,19 +86,15 @@ void Module_dasIMGUI::initFunctions_29() {
 	addCtorAndUsing<ImGuiPlatformIO>(*this,lib,"ImGuiPlatformIO","ImGuiPlatformIO");
 	addCtorAndUsing<ImGuiPlatformMonitor>(*this,lib,"ImGuiPlatformMonitor","ImGuiPlatformMonitor");
 	addCtorAndUsing<ImGuiPlatformImeData>(*this,lib,"ImGuiPlatformImeData","ImGuiPlatformImeData");
-// from imgui_internal.h:3381:29
-	makeExtern< void (*)(const ImVec2 &,float) , ImGui::ItemSize , SimNode_ExtFuncCall , imguiTempFn>(lib,"ItemSize","ImGui::ItemSize")
-		->args({"size","text_baseline_y"})
-		->arg_init(1,new ExprConstFloat(-1))
+// from imgui_internal.h:3368:29
+	makeExtern< unsigned int (*)() , ImGui::GetFocusID , SimNode_ExtFuncCall , imguiTempFn>(lib,"GetFocusID","ImGui::GetFocusID")
 		->addToModule(*this, SideEffects::worstDefault);
-// from imgui_internal.h:3382:29
-	makeExtern< void (*)(const ImRect &,float) , ImGui::ItemSize , SimNode_ExtFuncCall , imguiTempFn>(lib,"ItemSize","ImGui::ItemSize")
-		->args({"bb","text_baseline_y"})
-		->arg_init(1,new ExprConstFloat(-1))
+// from imgui_internal.h:3372:29
+	makeExtern< unsigned int (*)() , ImGui::GetHoveredID , SimNode_ExtFuncCall , imguiTempFn>(lib,"GetHoveredID","ImGui::GetHoveredID")
 		->addToModule(*this, SideEffects::worstDefault);
-// from imgui_internal.h:3388:29
-	makeExtern< ImVec2 (*)(ImVec2,float,float) , ImGui::CalcItemSize , SimNode_ExtFuncCall , imguiTempFn>(lib,"CalcItemSize","ImGui::CalcItemSize")
-		->args({"size","default_w","default_h"})
+// from imgui_internal.h:3374:29
+	makeExtern< void (*)(unsigned int) , ImGui::KeepAliveID , SimNode_ExtFuncCall , imguiTempFn>(lib,"KeepAliveID","ImGui::KeepAliveID")
+		->args({"id"})
 		->addToModule(*this, SideEffects::worstDefault);
 }
 }
