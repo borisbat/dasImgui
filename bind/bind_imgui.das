@@ -136,6 +136,11 @@ class ImguiGen : CppGenBind {
         }
     }
     def init_internal {
+        // ImGuiButtonFlagsPrivate_ (imgui_internal.h) extends the PUBLIC ImGuiButtonFlags
+        // set — its VALUES carry the public `ImGuiButtonFlags_` prefix, not their own
+        // enum name. Override the strip-prefix so they bind as ImGuiButtonFlagsPrivate.Repeat
+        // etc. (else enum_entry_name leaves the full `ImGuiButtonFlags_Repeat`).
+        enum_prefix |> insert("ImGuiButtonFlagsPrivate_", "ImGuiButtonFlags")
         // Family 1 — Render* draw helpers from imgui_internal.h. Every argument is
         // an already-bound public type (ImVec2, ImU32, ImDrawList*, ImGuiDir,
         // ImGuiMouseCursor, ImDrawFlags), so no internal struct/enum is pulled in.
@@ -227,10 +232,20 @@ class ImguiGen : CppGenBind {
             // nav_bb is a nullable ImRect* (no-lost-functionality DISCUSS — pinning
             // it to null would drop the separate-nav-rect feature).
             "ImGui::ItemHoverable", "ImGui::IsClippedEx",
-            "ImGui::CalcRoundingFlagsForRectInRect"
+            "ImGui::CalcRoundingFlagsForRectInRect",
+            // Widget *Ex buttons with behavior flags. ButtonEx/ArrowButtonEx take an
+            // ImGuiButtonFlags arg whose USEFUL values (Repeat, PressedOnClick, …) live
+            // in the internal ImGuiButtonFlagsPrivate_ enum (added to internal_allow_enum
+            // below); a cross-enum `|` rail in imgui_enums.das combines the public +
+            // private flags into one ImGuiButtonFlags the *Ex funcs accept. ButtonBehavior
+            // (bool* out-params) and ItemAdd (nullable nav_bb -> C++ wrapper) are the
+            // custom-widget primitives, deferred to the next family. ImageButtonEx is
+            // texture-centric (ImTextureID = void*), deferred to an image family.
+            "ImGui::ButtonEx", "ImGui::ArrowButtonEx"
         }
         internal_allow_enum <- {
-            "ImGuiItemFlags_", "ImGuiNavHighlightFlags_", "ImGuiTooltipFlags_"
+            "ImGuiItemFlags_", "ImGuiNavHighlightFlags_", "ImGuiTooltipFlags_",
+            "ImGuiButtonFlagsPrivate_"
         }
     }
     def is_internal : bool {

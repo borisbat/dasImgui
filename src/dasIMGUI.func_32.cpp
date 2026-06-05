@@ -25,6 +25,19 @@ void Module_dasIMGUI::initFunctions_32() {
 		->args({"r_in","r_outer","threshold"})
 		->res_type(makeType<ImDrawFlags_>(lib))
 		->addToModule(*this, SideEffects::worstDefault);
+// from imgui_internal.h:3743:29
+	makeExtern< bool (*)(const char *,const ImVec2 &,int) , ImGui::ButtonEx , SimNode_ExtFuncCall , imguiTempFn>(lib,"ButtonEx","ImGui::ButtonEx")
+		->args({"label","size_arg","flags"})
+		->arg_type(2,makeType<ImGuiButtonFlags_>(lib))
+		->arg_init(2,new ExprConstEnumeration(0,makeType<ImGuiButtonFlags_>(lib)))
+		->addToModule(*this, SideEffects::worstDefault);
+// from imgui_internal.h:3744:29
+	makeExtern< bool (*)(const char *,int,ImVec2,int) , ImGui::ArrowButtonEx , SimNode_ExtFuncCall , imguiTempFn>(lib,"ArrowButtonEx","ImGui::ArrowButtonEx")
+		->args({"str_id","dir","size_arg","flags"})
+		->arg_type(1,makeType<ImGuiDir_>(lib))
+		->arg_type(3,makeType<ImGuiButtonFlags_>(lib))
+		->arg_init(3,new ExprConstEnumeration(0,makeType<ImGuiButtonFlags_>(lib)))
+		->addToModule(*this, SideEffects::worstDefault);
 // from imgui_internal.h:3767:29
 	makeExtern< void (*)(unsigned int) , ImGui::TreePushOverrideID , SimNode_ExtFuncCall , imguiTempFn>(lib,"TreePushOverrideID","ImGui::TreePushOverrideID")
 		->args({"id"})

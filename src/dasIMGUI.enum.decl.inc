@@ -75,6 +75,8 @@ DAS_BASE_BIND_ENUM_GEN(ImGuiViewportFlags_,ImGuiViewportFlags);
 
 DAS_BASE_BIND_ENUM_GEN(ImGuiItemFlags_,ImGuiItemFlags);
 
+DAS_BASE_BIND_ENUM_GEN(ImGuiButtonFlagsPrivate_,ImGuiButtonFlagsPrivate);
+
 DAS_BASE_BIND_ENUM_GEN(ImGuiTooltipFlags_,ImGuiTooltipFlags);
 
 DAS_BASE_BIND_ENUM_GEN(ImGuiNavHighlightFlags_,ImGuiNavHighlightFlags);

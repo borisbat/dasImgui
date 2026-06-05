@@ -1033,6 +1033,35 @@ public:
 	}
 };
 
+// from imgui_internal.h:888:6
+class Enumeration_ImGuiButtonFlagsPrivate_ : public das::Enumeration {
+public:
+	Enumeration_ImGuiButtonFlagsPrivate_() : das::Enumeration("ImGuiButtonFlagsPrivate") {
+		external = true;
+		cppName = "ImGuiButtonFlagsPrivate_";
+		baseType = (das::Type) das::ToBasicType<int>::type;
+		addIEx("PressedOnClick", "ImGuiButtonFlags_PressedOnClick", int64_t(ImGuiButtonFlagsPrivate_::ImGuiButtonFlags_PressedOnClick), das::LineInfo());
+		addIEx("PressedOnClickRelease", "ImGuiButtonFlags_PressedOnClickRelease", int64_t(ImGuiButtonFlagsPrivate_::ImGuiButtonFlags_PressedOnClickRelease), das::LineInfo());
+		addIEx("PressedOnClickReleaseAnywhere", "ImGuiButtonFlags_PressedOnClickReleaseAnywhere", int64_t(ImGuiButtonFlagsPrivate_::ImGuiButtonFlags_PressedOnClickReleaseAnywhere), das::LineInfo());
+		addIEx("PressedOnRelease", "ImGuiButtonFlags_PressedOnRelease", int64_t(ImGuiButtonFlagsPrivate_::ImGuiButtonFlags_PressedOnRelease), das::LineInfo());
+		addIEx("PressedOnDoubleClick", "ImGuiButtonFlags_PressedOnDoubleClick", int64_t(ImGuiButtonFlagsPrivate_::ImGuiButtonFlags_PressedOnDoubleClick), das::LineInfo());
+		addIEx("PressedOnDragDropHold", "ImGuiButtonFlags_PressedOnDragDropHold", int64_t(ImGuiButtonFlagsPrivate_::ImGuiButtonFlags_PressedOnDragDropHold), das::LineInfo());
+		addIEx("Repeat", "ImGuiButtonFlags_Repeat", int64_t(ImGuiButtonFlagsPrivate_::ImGuiButtonFlags_Repeat), das::LineInfo());
+		addIEx("FlattenChildren", "ImGuiButtonFlags_FlattenChildren", int64_t(ImGuiButtonFlagsPrivate_::ImGuiButtonFlags_FlattenChildren), das::LineInfo());
+		addIEx("AllowOverlap", "ImGuiButtonFlags_AllowOverlap", int64_t(ImGuiButtonFlagsPrivate_::ImGuiButtonFlags_AllowOverlap), das::LineInfo());
+		addIEx("DontClosePopups", "ImGuiButtonFlags_DontClosePopups", int64_t(ImGuiButtonFlagsPrivate_::ImGuiButtonFlags_DontClosePopups), das::LineInfo());
+		addIEx("AlignTextBaseLine", "ImGuiButtonFlags_AlignTextBaseLine", int64_t(ImGuiButtonFlagsPrivate_::ImGuiButtonFlags_AlignTextBaseLine), das::LineInfo());
+		addIEx("NoKeyModifiers", "ImGuiButtonFlags_NoKeyModifiers", int64_t(ImGuiButtonFlagsPrivate_::ImGuiButtonFlags_NoKeyModifiers), das::LineInfo());
+		addIEx("NoHoldingActiveId", "ImGuiButtonFlags_NoHoldingActiveId", int64_t(ImGuiButtonFlagsPrivate_::ImGuiButtonFlags_NoHoldingActiveId), das::LineInfo());
+		addIEx("NoNavFocus", "ImGuiButtonFlags_NoNavFocus", int64_t(ImGuiButtonFlagsPrivate_::ImGuiButtonFlags_NoNavFocus), das::LineInfo());
+		addIEx("NoHoveredOnFocus", "ImGuiButtonFlags_NoHoveredOnFocus", int64_t(ImGuiButtonFlagsPrivate_::ImGuiButtonFlags_NoHoveredOnFocus), das::LineInfo());
+		addIEx("NoSetKeyOwner", "ImGuiButtonFlags_NoSetKeyOwner", int64_t(ImGuiButtonFlagsPrivate_::ImGuiButtonFlags_NoSetKeyOwner), das::LineInfo());
+		addIEx("NoTestKeyOwner", "ImGuiButtonFlags_NoTestKeyOwner", int64_t(ImGuiButtonFlagsPrivate_::ImGuiButtonFlags_NoTestKeyOwner), das::LineInfo());
+		addIEx("PressedOnMask_", "ImGuiButtonFlags_PressedOnMask_", int64_t(ImGuiButtonFlagsPrivate_::ImGuiButtonFlags_PressedOnMask_), das::LineInfo());
+		addIEx("PressedOnDefault_", "ImGuiButtonFlags_PressedOnDefault_", int64_t(ImGuiButtonFlagsPrivate_::ImGuiButtonFlags_PressedOnDefault_), das::LineInfo());
+	}
+};
+
 // from imgui_internal.h:970:6
 class Enumeration_ImGuiTooltipFlags_ : public das::Enumeration {
 public:
