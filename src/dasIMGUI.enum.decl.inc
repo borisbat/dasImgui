@@ -77,6 +77,8 @@ DAS_BASE_BIND_ENUM_GEN(ImGuiItemFlags_,ImGuiItemFlags);
 
 DAS_BASE_BIND_ENUM_GEN(ImGuiButtonFlagsPrivate_,ImGuiButtonFlagsPrivate);
 
+DAS_BASE_BIND_ENUM_GEN(ImGuiComboFlagsPrivate_,ImGuiComboFlagsPrivate);
+
 DAS_BASE_BIND_ENUM_GEN(ImGuiSeparatorFlags_,ImGuiSeparatorFlags);
 
 DAS_BASE_BIND_ENUM_GEN(ImGuiTextFlags_,ImGuiTextFlags);

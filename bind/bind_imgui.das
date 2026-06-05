@@ -141,6 +141,9 @@ class ImguiGen : CppGenBind {
         // enum name. Override the strip-prefix so they bind as ImGuiButtonFlagsPrivate.Repeat
         // etc. (else enum_entry_name leaves the full `ImGuiButtonFlags_Repeat`).
         enum_prefix |> insert("ImGuiButtonFlagsPrivate_", "ImGuiButtonFlags")
+        // ImGuiComboFlagsPrivate_'s one value is ImGuiComboFlags_CustomPreview (carries
+        // the public ImGuiComboFlags_ prefix) — strip it so it binds as CustomPreview.
+        enum_prefix |> insert("ImGuiComboFlagsPrivate_", "ImGuiComboFlags")
         // ImGuiAxis's tag has no trailing underscore but its values are ImGuiAxis_X /
         // ImGuiAxis_Y, so strip the full "ImGuiAxis_" prefix (default would leave "_X").
         enum_prefix |> insert("ImGuiAxis", "ImGuiAxis_")
@@ -262,7 +265,14 @@ class ImguiGen : CppGenBind {
             // ImGuiSeparatorFlags is internal -> the flags arg binds as int. Its
             // siblings TextEx / SeparatorTextEx carry a nullable text_end / label_end
             // and are manual C++ wrappers (dasIMGUI.main.cpp).
-            "ImGui::SeparatorEx"
+            "ImGui::SeparatorEx",
+            // Combo internals — the low-level combo dropdown the public combo is
+            // built on. BeginComboPopup(popup_id, bb, flags) opens the dropdown for a
+            // self-managed box (pairs with EndPopup); BeginComboPreview / EndComboPreview
+            // render a custom preview for a BeginCombo opened with CustomPreview. All
+            // public types. Surface = with_combo_popup / with_custom_preview_combo /
+            // with_combo_preview scope guards (imgui_scope_builtin.das).
+            "ImGui::BeginComboPopup", "ImGui::BeginComboPreview", "ImGui::EndComboPreview"
         }
         internal_allow_enum <- {
             "ImGuiItemFlags_", "ImGuiNavHighlightFlags_", "ImGuiTooltipFlags_",
@@ -274,7 +284,11 @@ class ImguiGen : CppGenBind {
             // (Horizontal / Vertical / SpanAllColumns); TextEx takes ImGuiTextFlags
             // (NoWidthForLargeClippedText). Both internal -> args bind as int (cast
             // int(ImGuiSeparatorFlags.Vertical) at the call site, like ItemHoverable).
-            "ImGuiSeparatorFlags_", "ImGuiTextFlags_"
+            "ImGuiSeparatorFlags_", "ImGuiTextFlags_",
+            // ImGuiComboFlagsPrivate_ = the single internal combo flag CustomPreview
+            // (enables BeginComboPreview). Combined into the public ImGuiComboFlags
+            // inside the with_custom_preview_combo guard (imgui_scope_builtin.das).
+            "ImGuiComboFlagsPrivate_"
         }
     }
     def is_internal : bool {
