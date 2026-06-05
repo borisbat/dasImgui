@@ -1074,6 +1074,19 @@ public:
 	}
 };
 
+// from imgui_internal.h:994:6
+class Enumeration_ImGuiAxis : public das::Enumeration {
+public:
+	Enumeration_ImGuiAxis() : das::Enumeration("ImGuiAxis") {
+		external = true;
+		cppName = "ImGuiAxis";
+		baseType = (das::Type) das::ToBasicType<int>::type;
+		addIEx("None", "ImGuiAxis_None", int64_t(ImGuiAxis::ImGuiAxis_None), das::LineInfo());
+		addIEx("X", "ImGuiAxis_X", int64_t(ImGuiAxis::ImGuiAxis_X), das::LineInfo());
+		addIEx("Y", "ImGuiAxis_Y", int64_t(ImGuiAxis::ImGuiAxis_Y), das::LineInfo());
+	}
+};
+
 // from imgui_internal.h:1594:6
 class Enumeration_ImGuiNavHighlightFlags_ : public das::Enumeration {
 public:

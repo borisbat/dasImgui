@@ -185,7 +185,11 @@ let private ALLOWED_IMGUI : table<string> <- {
     // (ButtonBehavior). Bound via manual C++ wrappers (dasIMGUI.main.cpp): ItemAdd's
     // optional nav rect is a clean by-value overload, ButtonBehavior's two state
     // outputs come back through bool& args.
-    "ItemAdd", "ButtonBehavior"
+    "ItemAdd", "ButtonBehavior",
+    // Axis-aligned interactive layout primitives. Scrollbar(axis) is raw
+    // (internal_allow_func); ScrollbarEx (ImS64& scroll out-param) and
+    // SplitterBehavior (float& size1/size2 out-params) are manual C++ wrappers.
+    "Scrollbar", "ScrollbarEx", "SplitterBehavior"
 }
 
 class ImguiLintVisitor : AstVisitor {

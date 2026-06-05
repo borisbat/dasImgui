@@ -53,6 +53,10 @@ namespace das {
     DAS_MOD_API bool ItemAddW( const ImRect& bb, ImGuiID id, ImGuiItemFlags extra_flags = 0 );
     DAS_MOD_API bool ItemAddNavW( const ImRect& bb, ImGuiID id, const ImRect& nav_bb, ImGuiItemFlags extra_flags = 0 );
     DAS_MOD_API bool ButtonBehaviorW( const ImRect& bb, ImGuiID id, bool& out_hovered, bool& out_held, ImGuiButtonFlags_ flags );
+    DAS_MOD_API bool ScrollbarExW( const ImRect& bb, ImGuiID id, ImGuiAxis axis, ImS64& scroll_v,
+        ImS64 avail_v, ImS64 contents_v, ImDrawFlags_ flags );
+    DAS_MOD_API bool SplitterBehaviorW( const ImRect& bb, ImGuiID id, ImGuiAxis axis, float& size1, float& size2,
+        float min_size1, float min_size2, float hover_extend = 0.0f, float hover_visibility_delay = 0.0f, ImU32 bg_col = 0 );
     DAS_MOD_API ImColor HSV(float h, float s, float v, float a = 1.0f);
     DAS_MOD_API void ImGTB_Append ( ImGuiTextBuffer & buf, const char * txt );
     DAS_MOD_API int ImGTB_At ( ImGuiTextBuffer & buf, int32_t index );

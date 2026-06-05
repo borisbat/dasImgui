@@ -353,6 +353,23 @@ namespace das {
         return ImGui::ButtonBehavior(bb, id, &out_hovered, &out_held, flags);
     }
 
+    // imgui_internal.h ScrollbarEx — low-level scrollbar over an explicit rect.
+    // p_scroll_v is an in/out scroll position; exposed as ImS64& (das var passed in,
+    // updated on drag). avail_v / contents_v are the visible / total content extents.
+    bool ScrollbarExW( const ImRect& bb, ImGuiID id, ImGuiAxis axis, ImS64& scroll_v,
+        ImS64 avail_v, ImS64 contents_v, ImDrawFlags_ flags ) {
+        return ImGui::ScrollbarEx(bb, id, axis, &scroll_v, avail_v, contents_v, flags);
+    }
+
+    // imgui_internal.h SplitterBehavior — draggable splitter bar. size1 / size2 are
+    // the two pane sizes (in/out floats, exposed as float&): on drag the bar moves
+    // and both are updated, clamped to min_size1 / min_size2.
+    bool SplitterBehaviorW( const ImRect& bb, ImGuiID id, ImGuiAxis axis, float& size1, float& size2,
+        float min_size1, float min_size2, float hover_extend, float hover_visibility_delay, ImU32 bg_col ) {
+        return ImGui::SplitterBehavior(bb, id, axis, &size1, &size2, min_size1, min_size2,
+            hover_extend, hover_visibility_delay, bg_col);
+    }
+
     // ImColor
 
     ImColor HSV(float h, float s, float v, float a) {
@@ -582,6 +599,21 @@ namespace das {
         addExtern<DAS_BIND_FUN(das::ButtonBehaviorW), SimNode_ExtFuncCall, imguiTempFn>(*this, lib, "ButtonBehavior",
             SideEffects::worstDefault, "das::ButtonBehaviorW")
                 ->args({"bb","id","out_hovered","out_held","flags"});
+        // imgui_internal.h scrollbar / splitter behaviors. Both take an ImGuiAxis +
+        // ImRect (float4) and return their in/out numeric state through references —
+        // ScrollbarEx's scroll pos as ImS64&, SplitterBehavior's two pane sizes as
+        // float&. SplitterBehavior's hover_extend / hover_visibility_delay / bg_col
+        // default, so the common call is (bb, id, axis, size1, size2, min1, min2).
+        addExtern<DAS_BIND_FUN(das::ScrollbarExW), SimNode_ExtFuncCall, imguiTempFn>(*this, lib, "ScrollbarEx",
+            SideEffects::worstDefault, "das::ScrollbarExW")
+                ->args({"bb","id","axis","scroll_v","avail_v","contents_v","flags"});
+        addExtern<DAS_BIND_FUN(das::SplitterBehaviorW), SimNode_ExtFuncCall, imguiTempFn>(*this, lib, "SplitterBehavior",
+            SideEffects::worstDefault, "das::SplitterBehaviorW")
+                ->args({"bb","id","axis","size1","size2","min_size1","min_size2",
+                        "hover_extend","hover_visibility_delay","bg_col"})
+                    ->arg_init(7,new ExprConstFloat(0.0f))
+                    ->arg_init(8,new ExprConstFloat(0.0f))
+                    ->arg_init(9,new ExprConstUInt(0));
         // variadic functions
         addExtern<DAS_BIND_FUN(das::Text)>(*this,lib,"Text",
             SideEffects::worstDefault,"das::Text");

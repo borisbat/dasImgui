@@ -38,6 +38,10 @@ void Module_dasIMGUI::initFunctions_32() {
 		->arg_type(3,makeType<ImGuiButtonFlags_>(lib))
 		->arg_init(3,new ExprConstEnumeration(0,makeType<ImGuiButtonFlags_>(lib)))
 		->addToModule(*this, SideEffects::worstDefault);
+// from imgui_internal.h:3754:29
+	makeExtern< void (*)(ImGuiAxis) , ImGui::Scrollbar , SimNode_ExtFuncCall , imguiTempFn>(lib,"Scrollbar","ImGui::Scrollbar")
+		->args({"axis"})
+		->addToModule(*this, SideEffects::worstDefault);
 // from imgui_internal.h:3767:29
 	makeExtern< void (*)(unsigned int) , ImGui::TreePushOverrideID , SimNode_ExtFuncCall , imguiTempFn>(lib,"TreePushOverrideID","ImGui::TreePushOverrideID")
 		->args({"id"})
