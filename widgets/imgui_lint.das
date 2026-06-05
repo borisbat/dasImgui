@@ -193,7 +193,12 @@ let private ALLOWED_IMGUI : table<string> <- {
     // Tree-node state machine. TreeNodeBehavior (label_end -> nullptr wrapper) is the
     // open/closed core; TreeNodeSetOpen / TreeNodeUpdateNextOpen (raw) set / resolve
     // a node's open state by ID. Pair with the already-allowed TreePushOverrideID.
-    "TreeNodeBehavior", "TreeNodeSetOpen", "TreeNodeUpdateNextOpen"
+    "TreeNodeBehavior", "TreeNodeSetOpen", "TreeNodeUpdateNextOpen",
+    // Separator / low-level text. SeparatorEx (raw, ImGuiSeparatorFlags-as-int) is a
+    // separator with axis/span flags + thickness; TextEx (text_end -> nullptr wrapper,
+    // ImGuiTextFlags-as-int) and SeparatorTextEx (label_end -> nullptr wrapper) are
+    // the manual C++ wrappers.
+    "SeparatorEx", "TextEx", "SeparatorTextEx"
 }
 
 class ImguiLintVisitor : AstVisitor {

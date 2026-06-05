@@ -377,6 +377,17 @@ namespace das {
         return ImGui::TreeNodeBehavior(id, flags, label, nullptr);
     }
 
+    // imgui_internal.h TextEx / SeparatorTextEx — both carry a nullable text_end /
+    // label_end (a daslang string can't express the NULL), pinned to nullptr here.
+    // ImGuiTextFlags is internal -> binds as int (cast int(ImGuiTextFlags.X)).
+    void TextExW( const char* text, ImGuiTextFlags flags ) {
+        ImGui::TextEx(text, nullptr, flags);
+    }
+
+    void SeparatorTextExW( ImGuiID id, const char* label, float extra_width ) {
+        ImGui::SeparatorTextEx(id, label, nullptr, extra_width);
+    }
+
     // ImColor
 
     ImColor HSV(float h, float s, float v, float a) {
@@ -627,6 +638,16 @@ namespace das {
             SideEffects::worstDefault, "das::TreeNodeBehaviorW")
                 ->args({"id","flags","label"})
                     ->arg_init(1,new ExprConstEnumeration(0,makeType<ImGuiTreeNodeFlags_>(lib)));
+        // imgui_internal.h TextEx / SeparatorTextEx — wrappers pin text_end / label_end
+        // to nullptr. TextEx's flags is the internal ImGuiTextFlags (int), default 0.
+        addExtern<DAS_BIND_FUN(das::TextExW), SimNode_ExtFuncCall, imguiTempFn>(*this, lib, "TextEx",
+            SideEffects::worstDefault, "das::TextExW")
+                ->args({"text","flags"})
+                    ->arg_init(1,new ExprConstInt(0));
+        addExtern<DAS_BIND_FUN(das::SeparatorTextExW), SimNode_ExtFuncCall, imguiTempFn>(*this, lib, "SeparatorTextEx",
+            SideEffects::worstDefault, "das::SeparatorTextExW")
+                ->args({"id","label","extra_width"})
+                    ->arg_init(2,new ExprConstFloat(0.0f));
         // variadic functions
         addExtern<DAS_BIND_FUN(das::Text)>(*this,lib,"Text",
             SideEffects::worstDefault,"das::Text");

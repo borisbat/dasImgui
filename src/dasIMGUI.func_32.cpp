@@ -38,6 +38,11 @@ void Module_dasIMGUI::initFunctions_32() {
 		->arg_type(3,makeType<ImGuiButtonFlags_>(lib))
 		->arg_init(3,new ExprConstEnumeration(0,makeType<ImGuiButtonFlags_>(lib)))
 		->addToModule(*this, SideEffects::worstDefault);
+// from imgui_internal.h:3746:29
+	makeExtern< void (*)(int,float) , ImGui::SeparatorEx , SimNode_ExtFuncCall , imguiTempFn>(lib,"SeparatorEx","ImGui::SeparatorEx")
+		->args({"flags","thickness"})
+		->arg_init(1,new ExprConstFloat(1))
+		->addToModule(*this, SideEffects::worstDefault);
 // from imgui_internal.h:3754:29
 	makeExtern< void (*)(ImGuiAxis) , ImGui::Scrollbar , SimNode_ExtFuncCall , imguiTempFn>(lib,"Scrollbar","ImGui::Scrollbar")
 		->args({"axis"})
