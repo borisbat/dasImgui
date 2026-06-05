@@ -39,6 +39,8 @@ addEnumeration(new Enumeration_ImFontAtlasFlags_());
 addEnumeration(new Enumeration_ImGuiViewportFlags_());
 addEnumeration(new Enumeration_ImGuiItemFlags_());
 addEnumeration(new Enumeration_ImGuiButtonFlagsPrivate_());
+addEnumeration(new Enumeration_ImGuiSeparatorFlags_());
+addEnumeration(new Enumeration_ImGuiTextFlags_());
 addEnumeration(new Enumeration_ImGuiTooltipFlags_());
 addEnumeration(new Enumeration_ImGuiAxis());
 addEnumeration(new Enumeration_ImGuiNavHighlightFlags_());

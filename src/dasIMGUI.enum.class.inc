@@ -1062,6 +1062,32 @@ public:
 	}
 };
 
+// from imgui_internal.h:946:6
+class Enumeration_ImGuiSeparatorFlags_ : public das::Enumeration {
+public:
+	Enumeration_ImGuiSeparatorFlags_() : das::Enumeration("ImGuiSeparatorFlags") {
+		external = true;
+		cppName = "ImGuiSeparatorFlags_";
+		baseType = (das::Type) das::ToBasicType<int>::type;
+		addIEx("None", "ImGuiSeparatorFlags_None", int64_t(ImGuiSeparatorFlags_::ImGuiSeparatorFlags_None), das::LineInfo());
+		addIEx("Horizontal", "ImGuiSeparatorFlags_Horizontal", int64_t(ImGuiSeparatorFlags_::ImGuiSeparatorFlags_Horizontal), das::LineInfo());
+		addIEx("Vertical", "ImGuiSeparatorFlags_Vertical", int64_t(ImGuiSeparatorFlags_::ImGuiSeparatorFlags_Vertical), das::LineInfo());
+		addIEx("SpanAllColumns", "ImGuiSeparatorFlags_SpanAllColumns", int64_t(ImGuiSeparatorFlags_::ImGuiSeparatorFlags_SpanAllColumns), das::LineInfo());
+	}
+};
+
+// from imgui_internal.h:964:6
+class Enumeration_ImGuiTextFlags_ : public das::Enumeration {
+public:
+	Enumeration_ImGuiTextFlags_() : das::Enumeration("ImGuiTextFlags") {
+		external = true;
+		cppName = "ImGuiTextFlags_";
+		baseType = (das::Type) das::ToBasicType<int>::type;
+		addIEx("None", "ImGuiTextFlags_None", int64_t(ImGuiTextFlags_::ImGuiTextFlags_None), das::LineInfo());
+		addIEx("NoWidthForLargeClippedText", "ImGuiTextFlags_NoWidthForLargeClippedText", int64_t(ImGuiTextFlags_::ImGuiTextFlags_NoWidthForLargeClippedText), das::LineInfo());
+	}
+};
+
 // from imgui_internal.h:970:6
 class Enumeration_ImGuiTooltipFlags_ : public das::Enumeration {
 public:

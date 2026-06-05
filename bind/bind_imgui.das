@@ -257,14 +257,24 @@ class ImguiGen : CppGenBind {
             // ImGuiID(uint)/bool/ImGuiTreeNodeFlags(public). The lower-level
             // TreeNodeBehavior (nullable label_end -> C++ wrapper) is in
             // dasIMGUI.main.cpp; pairs with the already-bound TreePushOverrideID.
-            "ImGui::TreeNodeSetOpen", "ImGui::TreeNodeUpdateNextOpen"
+            "ImGui::TreeNodeSetOpen", "ImGui::TreeNodeUpdateNextOpen",
+            // SeparatorEx — a separator with explicit axis/span flags + thickness.
+            // ImGuiSeparatorFlags is internal -> the flags arg binds as int. Its
+            // siblings TextEx / SeparatorTextEx carry a nullable text_end / label_end
+            // and are manual C++ wrappers (dasIMGUI.main.cpp).
+            "ImGui::SeparatorEx"
         }
         internal_allow_enum <- {
             "ImGuiItemFlags_", "ImGuiNavHighlightFlags_", "ImGuiTooltipFlags_",
             "ImGuiButtonFlagsPrivate_",
             // Axis selector (None=-1 / X=0 / Y=1) for the scrollbar / splitter
             // behavior primitives. Plain enum, tag has no trailing underscore.
-            "ImGuiAxis"
+            "ImGuiAxis",
+            // Separator / low-level text flags. SeparatorEx takes ImGuiSeparatorFlags
+            // (Horizontal / Vertical / SpanAllColumns); TextEx takes ImGuiTextFlags
+            // (NoWidthForLargeClippedText). Both internal -> args bind as int (cast
+            // int(ImGuiSeparatorFlags.Vertical) at the call site, like ItemHoverable).
+            "ImGuiSeparatorFlags_", "ImGuiTextFlags_"
         }
     }
     def is_internal : bool {
