@@ -347,7 +347,8 @@ namespace das {
     }
 
     // imgui_internal.h ButtonBehavior — out_hovered / out_held exposed as bool&
-    // (das passes plain vars, write-back via SideEffects::modifyArgument).
+    // (das passes plain vars; write-back works, registered SideEffects::worstDefault
+    // below since the call also touches ImGui global hover / active-id state).
     bool ButtonBehaviorW( const ImRect& bb, ImGuiID id, bool& out_hovered, bool& out_held, ImGuiButtonFlags_ flags ) {
         return ImGui::ButtonBehavior(bb, id, &out_hovered, &out_held, flags);
     }
@@ -563,11 +564,13 @@ namespace das {
         addExtern<DAS_BIND_FUN(das::RenderTextEllipsisW), SimNode_ExtFuncCall, imguiTempFn>(*this, lib, "RenderTextEllipsis",
             SideEffects::worstDefault, "das::RenderTextEllipsisW")
                 ->args({"draw_list","pos_min","pos_max","clip_max_x","ellipsis_max_x","text"});
-        // imgui_internal.h custom-widget primitives. ItemAdd is two overloads
-        // (arity 3 = no nav rect / arity 4 = explicit nav rect); ButtonBehavior
-        // returns its two state outputs through bool& args. extra_flags is the
-        // internal ImGuiItemFlags (binds as int); flags is the public
-        // ImGuiButtonFlags (das enum, combines via the imgui_enums.das `|` rail).
+        // imgui_internal.h custom-widget primitives. ItemAdd is two overloads —
+        // without / with an explicit nav rect. extra_flags defaults, so the das
+        // calls are ItemAdd(bb,id[,flags]) and ItemAdd(bb,id,nav_bb[,flags]); at
+        // three args the nav overload is picked by float4 nav_bb vs int flags.
+        // ButtonBehavior returns its two state outputs through bool& args.
+        // extra_flags is the internal ImGuiItemFlags (binds as int); flags is the
+        // public ImGuiButtonFlags (das enum, combines via the imgui_enums.das `|` rail).
         addExtern<DAS_BIND_FUN(das::ItemAddW), SimNode_ExtFuncCall, imguiTempFn>(*this, lib, "ItemAdd",
             SideEffects::worstDefault, "das::ItemAddW")
                 ->args({"bb","id","extra_flags"})
