@@ -24,6 +24,17 @@ void Module_dasIMGUI::initFunctions_31() {
 		->arg_init(3,new ExprConstBool(false))
 		->arg_init(4,new ExprConstBool(true))
 		->addToModule(*this, SideEffects::worstDefault);
+// from imgui_internal.h:3429:29
+	makeExtern< bool (*)(unsigned int,const ImRect &,int) , ImGui::BeginComboPopup , SimNode_ExtFuncCall , imguiTempFn>(lib,"BeginComboPopup","ImGui::BeginComboPopup")
+		->args({"popup_id","bb","flags"})
+		->arg_type(2,makeType<ImGuiComboFlags_>(lib))
+		->addToModule(*this, SideEffects::worstDefault);
+// from imgui_internal.h:3430:29
+	makeExtern< bool (*)() , ImGui::BeginComboPreview , SimNode_ExtFuncCall , imguiTempFn>(lib,"BeginComboPreview","ImGui::BeginComboPreview")
+		->addToModule(*this, SideEffects::worstDefault);
+// from imgui_internal.h:3431:29
+	makeExtern< void (*)() , ImGui::EndComboPreview , SimNode_ExtFuncCall , imguiTempFn>(lib,"EndComboPreview","ImGui::EndComboPreview")
+		->addToModule(*this, SideEffects::worstDefault);
 // from imgui_internal.h:3455:29
 	makeExtern< void (*)() , ImGui::FocusItem , SimNode_ExtFuncCall , imguiTempFn>(lib,"FocusItem","ImGui::FocusItem")
 		->addToModule(*this, SideEffects::worstDefault);
@@ -92,19 +103,6 @@ void Module_dasIMGUI::initFunctions_31() {
 // from imgui_internal.h:3733:29
 	makeExtern< void (*)(ImDrawList *,ImVec2,unsigned int) , ImGui::RenderBullet , SimNode_ExtFuncCall , imguiTempFn>(lib,"RenderBullet","ImGui::RenderBullet")
 		->args({"draw_list","pos","col"})
-		->addToModule(*this, SideEffects::worstDefault);
-// from imgui_internal.h:3734:29
-	makeExtern< void (*)(ImDrawList *,ImVec2,unsigned int,float) , ImGui::RenderCheckMark , SimNode_ExtFuncCall , imguiTempFn>(lib,"RenderCheckMark","ImGui::RenderCheckMark")
-		->args({"draw_list","pos","col","sz"})
-		->addToModule(*this, SideEffects::worstDefault);
-// from imgui_internal.h:3735:29
-	makeExtern< void (*)(ImDrawList *,ImVec2,ImVec2,int,unsigned int) , ImGui::RenderArrowPointingAt , SimNode_ExtFuncCall , imguiTempFn>(lib,"RenderArrowPointingAt","ImGui::RenderArrowPointingAt")
-		->args({"draw_list","pos","half_sz","direction","col"})
-		->arg_type(3,makeType<ImGuiDir_>(lib))
-		->addToModule(*this, SideEffects::worstDefault);
-// from imgui_internal.h:3736:29
-	makeExtern< void (*)(ImDrawList *,ImVec2,float,unsigned int) , ImGui::RenderArrowDockMenu , SimNode_ExtFuncCall , imguiTempFn>(lib,"RenderArrowDockMenu","ImGui::RenderArrowDockMenu")
-		->args({"draw_list","p_min","sz","col"})
 		->addToModule(*this, SideEffects::worstDefault);
 }
 }

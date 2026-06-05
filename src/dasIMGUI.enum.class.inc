@@ -1062,6 +1062,17 @@ public:
 	}
 };
 
+// from imgui_internal.h:913:6
+class Enumeration_ImGuiComboFlagsPrivate_ : public das::Enumeration {
+public:
+	Enumeration_ImGuiComboFlagsPrivate_() : das::Enumeration("ImGuiComboFlagsPrivate") {
+		external = true;
+		cppName = "ImGuiComboFlagsPrivate_";
+		baseType = (das::Type) das::ToBasicType<int>::type;
+		addIEx("CustomPreview", "ImGuiComboFlags_CustomPreview", int64_t(ImGuiComboFlagsPrivate_::ImGuiComboFlags_CustomPreview), das::LineInfo());
+	}
+};
+
 // from imgui_internal.h:946:6
 class Enumeration_ImGuiSeparatorFlags_ : public das::Enumeration {
 public:

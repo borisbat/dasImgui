@@ -12,6 +12,19 @@
 namespace das {
 #include "dasIMGUI.func.aot.decl.inc"
 void Module_dasIMGUI::initFunctions_32() {
+// from imgui_internal.h:3734:29
+	makeExtern< void (*)(ImDrawList *,ImVec2,unsigned int,float) , ImGui::RenderCheckMark , SimNode_ExtFuncCall , imguiTempFn>(lib,"RenderCheckMark","ImGui::RenderCheckMark")
+		->args({"draw_list","pos","col","sz"})
+		->addToModule(*this, SideEffects::worstDefault);
+// from imgui_internal.h:3735:29
+	makeExtern< void (*)(ImDrawList *,ImVec2,ImVec2,int,unsigned int) , ImGui::RenderArrowPointingAt , SimNode_ExtFuncCall , imguiTempFn>(lib,"RenderArrowPointingAt","ImGui::RenderArrowPointingAt")
+		->args({"draw_list","pos","half_sz","direction","col"})
+		->arg_type(3,makeType<ImGuiDir_>(lib))
+		->addToModule(*this, SideEffects::worstDefault);
+// from imgui_internal.h:3736:29
+	makeExtern< void (*)(ImDrawList *,ImVec2,float,unsigned int) , ImGui::RenderArrowDockMenu , SimNode_ExtFuncCall , imguiTempFn>(lib,"RenderArrowDockMenu","ImGui::RenderArrowDockMenu")
+		->args({"draw_list","p_min","sz","col"})
+		->addToModule(*this, SideEffects::worstDefault);
 // from imgui_internal.h:3737:29
 	makeExtern< void (*)(ImDrawList *,const ImRect &,unsigned int,float,float,float) , ImGui::RenderRectFilledRangeH , SimNode_ExtFuncCall , imguiTempFn>(lib,"RenderRectFilledRangeH","ImGui::RenderRectFilledRangeH")
 		->args({"draw_list","rect","col","x_start_norm","x_end_norm","rounding"})
