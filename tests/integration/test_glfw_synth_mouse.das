@@ -88,7 +88,7 @@ def test_mouse_move_to_animates(t : T?) {
         // Wide window — under suite load a single slow frame can advance the
         // timeline a lot, but anywhere strictly between start and end proves
         // the tick is interpolating rather than snapping straight to the end.
-        let midflight = wait_until(d, 180) $(var snap) {
+        let midflight = wait_until(d, 180) $(var _snap) {
             let s = post_command(d, "mouse_status", null)
             let mx = s?["cursor_x"] ?? -1.0f
             return mx > 55.0f && mx < 345.0f
@@ -96,7 +96,7 @@ def test_mouse_move_to_animates(t : T?) {
         t |> success(midflight != null, "cursor passes through mid-flight x")
 
         // Wait until playback completes and cursor lands on the endpoint.
-        let landed = wait_until(d, 300) $(var snap) {
+        let landed = wait_until(d, 300) $(var _snap) {
             let s = post_command(d, "mouse_status", null)
             let playing = s?["playing"] ?? true
             let mx = s?["cursor_x"] ?? -1.0f
@@ -127,7 +127,7 @@ def test_mouse_play_event_list_completes(t : T?) {
         post_command(d, "mouse_play", JV((events = events)))
 
         // Convergence: playing flips to false and cursor lands on the last move waypoint.
-        let done = wait_until(d, 300) $(var snap) {
+        let done = wait_until(d, 300) $(var _snap) {
             let s = post_command(d, "mouse_status", null)
             let playing = s?["playing"] ?? true
             let mx = s?["cursor_x"] ?? -1.0f
@@ -151,7 +151,7 @@ def test_mouse_stop_aborts(t : T?) {
         post_command(d, "mouse_pos", JV((x = 50.0f, y = 50.0f)))
         post_command(d, "mouse_move_to", JV((x = 400.0f, y = 300.0f, duration_ms = 5000)))
         // After kickoff, mouse_status reports playing=true.
-        let started = wait_until(d, 60) $(var snap) {
+        let started = wait_until(d, 60) $(var _snap) {
             let s = post_command(d, "mouse_status", null)
             return s?["playing"] ?? false
         }
@@ -160,8 +160,13 @@ def test_mouse_stop_aborts(t : T?) {
         let stopped = post_command(d, "mouse_stop", null)
         t |> equal(stopped?["stopped"] ?? false, true, "mouse_stop reports stopped=true")
 
-        let halted = post_command(d, "mouse_status", null)
-        t |> equal(halted?["playing"] ?? true, false, "mouse_status.playing == false after stop")
+        // Gate the stop taking effect (it may clear across a frame boundary)
+        // rather than reading mouse_status synchronously.
+        let halted = wait_until(d, 60) $(var _snap) {
+            let s = post_command(d, "mouse_status", null)
+            return !(s?["playing"] ?? true)
+        }
+        t |> success(halted != null, "mouse_status.playing == false after stop")
     }
 }
 
@@ -181,18 +186,23 @@ def test_synth_cursor_ownership_sticky(t : T?) {
         }
         let s0 = post_command(d, "mouse_status", null)
         t |> equal(s0?["cursor_owned"] ?? true, false, "cursor_owned starts false")
-        // Single synth event flips ownership.
+        // Single synth event flips ownership. Gate on cursor_owned converging
+        // rather than reading mouse_status synchronously after the one-shot.
         post_command(d, "mouse_pos", JV((x = 100.0f, y = 100.0f)))
+        let owned = wait_until(d, 60) $(var _snap) {
+            let s = post_command(d, "mouse_status", null)
+            return s?["cursor_owned"] ?? false
+        }
+        t |> success(owned != null, "cursor_owned flips true after mouse_pos")
         let s1 = post_command(d, "mouse_status", null)
-        t |> equal(s1?["cursor_owned"] ?? false, true,  "cursor_owned flips true after mouse_pos")
-        t |> equal(s1?["playing"]      ?? true,  false, "mouse_status.playing is false (mouse_pos is one-shot)")
+        t |> equal(s1?["playing"] ?? true, false, "mouse_status.playing is false (mouse_pos is one-shot)")
         // Run a short timeline, wait for drain, ownership stays.
         var events <- [
             JV((t_ms = 0,  kind = "move", x = 50.0f,  y = 50.0f)),
             JV((t_ms = 80, kind = "move", x = 200.0f, y = 200.0f))
         ]
         post_command(d, "mouse_play", JV((events = events)))
-        let drained = wait_until(d, 240) $(var snap) {
+        let drained = wait_until(d, 240) $(var _snap) {
             let s = post_command(d, "mouse_status", null)
             return !(s?["playing"] ?? true)
         }

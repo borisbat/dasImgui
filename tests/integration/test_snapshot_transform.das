@@ -27,7 +27,7 @@ def private near(a : float; b : float; tol : float) : bool {
 [test]
 def test_snapshot_transform(t : T?) {
     with_imgui_app(FEATURE) $(d) {
-        var snap = wait_for_widget(d, "MAIN_WIN/XFORM_BTN", 15.0f)
+        var snap = wait_for_visible(d, "MAIN_WIN/XFORM_BTN", 15.0f)
         t |> success(snap != null, "snapshot returned with the transformed button registered")
         if (snap == null) return
 

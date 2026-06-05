@@ -8,7 +8,6 @@ require imgui public
 require imgui/imgui_playwright public
 require daslib/json public
 require daslib/json_boost public
-require math
 
 //! ImGui-bypass synth driver — Ctrl-shortcut routing after a synth click.
 //!
@@ -125,6 +124,11 @@ def test_imgui_synth_ctrl_shortcuts(t : T?) {
                 return v == "abc"
             }
             t |> success(typed != null, "NAME_INPUT.value == \"abc\" before chord")
+
+            // The value showing "abc" proves the chars landed, but the key_type
+            // timeline's final per-char delay may still be ticking; let it reach
+            // idle before the chord so the chord events don't interleave its tail.
+            t |> success(wait_for_key_idle(d, 4.0f), "key_type timeline idle before chord")
 
             // Select-all chord: Cmd+A on macOS, Ctrl+A everywhere else.
             if (macos) {

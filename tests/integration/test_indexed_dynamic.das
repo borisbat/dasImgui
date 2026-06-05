@@ -78,10 +78,10 @@ def test_indexed_dynamic_add_remove(t : T?) {
 
         // ADD again → key 1 re-appears with fresh defaults (value=0.5).
         click(d, "DYN_WIN/ADD_CH")
-        t |> success(wait_for_widget(d, "DYN_WIN/CHANNEL_VOL[1]", 5.0f) != null,
-                     "re-ADD restores CHANNEL_VOL[1]")
-        var snap_re = snapshot(d)
-        t |> equal(widget_payload_field(snap_re, "DYN_WIN/CHANNEL_VOL[1]", "value") ?? -1.0f,
-                   0.5f, "re-added [1].value is fresh default 0.5, not the prior 0.91")
+        // Gate on the converged fresh-default value directly: existence-only
+        // wait_for_widget can return before the first painted frame carries 0.5,
+        // racing the snapshot read against the re-added entry's default.
+        t |> success(wait_for_payload_value(d, "DYN_WIN/CHANNEL_VOL[1]", "value", 0.5f, 300),
+                     "re-added [1].value is fresh default 0.5, not the prior 0.91")
     }
 }

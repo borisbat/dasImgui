@@ -29,10 +29,11 @@ def test_collapsing_header_closable_smoke(t : T?) {
         }
         t |> success(closed != null, "closing the header hides REVEAL_BTN inside")
 
+        // Re-open must gate on actual paint, not stale registry existence:
+        // widget_exists returns true on the expunged-but-cached entry. wait_for_visible
+        // polls widget_rendered (registered AND painted this frame).
         open_widget(d, "MAIN_WIN/HEADER_CLOSE")
-        let reopened = wait_until(d, 300) $(var s) {
-            return widget_exists(s, "MAIN_WIN/HEADER_CLOSE/REVEAL_BTN")
-        }
-        t |> success(reopened != null, "imgui_open re-renders body")
+        t |> success(wait_for_visible(d, "MAIN_WIN/HEADER_CLOSE/REVEAL_BTN", 5.0f) != null,
+                     "imgui_open re-renders body")
     }
 }

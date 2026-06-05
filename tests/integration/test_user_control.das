@@ -34,7 +34,7 @@ def test_user_control_toggle(t : T?) {
 
         // Frames keep advancing cleanly while disabled (the per-frame detach +
         // ClearEventsQueue path runs without crashing or wedging).
-        t |> success(wait_for_widget(d, "MAIN_WIN/DEMO_BTN", 5.0f) != null,
+        t |> success(wait_for_render(d, "MAIN_WIN/DEMO_BTN", 5.0f) != null,
                      "still rendering while control disabled")
 
         // Re-enable: subsequent ticks reattach the callbacks.

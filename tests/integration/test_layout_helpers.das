@@ -148,6 +148,10 @@ def test_layout_helpers(t : T?) {
             let resp = drag(d, HANDLE, 80.0f, 0.0f, 8)
             t |> equal(resp?["ok"] ?? false, true, "drag(HANDLE, +80) hit the handle")
 
+            // Gate the drag play to completion before polling value/geometry,
+            // so the snapshot below reads a fully-landed gesture.
+            t |> success(wait_for_mouse_idle(d, 10.0f), "drag drains before value/geometry read")
+
             let moved = wait_until(d, 300) $(snap) => (find_widget(snap, "LAYOUT_WIN/SPLIT_VERT/SPLIT_MAIN")?["payload"]?["value"] ?? 0.0f) > v0 + 0.02f
             t |> success(moved != null, "synth drag raised SPLIT_MAIN.value above baseline {v0}")
 

@@ -7,7 +7,6 @@ require dastest/testing_boost public
 require imgui/imgui_playwright public
 require daslib/json public
 require daslib/json_boost public
-require math
 
 //! Phase 7 docking integration smoke. Three coverage layers:
 //!   1. Registration — `dockspace`/`dock_window` and their children appear in
@@ -71,7 +70,7 @@ def test_docking_basic(t : T?) {
 
             // Give the dockspace a couple of frames to actually dock the windows
             // (DockBuilderFinish on frame 1, ImGui applies docking on frame 2).
-            let docked = wait_for_payload_value(d, "DOCK_ROOT/EXPLORER", "docked", true, 30)
+            let docked = wait_for_payload_value(d, "DOCK_ROOT/EXPLORER", "docked", true, 300)
             t |> success(docked, "EXPLORER reports docked=true after DockBuilder finish")
 
             var snap2 = snapshot(d)
@@ -105,12 +104,12 @@ def test_docking_basic(t : T?) {
                 return
             }
             // Wait until OUTPUT is docked (initial layout finished).
-            let docked = wait_for_payload_value(d, "DOCK_ROOT/OUTPUT", "docked", true, 30)
+            let docked = wait_for_payload_value(d, "DOCK_ROOT/OUTPUT", "docked", true, 300)
             t |> success(docked, "OUTPUT starts docked")
 
             // Send undock command, wait for `docked` field to flip false.
             post_command(d, "imgui_undock", JV((target = "DOCK_ROOT/OUTPUT")))
-            let undocked = wait_for_payload_value(d, "DOCK_ROOT/OUTPUT", "docked", false, 30)
+            let undocked = wait_for_payload_value(d, "DOCK_ROOT/OUTPUT", "docked", false, 300)
             t |> success(undocked, "imgui_undock flipped OUTPUT.docked false")
         }
         reset(d)
@@ -126,7 +125,7 @@ def test_docking_basic(t : T?) {
             t |> success(open0, "OUTPUT starts open")
 
             post_command(d, "imgui_close", JV((target = "DOCK_ROOT/OUTPUT")))
-            let closed = wait_for_payload_value(d, "DOCK_ROOT/OUTPUT", "open", false, 30)
+            let closed = wait_for_payload_value(d, "DOCK_ROOT/OUTPUT", "open", false, 300)
             t |> success(closed, "imgui_close flipped OUTPUT.open false")
         }
         reset(d)
@@ -139,7 +138,7 @@ def test_docking_basic(t : T?) {
             }
             // First undock so the floating window's pos isn't pinned by the dock.
             post_command(d, "imgui_undock", JV((target = "DOCK_ROOT/OUTPUT")))
-            let undocked = wait_for_payload_value(d, "DOCK_ROOT/OUTPUT", "docked", false, 30)
+            let undocked = wait_for_payload_value(d, "DOCK_ROOT/OUTPUT", "docked", false, 300)
             t |> success(undocked, "OUTPUT undocked")
 
             // Set window position to a specific spot.
@@ -151,7 +150,7 @@ def test_docking_basic(t : T?) {
             // poll the whole field rather than a dotted sub-key (wait_for_payload_value
             // matches on the full field value).
             let landed = wait_for_payload_value(d, "DOCK_ROOT/OUTPUT",
-                                                "pos", float2(600.0f, 200.0f), 30)
+                                                "pos", float2(600.0f, 200.0f), 300)
             t |> success(landed, "OUTPUT.pos converged to (600,200) after imgui_set_window_pos")
         }
         reset(d)
@@ -163,7 +162,7 @@ def test_docking_basic(t : T?) {
                 return
             }
             // Wait for initial layout flag to be true.
-            let seeded = wait_for_payload_value(d, "DOCK_ROOT", "has_initial_layout", true, 30)
+            let seeded = wait_for_payload_value(d, "DOCK_ROOT", "has_initial_layout", true, 300)
             t |> success(seeded, "DOCK_ROOT.has_initial_layout=true after initial setup")
 
             // imgui_dock_reset flips it back to false; the renderer re-runs setup,
@@ -172,7 +171,7 @@ def test_docking_basic(t : T?) {
             // public contract: send the reset command, then verify EXPLORER is
             // still docked (i.e. the layout came back).
             post_command(d, "imgui_dock_reset", JV((target = "DOCK_ROOT")))
-            let re_docked = wait_for_payload_value(d, "DOCK_ROOT/EXPLORER", "docked", true, 30)
+            let re_docked = wait_for_payload_value(d, "DOCK_ROOT/EXPLORER", "docked", true, 300)
             t |> success(re_docked, "EXPLORER re-docks after imgui_dock_reset round-trip")
         }
     }

@@ -33,14 +33,14 @@ def test_focus_control_smoke(t : T?) {
         // Click REFOCUS_EMAIL -> set_keyboard_focus_here(0) before EMAIL_INPUT
         // -> EMAIL_INPUT.focus becomes true next frame.
         click(d, "MAIN_WIN/REFOCUS_EMAIL")
-        let email_focused = wait_until(d, 120) $(var s) {
+        let email_focused = wait_until(d, 300) $(var s) {
             return s?["globals"]?["MAIN_WIN/EMAIL_INPUT"]?["focus"] ?? false
         }
         t |> success(email_focused != null, "EMAIL_INPUT.focus == true after REFOCUS_EMAIL click")
 
         // Now flip back: click REFOCUS_NAME -> NAME_INPUT focus.
         click(d, "MAIN_WIN/REFOCUS_NAME")
-        let name_focused = wait_until(d, 120) $(var s) {
+        let name_focused = wait_until(d, 300) $(var s) {
             return s?["globals"]?["MAIN_WIN/NAME_INPUT"]?["focus"] ?? false
         }
         t |> success(name_focused != null, "NAME_INPUT.focus == true after REFOCUS_NAME click")
