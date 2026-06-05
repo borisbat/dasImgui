@@ -8,7 +8,6 @@ require imgui public
 require imgui/imgui_playwright public
 require daslib/json public
 require daslib/json_boost public
-require math
 
 //! ImGui-bypass synth driver — Ctrl-shortcut routing after a synth click.
 //!

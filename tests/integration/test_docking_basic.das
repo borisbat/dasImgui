@@ -7,7 +7,6 @@ require dastest/testing_boost public
 require imgui/imgui_playwright public
 require daslib/json public
 require daslib/json_boost public
-require math
 
 //! Phase 7 docking integration smoke. Three coverage layers:
 //!   1. Registration — `dockspace`/`dock_window` and their children appear in
