@@ -45,3 +45,4 @@ is not documented here; v1 users pin to the older daspkg release.
 
    stdlib/index
    tutorials/index
+   internal_families
