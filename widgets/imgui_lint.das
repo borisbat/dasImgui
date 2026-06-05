@@ -157,7 +157,19 @@ let private ALLOWED_IMGUI : table<string> <- {
     // focus/activate an item by ID, or set the next item's selection user-data.
     // Bound via bind_imgui.das internal_allow_func; v2 guard with_focus_scope.
     "PushFocusScope", "PopFocusScope", "GetCurrentFocusScope",
-    "FocusItem", "ActivateItemByID", "SetNextItemSelectionUserData"
+    "FocusItem", "ActivateItemByID", "SetNextItemSelectionUserData",
+    // Internal popup / tooltip / menu *Ex one-shots cherry-picked from
+    // imgui_internal.h. Host-agnostic escape hatches below the public
+    // popup/menu/tooltip wrappers: open/query/close popups by raw ImGuiID,
+    // manage the popup stack, submit an icon/shortcut menu item. Bound via
+    // bind_imgui.das internal_allow_func. The Begin*Ex (BeginPopupEx /
+    // BeginTooltipEx / BeginTooltipHidden / BeginMenuEx) are NOT here — they
+    // pair with the public End* and are surfaced as the unbalance-proof
+    // with_popup_ex / with_tooltip_ex / with_tooltip_hidden / with_menu_ex
+    // guards (imgui_scope_builtin.das). MenuItemEx is the icon/shortcut
+    // escape hatch alongside the wrapped `menu_item` widget.
+    "OpenPopupEx", "ClosePopupToLevel", "ClosePopupsExceptModals",
+    "IsPopupOpen", "MenuItemEx"
 }
 
 class ImguiLintVisitor : AstVisitor {
