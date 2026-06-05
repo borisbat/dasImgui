@@ -45,7 +45,7 @@ let private ALLOWED_IMGUI : table<string> <- {
     "GetIO", "GetStyle", "GetVersion",
     "IsItemHovered", "IsItemActive", "IsItemClicked", "IsItemFocused",
     "IsItemActivated", "IsItemDeactivated", "IsItemDeactivatedAfterEdit",
-    "IsItemToggledOpen", "IsItemVisible", "IsItemEdited",
+    "IsItemToggledOpen", "IsItemVisible", "IsItemEdited", "GetItemID",
     "IsAnyItemHovered", "IsAnyItemActive", "IsAnyItemFocused",
     "IsWindowFocused", "IsWindowHovered",
     // Mouse / keyboard state queries — pure reads, no widget host.
@@ -147,7 +147,7 @@ let private ALLOWED_IMGUI : table<string> <- {
     "RenderDragDropTargetRect", "RenderNavHighlight",
     "RenderRectFilledRangeH", "RenderRectFilledWithHole",
     // ID-stack seed / override helpers cherry-picked from imgui_internal.h.
-    // Host-agnostic: hash/seed an ImGuiID, query the active/hovered/focus ID, or
+    // Host-agnostic: hash/seed an ImGuiID, query the hovered/focus ID, or
     // push a raw override onto the ID stack. Bound via bind_imgui.das
     // internal_allow_func. GetActiveID is bound separately (das::GetActiveID wrapper).
     "GetFocusID", "GetHoveredID", "KeepAliveID", "MarkItemEdited",

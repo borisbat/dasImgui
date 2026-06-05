@@ -84,7 +84,7 @@ def public with_item_flag(flag : ImGuiItemFlags; enabled : bool; blk : block) {
 
 def public with_focus_scope(id : uint; blk : block) {
     //! Run ``blk`` inside focus scope ``id`` (``PushFocusScope``); matching ``PopFocusScope()`` on return.
-    //! Focus scopes group items for keyboard/gamepad nav and multi-select; ``id`` is a raw ImGuiID (e.g. ``GetID("list")``).
+    //! Focus scopes group items for keyboard/gamepad nav and multi-select; ``id`` is an ImGuiID (uint), e.g. ``GetID("list")``.
     PushFocusScope(id)
     invoke(blk)
     PopFocusScope()

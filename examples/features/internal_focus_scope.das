@@ -71,12 +71,15 @@ def update() {
         FocusItem()
         separator()
 
-        // ActivateItemByID — queue an item (named by ID) to activate on the next
-        // frame, when that item is next submitted. Activation is the "press" state.
-        text("ActivateItemByID(id): queue an item to activate by ID (fires next frame).")
-        let act_id = GetID("activation_target")
+        // ActivateItemByID — queue an item (by ID) to activate on the next frame
+        // when it is next submitted. We render a real button, take its id via
+        // GetItemID(), and re-queue it every frame, so it stays in the activated
+        // (pressed) state — proof the queued activation actually applies.
+        text("ActivateItemByID(id): queue an item to activate by ID (applied next frame).")
+        button(ACT_TARGET, (text = "held active by ActivateItemByID"))
+        let act_id = GetItemID()
         ActivateItemByID(act_id)
-        text("  queued activation of id {hex8(act_id)} (applied when that item next renders)")
+        text("  re-activating the button above by its id {hex8(act_id)} each frame")
         separator()
 
         // SetNextItemSelectionUserData — tag the NEXT item with a multi-select
