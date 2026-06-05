@@ -95,7 +95,7 @@ def document_module_imgui_containers_builtin() {
 def document_module_imgui_id_builtin() {
     var mod = find_module("imgui_id_builtin")
     var groups <- array<DocGroup>(
-        group_by_regex("ID stack",      mod, %regex~^(push_id|pop_id|with_id|with_path)$%%),
+        group_by_regex("ID stack",      mod, %regex~^(push_id|pop_id|with_id|with_override_id|with_path)$%%),
         group_by_regex("Hashing",       mod, %regex~^(hash_id|get_id).*%%),
         hide_group(group_by_regex("Internal", mod, %regex~^(_|priv_).*%%))
     )
