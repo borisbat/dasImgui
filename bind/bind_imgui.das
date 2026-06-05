@@ -197,10 +197,29 @@ class ImguiGen : CppGenBind {
             // SetActiveID/SetFocusID/FocusTopMostWindowUnderOne neighbors take
             // ImGuiWindow* and are correctly out of scope.
             "ImGui::PushFocusScope", "ImGui::PopFocusScope", "ImGui::GetCurrentFocusScope",
-            "ImGui::FocusItem", "ImGui::ActivateItemByID", "ImGui::SetNextItemSelectionUserData"
+            "ImGui::FocusItem", "ImGui::ActivateItemByID", "ImGui::SetNextItemSelectionUserData",
+            // Internal popup / tooltip / menu *Ex entry points. All host-agnostic:
+            // ImGuiID(uint), ImGuiPopupFlags / ImGuiWindowFlags (public enums),
+            // int/bool/const char*, plus ImGuiTooltipFlags_ (internal enum, added to
+            // internal_allow_enum below — one real flag, OverridePrevious). Bound raw,
+            // like the Render* batch — the public popup/menu/tooltip *containers*
+            // already wrap the public Begin/End; these are the lower-level escape
+            // hatches (raw-id popups pairing with #169's with_override_id/GetID,
+            // icon-column menus, override-previous tooltips, popup-stack management).
+            // IsPopupOpen is an overload of the public const char* version; the
+            // makeExtern explicit-signature template arg disambiguates the
+            // address-taking (same as the two GetIDWithSeed overloads). The Begin*Ex
+            // pair with the already-public End* (EndPopup/EndTooltip/EndMenu). The
+            // ClosePopupsOverWindow / GetTopMost*PopupModal / FindBlockingModal /
+            // FindBestWindowPosForPopup* / GetPopupAllowedExtentRect neighbors take or
+            // return ImGuiWindow* and are correctly out of scope.
+            "ImGui::OpenPopupEx", "ImGui::ClosePopupToLevel", "ImGui::ClosePopupsExceptModals",
+            "ImGui::IsPopupOpen", "ImGui::BeginPopupEx",
+            "ImGui::BeginTooltipEx", "ImGui::BeginTooltipHidden",
+            "ImGui::BeginMenuEx", "ImGui::MenuItemEx"
         }
         internal_allow_enum <- {
-            "ImGuiItemFlags_", "ImGuiNavHighlightFlags_"
+            "ImGuiItemFlags_", "ImGuiNavHighlightFlags_", "ImGuiTooltipFlags_"
         }
     }
     def is_internal : bool {

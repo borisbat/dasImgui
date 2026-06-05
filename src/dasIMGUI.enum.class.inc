@@ -1033,6 +1033,18 @@ public:
 	}
 };
 
+// from imgui_internal.h:970:6
+class Enumeration_ImGuiTooltipFlags_ : public das::Enumeration {
+public:
+	Enumeration_ImGuiTooltipFlags_() : das::Enumeration("ImGuiTooltipFlags") {
+		external = true;
+		cppName = "ImGuiTooltipFlags_";
+		baseType = (das::Type) das::ToBasicType<int>::type;
+		addIEx("None", "ImGuiTooltipFlags_None", int64_t(ImGuiTooltipFlags_::ImGuiTooltipFlags_None), das::LineInfo());
+		addIEx("OverridePrevious", "ImGuiTooltipFlags_OverridePrevious", int64_t(ImGuiTooltipFlags_::ImGuiTooltipFlags_OverridePrevious), das::LineInfo());
+	}
+};
+
 // from imgui_internal.h:1594:6
 class Enumeration_ImGuiNavHighlightFlags_ : public das::Enumeration {
 public:

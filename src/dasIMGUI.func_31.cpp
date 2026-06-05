@@ -12,6 +12,43 @@
 namespace das {
 #include "dasIMGUI.func.aot.decl.inc"
 void Module_dasIMGUI::initFunctions_31() {
+// from imgui_internal.h:3455:29
+	makeExtern< void (*)() , ImGui::FocusItem , SimNode_ExtFuncCall , imguiTempFn>(lib,"FocusItem","ImGui::FocusItem")
+		->addToModule(*this, SideEffects::worstDefault);
+// from imgui_internal.h:3456:29
+	makeExtern< void (*)(unsigned int) , ImGui::ActivateItemByID , SimNode_ExtFuncCall , imguiTempFn>(lib,"ActivateItemByID","ImGui::ActivateItemByID")
+		->args({"id"})
+		->addToModule(*this, SideEffects::worstDefault);
+// from imgui_internal.h:3608:29
+	makeExtern< void (*)(unsigned int) , ImGui::PushFocusScope , SimNode_ExtFuncCall , imguiTempFn>(lib,"PushFocusScope","ImGui::PushFocusScope")
+		->args({"id"})
+		->addToModule(*this, SideEffects::worstDefault);
+// from imgui_internal.h:3609:29
+	makeExtern< void (*)() , ImGui::PopFocusScope , SimNode_ExtFuncCall , imguiTempFn>(lib,"PopFocusScope","ImGui::PopFocusScope")
+		->addToModule(*this, SideEffects::worstDefault);
+// from imgui_internal.h:3610:29
+	makeExtern< unsigned int (*)() , ImGui::GetCurrentFocusScope , SimNode_ExtFuncCall , imguiTempFn>(lib,"GetCurrentFocusScope","ImGui::GetCurrentFocusScope")
+		->addToModule(*this, SideEffects::worstDefault);
+// from imgui_internal.h:3617:29
+	makeExtern< void (*)(const ImRect &,const ImRect &) , ImGui::RenderDragDropTargetRect , SimNode_ExtFuncCall , imguiTempFn>(lib,"RenderDragDropTargetRect","ImGui::RenderDragDropTargetRect")
+		->args({"bb","item_clip_rect"})
+		->addToModule(*this, SideEffects::worstDefault);
+// from imgui_internal.h:3719:29
+	makeExtern< void (*)(ImVec2,const char *,const char *,bool) , ImGui::RenderText , SimNode_ExtFuncCall , imguiTempFn>(lib,"RenderText","ImGui::RenderText")
+		->args({"pos","text","text_end","hide_text_after_hash"})
+		->arg_init(2,new ExprConstString(""))
+		->arg_init(3,new ExprConstBool(true))
+		->addToModule(*this, SideEffects::worstDefault);
+// from imgui_internal.h:3720:29
+	makeExtern< void (*)(ImVec2,const char *,const char *,float) , ImGui::RenderTextWrapped , SimNode_ExtFuncCall , imguiTempFn>(lib,"RenderTextWrapped","ImGui::RenderTextWrapped")
+		->args({"pos","text","text_end","wrap_width"})
+		->addToModule(*this, SideEffects::worstDefault);
+// from imgui_internal.h:3724:29
+	makeExtern< void (*)(ImVec2,ImVec2,unsigned int,bool,float) , ImGui::RenderFrame , SimNode_ExtFuncCall , imguiTempFn>(lib,"RenderFrame","ImGui::RenderFrame")
+		->args({"p_min","p_max","fill_col","border","rounding"})
+		->arg_init(3,new ExprConstBool(true))
+		->arg_init(4,new ExprConstFloat(0))
+		->addToModule(*this, SideEffects::worstDefault);
 // from imgui_internal.h:3725:29
 	makeExtern< void (*)(ImVec2,ImVec2,float) , ImGui::RenderFrameBorder , SimNode_ExtFuncCall , imguiTempFn>(lib,"RenderFrameBorder","ImGui::RenderFrameBorder")
 		->args({"p_min","p_max","rounding"})
@@ -64,26 +101,6 @@ void Module_dasIMGUI::initFunctions_31() {
 // from imgui_internal.h:3738:29
 	makeExtern< void (*)(ImDrawList *,const ImRect &,const ImRect &,unsigned int,float) , ImGui::RenderRectFilledWithHole , SimNode_ExtFuncCall , imguiTempFn>(lib,"RenderRectFilledWithHole","ImGui::RenderRectFilledWithHole")
 		->args({"draw_list","outer","inner","col","rounding"})
-		->addToModule(*this, SideEffects::worstDefault);
-// from imgui_internal.h:3767:29
-	makeExtern< void (*)(unsigned int) , ImGui::TreePushOverrideID , SimNode_ExtFuncCall , imguiTempFn>(lib,"TreePushOverrideID","ImGui::TreePushOverrideID")
-		->args({"id"})
-		->addToModule(*this, SideEffects::worstDefault);
-// from imgui_internal.h:3770:29
-	makeExtern< void (*)(ImGuiSelectionUserData) , ImGui::SetNextItemSelectionUserData , SimNode_ExtFuncCall , imguiTempFn>(lib,"SetNextItemSelectionUserData","ImGui::SetNextItemSelectionUserData")
-		->args({"selection_user_data"})
-		->addToModule(*this, SideEffects::worstDefault);
-// from imgui_internal.h:3807:29
-	makeExtern< void (*)(ImDrawList *,int,int,ImVec2,ImVec2,unsigned int,unsigned int) , ImGui::ShadeVertsLinearColorGradientKeepAlpha , SimNode_ExtFuncCall , imguiTempFn>(lib,"ShadeVertsLinearColorGradientKeepAlpha","ImGui::ShadeVertsLinearColorGradientKeepAlpha")
-		->args({"draw_list","vert_start_idx","vert_end_idx","gradient_p0","gradient_p1","col0","col1"})
-		->addToModule(*this, SideEffects::worstDefault);
-// from imgui_internal.h:3808:29
-	makeExtern< void (*)(ImDrawList *,int,int,const ImVec2 &,const ImVec2 &,const ImVec2 &,const ImVec2 &,bool) , ImGui::ShadeVertsLinearUV , SimNode_ExtFuncCall , imguiTempFn>(lib,"ShadeVertsLinearUV","ImGui::ShadeVertsLinearUV")
-		->args({"draw_list","vert_start_idx","vert_end_idx","a","b","uv_a","uv_b","clamp"})
-		->addToModule(*this, SideEffects::worstDefault);
-// from imgui_internal.h:3809:29
-	makeExtern< void (*)(ImDrawList *,int,int,const ImVec2 &,float,float,const ImVec2 &) , ImGui::ShadeVertsTransformPos , SimNode_ExtFuncCall , imguiTempFn>(lib,"ShadeVertsTransformPos","ImGui::ShadeVertsTransformPos")
-		->args({"draw_list","vert_start_idx","vert_end_idx","pivot_in","cos_a","sin_a","pivot_out"})
 		->addToModule(*this, SideEffects::worstDefault);
 }
 }

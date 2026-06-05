@@ -82,6 +82,7 @@ SET(DAS_IMGUI_BIND_SRC
     ${DAS_IMGUI_DIR}/src/dasIMGUI.func_29.cpp
     ${DAS_IMGUI_DIR}/src/dasIMGUI.func_30.cpp
     ${DAS_IMGUI_DIR}/src/dasIMGUI.func_31.cpp
+    ${DAS_IMGUI_DIR}/src/dasIMGUI.func_32.cpp
 )
 
 # imgui app source files

@@ -89,3 +89,52 @@ def public with_focus_scope(id : uint; blk : block) {
     invoke(blk)
     PopFocusScope()
 }
+
+def public with_popup_ex(id : uint; window_flags : ImGuiWindowFlags; blk : block) : bool {
+    //! `BeginPopupEx(id, window_flags)` / `EndPopup()` — only-on-true. Lower-level
+    //! `popup` for a precomputed ImGuiID (e.g. from ``with_override_id``/``GetID``);
+    //! the popup must already be open (``OpenPopupEx(id)``). Returns whether it is open.
+    let opened = BeginPopupEx(id, window_flags)
+    if (opened) {
+        invoke(blk)
+        EndPopup()
+    }
+    return opened
+}
+
+def public with_tooltip_ex(tooltip_flags : ImGuiTooltipFlags; window_flags : ImGuiWindowFlags; blk : block) : bool {
+    //! `BeginTooltipEx(tooltip_flags, window_flags)` / `EndTooltip()` — only-on-true.
+    //! Like `tooltip` but with flag control: ``ImGuiTooltipFlags.OverridePrevious``
+    //! replaces an already-submitted tooltip instead of appending. Returns whether it opened.
+    // ImGuiTooltipFlags is an internal enum (no arg-remap), so it binds as int;
+    // ImGuiWindowFlags is a public flag enum that binds as the enum type.
+    let opened = BeginTooltipEx(int(tooltip_flags), window_flags)
+    if (opened) {
+        invoke(blk)
+        EndTooltip()
+    }
+    return opened
+}
+
+def public with_tooltip_hidden(blk : block) : bool {
+    //! `BeginTooltipHidden()` / `EndTooltip()` — only-on-true. Begins an off-screen
+    //! tooltip used to MEASURE content (its rect) without showing it. Returns whether it opened.
+    let opened = BeginTooltipHidden()
+    if (opened) {
+        invoke(blk)
+        EndTooltip()
+    }
+    return opened
+}
+
+def public with_menu_ex(lbl : string; icon : string; enabled : bool; blk : block) : bool {
+    //! `BeginMenuEx(lbl, icon, enabled)` / `EndMenu()` — only-on-true. Like `menu`
+    //! but with an ``icon`` column (pass ``""`` for none); ``blk`` is the dropdown body.
+    //! Returns whether the dropdown is open.
+    let opened = BeginMenuEx(lbl, icon, enabled)
+    if (opened) {
+        invoke(blk)
+        EndMenu()
+    }
+    return opened
+}
