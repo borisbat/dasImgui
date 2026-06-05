@@ -140,14 +140,17 @@ def public with_menu_ex(lbl : string; icon : string; enabled : bool; blk : block
 }
 
 def public with_combo_popup(popup_id : uint; bb : float4; flags : ImGuiComboFlags; blk : block) : bool {
-    //! `BeginComboPopup(popup_id, bb, flags)` / `EndPopup()` — only-on-true. The
+    //! `BeginComboPopup(popup_id, bb, flags)` / `EndCombo()` — only-on-true. The
     //! low-level combo dropdown the public `combo` is built on: open the popup first
     //! (``OpenPopupEx(popup_id)``), pass the combo box's rect as ``bb``, and render the
     //! selectable items in ``blk``. Returns whether the dropdown is open.
+    // NB: close with EndCombo, NOT EndPopup — BeginComboPopup increments
+    // g.BeginComboDepth and only EndCombo decrements it (EndPopup would leak the
+    // depth, corrupting the recycled ##Combo_NN popup window on the next open).
     let opened = BeginComboPopup(popup_id, bb, flags)
     if (opened) {
         invoke(blk)
-        EndPopup()
+        EndCombo()
     }
     return opened
 }

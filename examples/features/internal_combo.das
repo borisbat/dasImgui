@@ -52,25 +52,40 @@ def update() {
     window(CMB_WIN, (text = "internal_combo", closable = false,
                      flags = ImGuiWindowFlags.None)) {
 
-        // ----- 1. low-level custom combo via BeginComboPopup -----
-        text("BeginComboPopup(popup_id, bb, flags): the low-level dropdown, built by hand.")
-        let cid = GetID("ll_combo")
-        if (button(LL_BOX, (text = "Fruit: {fruit_name(g_fruit)}   (click to open)"))) {
-            OpenPopupEx(cid, ImGuiPopupFlags.None)
-        }
-        // the box's rect positions the popup below it
-        let mn = GetItemRectMin()
-        let mx = GetItemRectMax()
-        let bb = float4(mn.x, mn.y, mx.x, mx.y)
-        with_combo_popup(cid, bb, ImGuiComboFlags.None) {
-            if (selectable_label(LL_A, "Apple", g_fruit == 0)) {
-                g_fruit = 0
+        // ----- 1. low-level custom combo: a box from ItemAdd + ButtonBehavior, its
+        //          dropdown from BeginComboPopup — exactly how the public combo is built.
+        //          The box id is stable; the current value is drawn into the box (so
+        //          changing the selection never shifts the box's id). -----
+        text("BeginComboPopup(popup_id, bb, flags): the low-level dropdown, built by hand")
+        text("  on ItemAdd + ButtonBehavior + the popup, exactly like the public combo.")
+        let box_id = GetID("ll_combo")
+        let popup_id = GetID("ll_combo_popup")
+        let bp = GetCursorScreenPos()
+        let box_bb = float4(bp.x, bp.y, bp.x + 240.0, bp.y + 32.0)
+        ItemSize(box_bb)
+        if (ItemAdd(box_bb, box_id)) {
+            var hovered = false
+            var held = false
+            let pressed = ButtonBehavior(box_bb, box_id, hovered, held, ImGuiButtonFlags.None)
+            // open only on a fresh press while closed (the public combo's own guard)
+            if (pressed && !IsPopupOpen(popup_id, ImGuiPopupFlags.None)) {
+                OpenPopupEx(popup_id, ImGuiPopupFlags.None)
             }
-            if (selectable_label(LL_B, "Banana", g_fruit == 1)) {
-                g_fruit = 1
+            let frame = held ? rgba(40u, 60u, 100u, 255u) : (hovered ? rgba(74u, 104u, 154u, 255u) : rgba(55u, 80u, 120u, 255u))
+            with_window_drawlist() $(var dl) {
+                dl |> add_rect_filled(ImVec2(box_bb.x, box_bb.y), ImVec2(box_bb.z, box_bb.w), frame, 3.0, ImDrawFlags.None)
+                dl |> add_text(ImVec2(box_bb.x + 8.0, box_bb.y + 7.0), rgba(235u, 240u, 250u, 255u), "Fruit: {fruit_name(g_fruit)}   v")
             }
-            if (selectable_label(LL_C, "Cherry", g_fruit == 2)) {
-                g_fruit = 2
+            with_combo_popup(popup_id, box_bb, ImGuiComboFlags.None) {
+                if (selectable_label(LL_A, "Apple", g_fruit == 0)) {
+                    g_fruit = 0
+                }
+                if (selectable_label(LL_B, "Banana", g_fruit == 1)) {
+                    g_fruit = 1
+                }
+                if (selectable_label(LL_C, "Cherry", g_fruit == 2)) {
+                    g_fruit = 2
+                }
             }
         }
         separator()
