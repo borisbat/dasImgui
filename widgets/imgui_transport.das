@@ -9,6 +9,7 @@ require dashv/dashv_boost public
 require daslib/json public
 require daslib/json_boost public
 require daslib/fio
+require math
 
 // Module overview lives in handmade/module-imgui_transport.rst.
 // Wait helpers are client-side only — server-side blocking would deadlock
@@ -19,24 +20,73 @@ typedef Transport = lambda<(action : string; var payload : JsonValue?) : JsonVal
 let DEFAULT_AWAIT_POLL_MS : uint = 50u
 let DEFAULT_AWAIT_TIMEOUT_SEC : float = 5.0f
 
+// Per-request HTTP timeout (seconds). Every client call below sets it so a wedged
+// host — one that accepts the connection but stops answering, e.g. the GLFW main
+// thread (which also serves the live API) blocked mid-command — fails in seconds
+// instead of blocking the caller all the way to the popen watchdog.
+let public DEFAULT_REQUEST_TIMEOUT_SEC : int = 10
+
+struct public HttpReply {
+    status : int        //!< HTTP status code; 0 when there was no response (connect refused or request timed out).
+    body : string       //!< Response body, or "" on no response.
+}
+
+def private clamp_timeout_sec(sec : int) : uint16 {
+    // libhv's HttpRequest.timeout is uint16 seconds; clamp so a negative or oversized
+    // value can't wrap into a near-zero or multi-hour timeout that defeats fail-fast.
+    return uint16(clamp(sec, 1, 65535))
+}
+
+def public http_get(url : string; timeout_sec : int = DEFAULT_REQUEST_TIMEOUT_SEC) : HttpReply {
+    //! GET ``url`` with a hard per-request timeout. ``status == 0`` means no response (refused / timed out).
+    var reply : HttpReply
+    with_http_request() $(var req) {
+        req.method = http_method.GET
+        req.url := url
+        req.timeout = clamp_timeout_sec(timeout_sec)
+        request(req) $(resp) {
+            if (resp != null) {
+                reply.status = int(resp.status_code)
+                reply.body = string(resp.body)
+            }
+        }
+    }
+    return reply
+}
+
+def public http_post(url, body : string; timeout_sec : int = DEFAULT_REQUEST_TIMEOUT_SEC) : HttpReply {
+    //! POST ``body`` as ``application/json`` to ``url`` with a hard per-request timeout.
+    var reply : HttpReply
+    with_http_request() $(var req) {
+        req.method = http_method.POST
+        req.url := url
+        req.body := body
+        req.timeout = clamp_timeout_sec(timeout_sec)
+        set_content_type(req, "application/json")
+        request(req) $(resp) {
+            if (resp != null) {
+                reply.status = int(resp.status_code)
+                reply.body = string(resp.body)
+            }
+        }
+    }
+    return reply
+}
+
 def public live_api_transport(url : string) : Transport {
-    //! Default transport: POSTs ``{"name": action, "args": payload}`` to ``<url>/command`` and parses the JSON response. ``url`` is captured by value, so the returned lambda is safe to reuse.
+    //! Default transport: POSTs ``{"name": action, "args": payload}`` to ``<url>/command`` and parses
+    //! the JSON response. ``url`` is captured by value, so the returned lambda is safe to reuse. Uses
+    //! ``http_post``'s per-request timeout, so a wedged host yields null rather than blocking the body.
     return <- @ capture(= url) (action : string; var payload : JsonValue ?) : JsonValue ? {
         var body_tab : table<string; JsonValue?>
         body_tab |> insert("name", JV(action))
         if (payload != null) {
             body_tab |> insert("args", payload)
         }
-        let body = write_json(JV(body_tab))
-        var out : string
-        POST("{url}/command", body, {"Content-Type" => "application/json"}) $(resp) {
-            if (resp != null) {
-                out = string(resp.body)
-            }
-        }
-        if (empty(out)) return null
+        let reply = http_post("{url}/command", write_json(JV(body_tab)))
+        if (empty(reply.body)) return null
         var err_str : string
-        return read_json(out, err_str)
+        return read_json(reply.body, err_str)
     }
 }
 

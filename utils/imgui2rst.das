@@ -181,6 +181,7 @@ def document_module_imgui_transport() {
         group_by_regex("Send / receive",         mod, %regex~^(send_imgui_command|receive_imgui_command|receive_imgui_snapshot|post_command)$%%),
         group_by_regex("Awaiting",               mod, %regex~^(await_imgui|await_imgui_frame|send_with_await)$%%),
         group_by_regex("Framing / encoding",     mod, %regex~^(encode_|decode_|frame_).*%%),
+        group_by_regex("Raw HTTP",               mod, %regex~^(http_get|http_post|HttpReply)$%%),
         hide_group(group_by_regex("Internal",    mod, %regex~^(_|priv_).*%%))
     )
     document("Transport — pluggable lambda-based IPC for imgui commands", mod, "imgui_transport.rst", groups)
