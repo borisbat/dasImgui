@@ -19,7 +19,7 @@ let FEATURE = "modules/dasImgui/examples/features/edit_tab_item.das"
 [test]
 def test_edit_tab_item_smoke(t : T?) {
     with_imgui_app(FEATURE) $(d) {
-        var snap = wait_for_widget(d, "MAIN_WIN/BAR/TAB_A", 15.0f)
+        var snap = wait_for_render(d, "MAIN_WIN/BAR/TAB_A", 15.0f)
         t |> success(snap != null, "TAB_A registers")
         if (snap == null) return
 

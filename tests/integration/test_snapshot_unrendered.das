@@ -24,7 +24,7 @@ let SNAPSHOT_UNRENDERED_FEATURE = "modules/dasImgui/examples/features/snapshot_u
 [test]
 def test_unrendered_widget_visible(t : T?) {
     with_imgui_app(SNAPSHOT_UNRENDERED_FEATURE) $(d) {
-        var snap = wait_for_widget(d, "MAIN_WIN/VISIBLE_VAL", 15.0f)
+        var snap = wait_for_visible(d, "MAIN_WIN/VISIBLE_VAL", 15.0f)
         t |> success(snap != null, "VISIBLE_VAL appears in registry")
         if (snap == null) return
 
