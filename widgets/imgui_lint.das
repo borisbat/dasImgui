@@ -151,7 +151,13 @@ let private ALLOWED_IMGUI : table<string> <- {
     // push a raw override onto the ID stack. Bound via bind_imgui.das
     // internal_allow_func. GetActiveID is bound separately (das::GetActiveID wrapper).
     "GetFocusID", "GetHoveredID", "KeepAliveID", "MarkItemEdited",
-    "PushOverrideID", "GetIDWithSeed", "TreePushOverrideID"
+    "PushOverrideID", "GetIDWithSeed", "TreePushOverrideID",
+    // Focus-scope + activation stack cherry-picked from imgui_internal.h.
+    // Host-agnostic: push/query a focus scope (nav + multi-select grouping),
+    // focus/activate an item by ID, or set the next item's selection user-data.
+    // Bound via bind_imgui.das internal_allow_func; v2 guard with_focus_scope.
+    "PushFocusScope", "PopFocusScope", "GetCurrentFocusScope",
+    "FocusItem", "ActivateItemByID", "SetNextItemSelectionUserData"
 }
 
 class ImguiLintVisitor : AstVisitor {

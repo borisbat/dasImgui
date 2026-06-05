@@ -8,8 +8,8 @@ require strings
 //          helpers. Cherry-picked into the v2 binding (bind_imgui.das
 //          internal_allow_func): GetIDWithSeed, GetFocusID, GetHoveredID,
 //          KeepAliveID, MarkItemEdited, PushOverrideID, TreePushOverrideID.
-//          Host-agnostic — they hash/seed an ImGuiID, query the active item ID,
-//          or push a raw ID onto the stack, all without v2 host state. This is
+//          Host-agnostic — they hash/seed an ImGuiID, query the hovered/focused
+//          item ID, or push a raw ID onto the stack, all without v2 host state. This is
 //          the "binding is usable" gate: it calls the real bound API at runtime.
 // SHOWS:   GetIDWithSeed(n, seed) (same int, different seed => different ID);
 //          with_override_id (the new PushOverrideID scope guard — GetID under a

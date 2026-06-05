@@ -176,14 +176,28 @@ class ImguiGen : CppGenBind {
             // ID-stack seed / override helpers. Pure ImGuiID(uint)/const char*/int
             // in, ImGuiID/void out — no internal struct, enum, or nullable pointer.
             // GetIDWithSeed's two-pointer overload mirrors the public GetID(begin,end):
-            // both halves are required, so it is NOT a text_end wrapper case. One
-            // allow-list entry covers both GetIDWithSeed overloads (gate keys on the
-            // bare spelling). GetActiveID is deliberately NOT here — it is already
+            // both halves are required, so it is NOT a text_end wrapper case. FOOTGUN:
+            // begin/end must point into the SAME buffer — two distinct das strings
+            // compute a garbage end-begin (OOB read in ImGui's hash loop), exactly
+            // like public GetID(begin,end) (bound for parity, never called in-tree).
+            // For a seeded string ID from das, use with_override_id(seed){GetID(str)}.
+            // One allow-list entry covers both GetIDWithSeed overloads (gate keys on
+            // the bare spelling). GetActiveID is deliberately NOT here — it is already
             // bound via the das::GetActiveID manual wrapper (Phase 2.1, predates this
             // allow-list); re-adding it would double-bind "GetActiveID".
             "ImGui::GetFocusID", "ImGui::GetHoveredID",
             "ImGui::KeepAliveID", "ImGui::MarkItemEdited", "ImGui::PushOverrideID",
-            "ImGui::GetIDWithSeed", "ImGui::TreePushOverrideID"
+            "ImGui::GetIDWithSeed", "ImGui::TreePushOverrideID",
+            // Focus-scope + activation stack. Pure ImGuiID(uint)/int64/void — no
+            // internal struct/enum/pointer. PushFocusScope/PopFocusScope are a
+            // stack (v2 guard with_focus_scope, imgui_scope_builtin.das);
+            // GetCurrentFocusScope is inline (binds via the makeExtern
+            // address-taking path, like GetFocusID). SetNextItemSelectionUserData
+            // takes ImGuiSelectionUserData (typedef ImS64 -> int64 workhorse). The
+            // SetActiveID/SetFocusID/FocusTopMostWindowUnderOne neighbors take
+            // ImGuiWindow* and are correctly out of scope.
+            "ImGui::PushFocusScope", "ImGui::PopFocusScope", "ImGui::GetCurrentFocusScope",
+            "ImGui::FocusItem", "ImGui::ActivateItemByID", "ImGui::SetNextItemSelectionUserData"
         }
         internal_allow_enum <- {
             "ImGuiItemFlags_", "ImGuiNavHighlightFlags_"
