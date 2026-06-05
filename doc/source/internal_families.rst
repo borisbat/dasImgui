@@ -54,7 +54,7 @@ glyphs, frames, and decorations the widgets render with.
 * Current-window: ``RenderFrame``, ``RenderFrameBorder``, ``RenderText``.
 * Rect-taking (``ImRect`` = ``float4``): ``RenderRectFilledRangeH``,
   ``RenderRectFilledWithHole``, ``RenderDragDropTargetRect``, ``RenderNavHighlight``
-  (pulls the ``ImGuiNavHighlightFlags_`` enum, as ``int``).
+  (pulls the ``ImGuiNavHighlightFlags`` enum, as ``int``).
 * Clipped text (C++ wrappers, ``text_end`` pinned to ``nullptr``):
   ``RenderTextClipped``, ``RenderTextClippedEx``, ``RenderTextEllipsis``.
 
@@ -170,11 +170,11 @@ Behavior-flag buttons
 =====================
 
 The ``*Ex`` buttons that take a behavior-flags argument. Their useful flag values
-(``Repeat``, ``PressedOnClick``, …) live in the internal ``ImGuiButtonFlagsPrivate_``
+(``Repeat``, ``PressedOnClick``, …) live in the internal ``ImGuiButtonFlagsPrivate``
 enum, combined with the public ``ImGuiButtonFlags`` via the cross-enum ``|`` rail in
 ``imgui_enums.das`` (both halves are one int-backed flag set).
 
-**Bound** (raw): ``ButtonEx``, ``ArrowButtonEx``; enum ``ImGuiButtonFlagsPrivate_``.
+**Bound** (raw): ``ButtonEx``, ``ArrowButtonEx``; enum ``ImGuiButtonFlagsPrivate``.
 
 .. code-block:: das
 
@@ -243,7 +243,7 @@ enums ``ImGuiSeparatorFlags`` (Horizontal / Vertical / SpanAllColumns) and
 ``ImGuiTextFlags`` (NoWidthForLargeClippedText), both as ``int`` args.
 
 **Bound**: ``SeparatorEx`` (raw); ``TextEx``, ``SeparatorTextEx`` (C++ wrappers);
-enums ``ImGuiSeparatorFlags_``, ``ImGuiTextFlags_``.
+enums ``ImGuiSeparatorFlags``, ``ImGuiTextFlags``.
 
 .. code-block:: das
 
@@ -261,11 +261,11 @@ Combo internals
 
 The low-level combo dropdown the public ``combo`` is built on, plus the custom-preview
 path. Surfaced as three scope guards; the custom-preview rail folds the lone internal
-``ImGuiComboFlagsPrivate_`` flag (``CustomPreview``) into the public flags by value.
+``ImGuiComboFlagsPrivate`` flag (``CustomPreview``) into the public flags by value.
 
 **Bound**: ``BeginComboPopup``, ``BeginComboPreview``, ``EndComboPreview`` →
 ``with_combo_popup`` / ``with_custom_preview_combo`` / ``with_combo_preview`` guards;
-enum ``ImGuiComboFlagsPrivate_``.
+enum ``ImGuiComboFlagsPrivate``.
 
 .. code-block:: das
 
@@ -289,7 +289,7 @@ public ``End*`` as unbalance-proof guards; the rest are raw stack-control one-sh
 **Bound**: ``BeginPopupEx``, ``BeginTooltipEx``, ``BeginTooltipHidden``, ``BeginMenuEx``
 → ``with_popup_ex`` / ``with_tooltip_ex`` / ``with_tooltip_hidden`` / ``with_menu_ex``
 guards; ``OpenPopupEx``, ``ClosePopupToLevel``, ``ClosePopupsExceptModals``,
-``IsPopupOpen`` (raw-ID overload), ``MenuItemEx`` (raw); enum ``ImGuiTooltipFlags_``.
+``IsPopupOpen`` (raw-ID overload), ``MenuItemEx`` (raw); enum ``ImGuiTooltipFlags``.
 
 .. code-block:: das
 
