@@ -189,7 +189,11 @@ let private ALLOWED_IMGUI : table<string> <- {
     // Axis-aligned interactive layout primitives. Scrollbar(axis) is raw
     // (internal_allow_func); ScrollbarEx (ImS64& scroll out-param) and
     // SplitterBehavior (float& size1/size2 out-params) are manual C++ wrappers.
-    "Scrollbar", "ScrollbarEx", "SplitterBehavior"
+    "Scrollbar", "ScrollbarEx", "SplitterBehavior",
+    // Tree-node state machine. TreeNodeBehavior (label_end -> nullptr wrapper) is the
+    // open/closed core; TreeNodeSetOpen / TreeNodeUpdateNextOpen (raw) set / resolve
+    // a node's open state by ID. Pair with the already-allowed TreePushOverrideID.
+    "TreeNodeBehavior", "TreeNodeSetOpen", "TreeNodeUpdateNextOpen"
 }
 
 class ImguiLintVisitor : AstVisitor {

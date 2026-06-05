@@ -370,6 +370,13 @@ namespace das {
             hover_extend, hover_visibility_delay, bg_col);
     }
 
+    // imgui_internal.h TreeNodeBehavior — the tree-node open/closed state machine.
+    // label_end is pinned to nullptr ("whole string"); a daslang string can't pass
+    // the NULL these need (same class as the RenderText*W text helpers above).
+    bool TreeNodeBehaviorW( ImGuiID id, ImGuiTreeNodeFlags_ flags, const char* label ) {
+        return ImGui::TreeNodeBehavior(id, flags, label, nullptr);
+    }
+
     // ImColor
 
     ImColor HSV(float h, float s, float v, float a) {
@@ -614,6 +621,12 @@ namespace das {
                     ->arg_init(7,new ExprConstFloat(0.0f))
                     ->arg_init(8,new ExprConstFloat(0.0f))
                     ->arg_init(9,new ExprConstUInt(0));
+        // imgui_internal.h TreeNodeBehavior — wrapper pins label_end to nullptr (a das
+        // string can't express the NULL it needs). flags default ImGuiTreeNodeFlags.None.
+        addExtern<DAS_BIND_FUN(das::TreeNodeBehaviorW), SimNode_ExtFuncCall, imguiTempFn>(*this, lib, "TreeNodeBehavior",
+            SideEffects::worstDefault, "das::TreeNodeBehaviorW")
+                ->args({"id","flags","label"})
+                    ->arg_init(1,new ExprConstEnumeration(0,makeType<ImGuiTreeNodeFlags_>(lib)));
         // variadic functions
         addExtern<DAS_BIND_FUN(das::Text)>(*this,lib,"Text",
             SideEffects::worstDefault,"das::Text");

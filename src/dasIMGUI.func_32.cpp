@@ -46,6 +46,15 @@ void Module_dasIMGUI::initFunctions_32() {
 	makeExtern< void (*)(unsigned int) , ImGui::TreePushOverrideID , SimNode_ExtFuncCall , imguiTempFn>(lib,"TreePushOverrideID","ImGui::TreePushOverrideID")
 		->args({"id"})
 		->addToModule(*this, SideEffects::worstDefault);
+// from imgui_internal.h:3768:29
+	makeExtern< void (*)(unsigned int,bool) , ImGui::TreeNodeSetOpen , SimNode_ExtFuncCall , imguiTempFn>(lib,"TreeNodeSetOpen","ImGui::TreeNodeSetOpen")
+		->args({"id","open"})
+		->addToModule(*this, SideEffects::worstDefault);
+// from imgui_internal.h:3769:29
+	makeExtern< bool (*)(unsigned int,int) , ImGui::TreeNodeUpdateNextOpen , SimNode_ExtFuncCall , imguiTempFn>(lib,"TreeNodeUpdateNextOpen","ImGui::TreeNodeUpdateNextOpen")
+		->args({"id","flags"})
+		->arg_type(1,makeType<ImGuiTreeNodeFlags_>(lib))
+		->addToModule(*this, SideEffects::worstDefault);
 // from imgui_internal.h:3770:29
 	makeExtern< void (*)(ImGuiSelectionUserData) , ImGui::SetNextItemSelectionUserData , SimNode_ExtFuncCall , imguiTempFn>(lib,"SetNextItemSelectionUserData","ImGui::SetNextItemSelectionUserData")
 		->args({"selection_user_data"})
