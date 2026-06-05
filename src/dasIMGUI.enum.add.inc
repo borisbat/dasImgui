@@ -43,6 +43,7 @@ addEnumeration(new Enumeration_ImGuiComboFlagsPrivate_());
 addEnumeration(new Enumeration_ImGuiSeparatorFlags_());
 addEnumeration(new Enumeration_ImGuiTextFlags_());
 addEnumeration(new Enumeration_ImGuiTooltipFlags_());
+addEnumeration(new Enumeration_ImGuiLogType());
 addEnumeration(new Enumeration_ImGuiAxis());
 addEnumeration(new Enumeration_ImGuiNavHighlightFlags_());
 addEnumFlagOps<ImGuiWindowFlags_>(*this,lib,"ImGuiWindowFlags_");

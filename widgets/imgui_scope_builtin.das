@@ -183,3 +183,14 @@ def public with_combo_preview(blk : block) : bool {
     }
     return opened
 }
+
+def public with_log(log_type : ImGuiLogType; auto_open_depth : int; blk : block) {
+    //! `LogBegin(log_type, auto_open_depth)` / `LogFinish()`. Captures the rendered text
+    //! of every widget submitted in ``blk`` (plus any manual ``LogRenderedText``) to the
+    //! chosen target — ``ImGuiLogType.TTY`` / ``File`` / ``Clipboard`` / ``Buffer``.
+    //! ``auto_open_depth`` is the tree depth to auto-expand (-1 = the default).
+    //! Do NOT nest: LogBegin asserts that logging is not already active.
+    LogBegin(log_type, auto_open_depth)
+    invoke(blk)
+    LogFinish()
+}

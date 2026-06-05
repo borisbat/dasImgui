@@ -60,6 +60,7 @@ namespace das {
     DAS_MOD_API bool TreeNodeBehaviorW( ImGuiID id, ImGuiTreeNodeFlags_ flags, const char* label );
     DAS_MOD_API void TextExW( const char* text, ImGuiTextFlags flags = 0 );
     DAS_MOD_API void SeparatorTextExW( ImGuiID id, const char* label, float extra_width = 0.0f );
+    DAS_MOD_API void LogRenderedTextW( const char* text );
     DAS_MOD_API ImColor HSV(float h, float s, float v, float a = 1.0f);
     DAS_MOD_API void ImGTB_Append ( ImGuiTextBuffer & buf, const char * txt );
     DAS_MOD_API int ImGTB_At ( ImGuiTextBuffer & buf, int32_t index );

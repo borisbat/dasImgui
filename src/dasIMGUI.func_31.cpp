@@ -12,6 +12,14 @@
 namespace das {
 #include "dasIMGUI.func.aot.decl.inc"
 void Module_dasIMGUI::initFunctions_31() {
+// from imgui_internal.h:3414:29
+	makeExtern< bool (*)(int,int) , ImGui::BeginTooltipEx , SimNode_ExtFuncCall , imguiTempFn>(lib,"BeginTooltipEx","ImGui::BeginTooltipEx")
+		->args({"tooltip_flags","extra_window_flags"})
+		->arg_type(1,makeType<ImGuiWindowFlags_>(lib))
+		->addToModule(*this, SideEffects::worstDefault);
+// from imgui_internal.h:3415:29
+	makeExtern< bool (*)() , ImGui::BeginTooltipHidden , SimNode_ExtFuncCall , imguiTempFn>(lib,"BeginTooltipHidden","ImGui::BeginTooltipHidden")
+		->addToModule(*this, SideEffects::worstDefault);
 // from imgui_internal.h:3425:29
 	makeExtern< bool (*)(const char *,const char *,bool) , ImGui::BeginMenuEx , SimNode_ExtFuncCall , imguiTempFn>(lib,"BeginMenuEx","ImGui::BeginMenuEx")
 		->args({"label","icon","enabled"})
@@ -93,16 +101,6 @@ void Module_dasIMGUI::initFunctions_31() {
 	makeExtern< void (*)(ImVec2,float,int,unsigned int,unsigned int,unsigned int) , ImGui::RenderMouseCursor , SimNode_ExtFuncCall , imguiTempFn>(lib,"RenderMouseCursor","ImGui::RenderMouseCursor")
 		->args({"pos","scale","mouse_cursor","col_fill","col_border","col_shadow"})
 		->arg_type(2,makeType<ImGuiMouseCursor_>(lib))
-		->addToModule(*this, SideEffects::worstDefault);
-// from imgui_internal.h:3732:29
-	makeExtern< void (*)(ImDrawList *,ImVec2,unsigned int,int,float) , ImGui::RenderArrow , SimNode_ExtFuncCall , imguiTempFn>(lib,"RenderArrow","ImGui::RenderArrow")
-		->args({"draw_list","pos","col","dir","scale"})
-		->arg_type(3,makeType<ImGuiDir_>(lib))
-		->arg_init(4,new ExprConstFloat(1))
-		->addToModule(*this, SideEffects::worstDefault);
-// from imgui_internal.h:3733:29
-	makeExtern< void (*)(ImDrawList *,ImVec2,unsigned int) , ImGui::RenderBullet , SimNode_ExtFuncCall , imguiTempFn>(lib,"RenderBullet","ImGui::RenderBullet")
-		->args({"draw_list","pos","col"})
 		->addToModule(*this, SideEffects::worstDefault);
 }
 }

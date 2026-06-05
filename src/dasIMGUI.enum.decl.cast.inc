@@ -44,5 +44,6 @@ DAS_BIND_ENUM_CAST(ImGuiComboFlagsPrivate_);
 DAS_BIND_ENUM_CAST(ImGuiSeparatorFlags_);
 DAS_BIND_ENUM_CAST(ImGuiTextFlags_);
 DAS_BIND_ENUM_CAST(ImGuiTooltipFlags_);
+DAS_BIND_ENUM_CAST(ImGuiLogType);
 DAS_BIND_ENUM_CAST(ImGuiAxis);
 DAS_BIND_ENUM_CAST(ImGuiNavHighlightFlags_);

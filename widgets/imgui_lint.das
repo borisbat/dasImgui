@@ -198,7 +198,12 @@ let private ALLOWED_IMGUI : table<string> <- {
     // separator with axis/span flags + thickness; TextEx (text_end -> nullptr wrapper,
     // ImGuiTextFlags-as-int) and SeparatorTextEx (label_end -> nullptr wrapper) are
     // the manual C++ wrappers.
-    "SeparatorEx", "TextEx", "SeparatorTextEx"
+    "SeparatorEx", "TextEx", "SeparatorTextEx",
+    // Logging/capture. LogSetNextTextDecoration wraps the next captured text (raw);
+    // LogRenderedText (ref_pos / text_end -> nullptr wrapper) injects text into the active
+    // log. LogBegin is guard-only (with_log, imgui_scope_builtin.das). GetClipboardText
+    // reads back a Clipboard-type capture — a host-agnostic IO query.
+    "LogSetNextTextDecoration", "LogRenderedText", "GetClipboardText"
 }
 
 class ImguiLintVisitor : AstVisitor {

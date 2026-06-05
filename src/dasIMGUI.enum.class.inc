@@ -1111,6 +1111,21 @@ public:
 	}
 };
 
+// from imgui_internal.h:984:6
+class Enumeration_ImGuiLogType : public das::Enumeration {
+public:
+	Enumeration_ImGuiLogType() : das::Enumeration("ImGuiLogType") {
+		external = true;
+		cppName = "ImGuiLogType";
+		baseType = (das::Type) das::ToBasicType<int>::type;
+		addIEx("None", "ImGuiLogType_None", int64_t(ImGuiLogType::ImGuiLogType_None), das::LineInfo());
+		addIEx("TTY", "ImGuiLogType_TTY", int64_t(ImGuiLogType::ImGuiLogType_TTY), das::LineInfo());
+		addIEx("File", "ImGuiLogType_File", int64_t(ImGuiLogType::ImGuiLogType_File), das::LineInfo());
+		addIEx("Buffer", "ImGuiLogType_Buffer", int64_t(ImGuiLogType::ImGuiLogType_Buffer), das::LineInfo());
+		addIEx("Clipboard", "ImGuiLogType_Clipboard", int64_t(ImGuiLogType::ImGuiLogType_Clipboard), das::LineInfo());
+	}
+};
+
 // from imgui_internal.h:994:6
 class Enumeration_ImGuiAxis : public das::Enumeration {
 public:

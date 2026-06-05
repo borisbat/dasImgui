@@ -12,6 +12,16 @@
 namespace das {
 #include "dasIMGUI.func.aot.decl.inc"
 void Module_dasIMGUI::initFunctions_32() {
+// from imgui_internal.h:3732:29
+	makeExtern< void (*)(ImDrawList *,ImVec2,unsigned int,int,float) , ImGui::RenderArrow , SimNode_ExtFuncCall , imguiTempFn>(lib,"RenderArrow","ImGui::RenderArrow")
+		->args({"draw_list","pos","col","dir","scale"})
+		->arg_type(3,makeType<ImGuiDir_>(lib))
+		->arg_init(4,new ExprConstFloat(1))
+		->addToModule(*this, SideEffects::worstDefault);
+// from imgui_internal.h:3733:29
+	makeExtern< void (*)(ImDrawList *,ImVec2,unsigned int) , ImGui::RenderBullet , SimNode_ExtFuncCall , imguiTempFn>(lib,"RenderBullet","ImGui::RenderBullet")
+		->args({"draw_list","pos","col"})
+		->addToModule(*this, SideEffects::worstDefault);
 // from imgui_internal.h:3734:29
 	makeExtern< void (*)(ImDrawList *,ImVec2,unsigned int,float) , ImGui::RenderCheckMark , SimNode_ExtFuncCall , imguiTempFn>(lib,"RenderCheckMark","ImGui::RenderCheckMark")
 		->args({"draw_list","pos","col","sz"})
