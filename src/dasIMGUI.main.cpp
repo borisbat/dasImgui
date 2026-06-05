@@ -336,6 +336,23 @@ namespace das {
         ImGui::RenderTextEllipsis(draw_list, pos_min, pos_max, clip_max_x, ellipsis_max_x, text, nullptr, nullptr);
     }
 
+    // imgui_internal.h ItemAdd — two overloads so the optional separate nav rect
+    // stays a clean by-value arg instead of a nullable pointer at the call site.
+    bool ItemAddW( const ImRect& bb, ImGuiID id, ImGuiItemFlags extra_flags ) {
+        return ImGui::ItemAdd(bb, id, nullptr, extra_flags);
+    }
+
+    bool ItemAddNavW( const ImRect& bb, ImGuiID id, const ImRect& nav_bb, ImGuiItemFlags extra_flags ) {
+        return ImGui::ItemAdd(bb, id, &nav_bb, extra_flags);
+    }
+
+    // imgui_internal.h ButtonBehavior — out_hovered / out_held exposed as bool&
+    // (das passes plain vars; write-back works, registered SideEffects::worstDefault
+    // below since the call also touches ImGui global hover / active-id state).
+    bool ButtonBehaviorW( const ImRect& bb, ImGuiID id, bool& out_hovered, bool& out_held, ImGuiButtonFlags_ flags ) {
+        return ImGui::ButtonBehavior(bb, id, &out_hovered, &out_held, flags);
+    }
+
     // ImColor
 
     ImColor HSV(float h, float s, float v, float a) {
@@ -547,6 +564,24 @@ namespace das {
         addExtern<DAS_BIND_FUN(das::RenderTextEllipsisW), SimNode_ExtFuncCall, imguiTempFn>(*this, lib, "RenderTextEllipsis",
             SideEffects::worstDefault, "das::RenderTextEllipsisW")
                 ->args({"draw_list","pos_min","pos_max","clip_max_x","ellipsis_max_x","text"});
+        // imgui_internal.h custom-widget primitives. ItemAdd is two overloads —
+        // without / with an explicit nav rect. extra_flags defaults, so the das
+        // calls are ItemAdd(bb,id[,flags]) and ItemAdd(bb,id,nav_bb[,flags]); at
+        // three args the nav overload is picked by float4 nav_bb vs int flags.
+        // ButtonBehavior returns its two state outputs through bool& args.
+        // extra_flags is the internal ImGuiItemFlags (binds as int); flags is the
+        // public ImGuiButtonFlags (das enum, combines via the imgui_enums.das `|` rail).
+        addExtern<DAS_BIND_FUN(das::ItemAddW), SimNode_ExtFuncCall, imguiTempFn>(*this, lib, "ItemAdd",
+            SideEffects::worstDefault, "das::ItemAddW")
+                ->args({"bb","id","extra_flags"})
+                    ->arg_init(2,new ExprConstInt(0));
+        addExtern<DAS_BIND_FUN(das::ItemAddNavW), SimNode_ExtFuncCall, imguiTempFn>(*this, lib, "ItemAdd",
+            SideEffects::worstDefault, "das::ItemAddNavW")
+                ->args({"bb","id","nav_bb","extra_flags"})
+                    ->arg_init(3,new ExprConstInt(0));
+        addExtern<DAS_BIND_FUN(das::ButtonBehaviorW), SimNode_ExtFuncCall, imguiTempFn>(*this, lib, "ButtonBehavior",
+            SideEffects::worstDefault, "das::ButtonBehaviorW")
+                ->args({"bb","id","out_hovered","out_held","flags"});
         // variadic functions
         addExtern<DAS_BIND_FUN(das::Text)>(*this,lib,"Text",
             SideEffects::worstDefault,"das::Text");

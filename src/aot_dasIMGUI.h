@@ -49,6 +49,10 @@ namespace das {
         const char* text, const ImVec2& align, const ImRect* clip_rect );
     DAS_MOD_API void RenderTextEllipsisW( ImDrawList* draw_list, const ImVec2& pos_min, const ImVec2& pos_max,
         float clip_max_x, float ellipsis_max_x, const char* text );
+    // imgui_internal.h custom-widget primitives — ItemAdd (two overloads) + ButtonBehavior.
+    DAS_MOD_API bool ItemAddW( const ImRect& bb, ImGuiID id, ImGuiItemFlags extra_flags = 0 );
+    DAS_MOD_API bool ItemAddNavW( const ImRect& bb, ImGuiID id, const ImRect& nav_bb, ImGuiItemFlags extra_flags = 0 );
+    DAS_MOD_API bool ButtonBehaviorW( const ImRect& bb, ImGuiID id, bool& out_hovered, bool& out_held, ImGuiButtonFlags_ flags );
     DAS_MOD_API ImColor HSV(float h, float s, float v, float a = 1.0f);
     DAS_MOD_API void ImGTB_Append ( ImGuiTextBuffer & buf, const char * txt );
     DAS_MOD_API int ImGTB_At ( ImGuiTextBuffer & buf, int32_t index );
