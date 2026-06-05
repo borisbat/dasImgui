@@ -175,7 +175,11 @@ let private ALLOWED_IMGUI : table<string> <- {
     // a rect (ItemHoverable), test whether it is clipped (IsClippedEx), compute
     // which corners to round for a rect inset in another (CalcRoundingFlagsForRectInRect).
     // Bound via bind_imgui.das internal_allow_func.
-    "ItemHoverable", "IsClippedEx", "CalcRoundingFlagsForRectInRect"
+    "ItemHoverable", "IsClippedEx", "CalcRoundingFlagsForRectInRect",
+    // Internal *Ex buttons with behavior flags (Repeat / PressedOnClick / …, from the
+    // ImGuiButtonFlagsPrivate_ enum combined via the imgui_enums.das cross-enum `|`).
+    // Raw escape hatches next to the wrapped `button` / `arrow_button` widgets.
+    "ButtonEx", "ArrowButtonEx"
 }
 
 class ImguiLintVisitor : AstVisitor {
