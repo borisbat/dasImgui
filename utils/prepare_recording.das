@@ -76,8 +76,9 @@ class ScanVisitor : AstVisitor {
                         spoken = !empty(voice) ? voice : caption))
                 }
             }
-        } elif (name == "with_recording_app" || name == "with_node_editor_recording_app") {
-            // 2nd positional argument is the APNG basename
+        } elif (ends_with(name, "_recording_app")) {
+            // with_recording_app or any consumer wrapper (with_node_editor_recording_app,
+            // with_implot_recording_app, ...) — 2nd positional argument is the APNG basename
             if (length(expr.arguments) >= 2) {
                 let s = const_str(expr.arguments[1])
                 if (!empty(s)) {
