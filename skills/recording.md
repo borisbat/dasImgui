@@ -89,6 +89,13 @@ Needs a running TTS server at `--base-url` (default `http://127.0.0.1:8880/v1`).
     --apng <dasimgui>/doc/source/_static/tutorials/buttons.apng
 ```
 
+Mostly-static recordings (a plot with a brief gesture) land ~0.5–0.8 MB at the defaults. A
+**full-motion** clip (e.g. a realtime scroll, where every frame is a full-frame change) defeats
+H.264 inter-frame compression and runs several MB. Shrink it the lossless way — add
+`--preset veryslow` (better compression at the **same** quality), **not** by raising `--crf`
+(which trades away the quality the clip needs). `--crf` stays at the clean default `23`; both are
+knobs only for this case.
+
 Only the resulting `.mp4` is tracked. The `.apng`, `voiceover/*.wav`, `*.manifest.json`, `*.sidecar.json`, `*_music.wav`, and `*.mp4.ffmpeg.txt` are all intermediates and gitignored.
 
 ## Mental model
