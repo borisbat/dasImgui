@@ -123,7 +123,19 @@ def test_imgui_synth_ctrl_shortcuts(t : T?) {
                 let v = snap?["globals"]?["MAIN_WIN/NAME_INPUT"]?["payload"]?["value"] ?? ""
                 return v == "abc"
             }
-            t |> success(typed != null, "NAME_INPUT.value == \"abc\" before chord")
+            // [PROBE — remove after diagnosis] capture the actual state when this fails on CI:
+            // disambiguates activation-race (active_widget != NAME_INPUT) vs keys-lost (val="",
+            // timeline drained q=N/N) vs insert-not-replace (val="Name...") vs stall (key_playing,
+            // q stuck at 0).
+            let dbg_snap = snapshot(d)
+            let dbg_val = dbg_snap?["globals"]?["MAIN_WIN/NAME_INPUT"]?["payload"]?["value"] ?? "?"
+            let dbg_aw = dbg_snap?["io"]?["active_widget"] ?? "none"
+            let dbg_focus = dbg_snap?["globals"]?["MAIN_WIN/NAME_INPUT"]?["focus"] ?? false
+            let dbg_ks = post_command(d, "imgui_key_status", null)
+            let dbg_kp = dbg_ks?["playing"] ?? true
+            let dbg_qi = dbg_ks?["queue_idx"] ?? -1
+            let dbg_qt = dbg_ks?["queue_total"] ?? -1
+            t |> success(typed != null, "NAME_INPUT.value == \"abc\" before chord [val='{dbg_val}' active_widget={dbg_aw} focus={dbg_focus} key_playing={dbg_kp} q={dbg_qi}/{dbg_qt}]")
 
             // The value showing "abc" proves the chars landed, but the key_type
             // timeline's final per-char delay may still be ticking; let it reach
