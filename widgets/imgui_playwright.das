@@ -348,6 +348,21 @@ def public wait_for_render(app : ImguiApp; widget_ident : string;
     return wait_for_visible(app, widget_ident, timeout_sec)
 }
 
+def public wait_for_hover(app : ImguiApp; widget_ident : string; expected : bool = true;
+                          timeout_sec : float = DEFAULT_FRAME_WAIT_SEC) : JsonValue? {
+    //! Poll snapshot until registered widget ``widget_ident``'s hover state (``IsItemHovered``, the
+    //! per-widget ``hover`` field) equals ``expected``. The sync gate for a reliable synthetic click:
+    //! ``move_to(point)`` then ``wait_for_hover(target)`` then ``click`` guarantees the press lands a
+    //! frame AFTER hover is established. Without it, a synthetic ``move``+``press`` can batch into one
+    //! windowed-vsync frame and the press fires before ``HoveredId`` is set — the press-before-hover
+    //! race a real continuous-hover mouse never hits (synthetic != real). Bounded by ``timeout_sec``;
+    //! returns the matching snapshot or null on timeout. ``null`` is a real failure — gate it with
+    //! ``record_check`` (recording) or ``success`` (test); never proceed to the click silently.
+    return wait_until_sec(app, timeout_sec) $(var snap) {
+        return (find_widget(snap, widget_ident)?["hover"] ?? false) == expected
+    }
+}
+
 def public wait_for_int_value(app : ImguiApp;
                               target : string;
                               field : string;
