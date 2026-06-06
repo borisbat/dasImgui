@@ -348,6 +348,21 @@ def public wait_for_render(app : ImguiApp; widget_ident : string;
     return wait_for_visible(app, widget_ident, timeout_sec)
 }
 
+def public wait_for_hover(app : ImguiApp; widget_ident : string; expected : bool = true;
+                          timeout_sec : float = DEFAULT_FRAME_WAIT_SEC) : JsonValue? {
+    //! Poll snapshot until registered widget ``widget_ident``'s hover state (``IsItemHovered``, the
+    //! per-widget ``hover`` field) equals ``expected``. The sync gate for a reliable synthetic click:
+    //! ``move_to(point)`` then ``wait_for_hover(target)`` then ``click`` guarantees the press lands a
+    //! frame AFTER hover is established. Without it, a synthetic ``move``+``press`` can batch into one
+    //! windowed-vsync frame and the press fires before ``HoveredId`` is set — the press-before-hover
+    //! race a real continuous-hover mouse never hits (synthetic != real). Bounded by ``timeout_sec``;
+    //! returns the matching snapshot or null on timeout. ``null`` is a real failure — gate it with
+    //! ``record_check`` (recording) or ``success`` (test); never proceed to the click silently.
+    return wait_until_sec(app, timeout_sec) $(var snap) {
+        return (find_widget(snap, widget_ident)?["hover"] ?? false) == expected
+    }
+}
+
 def public wait_for_int_value(app : ImguiApp;
                               target : string;
                               field : string;
@@ -722,6 +737,20 @@ def public record_check_kind_count(app : ImguiApp; kind_prefix : string; min_cou
     var snap = snapshot(app)
     let got = count_registry_kind(snap, kind_prefix)
     g_record_failures |> push("record_check_kind_count(kind {kind_prefix}*) gave up after {max_frames} frames:\n  want >= {min_count} entries, got {got}")
+    return false
+}
+
+[unused_argument(app)]
+def public record_check(app : ImguiApp; desc : string; ok : bool) : bool {
+    //! Recording-safe verifier for a condition the CALLER already evaluated — the escape hatch for
+    //! an effect the field-based record_check_* can't reach: a value nested in a payload ARRAY (a
+    //! per-series legend ``shown``), a cross-widget invariant, any composed predicate. Pass the
+    //! boolean you computed (typically a ``wait_for_*(...) != null`` gate); on false it accumulates
+    //! ``desc`` into the recording's failure ledger, surfaced as a teardown panic by
+    //! with_recording_app — same accumulate-don't-panic discipline as the rest of the family.
+    //! ``app`` is unused (the caller did the polling) but kept for call-site symmetry. Returns ``ok``.
+    if (ok) return true
+    g_record_failures |> push("record_check failed: {desc}")
     return false
 }
 
