@@ -33,9 +33,10 @@ def test_recording_sync(t : T?) {
         t |> success(wait_for_hover(d, TARGET, false) != null, "wait_for_hover sees hover clear after moving away")
 
         // Regression for the #186-A false-pass: a missing / misspelled ident must NOT pass as
-        // "not hovered". The old predicate coalesced a null hover to false and returned the first
-        // snapshot; the widget_exists guard makes it time out instead. Short timeout — guaranteed miss.
-        t |> success(wait_for_hover(d, "CBH_WIN/__no_such_widget__", false, 2.0f) == null,
+        // "not hovered". The old predicate coalesced a null hover to false and returned on the FIRST
+        // poll; the widget_exists guard makes it time out instead. A tiny timeout still separates the
+        // two (old=immediate non-null, fixed=times out) without spending the wall-clock to wait it out.
+        t |> success(wait_for_hover(d, "CBH_WIN/__no_such_widget__", false, 0.3f) == null,
                      "missing widget does not false-pass wait_for_hover(expected=false)")
 
         // ---- record_check ----
