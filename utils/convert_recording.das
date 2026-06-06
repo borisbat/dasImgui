@@ -36,6 +36,12 @@ struct Config {
     @clarg_doc = "Fade in/out length, milliseconds"
     fade_ms : int = 100
 
+    @clarg_doc = "libx264 quality (lower = better/larger). Default 23 - keep it here for excellent quality; shrink full-motion clips with --preset, not by raising this"
+    crf : int = 23
+
+    @clarg_doc = "libx264 preset (slower = smaller at the SAME quality). Default medium; use veryslow for full-motion clips (e.g. realtime scroll) to cut size without touching crf"
+    preset : string = "medium"
+
     @clarg_doc = "daScript root (find_sf2 + default daslang exe). Default: this exe's das-root"
     das_root : string
 
@@ -158,7 +164,7 @@ def main : int {
     var fargs <- ["ffmpeg", "-y", "-r", "{fps_eff}", "-i", cfg.apng, "-i", music_wav]
     fargs |> push_from(vo_inputs)
     fargs |> push_from(["-filter_complex", fg, "-map", "0:v", "-map", "[aout]",
-        "-c:v", "libx264", "-crf", "23", "-pix_fmt", "yuv420p",
+        "-c:v", "libx264", "-preset", cfg.preset, "-crf", "{cfg.crf}", "-pix_fmt", "yuv420p",
         "-movflags", "+faststart", "-shortest", out_mp4])
 
     // --- save the command, then run it ---
