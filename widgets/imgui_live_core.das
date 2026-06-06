@@ -47,11 +47,20 @@ var private mouse_playing    : bool  = false
 var private last_move_x : float = 0.0
 var private last_move_y : float = 0.0
 var private last_move_t : int   = -1
+// Frame-paced playback: when set, advance steps one t_ms-group per FRAME (t_ms read as
+// a frame index) instead of by wall-clock — so a drag delivers a per-frame cursor delta
+// regardless of frame rate. A wall-clock drag collapses press+move into a single frame
+// on a slow/stalled frame (the CI runner), landing a zero-delta gesture so a splitter
+// never moves. Mirrors key_frame_paced.
+var private mouse_frame_paced : bool = false
+var private mouse_frame_no    : int  = 0
 
 def private reset_mouse_timeline() {
     mouse_timeline |> clear()
     mouse_play_idx = 0
     mouse_playing  = false
+    mouse_frame_paced = false
+    mouse_frame_no    = 0
     let cur = get_synth_cursor()
     last_move_x = cur._1
     last_move_y = cur._2
@@ -111,6 +120,11 @@ struct MouseEventWire {
 
 struct MousePlayArgs {
     events : array<MouseEventWire>
+    // When true, t_ms is read as a FRAME index (one event-group per frame) instead of
+    // wall-clock ms — mirrors imgui_key_play's frame_paced. Keeps a drag robust on slow or
+    // stalled frames: each frame advances the gesture one step, so press and the following
+    // moves never collapse into one frame (which lands a zero-delta drag on a splitter).
+    @optional frame_paced : bool = false
 }
 
 def public sort_mouse_play_events(var events : array<MouseEventWire>) {
@@ -126,6 +140,7 @@ def imgui_mouse_play(input : JsonValue?) : JsonValue? {
     return JV((error = "no events")) if (empty(args.events))
     sort_mouse_play_events(args.events)
     reset_mouse_timeline()
+    mouse_frame_paced = args.frame_paced   // after reset (which clears it); frame-index pacing for drags
     mouse_timeline |> reserve(length(args.events))
     for (w in args.events) {
         var ev = MouseEvent(t_ms = w.t_ms)
@@ -158,7 +173,7 @@ def imgui_mouse_play(input : JsonValue?) : JsonValue? {
 }
 
 [live_command(description="Stop synthetic mouse playback (ImGui bypass) and release any held buttons.")]
-def imgui_mouse_stop(input : JsonValue?) : JsonValue? {
+def imgui_mouse_stop(_input : JsonValue?) : JsonValue? {
     let was_playing = mouse_playing
     var released = 0
     for (b in range(0, 5)) {
@@ -183,7 +198,7 @@ struct MouseStatusResult {
 }
 
 [live_command(description="ImGui-bypass mouse playback status.")]
-def imgui_mouse_status(input : JsonValue?) : JsonValue? {
+def imgui_mouse_status(_input : JsonValue?) : JsonValue? {
     let elapsed = mouse_playing ? int((get_uptime() - mouse_play_start) * 1000.0) : 0
     let cur = get_synth_cursor()
     var held = 0
@@ -206,7 +221,16 @@ def imgui_mouse_status(input : JsonValue?) : JsonValue? {
 
 def private advance_mouse_timeline() {
     return if (!mouse_playing)
-    let now_ms = int((get_uptime() - mouse_play_start) * 1000.0)
+    // Frame-paced gestures step one t_ms-group per frame; others use wall-clock. The lerp
+    // below interpolates by (now_ms - last_move_t)/span, so a frame-index `now_ms` makes it
+    // advance the cursor exactly one delta per frame — robust to any frame duration.
+    var now_ms = 0
+    if (mouse_frame_paced) {
+        now_ms = mouse_frame_no
+        mouse_frame_no++
+    } else {
+        now_ms = int((get_uptime() - mouse_play_start) * 1000.0)
+    }
     while (mouse_play_idx < length(mouse_timeline)) {
         let ev = mouse_timeline[mouse_play_idx]
         break if (ev.t_ms > now_ms)
@@ -506,7 +530,7 @@ def imgui_key_play(input : JsonValue?) : JsonValue? {
 }
 
 [live_command(description="Stop synthetic key playback (ImGui bypass) and release any held keys.")]
-def imgui_key_stop(input : JsonValue?) : JsonValue? {
+def imgui_key_stop(_input : JsonValue?) : JsonValue? {
     let was_playing = key_playing
     let released    = length(synth_held_keys)
     release_held_keys()
@@ -525,7 +549,7 @@ struct KeyStatusResult {
 }
 
 [live_command(description="ImGui-bypass keyboard playback status.")]
-def imgui_key_status(input : JsonValue?) : JsonValue? {
+def imgui_key_status(_input : JsonValue?) : JsonValue? {
     let elapsed = key_playing ? int((get_uptime() - key_play_start) * 1000.0) : 0
     return JV(KeyStatusResult(
         playing        = key_playing,

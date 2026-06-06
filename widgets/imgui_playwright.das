@@ -501,22 +501,22 @@ def public drag(app : ImguiApp; target : string;
     let cy = ((bb?["y"] ?? 0.0f) + (bb?["w"] ?? 0.0f)) * 0.5f
     let ex = cx + dx
     let ey = cy + dy
-    let drag_ms = (steps > 0 ? steps : 1) * 32
-    // Dwell at center BEFORE pressing: a move waypoint pins (cx,cy) at t=80, then
-    // the press fires 1ms later. Timestamps are STRICTLY increasing (the host sorts
-    // the timeline by t_ms with no tie-break, so a press sharing the dwell's t_ms
-    // could sort first and defeat it). The 1ms-into-a-drag_ms-long segment leaves the
-    // press essentially dead-center (sub-pixel drift), so it still lands on an 8px
-    // handle — without the dwell the press fires mid-travel and misses entirely.
+    // Frame-paced drag: t_ms is a FRAME index, so the host advances one cursor delta per
+    // frame and the press never collapses into the same frame as the sweep — a wall-clock
+    // drag does exactly that on a slow/stalled host (a coarse dt fires press + the full move
+    // together), landing a zero-delta gesture that never moves a splitter. ``steps`` is the
+    // number of sweep frames. A 2-frame dwell pins (cx,cy) on the handle before the press so
+    // it lands dead-center on a thin (8px) handle; timestamps stay strictly increasing.
+    let dframes = steps > 0 ? steps : 8
     var events <- [
-        JV((t_ms = 0,             kind = "move",   x = cx, y = cy)),
-        JV((t_ms = 80,            kind = "move",   x = cx, y = cy)),
-        JV((t_ms = 81,            kind = "button", button = button, action = "press")),
-        JV((t_ms = 81 + drag_ms,  kind = "move",   x = ex, y = ey)),
-        JV((t_ms = 181 + drag_ms, kind = "button", button = button, action = "release")),
-        JV((t_ms = 281 + drag_ms, kind = "move",   x = ex, y = ey))
+        JV((t_ms = 0,           kind = "move",   x = cx, y = cy)),
+        JV((t_ms = 1,           kind = "move",   x = cx, y = cy)),
+        JV((t_ms = 2,           kind = "button", button = button, action = "press")),
+        JV((t_ms = 2 + dframes, kind = "move",   x = ex, y = ey)),
+        JV((t_ms = 3 + dframes, kind = "button", button = button, action = "release")),
+        JV((t_ms = 4 + dframes, kind = "move",   x = ex, y = ey))
     ]
-    let resp = post_command(app, "imgui_mouse_play", JV((events = events)))
+    let resp = post_command(app, "imgui_mouse_play", JV((events = events, frame_paced = true)))
     unsafe { delete events; }
     if (resp == null) return JV((ok = false, error = "drag post failed: {target}"))
     return JV((ok = true, value = target))
