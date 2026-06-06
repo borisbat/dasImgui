@@ -725,6 +725,20 @@ def public record_check_kind_count(app : ImguiApp; kind_prefix : string; min_cou
     return false
 }
 
+[unused_argument(app)]
+def public record_check(app : ImguiApp; desc : string; ok : bool) : bool {
+    //! Recording-safe verifier for a condition the CALLER already evaluated — the escape hatch for
+    //! an effect the field-based record_check_* can't reach: a value nested in a payload ARRAY (a
+    //! per-series legend ``shown``), a cross-widget invariant, any composed predicate. Pass the
+    //! boolean you computed (typically a ``wait_for_*(...) != null`` gate); on false it accumulates
+    //! ``desc`` into the recording's failure ledger, surfaced as a teardown panic by
+    //! with_recording_app — same accumulate-don't-panic discipline as the rest of the family.
+    //! ``app`` is unused (the caller did the polling) but kept for call-site symmetry. Returns ``ok``.
+    if (ok) return true
+    g_record_failures |> push("record_check failed: {desc}")
+    return false
+}
+
 def private arm_voiceovers(apng_path : string) : bool {
     //! Load voiceover/<stem>.manifest.json beside apng_path. On success fill g_vo_dur, set
     //! g_vo_active, clear the collection. Returns true when armed.
