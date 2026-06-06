@@ -358,8 +358,12 @@ def public wait_for_hover(app : ImguiApp; widget_ident : string; expected : bool
     //! race a real continuous-hover mouse never hits (synthetic != real). Bounded by ``timeout_sec``;
     //! returns the matching snapshot or null on timeout. ``null`` is a real failure — gate it with
     //! ``record_check`` (recording) or ``success`` (test); never proceed to the click silently.
+    //! The ``widget_exists`` guard is load-bearing for ``expected=false``: an absent / misspelled
+    //! ident yields a null ``hover`` that ``?? false`` would coalesce to ``false``, so a missing
+    //! widget would false-pass as "not hovered" and mask a sync failure — same guard as
+    //! ``widget_rendered``.
     return wait_until_sec(app, timeout_sec) $(var snap) {
-        return (find_widget(snap, widget_ident)?["hover"] ?? false) == expected
+        return widget_exists(snap, widget_ident) && (find_widget(snap, widget_ident)?["hover"] ?? false) == expected
     }
 }
 
