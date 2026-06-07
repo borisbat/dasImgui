@@ -53,11 +53,11 @@ def main {
         let p_tip     = widget_center(snap, T_TIP)
 
         move_to(app, (450.0f, 360.0f), 600)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
 
         // ---- Beat 1: text + text_wrapped ----
         move_to(app, p_intro, 900)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         record_check_value(app, T_INTRO, "value", "Plain text() - one line, telemetry-visible.")
         record_check_rendered(app, T_WRAP, true)
         say(app, "text + text_wrapped", T_INTRO,
@@ -65,7 +65,7 @@ def main {
 
         // ---- Beat 2: text_colored + text_disabled ----
         move_to(app, p_colored, 900)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         record_check_rendered(app, T_COLORED, true)
         record_check_rendered(app, T_DISABLED, true)
         say(app, "text_colored + text_disabled", T_COLORED,
@@ -73,7 +73,7 @@ def main {
 
         // ---- Beat 3: bullet_text + label_text ----
         move_to(app, p_bullet, 900)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         record_check_value(app, T_BULLET, "value", "bullet_text() - marker + text in one call.")
         record_check_value(app, T_LABEL, "value", "v2.0-detour")
         say(app, "bullet_text + label_text", T_BULLET,
@@ -81,7 +81,7 @@ def main {
 
         // ---- Beat 4: separator_text + progress_bar ----
         move_to(app, p_prog, 900)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         record_check_rendered(app, T_SEP, true)
         record_check_rendered(app, T_PROG, true)
         say(app, "separator_text + progress_bar", T_PROG,
@@ -89,7 +89,7 @@ def main {
 
         // ---- Beat 5: flat tooltip on hover ----
         move_to(app, p_tip, 900)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         record_check_rendered(app, T_TIPTOOL, true)
         say(app, "set_item_tooltip on hover", T_TIP,
             [voice = "And resting the cursor on this button fires a flat tooltip - set item tooltip attaches it to the previous item, no scope to open or close."])

@@ -33,35 +33,35 @@ def widget_center(var snap : JsonValue?; ident : string) : tuple<float; float> {
 //! literal voice line at the call site.
 def open_under_voice(app : ImguiApp; dwell : uint; pt : tuple<float; float>;
                      button : int; probe : string) {
+    let anchor = record_frame_count(app)
     let lead = dwell > 1400u ? 650u : dwell / 3u
-    sleep(lead)
+    hold_content(app, lead)
     var ev : array<JsonValue?>
     ev |> click_at(0, pt, 450, button)
     post_command(app, "imgui_mouse_play", JV((events = ev)))
     unsafe { delete ev; }
     let play = 450u + 450u
-    sleep(play)
+    hold_content(app, play)
     record_check_rendered(app, probe, true, 180)
-    let consumed = lead + play
-    sleep(dwell > consumed ? dwell - consumed : 0u)
+    hold_remainder_content(app, dwell, anchor)
 }
 
 //! Left-click ``pt`` (a popup menu item) UNDER a voice line, then assert the popup
 //! closed (``probe`` no longer rendered) and the shared status line took ``expected``.
 def pick_under_voice(app : ImguiApp; dwell : uint; pt : tuple<float; float>;
                      status_target : string; expected : string; probe : string) {
+    let anchor = record_frame_count(app)
     let lead = dwell > 1400u ? 650u : dwell / 3u
-    sleep(lead)
+    hold_content(app, lead)
     var ev : array<JsonValue?>
     ev |> click_at(0, pt, 450)
     post_command(app, "imgui_mouse_play", JV((events = ev)))
     unsafe { delete ev; }
     let play = 450u + 450u
-    sleep(play)
+    hold_content(app, play)
     record_check_value(app, status_target, "value", expected, 180)
     record_check_rendered(app, probe, false, 180)
-    let consumed = lead + play
-    sleep(dwell > consumed ? dwell - consumed : 0u)
+    hold_remainder_content(app, dwell, anchor)
 }
 
 [export]
@@ -85,7 +85,7 @@ def main {
         // slower; absorbing them keeps convert's frame->time map uniform) and park the
         // cursor on the button where beat 2 clicks.
         move_to(app, p_btn, 800)
-        sleep(1800u)
+        hold_content(app, 1800u)
 
         // ---- Beat 1: intro (no action) ----
         say(app, "popup_window: caller drives open_popup", T_BTN,
@@ -100,14 +100,14 @@ def main {
         var s3 = snapshot(app)
         let p_apple = widget_center(s3, BTN_APPLE)
         move_to(app, p_apple, 500)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         pick_under_voice(app, say_begin(app, "pick: close_current_popup", BTN_APPLE,
             [voice = "Pick a fruit. The item calls close_current_popup - the popup closes, and the status line updates."]),
             p_apple, T_STATUS, "Last pick: Apple", BTN_APPLE)
 
         // ---- Beat 4: right-click the hover region -> the second scope opens ----
         move_to(app, p_hover, 600)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         open_under_voice(app, say_begin(app, "right-click: no preceding item", T_HOVER,
             [voice = "The second scope opens on a right-click anywhere in this region - no preceding item required."]),
             p_hover, 1, REG_BANANA)
@@ -116,7 +116,7 @@ def main {
         var s5 = snapshot(app)
         let p_banana = widget_center(s5, REG_BANANA)
         move_to(app, p_banana, 500)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         pick_under_voice(app, say_begin(app, "shared str_id, distinct state", REG_BANANA,
             [voice = "Both scopes share one string id, but with_id keeps each scope's open state distinct."]),
             p_banana, T_STATUS, "Last pick: Banana", REG_BANANA)

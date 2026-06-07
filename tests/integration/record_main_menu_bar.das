@@ -42,7 +42,7 @@ def main {
 
         // ---- Stage 1: File > Dark mode (menu_item toggle) ----
         move_to(app, header_below(snap, T_FILE), 700)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         let d1 = say_begin(app, "File > Dark mode", T_FILE,
             [voice = "A menu bar groups commands under headers along the top. Open File, click Dark mode, and the toggle switches on."])
         menu_pick_voice(app, d1, T_FILE, T_DARK)
@@ -51,7 +51,7 @@ def main {
         // ---- Stage 2: File > Auto-save (independent toggle) ----
         snap = snapshot(app)
         move_to(app, header_below(snap, T_FILE), 500)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         let d2 = say_begin(app, "each item keeps its own state", T_FILE,
             [voice = "Every menu item is its own toggle. Open File again and turn on Auto-save; Dark mode stays on, the two are independent."])
         menu_pick_voice(app, d2, T_FILE, T_AUTO)
@@ -60,7 +60,7 @@ def main {
         // ---- Stage 3: Edit > Undo (menu_label action) ----
         snap = snapshot(app)
         move_to(app, header_below(snap, T_EDIT), 600)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         let d3 = say_begin(app, "labels count clicks, not toggles", T_EDIT,
             [voice = "Not every entry is a toggle. Undo is a menu label, an action. Click it and it just counts the click, with no on or off state."])
         menu_pick_voice(app, d3, T_EDIT, T_UNDO)

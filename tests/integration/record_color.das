@@ -46,7 +46,7 @@ def main {
         // ---- Stage 1: color_edit3 — drag the red channel ----
         var bb = bbox_of(snap, T_EDIT3)
         move_to(app, frac_point(bb, 0.08f, 0.5f), 500)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         let d1 = say_begin(app, "color_edit3 - inline RGB", T_EDIT3,
             [voice = "This is a color editor. It is a compact row: a small swatch on the left, then the red, green and blue channels. Drag a channel to scrub its value, or click the swatch for the full popup picker."])
         drag_through_voice(app, d1, T_EDIT3, frac_point(bb, 0.22f, 0.5f))
@@ -55,7 +55,7 @@ def main {
         snap = snapshot(app)
         bb = bbox_of(snap, T_EDIT4)
         move_to(app, frac_point(bb, 0.62f, 0.5f), 700)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         let d2 = say_begin(app, "color_edit4 - adds alpha", T_EDIT4,
             [voice = "The four version adds one more channel on the end: alpha, which is transparency. Drag the alpha channel and the color shifts from see-through toward solid."])
         drag_through_voice(app, d2, T_EDIT4, frac_point(bb, 0.74f, 0.5f))
@@ -64,7 +64,7 @@ def main {
         snap = snapshot(app)
         bb = bbox_of(snap, T_PICKER)
         move_to(app, frac_point(bb, 0.28f, 0.62f), 700)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         let d3 = say_begin(app, "color_picker4 - square and hue bar", T_PICKER,
             [voice = "When picking a color is the whole point of the panel, reach for the picker. The big square and the hue bar stay open the whole time. Drag inside the square to set the shade. The swatch on the right remembers where you started."])
         drag_through_voice(app, d3, T_PICKER, frac_point(bb, 0.60f, 0.20f))
@@ -72,7 +72,7 @@ def main {
         // ---- Stage 4: color_button — real clicks, counter asserted ----
         snap = snapshot(app)
         move_to(app, frac_point(bbox_of(snap, T_SWATCH), 0.5f, 0.5f), 700)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         let d4 = say_begin(app, "color_button - click trigger", T_SWATCH,
             [voice = "A color button is just a swatch you can click. It does not store a color of its own; you hand it one, and it simply counts your clicks. Use it for a palette cell, or to open your own picker."])
         hold_through_voice(app, d4, [T_SWATCH, T_SWATCH])

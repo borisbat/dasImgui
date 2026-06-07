@@ -46,7 +46,7 @@ def main {
 
         // Park the cursor on button A and warm up the capture pipeline.
         move_to(app, p_a, 800)
-        sleep(1800u)
+        hold_content(app, 1800u)
 
         // ---- Beat 1: same_line - one row ----
         record_check_rendered(app, T_BTN_A, true, 180)
@@ -56,24 +56,24 @@ def main {
         record_check_rendered(app, T_SL_BC, true, 180)
         let d1 = say_begin(app, "same_line: one row", T_BTN_A,
             [voice = "same_line keeps the next widget on the current row. Here three buttons - A, B, and C - sit on one strip, because each is followed by a same_line call."])
+        let anchor1 = record_frame_count(app)
         let step = d1 > 1500u ? d1 / 3u : 500u
-        sleep(step)
+        hold_content(app, step)
         move_to(app, p_b, 350)
-        sleep(step)
+        hold_content(app, step)
         move_to(app, p_c, 350)
-        let used = step * 2u
-        sleep(d1 > used ? d1 - used : 0u)
+        hold_remainder_content(app, d1, anchor1)
 
         // ---- Beat 2: spacing - vertical gap ----
         move_to(app, p_sp, 600)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         record_check_rendered(app, T_SP_TOP, true, 180)
         say(app, "spacing: vertical gap", T_SP_TOP,
             [voice = "spacing inserts a single line of vertical gap. Stack a few when you want a little more breathing room without a fixed-size dummy."])
 
         // ---- Beat 3: new_line + dummy - reserve space ----
         move_to(app, p_nl, 600)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         record_check_rendered(app, T_NL, true, 180)
         say(app, "new_line + dummy: reserve space", T_NL,
             [voice = "new_line advances a full text line, and dummy reserves an arbitrary rectangle - both move the cursor without drawing anything."])

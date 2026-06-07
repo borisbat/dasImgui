@@ -43,7 +43,7 @@ def main {
 
         // Park the cursor at the slider's left and warm up the capture pipeline.
         move_to(app, (vol_x0, vol_y), 800)
-        sleep(1800u)
+        hold_content(app, 1800u)
 
         // ---- Beat 1: slider drives a global ----
         drag_through_voice(app, say_begin(app, "slider -> VOLUME.value", T_VOLUME,
@@ -52,7 +52,7 @@ def main {
 
         // ---- Beat 2: button increments a counter ----
         move_to(app, p_bump, 600)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         hold_through_voice(app, say_begin(app, "button -> click_count", T_BUMP,
             [voice = "A button increments a counter. I click Bump twice, and its click_count reads two - state the program reads straight back."]),
             [T_BUMP, T_BUMP])

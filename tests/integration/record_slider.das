@@ -47,7 +47,7 @@ def main {
         let bbF = widget_bbox(snap, T_FLOAT)
         let cyF = (bbF.y + bbF.w) * 0.5f
         move_to(app, (bbF.x + 14.0f, cyF), 700)            // onto the handle (value 0 -> left end)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         let d1 = say_begin(app, "slider_float - drag the handle", T_FLOAT,
             [voice = "A slider edits a bounded number along a fixed track. Grab the handle and scrub it, and the value moves with you between the low and high bounds."])
         drag_through_voice(app, d1, T_FLOAT, (bbF.x + 0.72f * (bbF.z - bbF.x), cyF))
@@ -56,7 +56,7 @@ def main {
         let bbI = widget_bbox(snap, T_INT)
         let cyI = (bbI.y + bbI.w) * 0.5f
         move_to(app, (bbI.x + 14.0f, cyI), 700)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         let d2 = say_begin(app, "slider_int - integer steps", T_INT,
             [voice = "The integer slider has the very same shape, but it snaps to whole steps. Its format string adds a percent sign, so the label reads as a percentage while you drag."])
         drag_through_voice(app, d2, T_INT, (bbI.x + 0.72f * (bbI.z - bbI.x), cyI))
@@ -67,7 +67,7 @@ def main {
         let s0 = sub_bbox(snap, T_VEC3, 0)
         let cyV = (s0.y + s0.w) * 0.5f
         move_to(app, widget_component_point(snap, T_VEC3, 0), 700)   // onto the first handle (value 0 -> sub-track center)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         let d3 = say_begin(app, "slider_float3 - one handle per axis", T_VEC3,
             [voice = "A vector slider lays three handles side by side, one per component. Sweep the first handle along its track and that component changes, while the other two stay where they were."])
         drag_through_voice(app, d3, T_VEC3, (s0.x + 0.85f * (s0.z - s0.x), cyV))
@@ -76,7 +76,7 @@ def main {
         let bbM = widget_bbox(snap, T_VMID)
         let cxM = (bbM.x + bbM.z) * 0.5f
         move_to(app, (cxM, bbM.w - 12.0f), 900)            // onto the handle (value 0 -> bottom)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         let d4 = say_begin(app, "vslider_float - vertical track", T_VMID,
             [voice = "The vertical slider shares the exact same state, just drawn from bottom to top. Drag it upward and the value climbs."])
         drag_through_voice(app, d4, T_VMID, (cxM, bbM.y + 0.20f * (bbM.w - bbM.y)))

@@ -59,37 +59,36 @@ def main {
 
         //! Initial cursor placement - flips synth_cursor_owned.
         move_to(app, (40.0f, 30.0f), 600)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
 
         // ---- Beat 1: drag MASTER along its arc -> value 0 -> 0.5 ----
         move_to(app, master_start, 800)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         drag_through_voice(app, say_begin(app, "[widget] - a custom rotary knob", T_MASTER,
             [voice = "There is no built-in rotary knob, so we made our own. It is a single widget definition, a hitbox plus a few draw calls. I drag the Master knob, and its value rises with the angle."]),
             T_MASTER, master_end)
 
         // ---- Beat 2: drag TREBLE up a little -> value 0 -> ~0.33 ----
         move_to(app, treble_start, 800)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         drag_through_voice(app, say_begin(app, "same state layout as slider_float", T_TREBLE,
             [voice = "The knob reuses the exact state layout a slider uses, so the same value plumbing just works. Here is Treble, dragged up a little."]),
             T_TREBLE, treble_end)
 
         // ---- Beat 3: imgui_force_set Bass (force_set IS the subject) ----
         move_to(app, c_bass, 800)
-        sleep(SETTLE_MS)
-        let t3 = ref_time_ticks()
+        hold_content(app, SETTLE_MS)
+        let anchor3 = record_frame_count(app)
         let d3 = say_begin(app, "imgui_force_set drives it too", T_BASS,
             [voice = "A live command can set the value from outside as well. That takes one small dispatch hook, just a few lines, and then force set drives Bass directly."])
         let lead3 = d3 > 1200u ? 700u : d3 / 3u
-        sleep(lead3)
+        hold_content(app, lead3)
         force_set_verified(app, T_BASS, -0.5f)              // the value took; -0.5 is non-zero so it is always present
-        let e3 = uint(get_time_usec(t3) / 1000)
-        sleep(d3 > e3 ? d3 - e3 : 0u)
+        hold_remainder_content(app, d3, anchor3)
 
         // ---- Beat 4: click Reset -> every knob snaps to its default ----
         move_to(app, p_reset, 800)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         hold_through_voice(app, say_begin(app, "Reset - an ordinary built-in button", T_RESET,
             [voice = "And an ordinary button sits on the same panel. I click Reset, and every knob snaps back to its default."]),
             [T_RESET])

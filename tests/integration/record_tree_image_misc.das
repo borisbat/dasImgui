@@ -26,12 +26,12 @@ def widget_center(var snap : JsonValue?; ident : string) : tuple<float; float> {
 //! Click the tree header UNDER an already-posted voice line, then assert it opened
 //! (TI_TREE.opened == true) - the children render as a side effect.
 def expand_under_voice(app : ImguiApp; dwell : uint; tree : string) {
+    let anchor = record_frame_count(app)
     let lead = dwell > 1400u ? 650u : dwell / 3u
-    sleep(lead)
+    hold_content(app, lead)
     post_command(app, "imgui_click", JV((target = tree)))
     record_check_value(app, tree, "opened", true, 180)
-    let consumed = lead + 500u
-    sleep(dwell > consumed ? dwell - consumed : 0u)
+    hold_remainder_content(app, dwell, anchor)
 }
 
 [export]
@@ -49,7 +49,7 @@ def main {
 
         // Park the cursor on the tree header and warm up the capture pipeline.
         move_to(app, p_tree, 800)
-        sleep(1800u)
+        hold_content(app, 1800u)
 
         // ---- Beat 1: intro ----
         say(app, "tree_node_ex + image", T_TREE,
@@ -64,7 +64,7 @@ def main {
         var s = snapshot(app)
         let p_img = widget_center(s, T_IMG)
         move_to(app, p_img, 700)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         record_check_rendered(app, T_IMG, true, 180)
         say(app, "image: display-only, paints a texture", T_IMG,
             [voice = "image is the display-only sibling of image_button. It paints a texture, with no click and no padding."])

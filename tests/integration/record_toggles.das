@@ -36,7 +36,7 @@ def main {
 
         //! Initial cursor placement.
         move_to(app, p_check, 500)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
 
         // ---- Stage 1: checkbox — single bool, click flips it ----
         hold_through_voice(app, say_begin(app, "checkbox - single bool", T_CHECK,
@@ -45,7 +45,7 @@ def main {
 
         // ---- Stage 2: radio_button (bool form) — same state, round glyph ----
         move_to(app, p_radio, 800)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         hold_through_voice(app, say_begin(app, "radio_button - same, round", T_RADIO_BOOL,
             [voice = "A radio button, on its own, behaves exactly like a checkbox. Same on-off value underneath; the only difference is the round glyph instead of a square."]),
             [T_RADIO_BOOL])
@@ -54,7 +54,7 @@ def main {
         // Per-site aliases T_MODE#<v_button> let us click each option by name even though
         // all three share one ident; click Manual then Auto so the dot walks and clears the last.
         move_to(app, p_manual, 800)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         hold_through_voice(app, say_begin(app, "radio_button_int - pick one of many", T_MODE,
             [voice = "Group several radio buttons and they share one value, so picking one clears the rest. Watch: click Manual, then Auto, and the dot walks across as each pick clears the last."]),
             ["{T_MODE}#1", "{T_MODE}#2"])

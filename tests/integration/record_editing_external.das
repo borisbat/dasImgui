@@ -65,7 +65,7 @@ def main {
         let bb1 = bbox_of(snap, T_VOL)
         let cy1 = (bb1.y + bb1.w) * 0.5f
         move_to(app, (bb1.x + 0.50f * (bb1.z - bb1.x), cy1), 600)   // onto the handle (value 0.5 -> mid)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         let d1 = say_begin(app, "edit_slider_float - drag, value follows", T_VOL,
             [voice = "Drag the volume slider, and the floating point variable behind it moves with the handle. The widget is writing through the pointer, not into a copy of its own."])
         drag_through_voice(app, d1, T_VOL, (bb1.x + 0.85f * (bb1.z - bb1.x), cy1))
@@ -73,14 +73,14 @@ def main {
         // ---- Stage 2: edit_input_int - click, type, Enter ----
         let p2 = field_click(bbox_of(snap, T_COUNT))
         move_to(app, p2, 700)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         let d2 = say_begin(app, "edit_input_int - type your int", T_COUNT,
             [voice = "Click the count field and type a new number. It commits straight into my integer variable, the same one printed below."])
         type_into_voice(app, d2, T_COUNT, p2, ["42"], 42)
 
         // ---- Stage 3: edit_checkbox - click flips the bool ----
         move_to(app, widget_click_point(snap, T_ENABLED), 700)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         let d3 = say_begin(app, "edit_checkbox - flip your bool", T_ENABLED,
             [voice = "The checkbox edits a plain boolean. Click it and the value flips from true to false in place."])
         hold_through_voice(app, d3, [T_ENABLED])
@@ -88,7 +88,7 @@ def main {
         // ---- Stage 4: edit_drag_float3 - drag the first field (a Drag scrubs; click would NOT type) ----
         let bb4 = bbox_of(snap, T_POS)
         move_to(app, frac_point(bb4, 0.08f, 0.5f), 700)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         let d4 = say_begin(app, "edit_drag_float3 - scrub one axis", T_POS,
             [voice = "A vector editor binds to all three components of my position. Drag the first field and only that axis scrubs, while the other two hold steady."])
         drag_through_voice(app, d4, T_POS, frac_point(bb4, 0.22f, 0.5f))
@@ -96,14 +96,14 @@ def main {
         // ---- Stage 5: edit_color_edit3 - drag the red channel ----
         let bb5 = bbox_of(snap, T_COLOR)
         move_to(app, frac_point(bb5, 0.08f, 0.5f), 700)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         let d5 = say_begin(app, "edit_color_edit3 - scrub a channel", T_COLOR,
             [voice = "The color editor binds to a color of mine. Drag the red channel up and the swatch shifts toward red as the value climbs."])
         drag_through_voice(app, d5, T_COLOR, frac_point(bb5, 0.22f, 0.5f))
 
         // ---- Stage 6: edit_combo - open and pick item 2 ----
         move_to(app, frac_point(bbox_of(snap, T_COMBO), 0.5f, 0.5f), 700)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         let d6 = say_begin(app, "edit_combo - pick an index", T_COMBO,
             [voice = "The combo writes an index. Open it and choose a quality preset, and my index variable jumps to the row you picked."])
         combo_pick_voice(app, d6, T_COMBO, 2)              // High
@@ -112,7 +112,7 @@ def main {
         let bb7 = bbox_of(snap, T_ANGLE)
         let cy7 = (bb7.y + bb7.w) * 0.5f
         move_to(app, (bb7.x + 0.50f * (bb7.z - bb7.x), cy7), 700)   // onto the handle (0 rad -> mid)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         let d7 = say_begin(app, "edit_slider_angle - degrees over radians", T_ANGLE,
             [voice = "Last, an angle slider. It shows degrees on the face, but the variable underneath is in radians. Drag it and the radian value swings along."])
         drag_through_voice(app, d7, T_ANGLE, (bb7.x + 0.78f * (bb7.z - bb7.x), cy7))

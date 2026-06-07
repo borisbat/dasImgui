@@ -50,48 +50,46 @@ def main {
 
         //! Initial cursor placement - flips synth_cursor_owned.
         move_to(app, (40.0f, 30.0f), 600)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
 
         // ---- Stage A: bordered, fixed-size child -> wheel scrolls it ----
         move_to(app, p_a_mid, 900)
-        sleep(SETTLE_MS)
-        let tA = ref_time_ticks()                           // wall-clock from say_begin, so the dwell ends WITH the voice
+        hold_content(app, SETTLE_MS)
+        let anchorA = record_frame_count(app)               // anchor at say_begin so the dwell ends WITH the voice
         let dA = say_begin(app, "child - bordered, scrollable sub-window", T_A_MID,
             [voice = "A child is a sub window living inside another window. This one has a border and a fixed size, so its rows scroll. I roll the wheel, and the scroll position climbs."])
         let leadA = dA > 1200u ? 600u : dA / 3u
-        sleep(leadA)
+        hold_content(app, leadA)
         wait_for_mouse_idle(app)                            // cursor settled over the child before the wheel
         var snap_a = snapshot(app)
         let a0 = widget_payload_field(snap_a, T_A, "scroll")
         let a0s = a0 != null ? write_json(a0) : ""
         scroll_child_down(app)
         record_check_changed(app, T_A, "scroll", a0s, 200)  // the wheel moved ChildState.scroll
-        let elapsedA = uint(get_time_usec(tA) / 1000)       // real time spent on lead + scroll + verify
-        sleep(dA > elapsedA ? dA - elapsedA : 0u)           // hold the caption for the rest of the voice
+        hold_remainder_content(app, dA, anchorA)            // hold the caption for the rest of the voice
 
         // ---- Stage B: AutoResizeY child -> a live checkbox inside it ----
         move_to(app, p_b_vsync, 900)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         hold_through_voice(app, say_begin(app, "child - AutoResizeY tracks content", T_B_VSYNC,
             [voice = "This child uses auto resize. Its height grows to fit whatever it holds, with no scrollbar. It still carries live widgets, like this checkbox. I toggle it."]),
             [T_B_VSYNC])
 
         // ---- Stage C: HorizontalScrollbar child -> wheel scrolls sideways ----
         move_to(app, p_c, 900)
-        sleep(SETTLE_MS)
-        let tC = ref_time_ticks()
+        hold_content(app, SETTLE_MS)
+        let anchorC = record_frame_count(app)
         let dC = say_begin(app, "child - horizontal scroll for wide content", T_C_LEAF,
             [voice = "The last child turns on a horizontal scrollbar for one very wide line. I roll the wheel sideways, and the horizontal scroll position follows."])
         let leadC = dC > 1200u ? 600u : dC / 3u
-        sleep(leadC)
+        hold_content(app, leadC)
         wait_for_mouse_idle(app)
         var snap_c = snapshot(app)
         let c0 = widget_payload_field(snap_c, T_C, "scroll")
         let c0s = c0 != null ? write_json(c0) : ""
         scroll_child_right(app)
         record_check_changed(app, T_C, "scroll", c0s, 200)
-        let elapsedC = uint(get_time_usec(tC) / 1000)
-        sleep(dC > elapsedC ? dC - elapsedC : 0u)
+        hold_remainder_content(app, dC, anchorC)
     }
 }
 
@@ -99,13 +97,13 @@ def main {
 def scroll_child_down(app : ImguiApp) {
     for (_i in range(3)) {
         post_command(app, "imgui_mouse_scroll", JV((x = 0.0f, y = -3.0f)))
-        sleep(350u)
+        hold_content(app, 350u)
     }
 }
 
 def scroll_child_right(app : ImguiApp) {
     for (_i in range(3)) {
         post_command(app, "imgui_mouse_scroll", JV((x = -5.0f, y = 0.0f)))
-        sleep(350u)
+        hold_content(app, 350u)
     }
 }

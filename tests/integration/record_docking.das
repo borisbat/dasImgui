@@ -55,7 +55,7 @@ def main {
 
         // ---- Beat 1: intro - the three docked panels ----
         move_to(app, (512.0f, 360.0f), 600)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         record_check_rendered(app, T_REFRESH_BTN, true)
         record_check_rendered(app, T_SAVE_BTN, true)
         record_check_rendered(app, T_CLEAR_BTN, true)
@@ -71,7 +71,7 @@ def main {
         let split_x = (er.x + er.z + sr.x) * 0.5f
         let split_y = er.y + er.w * 0.5f
         move_to(app, (split_x, split_y), 700)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         let dwell2 = say_begin(app, "Drag the divider to resize", T_REFRESH_BTN,
             [voice = "Drag the divider between two panels to resize them. I will widen the Explorer pane on the left."])
         drag_through_voice(app, dwell2, T_EXPLORER, (split_x + 150.0f, split_y), 0, "size")
@@ -85,7 +85,7 @@ def main {
         let tab_pt     = (outr.x + 40.0f, outr.y + 14.0f)
         let src_center = (srcr.x + srcr.z * 0.5f, srcr.y + srcr.w * 0.5f)
         move_to(app, tab_pt, 700)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         let dwell3 = say_begin(app, "Drag a tab to re-dock", T_REFRESH_BTN,
             [voice = "And drag a panel's tab onto another panel to stack them together as tabs. The layout is just data, so it persists between runs."])
         drag_through_voice(app, dwell3, T_OUTPUT, src_center, 0, "dock_id")
