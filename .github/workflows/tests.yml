@@ -216,10 +216,18 @@ jobs:
         # port 9090. With it, ports 9090/9091/9092/9093 are independent and
         # workers don't collide. Expected ~3× wall-time reduction vs sequential.
         #
-        # ISOLATED MODE IS SAFE HERE BECAUSE EVERY [test] IS HEADLESS. They all
-        # run via with_imgui_app, which spawns daslang-live under --headless: an
-        # ImGui context with a CPU font atlas, NO GLFW window / GL context. So 4
-        # parallel workers cost only CPU.
+        # ISOLATED MODE IS SAFE (CORRECTNESS-WISE) BECAUSE EVERY [test] IS HEADLESS.
+        # They all run via with_imgui_app, which spawns daslang-live under --headless:
+        # an ImGui context with a CPU font atlas, NO GLFW window / GL context. So 4
+        # parallel workers only cost CPU — used on ubuntu (and Windows when enabled).
+        #
+        # macOS RUNS SERIALLY (NO --isolated-mode). The GitHub macOS runner is only
+        # ~3 vCPU; 4 parallel daslang-live hosts starve each other so hard that a
+        # host's /status health check takes ~10s to answer, racing the client's 10s
+        # per-request timeout — so wait_until_ready trips its 30s budget and the test
+        # errors "daslang-live not ready after 30s" (intermittent; first seen as a
+        # test_plot_getters_render flake, #190 follow-up). Serial removes the
+        # contention. It's slower wall-time, so the macOS sweep timeout is bumped.
         #
         # RECORDINGS CANNOT RUN IN CI ON macOS. A recording drives a real windowed
         # GL host (with_recording_app, for APNG capture), but the GitHub macOS
@@ -278,15 +286,20 @@ jobs:
           # runner instances headroom; on a fast instance the sweep finishes
           # in ~5 min and the cap never matters.
           DASTEST_TIMEOUT=600
+          # Isolated mode parallelizes across subprocesses. macOS opts OUT (serial)
+          # because the ~3-vCPU runner starves parallel hosts (see the note above).
+          ISOLATED="--isolated-mode --isolated-mode-threads 4"
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
             EXTRA_EXCLUDES="--exclude inputs_drag --exclude inputs_numeric --exclude inputs_slider --exclude inputs_color --exclude inputs_choice --exclude inputs_text --exclude indexed_dynamic"
             DASTEST_TIMEOUT=1800
+          elif [ "${{ matrix.os }}" = "macos-latest" ]; then
+            ISOLATED=""          # serial: one daslang-live at a time, no host starvation
+            DASTEST_TIMEOUT=1800 # serial is slower than 4-way; give the sweep headroom
           fi
           ${BIN_DIR}/daslang dastest/dastest.das -- \
             --test modules/dasImgui/tests/integration \
             --timeout $DASTEST_TIMEOUT \
-            --isolated-mode \
-            --isolated-mode-threads 4 \
+            $ISOLATED \
             --exclude glfw_synth \
             --exclude key_hud \
             $EXTRA_EXCLUDES \
