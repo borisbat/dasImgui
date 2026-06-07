@@ -868,3 +868,15 @@ def imgui_focus_rect(input : JsonValue?) : JsonValue? {
     focus_rect_enabled = args.enabled
     return JV((ok = true, enabled = args.enabled))
 }
+
+struct MemDebugArgs {
+    @optional enabled : bool = true
+}
+
+[live_command(description="Toggle per-frame heap/string-heap GC-pressure logging. Enabling resets the baseline; a periodic line prints while on and a final delta line at teardown. Arg: enabled.")]
+def imgui_memory_debug(input : JsonValue?) : JsonValue? {
+    //! ``[live_command]`` toggle for :ref:`imgui_debug_memory <function-imgui_boost_runtime_imgui_debug_memory_bool>` — per-frame GC-pressure logging. Arg: ``enabled``.
+    let args = from_JV(input, type<MemDebugArgs>)
+    imgui_boost_runtime::imgui_debug_memory(args.enabled)
+    return JV((ok = true, enabled = args.enabled))
+}

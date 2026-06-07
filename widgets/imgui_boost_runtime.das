@@ -2,6 +2,7 @@ options gen2
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
+options persistent_heap   // collectable heap so per-frame JsonValue churn (snapshots, payloads) is reclaimed by delete + GC, not leaked; unifies program-wide
 
 module imgui_boost_runtime shared
 
@@ -818,6 +819,7 @@ def begin_frame() {
     //! Per-frame reset: bumps the frame counter and clears the per-frame registry, ``hex_id``\ →bbox map, and container path.
     //! Call before rendering widgets; L1 coroutines advance separately via :ref:`advance_coroutines <function-imgui_boost_runtime_advance_coroutines>`.
     g_frame++
+    sample_memory()
     g_registry |> clear()
     g_id_to_bbox |> clear()
     g_rendered_this_frame |> clear()
@@ -830,6 +832,76 @@ def begin_frame() {
     // later frame and corrupt unrelated widget bboxes. Reset like the other per-frame state.
     if (!empty(g_item_xform_stack)) {
         g_item_xform_stack |> clear()
+    }
+}
+
+// ===== Memory / GC-pressure tracking (opt-in) =====
+//
+// Mirrors strudel_player's heap-delta tracking: sample the heap once per frame
+// (from begin_frame), hold a baseline + running max, log periodically while
+// enabled, and emit a final delta line at teardown. Off by default — one bool
+// test per frame when off.
+
+var private g_debug_memory : bool = false
+var private g_mem_baseline_set : bool = false
+var private g_mem_heap_baseline : uint64 = 0ul
+var private g_mem_str_baseline : uint64 = 0ul
+var private g_mem_heap_max : uint64 = 0ul
+var private g_mem_str_max : uint64 = 0ul
+var private g_mem_frame_count : int = 0
+
+//! Frames between periodic memory logs while ``imgui_debug_memory`` is on (0 disables the periodic line; the teardown report still fires). ~2s at 60fps.
+var public imgui_mem_log_interval : int = 120
+
+def public imgui_reset_memory_baseline() {
+    //! Snapshot current heap + string-heap usage as the leak-tracking baseline. Call after
+    //! one-time setup (window/fonts/first frame) so only steady-state growth is measured.
+    g_mem_heap_baseline = heap_bytes_allocated()
+    g_mem_str_baseline = string_heap_bytes_allocated()
+    g_mem_heap_max = g_mem_heap_baseline
+    g_mem_str_max = g_mem_str_baseline
+    g_mem_frame_count = 0
+    g_mem_baseline_set = true
+}
+
+def public imgui_debug_memory(enabled : bool) {
+    //! Toggle per-frame heap / string-heap GC-pressure logging. Enabling (re)sets the baseline,
+    //! so a steadily-growing heap surfaces as the per-frame ``+delta`` climbing instead of flat.
+    g_debug_memory = enabled
+    if (enabled) {
+        imgui_reset_memory_baseline()
+    }
+}
+
+def public imgui_memory_report() {
+    //! Emit a final heap / string-heap delta-vs-baseline line, plus a WARNING if either grew past
+    //! 64kb (a steady per-frame leak / GC-pressure smell). Called at teardown by with_imgui_app /
+    //! with_recording_app; safe to call by hand. No-op until a baseline has been taken.
+    return if (!g_mem_baseline_set)
+    let heap_now = heap_bytes_allocated()
+    let str_now = string_heap_bytes_allocated()
+    let dheap = int64(heap_now) - int64(g_mem_heap_baseline)
+    let dstr = int64(str_now) - int64(g_mem_str_baseline)
+    to_log(LOG_INFO, "imgui mem: heap {heap_now/1024ul}kb (peak {g_mem_heap_max/1024ul}kb, delta {dheap}), str {str_now/1024ul}kb (peak {g_mem_str_max/1024ul}kb, delta {dstr})\n")
+    if (dheap > 65536l || dstr > 65536l) {
+        to_log(LOG_WARNING, "imgui mem: WARNING growth since baseline — heap +{dheap} str +{dstr} bytes (per-frame leak / GC pressure)\n")
+    }
+}
+
+def private sample_memory() {
+    return if (!g_debug_memory)
+    if (!g_mem_baseline_set) {
+        imgui_reset_memory_baseline()
+    }
+    let heap_cur = heap_bytes_allocated()
+    let str_cur = string_heap_bytes_allocated()
+    g_mem_heap_max = max(g_mem_heap_max, heap_cur)
+    g_mem_str_max = max(g_mem_str_max, str_cur)
+    g_mem_frame_count++
+    if (imgui_mem_log_interval > 0 && g_mem_frame_count % imgui_mem_log_interval == 0) {
+        let dheap = int64(heap_cur) - int64(g_mem_heap_baseline)
+        let dstr = int64(str_cur) - int64(g_mem_str_baseline)
+        to_log(LOG_INFO, "imgui mem [frame {g_frame}]: heap {heap_cur/1024ul}kb (max {g_mem_heap_max/1024ul}kb, +{dheap}), str {str_cur/1024ul}kb (max {g_mem_str_max/1024ul}kb, +{dstr})\n")
     }
 }
 
@@ -1392,20 +1464,18 @@ def private with_await(input : JsonValue?; payload : auto(P)) : JsonValue? {
     let mods = from_JV(input?["await"], default<AwaitModifiers>)
     var jv = JV(payload)
     if (mods.fire_and_forget) return jv
-    var tab : table<string; JsonValue?>
-    if (jv != null && (jv.value is _object)) {
-        for (k, v in keys(jv.value as _object), values(jv.value as _object)) {
-            tab[k] = v
+    // Add the await modifiers directly onto the result object (was: copy every
+    // field into a fresh table and return that, which orphaned `jv` every call).
+    if (jv != null && jv.value is _object) {
+        if (mods.await_frames >= 0) {
+            jv |> update("await_frames", JV(mods.await_frames))
         }
+        if (!empty(mods.await_until)) {
+            jv |> update("await_until", JV(mods.await_until))
+        }
+        jv |> update("timeout_sec", JV(mods.timeout_sec))
     }
-    if (mods.await_frames >= 0) {
-        tab["await_frames"] = JV(mods.await_frames)
-    }
-    if (!empty(mods.await_until)) {
-        tab["await_until"] = JV(mods.await_until)
-    }
-    tab["timeout_sec"] = JV(mods.timeout_sec)
-    return JV(tab)
+    return jv
 }
 
 // ===== [live_command] handlers =====

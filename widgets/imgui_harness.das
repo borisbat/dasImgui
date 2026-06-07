@@ -7,6 +7,7 @@ options _allow_imgui_legacy = true
 // imgui_live backends — its own compile passes need to skip its own lint.
 // Same pattern as `_allow_imgui_legacy = true` on widgets/imgui_lint.das.
 options _allow_glfw_calls = true
+options persistent_heap   // collectable heap so per-frame JsonValue churn is reclaimed; unifies program-wide
 
 module imgui_harness shared public
 
@@ -207,6 +208,9 @@ def public harness_end_frame() {
 def public harness_shutdown() {
     //! Windowed: ``live_imgui_shutdown`` + ``live_destroy_window``.
     //! Headless: ``DestroyContext`` (the harness owns the ctx in headless mode).
+    // Final GC-pressure summary (no-op unless imgui_debug_memory was enabled). Runs
+    // before context teardown so the numbers reflect the steady-state app, not cleanup.
+    imgui_memory_report()
     if (harness_is_headless()) {
         if (g_headless_ctx != null) {
             DestroyContext(g_headless_ctx)
