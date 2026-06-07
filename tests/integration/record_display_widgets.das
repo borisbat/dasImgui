@@ -44,7 +44,7 @@ def main {
 
         // Park the cursor on the bars and warm up the capture pipeline.
         move_to(app, p_static, 800)
-        sleep(1800u)
+        hold_content(app, 1800u)
 
         // ---- Beat 1: progress_bar overview ----
         record_check_rendered(app, PB_STATIC, true, 180)
@@ -53,18 +53,19 @@ def main {
 
         // ---- Beat 2: the sine-driven bar animates (the one dynamic behaviour) ----
         move_to(app, p_driven, 500)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         let d2 = say_begin(app, "live fraction, sine-driven", PB_DRIVEN,
             [voice = "The middle bar's fraction is driven by a sine wave, so it sweeps back and forth - and the snapshot's fraction tracks the visible bar exactly."])
+        let anchor2 = record_frame_count(app)
         let lead = d2 > 1400u ? 700u : d2 / 3u
         let before = write_json(snapshot(app)?["globals"]?[PB_DRIVEN]?["payload"]?["fraction"])
-        sleep(lead)
+        hold_content(app, lead)
         record_check_changed(app, PB_DRIVEN, "fraction", before, 180)
-        sleep(d2 > lead ? d2 - lead : 0u)
+        hold_remainder_content(app, d2, anchor2)
 
         // ---- Beat 3: image - display only ----
         move_to(app, p_img, 700)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         record_check_rendered(app, IMG_PLAIN, true, 180)
         record_check_rendered(app, IMG_TINT, true, 180)
         say(app, "image: display-only texture", IMG_TINT,

@@ -7,7 +7,6 @@ require imgui public
 require imgui/imgui_playwright public
 require daslib/json public
 require daslib/json_boost public
-require math
 
 //! Driver script: record ``group.apng`` against ``examples/tutorial/group.das``.
 //! Three voiced, self-verifying beats:
@@ -51,7 +50,7 @@ def main {
 
         //! Initial cursor placement.
         move_to(app, widget_center(snap, T_LWIRE), 600)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
 
         // ---- Beat 1: side-by-side groups (toggle one in each) ----
         hold_through_voice(app, say_begin(app, "side by side via same_line", [T_LWIRE, T_VSYNC],
@@ -63,16 +62,16 @@ def main {
         // only fire if the whole-group bbox is the hit-target.
         let hb = widget_bbox(snapshot(app), T_HOVER_BTN)
         move_to(app, (hb.x - 70.0f, (hb.y + hb.w) * 0.5f), 900)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         let dwell2 = say_begin(app, "hover anywhere - whole-group hit-test", T_HOVER_BTN,
             [voice = "Now hover the cluster, but not on the button itself. Anywhere across the icon and the label brings up one tooltip, because the group reports hover over its entire bounding box."])
         record_check_rendered(app, T_TIP, true, 120)
-        sleep(dwell2)
+        hold_content(app, dwell2)
 
         // ---- Beat 3: the (label | value | button) row ----
         let speed_c = widget_center(snapshot(app), T_SPEED)
         move_to(app, speed_c, 800)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         drag_through_voice(app, say_begin(app, "label | value | button as one row", T_SPEED,
             [voice = "And the classic row. A label, a value slider, and a button, kept together as a single unit. Drag the slider, and the value updates on the line just below."]),
             T_SPEED, (speed_c._0 + 150.0f, speed_c._1))

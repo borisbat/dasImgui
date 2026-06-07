@@ -31,28 +31,25 @@ def main {
 
         //! Land the cursor on the first row (flips synth_cursor_owned; the row starts hovering).
         move_to(app, widget_click_point(snap, T_ROW0), 600)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
 
         // ---- Stage 1: hover the first row — status starts following ----
-        let d1 = say_begin(app, "selectable_hover - pure hover surface", T_ROW0,
-            [voice = "A selectable hover row lights up while the pointer rests on it, and it never stays selected. Watch the status line at the bottom follow the highlight."])
         record_check_value(app, T_STATUS, "value", "Hovering: Arrow", 120)
-        sleep(d1)
+        say(app, "selectable_hover - pure hover surface", T_ROW0,
+            [voice = "A selectable hover row lights up while the pointer rests on it, and it never stays selected. Watch the status line at the bottom follow the highlight."])
 
         // ---- Stage 2: move down the list — status tracks the row under the cursor ----
         move_to(app, widget_click_point(snap, T_ROW2), 800)
-        sleep(SETTLE_MS)
-        let d2 = say_begin(app, "status follows the hover", T_ROW2,
-            [voice = "As the pointer moves down the list, each row reports that it is hovered, and the status updates to match the one under the cursor."])
+        hold_content(app, SETTLE_MS)
         record_check_value(app, T_STATUS, "value", "Hovering: ResizeAll", 120)
-        sleep(d2)
+        say(app, "status follows the hover", T_ROW2,
+            [voice = "As the pointer moves down the list, each row reports that it is hovered, and the status updates to match the one under the cursor."])
 
         // ---- Stage 3: last row — no click, nothing persisted ----
         move_to(app, widget_click_point(snap, T_ROW4), 800)
-        sleep(SETTLE_MS)
-        let d3 = say_begin(app, "no toggle, nothing remembered", T_ROW4,
-            [voice = "There is no click to make and nothing is remembered. The row is purely a hover surface, for a per-frame side effect like setting the mouse cursor."])
+        hold_content(app, SETTLE_MS)
         record_check_value(app, T_STATUS, "value", "Hovering: NotAllowed", 120)
-        sleep(d3)
+        say(app, "no toggle, nothing remembered", T_ROW4,
+            [voice = "There is no click to make and nothing is remembered. The row is purely a hover surface, for a per-frame side effect like setting the mouse cursor."])
     }
 }

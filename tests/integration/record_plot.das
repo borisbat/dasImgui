@@ -30,34 +30,34 @@ def main {
 
         // ---- Stage 1: plot_lines (array) - sine wave ----
         move_to(app, widget_click_point(snap, T_LINES), 500)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         let d1 = say_begin(app, "plot_lines - an array of samples", T_LINES,
             [voice = "A plot turns a row of numbers into a picture. This line plot reads a fresh array of samples every frame - here a sine wave - and draws it left to right."])
         record_check_value(app, T_LINES, "title", "Sine wave", 120)
-        sleep(d1)
+        hold_content(app, d1)
 
         // ---- Stage 2: plot_histogram (array) - same data, bars ----
         move_to(app, widget_click_point(snap, T_HIST), 800)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         let d2 = say_begin(app, "plot_histogram - same data, bars", T_HIST,
             [voice = "The histogram takes the very same kind of array and draws it as bars instead of a line. Same data going in, a different shape coming out."])
         record_check_value(app, T_HIST, "title", "Histogram", 120)
-        sleep(d2)
+        hold_content(app, d2)
 
         // ---- Stage 3: plot_lines_getter (lambda) - a callback, no array ----
         move_to(app, widget_click_point(snap, T_LINES_G), 800)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         let d3 = say_begin(app, "plot_lines_getter - a callback, no array", T_LINES_G,
             [voice = "You don't always need an array. The getter form calls a small function once per sample, so you can plot a signal computed on the fly without storing it anywhere."])
         record_check_value(app, T_LINES_G, "title", "sin(i*0.1)", 120)
-        sleep(d3)
+        hold_content(app, d3)
 
         // ---- Stage 4: plot_histogram_getter (lambda) - callback bars ----
         move_to(app, widget_click_point(snap, T_HIST_G), 800)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         let d4 = say_begin(app, "plot_histogram_getter - callback bars", T_HIST_G,
             [voice = "And the same callback trick works for bars. Pick lines or bars purely by which picture reads best for your data."])
         record_check_value(app, T_HIST_G, "title", "abs(sin(i*0.1))", 120)
-        sleep(d4)
+        hold_content(app, d4)
     }
 }

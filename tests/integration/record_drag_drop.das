@@ -49,7 +49,7 @@ def main {
 
         //! Initial cursor placement (synth IO flips cursor_owned on first move).
         move_to(app, p_source, 600)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
 
         // ---- Beat 1: the source ----
         say(app, "drag source - publishes a payload", T_SOURCE,
@@ -57,15 +57,16 @@ def main {
 
         // ---- Beat 2: the target ----
         move_to(app, p_target, 800)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         say(app, "drop target - accepts a matching type", T_TARGET,
             [voice = "This one is a drop target. It lights up only for a payload whose type it recognizes, and quietly ignores anything else."])
 
         // ---- Beat 3: the real drag, self-verified ----
         let dwell = say_begin(app, "drag source onto target", [T_SOURCE, T_TARGET],
             [voice = "Now the real thing. Press on the source, drag it across, and release over the target. The value rides along with the cursor, and the moment you let go the target accepts it and the drop count ticks up."])
+        let anchor = record_frame_count(app)
         let lead = clamp(dwell / 3u, 700u, 2500u)
-        sleep(lead)
+        hold_content(app, lead)
         // Re-resolve both centers from a fresh snapshot, then scrub source -> target
         // with the button held (a real drop gesture). drag_along approaches the
         // source from the current cursor (the target), so the re-grab is visible.
@@ -77,10 +78,9 @@ def main {
         post_command(app, "imgui_mouse_play", JV((events = ev)))
         unsafe { delete ev; }
         let play = uint(500 + 300 + 1100) + 400u   // approach + release-tail + drag + settle cushion
-        sleep(play)
+        hold_content(app, play)
         // The drop must LAND: the target's delivery counter goes 0 -> 1.
         record_check_value(app, T_TARGET_DD, "accepted", 1, 180)
-        let consumed = lead + play
-        sleep(dwell > consumed ? dwell - consumed : 0u)
+        hold_remainder_content(app, dwell, anchor)
     }
 }

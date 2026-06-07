@@ -45,7 +45,7 @@ def main {
 
         // Park the cursor on the intro line and warm up the capture pipeline.
         move_to(app, p_intro, 800)
-        sleep(1800u)
+        hold_content(app, 1800u)
 
         // ---- Beat 1: intro ----
         record_check_rendered(app, T_INTRO, true, 180)
@@ -54,25 +54,26 @@ def main {
 
         // ---- Beat 2: with_window_drawlist - the shapes (the meat) ----
         move_to(app, p_band, 600)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         let d2 = say_begin(app, "with_window_drawlist: shapes into the window", T_BAND,
             [voice = "with_window_drawlist hands you the window's draw list. Rect, line, circle, triangle, text - plus gradients, ellipses, n-gons, and bezier curves, all painted into the window."])
+        let anchor2 = record_frame_count(app)
         let lead = d2 > 1400u ? 700u : d2 / 3u
-        sleep(lead)
+        hold_content(app, lead)
         // Every primitive registers an `add_*` entry; assert the rail really painted.
         record_check_kind_count(app, "add_", 12, 180)
-        sleep(d2 > lead ? d2 - lead : 0u)
+        hold_remainder_content(app, d2, anchor2)
 
         // ---- Beat 3: with_foreground_drawlist - the FG ribbon ----
         move_to(app, p_fg, 600)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         record_check_rendered(app, T_FG, true, 180)
         say(app, "with_foreground_drawlist: over everything", T_FG,
             [voice = "with_foreground_drawlist paints over every window - here a small FG ribbon, pinned top-left of the viewport."])
 
         // ---- Beat 4: with_background_drawlist - the viewport tint ----
         move_to(app, p_band, 600)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         record_check_rendered(app, T_WIN, true, 180)
         say(app, "with_background_drawlist: under everything", T_WIN,
             [voice = "And with_background_drawlist paints under everything - a full-viewport tint sitting behind the window."])

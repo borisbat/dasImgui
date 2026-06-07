@@ -30,21 +30,21 @@ def main {
 
         // ---- Stage 1: one block, color + metric override ----
         move_to(app, widget_click_point(snap, T_STYLED), 600)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         hold_through_voice(app, say_begin(app, "with_style - scoped color + metric", T_STYLED,
             [voice = "A with_style block changes colors and metrics just for the widgets inside it. One block makes this button red and gives it rounded corners. Click it - it is a real button, only restyled."]),
             [T_STYLED])
 
         // ---- Stage 2: nested blocks stack ----
         move_to(app, widget_click_point(snap, T_NESTED), 800)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         hold_through_voice(app, say_begin(app, "nested blocks stack", T_NESTED,
             [voice = "Style blocks nest. The outer block paints the text yellow, and the inner one adds a blue rounded button - so this button picks up both at once."]),
             [T_NESTED])
 
         // ---- Stage 3: styles pop automatically when the block ends ----
         move_to(app, widget_click_point(snap, T_UNSTYLED), 800)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         hold_through_voice(app, say_begin(app, "styles pop when the block ends", T_UNSTYLED,
             [voice = "When a block ends its styles pop automatically. This last button sits outside every block, so it is back to the plain default look - no manual pop, no leak."]),
             [T_UNSTYLED])

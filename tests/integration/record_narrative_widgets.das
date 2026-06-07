@@ -49,11 +49,11 @@ def main {
         let p_label   = widget_center(snap, T_LABEL)
 
         move_to(app, (60.0f, 40.0f), 600)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
 
         // ---- Beat 1: text + text_wrapped ----
         move_to(app, p_plain, 900)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         record_check_value(app, T_PLAIN, "value", "text() - one line, telemetry-visible.")
         record_check_rendered(app, T_WRAPPED, true)
         say(app, "text + text_wrapped", T_PLAIN,
@@ -61,7 +61,7 @@ def main {
 
         // ---- Beat 2: text_colored + text_disabled ----
         move_to(app, p_colored, 900)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         record_check_rendered(app, T_COLORED, true)
         record_check_rendered(app, T_DISABLED, true)
         say(app, "text_colored + text_disabled", T_COLORED,
@@ -69,7 +69,7 @@ def main {
 
         // ---- Beat 3: bullet + bullet_text ----
         move_to(app, p_bullet, 900)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         record_check_rendered(app, T_BULLET, true)
         record_check_value(app, T_BFIRST, "value", "First point of interest.")
         say(app, "bullet + bullet_text", T_BFIRST,
@@ -77,7 +77,7 @@ def main {
 
         // ---- Beat 4: label_text ----
         move_to(app, p_label, 900)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         record_check_value(app, T_LABEL, "value", "v2.0-detour")
         say(app, "label_text - value and key", T_LABEL,
             [voice = "And label text pairs a value with its label and echoes both into the snapshot - perfect for a property sheet."])

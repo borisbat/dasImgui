@@ -48,14 +48,14 @@ def main {
 
         // ---- Stage 1: General active - toggle Wireframe (leaves survivable state) ----
         move_to(app, widget_click_point(snap, T_WIRE), 700)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         hold_through_voice(app, say_begin(app, "only the active tab's body runs", T_WIRE,
             [voice = "A tab bar shows one panel at a time. The General tab is open, so only its controls are alive. I'll switch Wireframe on here - remember it, we will come back to it."]),
             [T_WIRE])
 
         // ---- Stage 2: switch to Audio - General body stops, Audio body starts ----
         move_to(app, widget_click_point(snap, T_AUDIO), 800)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         // tab_item is not a click-verified kind, so hold_through_voice clicks without auto-checking;
         // verify the switch ourselves: General's checkbox stops rendering, Audio's starts.
         hold_through_voice(app, say_begin(app, "click a header to switch", T_AUDIO,
@@ -66,17 +66,17 @@ def main {
 
         // ---- Stage 3: in Audio - toggle Mute (the switched-to panel is live) ----
         move_to(app, widget_click_point(snap, T_AUDIO), 200)   // keep cursor near the strip
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         var snap_audio = snapshot(app)
         move_to(app, widget_click_point(snap_audio, T_MUTE), 700)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         hold_through_voice(app, say_begin(app, "the new panel is interactive", T_MUTE,
             [voice = "Now that Audio is open its own controls respond. I'll toggle Mute - proof the panel you switched to is fully live, not a picture."]),
             [T_MUTE])
 
         // ---- Stage 4: switch to Info - Audio sleeps, Info wakes ----
         move_to(app, widget_click_point(snap, T_INFO), 800)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         hold_through_voice(app, say_begin(app, "one panel runs at a time", T_INFO,
             [voice = "Info is just another tab. Switching to it puts Audio to sleep and wakes Info. Only one panel ever runs, so the inactive tabs cost you nothing."]),
             [T_INFO])
@@ -85,7 +85,7 @@ def main {
 
         // ---- Stage 5: back to General - the Wireframe toggle survived ----
         move_to(app, widget_click_point(snap, T_GENERAL), 800)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         hold_through_voice(app, say_begin(app, "tab state survives the switch", T_GENERAL,
             [voice = "Here is the payoff. Back in General, the Wireframe box I ticked earlier is still on. Each tab keeps its state outside the panel, so it survives every switch."]),
             [T_GENERAL])
@@ -94,7 +94,7 @@ def main {
 
         // ---- Stage 6a: open Draft, then close it with a real click on its x ----
         move_to(app, widget_click_point(snap, T_DRAFT), 800)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         hold_through_voice(app, say_begin(app, "a closable tab has an x", T_DRAFT,
             [voice = "The Draft tab is closable - see the little x on its header. Let me open it first."]),
             [T_DRAFT])
@@ -108,15 +108,15 @@ def main {
         let x_pt = (db.z - 11.0f, (db.y + db.w) * 0.5f)
         let d6 = say_begin(app, "click the x to close it", T_DRAFT,
             [voice = "Now click that x, and the tab is gone from the strip. Its open flag flips to false and the panel stops drawing entirely."])
+        let anchor6 = record_frame_count(app)
         let lead = d6 > 1200u ? 600u : d6 / 3u
-        sleep(lead)
+        hold_content(app, lead)
         var ev : array<JsonValue?>
         click_at(ev, 0, x_pt, 500)
         post_command(app, "imgui_mouse_play", JV((events = ev)))
         unsafe { delete ev; }
-        sleep(1300u)                                    // click_at timeline (~1000ms) + close settle
+        hold_content(app, 1300u)                         // click_at timeline (~1000ms) + close settle
         record_check_value(app, T_DRAFT, "open", false, 180)
-        let consumed = lead + 1300u
-        sleep(d6 > consumed ? d6 - consumed : 0u)
+        hold_remainder_content(app, d6, anchor6)
     }
 }

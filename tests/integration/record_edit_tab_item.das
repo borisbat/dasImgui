@@ -45,7 +45,7 @@ def main {
 
         //! Initial cursor placement onto the beta checkbox.
         move_to(app, widget_click_point(snap, T_CHECK_B), 600)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
 
         // ---- Beat 1: external checkbox hides a tab ----
         hold_through_voice(app, say_begin(app, "checkbox hides a tab", T_CHECK_B,
@@ -62,30 +62,30 @@ def main {
         // current bbox (beta hid, but alpha is leftmost and unmoved).
         let x_pos = tab_close_point(snapshot(app), T_TAB_A)
         move_to(app, x_pos, 800)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         let dwell2 = say_begin(app, "the X writes the same bool", T_TAB_A,
             [voice = "Now close alpha with the X on its own tab header. The X writes the very same bool, so watch the external show A checkbox flip itself off. One source of truth, two surfaces."])
+        let anchor2 = record_frame_count(app)
         let lead2 = dwell2 > 1200u ? 500u : dwell2 / 3u
-        sleep(lead2)
+        hold_content(app, lead2)
         var ev : array<JsonValue?>
         ev |> click_at(0, x_pos, 300)
         post_command(app, "imgui_mouse_play", JV((events = ev)))
         unsafe { delete ev; }
         let play2 = 300u + 500u + 200u   // click_at timeline (travel + dwell tail) + settle
-        sleep(play2)
+        hold_content(app, play2)
         record_check_value(app, T_TAB_A, "value", false, 180)   // the X wrote the bool
         record_check_value(app, T_CHECK_A, "value", false, 180)  // ...and the checkbox sees it (bidir)
         // Glide to the now-empty show A box: traces the bidir link the voice is
         // describing AND gets the cursor off the tab bar (gamma reflows left into
         // alpha's old slot, so a resting cursor would otherwise sit on gamma's X).
         move_to(app, widget_click_point(snapshot(app), T_CHECK_A), 700)
-        let consumed2 = lead2 + play2
-        sleep(dwell2 > consumed2 ? dwell2 - consumed2 : 0u)
+        hold_remainder_content(app, dwell2, anchor2)
 
         // ---- Beat 3: restore both tabs via the checkboxes ----
         var snap3 = snapshot(app)
         move_to(app, widget_click_point(snap3, T_CHECK_A), 700)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         hold_through_voice(app, say_begin(app, "restore - caller stays in control", [T_CHECK_A, T_CHECK_B],
             [voice = "Tick the boxes back on, and every tab returns. External bool or X button, the caller always stays in control."]),
             [T_CHECK_A, T_CHECK_B])

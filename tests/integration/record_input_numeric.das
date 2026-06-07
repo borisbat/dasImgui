@@ -48,7 +48,7 @@ def main {
         // ---- Stage 1: scalar float — click, type, Enter ----
         let pF = field_click(snap, T_FLOAT)
         move_to(app, pF, 700)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         let d1 = say_begin(app, "input_float - type a number", T_FLOAT,
             [voice = "A numeric input takes the value straight from your keyboard. Click to focus the field, type a number, and press Enter to commit it."])
         type_into_voice(app, d1, T_FLOAT, pF, ["12.5"], 12.5f)
@@ -56,7 +56,7 @@ def main {
         // ---- Stage 2: scalar int — same gesture, whole numbers ----
         let pI = field_click(snap, T_INT)
         move_to(app, pI, 700)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         let d2 = say_begin(app, "input_int - whole numbers", T_INT,
             [voice = "The integer input works exactly the same way, only it keeps whole numbers. The plus and minus buttons step it up or down by one."])
         type_into_voice(app, d2, T_INT, pI, ["42"], 42)
@@ -64,7 +64,7 @@ def main {
         // ---- Stage 3: vector float3 — type field 0, Tab across, Enter commits the row ----
         let pV = field_click(snap, T_VEC3)
         move_to(app, pV, 700)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         let d3 = say_begin(app, "input_float3 - Tab between fields", T_VEC3,
             [voice = "A vector input gives each component its own field. Type the first, press Tab to jump to the next, and Enter commits the whole row at once."])
         type_into_voice(app, d3, T_VEC3, pV, ["1.5", "2.5", "3.5"], float3(1.5f, 2.5f, 3.5f))
@@ -72,7 +72,7 @@ def main {
         // ---- Stage 4: double precision — same shape, more digits ----
         let pD = field_click(snap, T_DOUBLE)
         move_to(app, pD, 700)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         let d4 = say_begin(app, "input_double - double precision", T_DOUBLE,
             [voice = "The double input has the very same shape at double precision, with room for many more digits, handy for timestamps or coordinates."])
         type_into_voice(app, d4, T_DOUBLE, pD, ["1234567.5"], 1234567.5lf)

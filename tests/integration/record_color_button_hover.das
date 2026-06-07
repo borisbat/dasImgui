@@ -30,28 +30,25 @@ def main {
 
         //! Land the cursor on the first swatch (flips synth_cursor_owned; red starts hovering).
         move_to(app, widget_click_point(snap, T_RED), 600)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
 
         // ---- Stage 1: hover red — the status line starts following ----
-        let d1 = say_begin(app, "color_button_hover - pure hover surface", T_RED,
-            [voice = "A color button can also be just a hover surface. It returns true only while the pointer rests on the swatch - there is no click and no toggle. Watch the status line follow the cursor."])
         record_check_value(app, T_STATUS, "value", "Hovering: red", 120)
-        sleep(d1)
+        say(app, "color_button_hover - pure hover surface", T_RED,
+            [voice = "A color button can also be just a hover surface. It returns true only while the pointer rests on the swatch - there is no click and no toggle. Watch the status line follow the cursor."])
 
         // ---- Stage 2: hover green — the bool follows the cursor ----
         move_to(app, widget_click_point(snap, T_GREEN), 800)
-        sleep(SETTLE_MS)
-        let d2 = say_begin(app, "the bool follows the cursor", T_GREEN,
-            [voice = "Move onto another swatch and the return value follows along. Each frame, only the swatch directly under the pointer reports that it is hovered."])
+        hold_content(app, SETTLE_MS)
         record_check_value(app, T_STATUS, "value", "Hovering: green", 120)
-        sleep(d2)
+        say(app, "the bool follows the cursor", T_GREEN,
+            [voice = "Move onto another swatch and the return value follows along. Each frame, only the swatch directly under the pointer reports that it is hovered."])
 
         // ---- Stage 3: hover blue — nothing clicked, nothing remembered ----
         move_to(app, widget_click_point(snap, T_BLUE), 800)
-        sleep(SETTLE_MS)
-        let d3 = say_begin(app, "no click, nothing remembered", T_BLUE,
-            [voice = "There is nothing to click and nothing is stored. Reach for this when the swatch is just a surface for a per-frame effect, like reacting while the mouse is over it."])
+        hold_content(app, SETTLE_MS)
         record_check_value(app, T_STATUS, "value", "Hovering: blue", 120)
-        sleep(d3)
+        say(app, "no click, nothing remembered", T_BLUE,
+            [voice = "There is nothing to click and nothing is stored. Reach for this when the swatch is just a surface for a per-frame effect, like reacting while the mouse is over it."])
     }
 }

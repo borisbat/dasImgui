@@ -33,26 +33,23 @@ def main {
 
         // ---- Stage 1: hover Save - its tooltip fires ----
         move_to(app, widget_click_point(snap, T_SAVE), 700)
-        sleep(SETTLE_MS)
-        let d1 = say_begin(app, "set_item_tooltip - fires on item hover", T_SAVE,
-            [voice = "A flat tooltip is one line of code right after a widget. Rest the pointer on the Save button and its tooltip appears - no extra layout, no separate scope."])
+        hold_content(app, SETTLE_MS)
         record_check_rendered(app, T_SAVE_TIP, true, 180)
-        sleep(d1)
+        say(app, "set_item_tooltip - fires on item hover", T_SAVE,
+            [voice = "A flat tooltip is one line of code right after a widget. Rest the pointer on the Save button and its tooltip appears - no extra layout, no separate scope."])
 
         // ---- Stage 2: hover Load - the tooltip follows the hovered item ----
         move_to(app, widget_click_point(snap, T_LOAD), 800)
-        sleep(SETTLE_MS)
-        let d2 = say_begin(app, "each call attaches to the item above it", T_LOAD,
-            [voice = "Each call attaches to the item just before it. Move onto Load and a different tooltip shows - one line per row, written right where you need it."])
+        hold_content(app, SETTLE_MS)
         record_check_rendered(app, T_LOAD_TIP, true, 180)
-        sleep(d2)
+        say(app, "each call attaches to the item above it", T_LOAD,
+            [voice = "Each call attaches to the item just before it. Move onto Load and a different tooltip shows - one line per row, written right where you need it."])
 
         // ---- Stage 3: the (?) help-marker idiom ----
         move_to(app, widget_click_point(snap, T_HELP), 800)
-        sleep(SETTLE_MS)
-        let d3 = say_begin(app, "the (?) help-marker idiom", T_HELP,
-            [voice = "Put one after a greyed-out question mark and you have a help marker - the same little hint icon you see all over good tools, in just two lines."])
+        hold_content(app, SETTLE_MS)
         record_check_rendered(app, T_HELP_TIP, true, 180)
-        sleep(d3)
+        say(app, "the (?) help-marker idiom", T_HELP,
+            [voice = "Put one after a greyed-out question mark and you have a help marker - the same little hint icon you see all over good tools, in just two lines."])
     }
 }

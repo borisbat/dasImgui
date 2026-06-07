@@ -42,8 +42,9 @@ def window_empty_point(var snap : JsonValue?) : tuple<float; float> {
 //! it and click, then assert it fired. Paced under an already-posted voice line; total time >=
 //! dwell so the next stage's voiceover never overlaps.
 def context_pick_voice(app : ImguiApp; dwell : uint; rclick_pos : tuple<float; float>; item_path : string) {
+    let anchor = record_frame_count(app)
     let lead = dwell / 3u
-    sleep(lead)
+    hold_content(app, lead)
     post_command(app, "imgui_mouse_click_at",
                  JV((x = rclick_pos._0, y = rclick_pos._1, button = 1, travel_ms = 350)))
     wait_for_mouse_idle(app)                              // SYNC: the right-click timeline played
@@ -62,7 +63,7 @@ def context_pick_voice(app : ImguiApp; dwell : uint; rclick_pos : tuple<float; f
                  JV((x = ipos._0, y = ipos._1, button = 0, travel_ms = 350)))
     wait_for_mouse_idle(app)                              // SYNC: the item click played
     record_check_value(app, item_path, "value", true, 120)
-    sleep(dwell > lead ? dwell - lead : 0u)
+    hold_remainder_content(app, dwell, anchor)
 }
 
 [export]
@@ -80,14 +81,14 @@ def main {
 
         // ---- Intro ----
         move_to(app, widget_center(snap, T_TARGET), 600)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         say(app, "right-click menus: two flavors", T_TARGET,
             [voice = "Right click menus come in two flavors. One attaches to a single item, the other to the whole window. Let's open each."])
 
         // ---- Stage 1: popup_context_item - right-click the button ----
         let p_target = widget_center(snap, T_TARGET)
         move_to(app, p_target, 600)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         let d1 = say_begin(app, "popup_context_item: right-click the button", T_TARGET,
             [voice = "An item context menu attaches to the item just before it. Right click the button and pick Rename."])
         context_pick_voice(app, d1, p_target, T_RENAME)
@@ -96,7 +97,7 @@ def main {
         snap = snapshot(app)
         let p_empty = window_empty_point(snap)
         move_to(app, p_empty, 700)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         let d2 = say_begin(app, "popup_context_window: right-click empty space", T_TARGET,
             [voice = "A window context menu opens on empty space anywhere in the window. Right click below the button and pick Refresh. A flag stops it opening over an item, so each item keeps its own menu."])
         context_pick_voice(app, d2, p_empty, T_REFRESH)

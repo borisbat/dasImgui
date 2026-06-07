@@ -37,8 +37,9 @@ def col_header(var snap : JsonValue?; cell : string; header_dy : float) : tuple<
 //! literal voice line at the call site - mirrors window_size_constraints' split.
 def sort_under_voice(app : ImguiApp; dwell : uint; pt : tuple<float; float>;
                      shift : bool; verify_target : string; expected : string) {
+    let anchor = record_frame_count(app)
     let lead = dwell > 1400u ? 650u : dwell / 3u
-    sleep(lead)
+    hold_content(app, lead)
     if (shift) {
         post_command(app, "imgui_key_press", JV((key = SHIFT_KEY)))
     }
@@ -47,13 +48,12 @@ def sort_under_voice(app : ImguiApp; dwell : uint; pt : tuple<float; float>;
     post_command(app, "imgui_mouse_play", JV((events = ev)))
     unsafe { delete ev; }
     let play = 450u + 400u   // travel-to-header + settle for the re-sort to land
-    sleep(play)
+    hold_content(app, play)
     if (shift) {
         post_command(app, "imgui_key_release", JV((key = SHIFT_KEY)))
     }
     record_check_value(app, verify_target, "value", expected, 180)
-    let consumed = lead + play
-    sleep(dwell > consumed ? dwell - consumed : 0u)
+    hold_remainder_content(app, dwell, anchor)
 }
 
 [export]
@@ -93,7 +93,7 @@ def main {
         // frame->time map. A brief settled intro on the Name header absorbs them and
         // leaves the cursor parked where beat 2 clicks.
         move_to(app, p_name_hdr, 800)
-        sleep(1800u)
+        hold_content(app, 1800u)
 
         // ---- Beat 1: intro (no action) - the grid boots sorted by Name ascending ----
         say(app, "sortable grid - sorted by name", C_NAME,

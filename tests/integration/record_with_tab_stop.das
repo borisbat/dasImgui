@@ -53,11 +53,11 @@ def main {
 
         // ---- Stage 1: click A and type, then Tab to B and type ----
         move_to(app, widget_click_point(snap, T_A), 600)
-        sleep(SETTLE_MS)
-        let started1 = ref_time_ticks()
+        hold_content(app, SETTLE_MS)
+        let anchor1 = record_frame_count(app)
         let d1 = say_begin(app, "Tab walks focus field to field", T_A,
             [voice = "Keyboard Tab walks focus from one field to the next. I'll click the first field and type, then press Tab and type again - focus steps straight down the form."])
-        sleep(600u)                                  // lead: let the caption + voice start
+        hold_content(app, 600u)                      // lead: let the caption + voice start
         click(app, T_A)                              // real click focuses the first field
         wait_until(app, 120) $(var s) {
             return s?["globals"]?[T_A]?["focus"] ?? false
@@ -67,14 +67,13 @@ def main {
         tab_to(app, T_B)
         type_field(app, "two")
         record_check_value(app, T_B, "value", "two", 120)
-        let consumed1 = uint(get_time_usec(started1) / 1000)
-        sleep(d1 > consumed1 ? d1 - consumed1 : 0u)
+        hold_remainder_content(app, d1, anchor1)
 
         // ---- Stage 2: Tab skips the wrapped field -> C, type; Tab -> D, type ----
-        let started2 = ref_time_ticks()
+        let anchor2 = record_frame_count(app)
         let d2 = say_begin(app, "Tab skips the with_tab_stop field", [T_SKIP, T_C],
             [voice = "The middle field is wrapped in with_tab_stop, so Tab jumps right over it - straight to the next reachable field, and onward. It never lands on the skipped one."])
-        sleep(700u)
+        hold_content(app, 700u)
         tab_to(app, T_C)                             // B -> C, skipping SKIP
         type_field(app, "three")
         record_check_value(app, T_C, "value", "three", 120)
@@ -83,8 +82,7 @@ def main {
         record_check_value(app, T_D, "value", "four", 120)
         // The wrapped field never received a keystroke - its text is unchanged.
         record_check_value(app, T_SKIP, "value", "(unreachable via keyboard)", 120)
-        let consumed2 = uint(get_time_usec(started2) / 1000)
-        sleep(d2 > consumed2 ? d2 - consumed2 : 0u)
+        hold_remainder_content(app, d2, anchor2)
 
         post_command(app, "imgui_key_hud", JV((enabled = false)))
         post_command(app, "imgui_focus_rect", JV((enabled = false)))

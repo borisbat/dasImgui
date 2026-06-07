@@ -46,7 +46,7 @@ def main {
 
         // ---- Stage 1: PHYSICS (DefaultOpen) — click the header to collapse ----
         move_to(app, widget_center(snap, H_PHYS), 600)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         let d1 = say_begin(app, "tree node - click to collapse", H_PHYS,
             [voice = "A tree node folds a group of controls under one header. Physics starts open. Click the header and it collapses, and the sliders inside simply stop drawing."])
         toggle_tree_voice(app, d1, H_PHYS, false, C_PHYS, false)
@@ -54,7 +54,7 @@ def main {
         // ---- Stage 2: PHYSICS — click again to expand ----
         snap = snapshot(app)
         move_to(app, widget_center(snap, H_PHYS), 400)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         let d2 = say_begin(app, "click again to expand", H_PHYS,
             [voice = "Click the header again and the controls come right back. The body only runs while the node is open."])
         toggle_tree_voice(app, d2, H_PHYS, false, C_PHYS, true)
@@ -62,7 +62,7 @@ def main {
         // ---- Stage 3: RENDER — nested tree_nodes ----
         snap = snapshot(app)
         move_to(app, widget_center(snap, H_REND), 600)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         let d3 = say_begin(app, "nodes nest", H_REND,
             [voice = "Tree nodes nest freely. Open Render and its Camera sub-tree opens with it, exposing a slider three levels deep."])
         toggle_tree_voice(app, d3, H_REND, false, C_FOV, true)
@@ -70,7 +70,7 @@ def main {
         // ---- Stage 4: ASSETS (OpenOnArrow) — the arrow toggles ----
         snap = snapshot(app)
         move_to(app, widget_center(snap, H_ASSET), 700)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         let d4 = say_begin(app, "OpenOnArrow: the arrow toggles", H_ASSET,
             [voice = "This node uses the open on arrow flag. Only the little arrow toggles it. Click the arrow and it folds away."])
         toggle_tree_voice(app, d4, H_ASSET, true, C_HINT, false)
@@ -78,7 +78,7 @@ def main {
         // ---- Stage 5: ASSETS — clicking the label is a no-op ----
         snap = snapshot(app)
         move_to(app, widget_center(snap, H_ASSET), 400)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         let d5 = say_begin(app, "the label does nothing", H_ASSET,
             [voice = "Now click the label itself, and nothing happens. With open on arrow the label is free for selection instead of toggling."])
         toggle_tree_voice(app, d5, H_ASSET, false, C_HINT, false)
@@ -86,7 +86,7 @@ def main {
         // ---- Stage 6: ASSETS — the arrow opens it again ----
         snap = snapshot(app)
         move_to(app, widget_center(snap, H_ASSET), 400)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         let d6 = say_begin(app, "the arrow opens it again", H_ASSET,
             [voice = "Click the arrow once more and it opens. That is the whole point: the row stays clickable while the arrow controls the fold."])
         toggle_tree_voice(app, d6, H_ASSET, true, C_HINT, true)

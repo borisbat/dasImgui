@@ -53,7 +53,7 @@ def main {
         let vol_x1 = vol_bb.x + (vol_bb.z - vol_bb.x) * 0.85f
 
         move_to(app, p_hi_st, 600)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
 
         // ---- Beat 1: highlight - flash a rect around a widget ----
         hold_through_voice(app, say_begin(app, "highlight - point at a widget",
@@ -63,14 +63,14 @@ def main {
 
         // ---- Beat 2: mouse trail + real drag (cursor sprite visible throughout) ----
         move_to(app, (vol_x0, vol_y), 800)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         drag_through_voice(app, say_begin(app, "mouse trail + real drag", T_VOLUME,
             [voice = "As the cursor moves, a fading trail marks its path. Here it scrubs the volume slider for real, and the snapshot confirms the value changed."]),
             T_VOLUME, (vol_x1, vol_y))
 
         // ---- Beat 3: narrate - sticky-note callout with connector ----
         move_to(app, p_nr_vol, 800)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         hold_through_voice(app, say_begin(app, "narrate - sticky-note callout",
             [B_NR_VOL, B_NR_SAV],
             [voice = "Narrate pops a sticky note with a connector line to a widget. Clicking these two points a callout at the volume slider, then at the save button."]),
@@ -80,7 +80,7 @@ def main {
         post_command(app, "imgui_key_hud",    JV((enabled = true, show_modifiers = true)))
         post_command(app, "imgui_focus_rect", JV((enabled = true)))
         move_to(app, p_name, 800)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         type_into_voice(app, say_begin(app, "key HUD + focus rect", T_NAME,
             [voice = "For keyboard work, the focus rectangle shows where typing lands and the keycap HUD pops each key. Watch as we type a short greeting; the shift pill lights on the capitals."]),
             T_NAME, p_name, ["Hello, World!"], "Hello, World!")
@@ -88,16 +88,16 @@ def main {
         // ---- Beat 5: chords - Ctrl+A selects, Backspace clears (verified empty) ----
         let dwell5 = say_begin(app, "chords - Ctrl A then Backspace", T_NAME,
             [voice = "Chords work too. Control A selects everything - the modifier pill lights up - and Backspace clears the field."])
+        let anchor5 = record_frame_count(app)
         let lead5 = dwell5 > 1200u ? 600u : dwell5 / 3u
-        sleep(lead5)
+        hold_content(app, lead5)
         click(app, T_NAME)                              // refocus the input (real click)
-        sleep(300u)
+        hold_content(app, 300u)
         post_command(app, "imgui_key_chord", JV((mods = ["Ctrl"], key = "A")))
-        sleep(500u)
+        hold_content(app, 500u)
         key_tap(app, int(ImGuiKey.Backspace))
         record_check_value(app, T_NAME, "value", "", 120)
-        let used5 = lead5 + 300u + 500u
-        sleep(dwell5 > used5 ? dwell5 - used5 : 0u)
+        hold_remainder_content(app, dwell5, anchor5)
 
         post_command(app, "imgui_key_hud",    JV((enabled = false)))
         post_command(app, "imgui_focus_rect", JV((enabled = false)))

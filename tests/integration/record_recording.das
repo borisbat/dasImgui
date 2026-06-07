@@ -44,7 +44,7 @@ def main {
 
         // Park the cursor at the slider's left and warm up the capture pipeline.
         move_to(app, (vol_x0, vol_y), 800)
-        sleep(1800u)
+        hold_content(app, 1800u)
 
         // ---- Beat 1: the recipe - narrate, trail, scripted drag ----
         drag_through_voice(app, say_begin(app, "narrate + scripted drag", T_VOLUME,
@@ -53,7 +53,7 @@ def main {
 
         // ---- Beat 2: scripted click + self-verify ----
         move_to(app, p_save, 600)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         hold_through_voice(app, say_begin(app, "scripted click + verify", T_SAVE,
             [voice = "Then it scripts a click and asserts the effect landed. Every recording you have seen is this recipe - narrate, move, act, verify - so a demo that quietly broke aborts instead of shipping."]),
             [T_SAVE])

@@ -25,39 +25,39 @@ require daslib/json_boost public
 //! force_set ``value`` into ``target`` UNDER an already-posted voice line and verify it
 //! took (force_set_verified accumulates a miss -> teardown panic on failure).
 def fset_under_voice(app : ImguiApp; dwell : uint; target : string; value : auto(T)) {
+    let anchor = record_frame_count(app)
     let lead = dwell > 1400u ? 700u : dwell / 3u
-    sleep(lead)
+    hold_content(app, lead)
     force_set_verified(app, target, value)
-    let consumed = lead + 300u
-    sleep(dwell > consumed ? dwell - consumed : 0u)
+    hold_remainder_content(app, dwell, anchor)
 }
 
 //! Fire ``imgui_click`` on ``target`` ``clicks`` times UNDER a voice line, then assert
 //! the click counter reached ``clicks``.
 def click_under_voice(app : ImguiApp; dwell : uint; target : string; clicks : int) {
+    let anchor = record_frame_count(app)
     let lead = dwell > 1400u ? 700u : dwell / 3u
-    sleep(lead)
+    hold_content(app, lead)
     for (_i in range(clicks)) {
         post_command(app, "imgui_click", JV((target = target)))
-        sleep(550u)
+        hold_content(app, 550u)
     }
     record_check_value(app, target, "click_count", clicks, 180)
-    let consumed = lead + uint(clicks) * 550u
-    sleep(dwell > consumed ? dwell - consumed : 0u)
+    hold_remainder_content(app, dwell, anchor)
 }
 
 //! Drive a popup open then shut via ``imgui_open`` / ``imgui_close`` UNDER a voice line,
 //! asserting ``probe`` (a stable widget inside the popup body) renders then stops.
 def popup_under_voice(app : ImguiApp; dwell : uint; popup_target : string; probe : string) {
+    let anchor = record_frame_count(app)
     let lead = dwell > 1400u ? 700u : dwell / 3u
-    sleep(lead)
+    hold_content(app, lead)
     post_command(app, "imgui_open", JV((target = popup_target)))
     record_check_rendered(app, probe, true, 180)
-    sleep(2000u)
+    hold_content(app, 2000u)
     post_command(app, "imgui_close", JV((target = popup_target)))
     record_check_rendered(app, probe, false, 180)
-    let consumed = lead + 2500u
-    sleep(dwell > consumed ? dwell - consumed : 0u)
+    hold_remainder_content(app, dwell, anchor)
 }
 
 [export]
@@ -81,7 +81,7 @@ def main {
         // capture pipeline. imgui_click in beat 4 then animates the cursor to the button -
         // the one place a pointer appears, by contrast.
         move_to(app, (760.0f, 300.0f), 800)
-        sleep(1800u)
+        hold_content(app, 1800u)
 
         // ---- Beat 1: force_set a string into the text input ----
         fset_under_voice(app, say_begin(app, "force_set: string -> input", T_USER,

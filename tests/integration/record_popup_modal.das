@@ -48,7 +48,7 @@ def main {
 
         // ---- Stage 1: click "Delete file..." -> the confirm modal opens ----
         move_to(app, widget_center(snap, T_OPEN_CONFIRM), 600)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         let d1 = say_begin(app, "a modal blocks until you answer", T_OPEN_CONFIRM,
             [voice = "A modal is a blocking dialog. Click delete, and it dims the page behind it and waits, your only way forward is to answer."])
         click_render_voice(app, d1, T_OPEN_CONFIRM, T_CONFIRM_YES, true)
@@ -56,7 +56,7 @@ def main {
         // ---- Stage 2: click "No" -> the modal dismisses, answer flows back ----
         snap = snapshot(app)
         move_to(app, widget_center(snap, T_CONFIRM_NO), 500)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         let d2 = say_begin(app, "pick an answer and it closes", T_CONFIRM_NO,
             [voice = "Pick an answer and the dialog closes, and your choice flows right back into the program. We click no this time."])
         click_render_voice(app, d2, T_CONFIRM_NO, T_CONFIRM_NO, false)
@@ -65,7 +65,7 @@ def main {
         // ---- Stage 3: click "Open settings" -> the closable settings modal opens ----
         snap = snapshot(app)
         move_to(app, widget_center(snap, T_OPEN_SETTINGS), 700)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         let d3 = say_begin(app, "a second modal with real controls", T_OPEN_SETTINGS,
             [voice = "Modals can hold a whole form. This second one is closable, with an X in the corner, and real controls inside."])
         click_render_voice(app, d3, T_OPEN_SETTINGS, T_S_APPLY, true)
@@ -73,7 +73,7 @@ def main {
         // ---- Stage 4: toggle a checkbox inside the modal ----
         snap = snapshot(app)
         move_to(app, widget_center(snap, T_S_AUTOSAVE), 500)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         let d4 = say_begin(app, "controls work inside the modal", T_S_AUTOSAVE,
             [voice = "Controls inside a modal behave exactly like anywhere else. Flip the auto-save checkbox and it toggles."])
         hold_through_voice(app, d4, [T_S_AUTOSAVE])
@@ -83,7 +83,7 @@ def main {
         let fb = widget_bbox(snap, T_S_MAX_FPS)
         let fcy = (fb.y + fb.w) * 0.5f
         move_to(app, (fb.x + 14.0f, fcy), 600)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         let d5 = say_begin(app, "even a slider, right here", T_S_MAX_FPS,
             [voice = "Even a slider works the same. Drag the frame-rate cap and the value follows your cursor."])
         drag_through_voice(app, d5, T_S_MAX_FPS, (fb.x + 0.72f * (fb.z - fb.x), fcy))
@@ -91,7 +91,7 @@ def main {
         // ---- Stage 6: click "Apply" -> the settings modal dismisses ----
         snap = snapshot(app)
         move_to(app, widget_center(snap, T_S_APPLY), 600)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         let d6 = say_begin(app, "Apply closes it", T_S_APPLY,
             [voice = "And apply dismisses the whole dialog, handing control back to the page underneath."])
         click_render_voice(app, d6, T_S_APPLY, T_S_APPLY, false)

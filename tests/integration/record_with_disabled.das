@@ -38,28 +38,29 @@ def main {
 
         //! Initial cursor placement - flips synth_cursor_owned.
         move_to(app, (60.0f, 40.0f), 600)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
 
         // ---- Stage 1: disabled -> a click does nothing (proven inert by stage 3) ----
         move_to(app, p_save, 900)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         let d1 = say_begin(app, "with_disabled - greyed, click ignored", T_SAVE,
             [voice = "These buttons live inside a with disabled block, tied to the checkbox above. The checkbox is off, so they are greyed out. Watch me click Save. Nothing happens."])
+        let anchor1 = record_frame_count(app)
         let lead1 = d1 > 1200u ? 600u : d1 / 3u
-        sleep(lead1)
+        hold_content(app, lead1)
         click(app, T_SAVE)                                    // lands on a disabled button -> no ripple, no count
-        sleep(d1 > lead1 ? d1 - lead1 : 0u)
+        hold_remainder_content(app, d1, anchor1)
 
         // ---- Stage 2: flip the gate -> with_disabled's argument becomes false ----
         move_to(app, p_enabled, 900)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         hold_through_voice(app, say_begin(app, "enable the group", T_ENABLED,
             [voice = "Now I turn the checkbox on. The block's argument flips to false, and the whole group wakes up."]),
             [T_ENABLED])
 
         // ---- Stage 3: same button, now live -> click_count == 1 (so stage 1 was inert) ----
         move_to(app, p_save, 900)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         hold_through_voice(app, say_begin(app, "now live - counter ticks to 1", T_SAVE,
             [voice = "Same Save button, no code change. This time the click lands, and the counter ticks up to one."]),
             [T_SAVE])
@@ -67,11 +68,12 @@ def main {
 
         // ---- Stage 4: with_button_repeat -> a held press fires again and again ----
         move_to(app, p_step, 900)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         let d4 = say_begin(app, "with_button_repeat - hold to repeat", T_STEP,
             [voice = "This plus button sits inside with button repeat. I press and hold, and instead of one click it fires over and over. The counter races up."])
+        let anchor4 = record_frame_count(app)
         let lead4 = d4 > 1500u ? 700u : d4 / 3u
-        sleep(lead4)
+        hold_content(app, lead4)
         //! A single 3s press-hold (from == to): with_button_repeat turns the held
         //! press into a stream of clicks at ImGui's repeat rate.
         var hold_ev : array<JsonValue?>
@@ -84,9 +86,9 @@ def main {
         var msnap = snapshot(app)
         let mid = widget_payload_field(msnap, T_STEP, "click_count")
         record_check_changed(app, T_STEP, "click_count", mid != null ? write_json(mid) : "", 400)
-        // The checks returned early (mid-hold); let the full hold play out and the voice finish.
-        let body4 = d4 > lead4 ? d4 - lead4 : 0u
-        sleep(hold_play > body4 ? hold_play : body4)
+        // The checks returned early (mid-hold); let the full hold play out, then pad to the voice.
+        hold_content(app, hold_play)
+        hold_remainder_content(app, d4, anchor4)
 
         // ---- Stage 5: family closer - font + clip_rect share the scope shape ----
         say(app, "with_font / with_clip_rect - push on enter, pop on exit", T_FONT,

@@ -51,17 +51,17 @@ def win_corner(var snap : JsonValue?; ident : string; req : float2) : tuple<floa
 def drag_under_voice(app : ImguiApp; dwell : uint; win : string;
                      grip : tuple<float; float>; corner : tuple<float; float>;
                      expected : float2) {
+    let anchor = record_frame_count(app)
     let lead = dwell > 1200u ? 700u : dwell / 3u
-    sleep(lead)
+    hold_content(app, lead)
     var ev : array<JsonValue?>
     ev |> drag_along(0, grip, corner, 900, 200)
     post_command(app, "imgui_mouse_play", JV((events = ev)))
     unsafe { delete ev; }
     let play = uint(200 + 300 + 900) + 400u   // drag_along timeline + settle
-    sleep(play)
+    hold_content(app, play)
     record_check_value(app, win, "size", expected, 180)
-    let consumed = lead + play
-    sleep(dwell > consumed ? dwell - consumed : 0u)
+    hold_remainder_content(app, dwell, anchor)
 }
 
 [export]
@@ -82,14 +82,14 @@ def main {
         // convert's single frame->time mapping and can crowd the first two
         // captions together (voice overlap). A brief settled intro absorbs them.
         move_to(app, (200.0f, 120.0f), 800)
-        sleep(1800u)
+        hold_content(app, 1800u)
 
         // ---- Beat 1: Square — max(w, h) wins both dims ----
         var s1 = snapshot(app)
         let g1 = win_grip(s1, "SQUARE_WIN")
         let c1 = win_corner(s1, "SQUARE_WIN", float2(400.0, 180.0))
         move_to(app, g1, 800)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         drag_under_voice(app, say_begin(app, "always square (max of w, h)", T_SQUARE,
             [voice = "Drag this window to a wide, short shape, and the callback snaps it straight back to a perfect square."]),
             "SQUARE_WIN", g1, c1, float2(400.0, 400.0))
@@ -99,7 +99,7 @@ def main {
         let g2 = win_grip(s2, "ASPECT_WIN")
         let c2 = win_corner(s2, "ASPECT_WIN", float2(480.0, 400.0))
         move_to(app, g2, 800)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         drag_under_voice(app, say_begin(app, "locked to 16:9", T_ASPECT,
             [voice = "The second window locks to sixteen by nine. Drag it tall, and the height snaps back to match the width."]),
             "ASPECT_WIN", g2, c2, float2(480.0, 270.0))
@@ -109,7 +109,7 @@ def main {
         let g3 = win_grip(s3, "STEP_WIN")
         let c3 = win_corner(s3, "STEP_WIN", float2(333.0, 217.0))
         move_to(app, g3, 800)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         drag_under_voice(app, say_begin(app, "snaps to a 50px grid", T_STEP,
             [voice = "The third snaps to a grid. Drag it anywhere off-grid, and both sides jump to the nearest fifty pixels."]),
             "STEP_WIN", g3, c3, float2(350.0, 200.0))

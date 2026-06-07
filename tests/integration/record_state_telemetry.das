@@ -42,7 +42,7 @@ def main {
 
         // Park the cursor on Save and warm up the capture pipeline.
         move_to(app, p_save, 800)
-        sleep(1800u)
+        hold_content(app, 1800u)
 
         // ---- Beat 1: auto-emit + click_count ----
         hold_through_voice(app, say_begin(app, "auto-emit: SAVE_BTN.click_count", T_SAVE,
@@ -51,37 +51,37 @@ def main {
 
         // ---- Beat 2: dotted flags steer the global (driven from outside) ----
         move_to(app, GUTTER, 600)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         let d2 = say_begin(app, "dotted flags: SPEED.PUBLIC / VOLUME.NOTLIVE", T_SPEED,
             [voice = "Dotted flags tune that global - SPEED is public so other modules can read it, Volume opts out of live-reload. I set both from outside, and the values update in place."])
+        let anchor2 = record_frame_count(app)
         let lead2 = d2 > 1600u ? 700u : d2 / 3u
-        sleep(lead2)
+        hold_content(app, lead2)
         force_set_verified(app, T_SPEED, 7)
-        sleep(700u)
+        hold_content(app, 700u)
         force_set_verified(app, T_VOLUME, 0.75f)
-        let used2 = lead2 + 700u + 120u
-        sleep(d2 > used2 ? d2 - used2 : 0u)
+        hold_remainder_content(app, d2, anchor2)
 
         // ---- Beat 3: text_show mirrors an app-side string ----
         let d3 = say_begin(app, "text_show: driven from outside", T_STATUS,
             [voice = "text_show mirrors an app-side string into the snapshot. I drive STATUS_TEXT from outside, and it appears here."])
+        let anchor3 = record_frame_count(app)
         let lead3 = d3 > 1400u ? 700u : d3 / 3u
-        sleep(lead3)
+        hold_content(app, lead3)
         force_set_verified(app, T_STATUS, "set from outside")
-        let used3 = lead3 + 120u
-        sleep(d3 > used3 ? d3 - used3 : 0u)
+        hold_remainder_content(app, d3, anchor3)
 
         // ---- Beat 4: bump rewrites STATUS_TEXT from inside the app ----
         move_to(app, p_bump, 600)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         let before = write_json(snapshot(app)?["globals"]?[T_STATUS]?["payload"]?["value"])
         let d4 = say_begin(app, "bump: rewritten from inside", T_BUMP,
             [voice = "And the app can write it back from inside - clicking bump stamps STATUS_TEXT with the current frame."])
+        let anchor4 = record_frame_count(app)
         let lead4 = d4 > 1400u ? 700u : d4 / 3u
-        sleep(lead4)
+        hold_content(app, lead4)
         click(app, T_BUMP)
         record_check_changed(app, T_STATUS, "value", before, 180)
-        let used4 = lead4 + 500u
-        sleep(d4 > used4 ? d4 - used4 : 0u)
+        hold_remainder_content(app, d4, anchor4)
     }
 }

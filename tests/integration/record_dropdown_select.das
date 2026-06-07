@@ -45,28 +45,28 @@ def main {
 
         // ---- Stage 1: combo (items array) — open the dropdown, click an item ----
         move_to(app, widget_center(snap, T_FRUIT), 600)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         let d1 = say_begin(app, "combo - open and pick", T_FRUIT,
             [voice = "A combo is a dropdown. Click it to open the list, then click an item to choose it. The index you picked is what your code reads back."])
         combo_pick_voice(app, d1, T_FRUIT, 2)              // Cherry
 
         // ---- Stage 2: combo_getter — same gesture, list from a callback ----
         move_to(app, widget_center(snap, T_FONT), 700)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         let d2 = say_begin(app, "combo_getter - list from a callback", T_FONT,
             [voice = "This combo builds its list from a callback instead of an array. It opens and picks the same way, which is handy when the items are computed or come from a large dataset."])
         combo_pick_voice(app, d2, T_FONT, 2)               // Mono
 
         // ---- Stage 3: selectable — N rows, each toggles its own state (multi-select) ----
         move_to(app, widget_center(snap, T_TAG0), 700)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         let d3 = say_begin(app, "selectable - multi-select rows", [T_TAG0, T_TAG2],
             [voice = "Selectable rows each keep their own on or off state, so they multi-select. Click a couple and each one toggles independently of the rest."])
         hold_through_voice(app, d3, [T_TAG0, T_TAG2])
 
         // ---- Stage 4: selectable_label in list_box — caller-owned index single-selects ----
         move_to(app, widget_center(snap, T_ROW3), 700)
-        sleep(SETTLE_MS)
+        hold_content(app, SETTLE_MS)
         let d4 = say_begin(app, "list_box - single-select", T_ROW3,
             [voice = "A list box with a caller-owned index is single-select. Click a size and the index jumps to that row, leaving every other row switched off."])
         hold_through_voice(app, d4, [T_ROW3])
