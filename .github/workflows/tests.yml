@@ -39,21 +39,18 @@ permissions:
 jobs:
   integration:
     runs-on: ${{ matrix.os }}
-    env:
-      # Cache daslang's C++ object compilation across runs (GitHub Actions cache
-      # backend). The daslang build is a full clean rebuild every run — first run
-      # populates, later runs hit. See the "Set up sccache" step + the
-      # CMAKE_*_COMPILER_LAUNCHER flags on the cmake configure below.
-      SCCACHE_GHA_ENABLED: "true"
+    # actions: write needed for `gh cache delete` in the sccache refresh step.
+    permissions:
+      contents: read
+      actions: write
     strategy:
       fail-fast: false
       matrix:
-        # windows-latest temporarily disabled: the reset()-consolidated tests
-        # fastfail (exit 0xC0000409 — __fastfail bypasses SEH, so no stack is
-        # printed) ONLY on the CI windows runner; not reproducible locally or on
-        # POSIX. Re-enable once crash diagnostics land (Release .pdb + dastest
-        # subprocess crash-stack capture + a WER/local minidump for fastfail).
-        os: [ubuntu-latest, macos-latest]
+        # windows-latest: test_docking_basic intermittently fast-fails with a /GS
+        # stack-smash (0xC0000409) in the docking reset() path. Dropping to 3
+        # isolated workers did NOT avoid it (still crashes), so the worker-count
+        # workaround is dropped — root cause under investigation via ASan.
+        os: [ubuntu-latest, macos-latest, windows-latest]
     defaults:
       run:
         shell: bash
@@ -118,10 +115,26 @@ jobs:
         uses: lukka/get-cmake@latest
 
       - name: "Set up sccache"
-        # Installs the sccache binary and wires the GitHub Actions cache backend
-        # (gated by SCCACHE_GHA_ENABLED at the job level). The cmake configure
-        # below routes cl/clang/gcc through it via CMAKE_*_COMPILER_LAUNCHER.
-        uses: mozilla-actions/sccache-action@v0.0.9
+        # LOCAL-DISK backend (mirrors daslang build.yml). The GHA backend writes
+        # one cache item per TU (quota fragmentation, frequent concurrent-write
+        # failures — observed ~33% hit rate here); local disk keeps all objects
+        # in $SCCACHE_DIR, persisted as a single tarball by the Restore/Save
+        # steps. The cmake configure routes cl/clang/gcc through it via the
+        # -DCMAKE_*_COMPILER_LAUNCHER flags (passed as -D, NOT env, so sccache
+        # scopes to daslang's /Z7 TUs and does not leak into the GLFW/libhv /Zi
+        # sub-builds — which would collide on the shared glfw.pdb, C1041).
+        uses: mozilla-actions/sccache-action@v0.0.10
+      - name: "Configure sccache local-disk backend"
+        run: |
+          echo "SCCACHE_DIR=${{ runner.temp }}/sccache" >> "$GITHUB_ENV"
+          echo "SCCACHE_GHA_ENABLED=false" >> "$GITHUB_ENV"
+      - name: "Restore sccache objects"
+        # Restore always (all branches); save only on master (below). One fixed
+        # slot per OS — bounded footprint, no run_id pileup.
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/sccache
+          key: sccache-${{ matrix.os }}-v1
 
       - name: "Set up MSVC environment (Windows)"
         if: matrix.os == 'windows-latest'
@@ -135,13 +148,25 @@ jobs:
         with:
           arch: x64
 
+      - name: "Cache vcpkg + openssl (Windows)"
+        if: matrix.os == 'windows-latest'
+        uses: actions/cache@v4
+        with:
+          # Whole vcpkg/ dir: bootstrapped vcpkg.exe + installed/<triplet>/openssl.
+          # On hit, the install step skips clone + bootstrap + the from-source
+          # openssl build (~8 min on the Windows runner).
+          path: vcpkg
+          key: vcpkg-x64-windows-v1
+
       - name: "Install OpenSSL via vcpkg (Windows)"
         if: matrix.os == 'windows-latest'
         # libhv pulls in OpenSSL; vcpkg's prebuilt openssl sidesteps the perl
         # Configure trap. Runs after msvc-dev-cmd so our VCPKG_ROOT wins (above).
         run: |
-          git clone https://github.com/microsoft/vcpkg
-          ./vcpkg/bootstrap-vcpkg.sh
+          if [ ! -x vcpkg/vcpkg.exe ] && [ ! -x vcpkg/vcpkg ]; then
+            git clone https://github.com/microsoft/vcpkg
+            ./vcpkg/bootstrap-vcpkg.sh
+          fi
           ./vcpkg/vcpkg install openssl:x64-windows --binarycaching
           echo "VCPKG_ROOT=$(pwd)/vcpkg" >> $GITHUB_ENV
           echo "/c/Strawberry/perl/bin" >> $GITHUB_PATH
@@ -190,6 +215,22 @@ jobs:
             dasModulePUGIXML dasModuleStbImage
           sccache --show-stats
           echo "BIN_DIR=bin" >> "$GITHUB_ENV"
+
+      # Save BEFORE the (crashing) test step so master seeds the cache despite
+      # the red Windows test leg. Master only — PRs are read-only. Delete first:
+      # GHA caches are immutable, so a plain save under an existing key no-ops.
+      - name: "Refresh sccache slot (master)"
+        if: github.ref == 'refs/heads/master'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SCKEY: sccache-${{ matrix.os }}-v1
+        run: gh cache delete "$SCKEY" -R ${{ github.repository }} || true
+      - name: "Save sccache objects (master)"
+        if: github.ref == 'refs/heads/master'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/sccache
+          key: sccache-${{ matrix.os }}-v1
 
       - name: "daspkg install dasImgui (global)"
         # Use bash-safe relative paths inside daslang-src; on Windows
@@ -258,6 +299,7 @@ jobs:
           # runner instances headroom; on a fast instance the sweep finishes
           # in ~5 min and the cap never matters.
           DASTEST_TIMEOUT=600
+          THREADS=4
           if [ "${{ matrix.os }}" = "windows-latest" ]; then
             EXTRA_EXCLUDES="--exclude inputs_drag --exclude inputs_numeric --exclude inputs_slider --exclude inputs_color --exclude inputs_choice --exclude inputs_text --exclude indexed_dynamic"
             DASTEST_TIMEOUT=1800
@@ -266,7 +308,7 @@ jobs:
             --test modules/dasImgui/tests/integration \
             --timeout $DASTEST_TIMEOUT \
             --isolated-mode \
-            --isolated-mode-threads 4 \
+            --isolated-mode-threads $THREADS \
             --exclude glfw_synth \
             --exclude key_hud \
             $EXTRA_EXCLUDES \
