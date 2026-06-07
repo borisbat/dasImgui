@@ -38,9 +38,9 @@ module imgui_harness shared public
 require imgui public
 require imgui_app
 require glfw/glfw_boost
-require opengl/opengl_boost
+require opengl/opengl
 require live/glfw_live
-require live/opengl_live
+require live/opengl_live // nolint:STYLE030 — loads the APNG recorder (record_* live commands + the [before_update] record_tick) by side effect; no direct symbol use
 
 // Live-host + boost-runtime stack — re-exported public.
 require live/live_api public
@@ -164,6 +164,13 @@ def public harness_begin_frame() : bool {
     begin_frame()
     ImGui_ImplOpenGL3_NewFrame()
     ImGui_ImplGlfw_NewFrame()
+    // Single clock: drive ImGui DeltaTime from the master clock (get_dt), so lockstep
+    // recording uses the fixed step; normal mode get_dt()==wall dt (no-op). Guard >0.
+    let mdt = get_dt()
+    if (mdt > 0.0f) {
+        var io & = unsafe(GetIO())
+        io.DeltaTime = mdt
+    }
     advance_coroutines()
     return true
 }
