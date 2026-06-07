@@ -862,13 +862,113 @@ def public say(app : ImguiApp; text : string; target : string = ""; read_ms : ui
     //! imgui_visual_aids::narrate (the host-side overlay function), which differs
     //! only in the first arg type (string vs ImguiApp). For a click/drag that must land under
     //! the voice, use ``say_begin`` + a manual dwell split instead.
-    sleep(say_begin(app, text, target, read_ms, voice))
+    hold_content(app, say_begin(app, text, target, read_ms, voice))
 }
 
 def public say(app : ImguiApp; text : string; targets : array<string>; read_ms : uint = NARRATE_READ_MS; voice : string = "") {
     //! Multi-target ``say``: caption points at ``targets[0]`` and HARD-avoids the union of all
     //! ``targets`` (see the ``say_begin`` list overload), then sleeps the dwell.
-    sleep(say_begin(app, text, targets, read_ms, voice))
+    hold_content(app, say_begin(app, text, targets, read_ms, voice))
+}
+
+// ===== Lockstep content-time gating =====
+// During a recording session the host clock runs in fixed-dt lockstep (1/fps per
+// captured frame), decoupled from wall-clock — so a beat must be held by CONTENT
+// time (captured-frame count), not sleep(ms): the app may render faster or slower
+// than realtime, but every captured frame is exactly 1/fps of video. These poll
+// record_status.frames; outside a recording session they fall back to sleep.
+
+var private g_record_fps : int = 0   // > 0 while a with_recording_app session is active
+var private g_stall_warned = false   // one-shot per session: capture-stall -> wall-clock degrade
+
+let private RECORD_POLL_MS = 4u
+let private RECORD_HOLD_TIMEOUT_US = 120 * 1000000   // 120s wall-clock safety cap
+// Frames idle this long => capture isn't advancing (the app isn't rendering during this
+// input-less hold — e.g. an OS-throttled unfocused window, as on headless macOS CI). Stop
+// waiting on content and degrade to wall-clock for the remaining beat so CI never hangs.
+// See https://github.com/borisbat/dasImgui/issues/190.
+let private RECORD_STALL_US = 2 * 1000000
+
+def private warn_capture_stalled() {
+    return if (g_stall_warned)
+    g_stall_warned = true
+    print("[record] frame capture stalled (app not rendering during a hold) — content-time " +
+          "gating degraded to wall-clock for this session. See dasImgui issue #190.\n")
+}
+
+def private record_frames_now(app : ImguiApp) : int {
+    // Captured-frame counter from a VALID active status. Tolerates a transient null read
+    // (a 0 here would corrupt a hold anchor) by briefly retrying; 0 only if never valid.
+    let start = ref_time_ticks()
+    while (get_time_usec(start) < RECORD_STALL_US) {
+        let st = post_command(app, "record_status", null)
+        if (st != null && (st?["active"] ?? false)) return st?["frames"] ?? 0
+        sleep(RECORD_POLL_MS)
+    }
+    return 0
+}
+
+def public wait_content_frames(app : ImguiApp; frames : int) {
+    //! Block until the recorder captures `frames` more frames (= frames/fps seconds of video).
+    //! No-op outside a recording session. The target is anchored on the first VALID status
+    //! read (a transient null never lowers it), and a null read keeps polling rather than
+    //! ending the hold early. If capture stalls (frames don't advance for RECORD_STALL_US —
+    //! the app isn't rendering during this hold), degrade to a wall-clock sleep for the
+    //! remaining span so the beat still lands and CI never hangs.
+    if (g_record_fps <= 0 || frames <= 0) return
+    let start = ref_time_ticks()
+    var target = -1                        // resolved from the first valid status read
+    var last_frames = -1
+    var last_progress = ref_time_ticks()   // reset whenever the frame counter advances
+    while (get_time_usec(start) < RECORD_HOLD_TIMEOUT_US) {
+        let st = post_command(app, "record_status", null)
+        let active = st != null && (st?["active"] ?? false)
+        let now_frames = active ? (st?["frames"] ?? -1) : -1
+        if (now_frames >= 0) {
+            if (target < 0) {
+                target = now_frames + frames
+            }
+            break if (now_frames >= target)
+            if (now_frames > last_frames) {
+                last_frames = now_frames
+                last_progress = ref_time_ticks()
+            }
+        }
+        if (get_time_usec(last_progress) >= RECORD_STALL_US) {
+            warn_capture_stalled()
+            let remaining = target < 0 ? frames : max(0, target - last_frames)
+            sleep(uint(float(remaining) / float(g_record_fps) * 1000.0f))
+            return
+        }
+        sleep(RECORD_POLL_MS)
+    }
+}
+
+def public hold_content(app : ImguiApp; ms : uint) {
+    //! Hold for `ms` of CONTENT time: under lockstep recording wait for ms/1000*fps captured
+    //! frames; otherwise a plain wall-clock sleep(ms).
+    if (g_record_fps <= 0) {
+        sleep(ms)
+        return
+    }
+    wait_content_frames(app, int((float(ms) / 1000.0f) * float(g_record_fps) + 0.5f))
+}
+
+def public record_frame_count(app : ImguiApp) : int {
+    //! Current captured-frame count (content-time index). Capture right after say_begin to
+    //! anchor a hold_remainder_content. Returns 0 outside a recording session.
+    if (g_record_fps <= 0) return 0
+    return record_frames_now(app)
+}
+
+def public hold_remainder_content(app : ImguiApp; dwell_ms : uint; start_frames : int) {
+    //! Pad a beat to `dwell_ms` of CONTENT time: wait until the recorder reaches
+    //! start_frames + dwell_ms/1000*fps (start_frames from record_frame_count right after
+    //! say_begin). Work done mid-dwell consumes content frames; this holds the rest. The
+    //! content-clock replacement for a driver's wall-clock hold_remainder. No-op when idle.
+    if (g_record_fps <= 0) return
+    let target = start_frames + int((float(dwell_ms) / 1000.0f) * float(g_record_fps) + 0.5f)
+    wait_content_frames(app, target - record_frames_now(app))
 }
 
 def private is_button_kind(kind : string) : bool {
@@ -1594,8 +1694,11 @@ def public with_recording_app(feature_path : string;
             fps = fps,
             max_seconds = eff_max_seconds
         )))
+        g_record_fps = fps   // lockstep: gate say/hold_content by captured-frame count
+        g_stall_warned = false
         invoke(body, app)
         let stopped = post_command(app, "record_stop", null)
+        g_record_fps = 0
         let dump = stopped != null ? write_json(stopped) : "<null>"
         print("[record] record_stop -> {dump}\n")
         print("[record] APNG saved to {output_apng_path}\n")
@@ -1658,8 +1761,11 @@ def public with_recording_app(feature_path : string;
         // g_record_failures (recovering-and-continuing from a daslang panic isn't supported, so we
         // can't catch mid-body and still shut down cleanly). So record_stop + /shutdown always run;
         // the misses are surfaced after popen drains, below.
+        g_record_fps = fps   // lockstep: gate say/hold_content by captured-frame count
+        g_stall_warned = false
         invoke(body, app)
         let stopped = post_command(app, "record_stop", null)
+        g_record_fps = 0
         let dump = stopped != null ? write_json(stopped) : "<null>"
         print("[record] record_stop -> {dump}\n")
         print("[record] APNG saved to {output_apng_path}\n")
