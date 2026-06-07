@@ -216,6 +216,26 @@ jobs:
         # port 9090. With it, ports 9090/9091/9092/9093 are independent and
         # workers don't collide. Expected ~3× wall-time reduction vs sequential.
         #
+        # ISOLATED MODE IS SAFE HERE BECAUSE EVERY [test] IS HEADLESS. They all
+        # run via with_imgui_app, which spawns daslang-live under --headless: an
+        # ImGui context with a CPU font atlas, NO GLFW window / GL context. So 4
+        # parallel workers cost only CPU.
+        #
+        # RECORDINGS CANNOT RUN IN CI ON macOS. A recording drives a real windowed
+        # GL host (with_recording_app, for APNG capture), but the GitHub macOS
+        # runner has no usable OpenGL surface — glfwCreateWindow fails with
+        # "Glfw Error 65545: NSGL: Failed to find a suitable pixel format", so the
+        # host's init() panics ("can't create window") and renders nothing. (This,
+        # not a render throttle, is the root of dasImgui #190: a recording produced
+        # zero frames, so content-time gating spun until the wall-clock fallback.)
+        # Tutorial videos are therefore recorded on Windows / real hardware, never
+        # in CI. The 47 record_*.das under tests/integration are def-main driver
+        # SCRIPTS (not [test]s), so dastest skips them here regardless.
+        #
+        # If a recording-bearing [test] is ever added AND a GL-capable runner is
+        # available, it must run in a SEPARATE step WITHOUT --isolated-mode (serial,
+        # one window at a time): parallel GL windows fight for the GPU.
+        #
         # DASLIVE_HV_LOG=stderr: redirect libhv's logger to stderr so we see
         # event-loop/accept diagnostics in CI output. Env propagates to the
         # spawned daslang-live subprocess via popen_argv's inherited env.
