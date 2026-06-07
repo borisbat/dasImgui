@@ -810,7 +810,7 @@ def private flush_voiceovers(stopped : JsonValue?; apng_path : string; fps : int
 def private say_begin_impl(app : ImguiApp; text : string; targets : array<string>;
                            read_ms : uint; voice : string) : uint {
     // Shared body for both say_begin forms — posts imgui_narrate with the targets list (first is
-    // the anchor, all hard-avoided) and returns the dwell WITHOUT sleeping. In voiceover mode the
+    // the anchor, all hard-avoided) and returns the dwell WITHOUT holding. In voiceover mode the
     // dwell is the wav length (+gap), held by wall-clock duration_s (render fps diverges from the
     // capture grid, so a tick budget would drain early and the box would vanish mid-voiceover);
     // otherwise read_ms.
@@ -834,10 +834,11 @@ def private say_begin_impl(app : ImguiApp; text : string; targets : array<string
 
 def public say_begin(app : ImguiApp; text : string; target : string = ""; read_ms : uint = NARRATE_READ_MS; voice : string = "") : uint {
     //! Non-blocking ``say``: post the narration overlay (+ record the voiceover anchor) and
-    //! RETURN the dwell in milliseconds WITHOUT sleeping. The caller then sleeps the returned
-    //! dwell — splitting it around a ``click`` / ``drag`` so the action lands visibly under the
-    //! voice (cursor lands -> say_begin -> short lead -> click -> hold the remainder). For plain
-    //! narration with no mid-dwell action, use ``say`` which posts + sleeps in one call.
+    //! RETURN the dwell in milliseconds WITHOUT holding. The caller then holds the returned
+    //! dwell (content-time under recording) — splitting it around a ``click`` / ``drag`` so the
+    //! action lands visibly under the voice (cursor lands -> say_begin -> short lead -> click ->
+    //! hold the remainder). For plain narration with no mid-dwell action, use ``say`` which posts
+    //! + holds in one call.
     //! ``text`` is the on-screen caption; ``voice`` (when set) is the spoken line — write
     //! captions for the eye (terse) and voice for the ear (natural sentences). Empty voice
     //! falls back to text. For a step spanning sibling controls, use the ``targets`` overload.
@@ -848,15 +849,15 @@ def public say_begin(app : ImguiApp; text : string; targets : array<string>; rea
     //! Multi-target ``say_begin``: the caption points at ``targets[0]`` and is placed to HARD-avoid
     //! the union of all ``targets``' bboxes — pass the same list ``hold_through_voice`` will click so
     //! the box never covers a sibling control (e.g. an arrow_button pair). Otherwise identical to the
-    //! single-target form (returns the dwell; the caller sleeps it).
+    //! single-target form (returns the dwell; the caller holds it).
     return say_begin_impl(app, text, targets, read_ms, voice)
 }
 
 def public say(app : ImguiApp; text : string; target : string = ""; read_ms : uint = NARRATE_READ_MS; voice : string = "") {
-    //! Pop a narration overlay (``imgui_narrate`` verb), then sleep for the dwell so the
-    //! recorder captures the on-screen window. The overlay is held by wall-clock ``duration_s``
-    //! (the same span as the sleep), not a tick budget, so it lingers correctly even though
-    //! render fps and capture fps diverge during recording. In voiceover mode the dwell is the
+    //! Pop a narration overlay (``imgui_narrate`` verb), then hold for the dwell so the
+    //! recorder captures the on-screen window. The overlay's ``duration_s`` is consumed on the
+    //! same clock as the hold (the app's dt — content-time under recording), not a tick budget,
+    //! so it lingers exactly across the beat even though render fps and capture fps diverge. In voiceover mode the dwell is the
     //! wav length (+gap) instead, so the caption stays up exactly while the voice speaks.
     //! Named ``say`` (not ``narrate``) to avoid overload-resolution churn with
     //! imgui_visual_aids::narrate (the host-side overlay function), which differs
@@ -867,7 +868,7 @@ def public say(app : ImguiApp; text : string; target : string = ""; read_ms : ui
 
 def public say(app : ImguiApp; text : string; targets : array<string>; read_ms : uint = NARRATE_READ_MS; voice : string = "") {
     //! Multi-target ``say``: caption points at ``targets[0]`` and HARD-avoids the union of all
-    //! ``targets`` (see the ``say_begin`` list overload), then sleeps the dwell.
+    //! ``targets`` (see the ``say_begin`` list overload), then holds the dwell.
     hold_content(app, say_begin(app, text, targets, read_ms, voice))
 }
 
@@ -1014,7 +1015,7 @@ def public hold_through_voice(app : ImguiApp; dwell : uint; clicks : array<strin
     //! so the next move_to starts there (no teleport). Multi-click stages dwell a beat between
     //! picks so each state is visible.
     let lead = dwell > 1200u ? 500u : dwell / 3u
-    sleep(lead)
+    hold_content(app, lead)
     let n = length(clicks)
     let body_ms = dwell > lead ? dwell - lead : 0u
     let beat = n > 0 ? body_ms / uint(n) : body_ms
@@ -1023,7 +1024,7 @@ def public hold_through_voice(app : ImguiApp; dwell : uint; clicks : array<strin
         click(app, target)                              // animated approach + press/release
         verify_click_effect(app, target, pre)           // panics if the click had no effect
         reset_cursor_pos(widget_click_point(pre, target))  // track where the click left the cursor
-        sleep(beat)
+        hold_content(app, beat)
     }
 }
 
@@ -1048,16 +1049,16 @@ def public drag_through_voice(app : ImguiApp; dwell : uint; target : string;
     let dist = max(abs(to_pos._0 - from_pos._0), abs(to_pos._1 - from_pos._1))
     let scrub_ms = drag_ms > 0 ? drag_ms : max(700, int(dist / 0.30f))
     let lead = clamp(dwell / 3u, 700u, 3000u)
-    sleep(lead)
+    hold_content(app, lead)
     var ev : array<JsonValue?>
     ev |> drag_along(0, from_pos, to_pos, scrub_ms, 150)
     post_command(app, "imgui_mouse_play", JV((events = ev)))
     unsafe { delete ev; }
     let play = uint(150 + 100 + scrub_ms + 200 + 300) + 250u   // drag_along timeline + settle
-    sleep(play)
+    hold_content(app, play)
     record_check_changed(app, target, field, before, 120)
     let consumed = lead + play
-    sleep(dwell > consumed ? dwell - consumed : 0u)
+    hold_content(app, dwell > consumed ? dwell - consumed : 0u)
 }
 
 // ImGuiKey codes the recording helpers tap. playwright is transport-only (no imgui native module, so
@@ -1065,9 +1066,9 @@ def public drag_through_voice(app : ImguiApp; dwell : uint; target : string;
 let KEY_TAB   : int = 512    // ImGuiKey.Tab
 let KEY_ENTER : int = 525    // ImGuiKey.Enter
 
-// type_into_voice tunables. Every sleep() in type_into_voice is PACING (visual rhythm only);
+// type_into_voice tunables. Every hold in type_into_voice is PACING (visual rhythm only);
 // every wait for an effect to LAND (focus, focus-moved, value-committed) is a wait_*/record_check
-// POLL, never a fixed sleep guessing the duration.
+// POLL, never a fixed hold guessing the duration.
 let TYPE_LEAD_MIN_MS   : uint  = 700u    // floor on the pre-type lead (short voice lines)
 let TYPE_LEAD_MAX_MS   : uint  = 3000u   // cap on the pre-type lead (long voice lines)
 let TYPE_PER_CHAR_S    : float = 0.16f   // wall-clock per typed char (keystrokes stay legible)
@@ -1096,10 +1097,10 @@ def public type_into_voice(app : ImguiApp; dwell : uint; target : string;
     //! so the typing lands while the narrator describes it; the caption holds the rest. A wrong or
     //! uncommitted value aborts the recording at teardown (record_check_value). The caller must have
     //! ``move_to``'d ``click_pos`` first so the cursor is already on the field (no teleport).
-    //! Every sleep() here is PACING; focus, focus-moved and value-committed are each POLLED, not slept.
-    let started = ref_time_ticks()
+    //! Every hold here is PACING; focus, focus-moved and value-committed are each POLLED, not guessed.
+    let started_frames = record_frame_count(app)
     let lead = clamp(dwell / 3u, TYPE_LEAD_MIN_MS, TYPE_LEAD_MAX_MS)   // ~1/3 into the line
-    sleep(lead)                                                // PACING: land the click under the voice
+    hold_content(app, lead)                                                // PACING: land the click under the voice
 
     // Real click to focus the (first) field. ImGui InputScalar's AutoSelectAll fires on activation,
     // so the click both focuses AND selects the current text -> typing REPLACES it.
@@ -1129,18 +1130,17 @@ def public type_into_voice(app : ImguiApp; dwell : uint; target : string;
         let type_s = max(TYPE_MIN_FIELD_S, float(length(cell)) * TYPE_PER_CHAR_S)
         post_command(app, "imgui_key_type", JV((text = cell, total_duration_s = type_s)))
         wait_for_key_idle(app)                                 // SYNC: this field's chars finished typing
-        sleep(TYPE_FIELD_BEAT_MS)                              // PACING: let the filled field read
+        hold_content(app, TYPE_FIELD_BEAT_MS)                  // PACING: let the filled field read
     }
 
     // SYNC: Enter commits, then record_check_value polls until the value lands (no fixed sleep).
     key_tap(app, KEY_ENTER)
     record_check_value(app, target, "value", expected, TYPE_EFFECT_FRAMES)
 
-    let consumed = uint(get_time_usec(started) / 1000)
-    sleep(dwell > consumed ? dwell - consumed : 0u)            // PACING: hold the caption for the rest of the voice
+    hold_remainder_content(app, dwell, started_frames)                    // PACING: caption tail held in content-time
 }
 
-// combo_pick_voice tunables. Sleeps below are PACING only; the popup-open and the selection-commit
+// combo_pick_voice tunables. Holds below are PACING only; the popup-open and the selection-commit
 // are each POLLED. (Same voice-lead shape as type_into_voice's TYPE_LEAD_*; unify if a third user lands.)
 let COMBO_LEAD_MIN_MS : uint = 700u    // floor on the pre-open lead (short voice lines)
 let COMBO_LEAD_MAX_MS : uint = 3000u   // cap on the pre-open lead (long voice lines)
@@ -1155,10 +1155,10 @@ def public combo_pick_voice(app : ImguiApp; dwell : uint; target : string; item 
     //! (combos are built as BeginCombo + a Selectable loop, so each item has a real rect), travels the
     //! cursor onto item ``item`` via ``widget_component_point`` and clicks it, then verifies the
     //! selection. Self-verifying: a missed open or wrong pick aborts the recording at teardown. Every
-    //! sleep is PACING; the open and the commit are polled, never slept.
-    let started = ref_time_ticks()
+    //! hold is PACING; the open and the commit are polled, not guessed.
+    let started_frames = record_frame_count(app)
     let lead = clamp(dwell / 3u, COMBO_LEAD_MIN_MS, COMBO_LEAD_MAX_MS)   // ~1/3 into the line
-    sleep(lead)                                                // PACING: open under the voice
+    hold_content(app, lead)                                                // PACING: open under the voice
     var snap0 = snapshot(app)
     let bb = snap0?["globals"]?[target]?["bbox"]
     let bx = bb?["x"] ?? 0.0f
@@ -1185,12 +1185,11 @@ def public combo_pick_voice(app : ImguiApp; dwell : uint; target : string; item 
     unsafe { delete ev1; }
     wait_for_mouse_idle(app)                                            // SYNC: the item click fully played
     record_check_value(app, target, "value", item, COMBO_POLL_FRAMES)   // SYNC: selection committed
-    let consumed = uint(get_time_usec(started) / 1000)
-    sleep(dwell > consumed ? dwell - consumed : 0u)            // PACING: hold the caption for the rest of the voice
+    hold_remainder_content(app, dwell, started_frames)                    // PACING: caption tail held in content-time
 }
 
-// toggle_tree_voice tunables. Sleeps below are PACING only; the toggle effect is POLLED via
-// record_check_rendered (child appears/disappears), never slept. The chevron sits at the header's
+// toggle_tree_voice tunables. Holds below are PACING only; the toggle effect is POLLED via
+// record_check_rendered (child appears/disappears), not guessed. The chevron sits at the header's
 // left edge, so the arrow click x is a small inset scaled by the header's own height (font-size aware).
 let TREE_LEAD_MIN_MS : uint  = 700u    // floor on the pre-click lead (short voice lines)
 let TREE_LEAD_MAX_MS : uint  = 3000u   // cap on the pre-click lead (long voice lines)
@@ -1209,11 +1208,11 @@ def public toggle_tree_voice(app : ImguiApp; dwell : uint; header_target : strin
     //! no-op — drive both for real and verify each. Requires the header bbox in telemetry (``tree_node``
     //! captures it via ``current_item_bbox`` since this rail). Self-verifying via ``record_check_rendered``:
     //! a missed toggle (or a label click that wrongly toggled) aborts the recording at teardown. The caller
-    //! should ``move_to`` the header first so the cursor is already near it. Every sleep is PACING; the
-    //! toggle effect is polled, never slept.
-    let started = ref_time_ticks()
+    //! should ``move_to`` the header first so the cursor is already near it. Every hold is PACING; the
+    //! toggle effect is polled, not guessed.
+    let started_frames = record_frame_count(app)
     let lead = clamp(dwell / 3u, TREE_LEAD_MIN_MS, TREE_LEAD_MAX_MS)   // ~1/3 into the line
-    sleep(lead)                                                // PACING: land the click under the voice
+    hold_content(app, lead)                                                // PACING: land the click under the voice
     var snap = snapshot(app)
     let bb = snap?["globals"]?[header_target]?["bbox"]
     let bx = bb?["x"] ?? 0.0f
@@ -1228,8 +1227,7 @@ def public toggle_tree_voice(app : ImguiApp; dwell : uint; header_target : strin
     unsafe { delete ev; }
     wait_for_mouse_idle(app)                                            // SYNC: the click fully played
     record_check_rendered(app, child_target, expect_child_rendered, TREE_POLL_FRAMES)   // SYNC: toggle landed
-    let consumed = uint(get_time_usec(started) / 1000)
-    sleep(dwell > consumed ? dwell - consumed : 0u)            // PACING: hold the caption for the rest of the voice
+    hold_remainder_content(app, dwell, started_frames)                    // PACING: caption tail held in content-time
 }
 
 def public close_button_voice(app : ImguiApp; dwell : uint; header_target : string; child_target : string) {
@@ -1239,10 +1237,10 @@ def public close_button_voice(app : ImguiApp; dwell : uint; header_target : stri
     //! header that closes stops drawing its entire body. The X sits a half header-height in from the
     //! header's right edge (mirrors how ImGui lays the close button out). Self-verifying via
     //! ``record_check_rendered`` (expect=false): a missed close aborts the recording at teardown. The
-    //! caller should ``move_to`` the header first. Every sleep is PACING; the close is polled, never slept.
-    let started = ref_time_ticks()
+    //! caller should ``move_to`` the header first. Every hold is PACING; the close is polled, not guessed.
+    let started_frames = record_frame_count(app)
     let lead = clamp(dwell / 3u, TREE_LEAD_MIN_MS, TREE_LEAD_MAX_MS)   // ~1/3 into the line
-    sleep(lead)                                                // PACING: land the click under the voice
+    hold_content(app, lead)                                                // PACING: land the click under the voice
     var snap = snapshot(app)
     let bb = snap?["globals"]?[header_target]?["bbox"]
     let by = bb?["y"] ?? 0.0f
@@ -1256,8 +1254,7 @@ def public close_button_voice(app : ImguiApp; dwell : uint; header_target : stri
     unsafe { delete ev; }
     wait_for_mouse_idle(app)                                            // SYNC: the click fully played
     record_check_rendered(app, child_target, false, TREE_POLL_FRAMES)  // SYNC: the strip closed
-    let consumed = uint(get_time_usec(started) / 1000)
-    sleep(dwell > consumed ? dwell - consumed : 0u)            // PACING: hold the caption for the rest of the voice
+    hold_remainder_content(app, dwell, started_frames)                    // PACING: caption tail held in content-time
 }
 
 def public click_render_voice(app : ImguiApp; dwell : uint; click_target : string;
@@ -1269,15 +1266,14 @@ def public click_render_voice(app : ImguiApp; dwell : uint; click_target : strin
     //! click target itself — disappear). A button whose own click closes the popup can't be verified by
     //! its click-count (it's gone next frame); the watch-target's render state is the durable signal.
     //! Self-verifying via ``record_check_rendered``: a missed reveal/dismiss aborts the recording at
-    //! teardown. The caller should ``move_to`` the click target first. Every sleep is PACING; the
-    //! reveal/dismiss is polled, never slept.
-    let started = ref_time_ticks()
+    //! teardown. The caller should ``move_to`` the click target first. Every hold is PACING; the
+    //! reveal/dismiss is polled, not guessed.
+    let started_frames = record_frame_count(app)
     let lead = clamp(dwell / 3u, TREE_LEAD_MIN_MS, TREE_LEAD_MAX_MS)   // ~1/3 into the line
-    sleep(lead)                                                // PACING: land the click under the voice
+    hold_content(app, lead)                                                // PACING: land the click under the voice
     click(app, click_target)                                  // real animated click (imgui_click coro)
     record_check_rendered(app, watch_target, expect_rendered, TREE_POLL_FRAMES)   // SYNC: reveal/dismiss landed
-    let consumed = uint(get_time_usec(started) / 1000)
-    sleep(dwell > consumed ? dwell - consumed : 0u)            // PACING: hold the caption for the rest of the voice
+    hold_remainder_content(app, dwell, started_frames)                    // PACING: caption tail held in content-time
 }
 
 def public menu_pick_voice(app : ImguiApp; dwell : uint; header_target : string; item_target : string) {
@@ -1291,10 +1287,10 @@ def public menu_pick_voice(app : ImguiApp; dwell : uint; header_target : string;
     //! item must render after the header click (menu opened) and stop rendering after the item click (pick
     //! landed + menu closed), or the recording aborts at teardown. The caller should ``move_to`` the
     //! header's column (directly below the header, below the bar) first so the open-click travels vertically.
-    //! Every sleep is PACING; the open/close are polled, never slept.
-    let started = ref_time_ticks()
+    //! Every hold is PACING; the open/close are polled, not guessed.
+    let started_frames = record_frame_count(app)
     let lead = clamp(dwell / 3u, TREE_LEAD_MIN_MS, TREE_LEAD_MAX_MS)   // ~1/3 into the line
-    sleep(lead)                                                // PACING: land the clicks under the voice
+    hold_content(app, lead)                                                // PACING: land the clicks under the voice
     click(app, header_target)                                 // open the menu (caller staged below it)
     record_check_rendered(app, item_target, true, TREE_POLL_FRAMES)   // SYNC: menu opened
     var snap = snapshot(app)
@@ -1308,8 +1304,7 @@ def public menu_pick_voice(app : ImguiApp; dwell : uint; header_target : string;
     unsafe { delete ev; }
     wait_for_mouse_idle(app)                                            // SYNC: the click fully played
     record_check_rendered(app, item_target, false, TREE_POLL_FRAMES)  // SYNC: pick landed, menu closed
-    let consumed = uint(get_time_usec(started) / 1000)
-    sleep(dwell > consumed ? dwell - consumed : 0u)            // PACING: hold the caption for the rest of the voice
+    hold_remainder_content(app, dwell, started_frames)                    // PACING: caption tail held in content-time
 }
 
 def public wait_for_key_idle(app : ImguiApp; timeout_sec : float = DEFAULT_FRAME_WAIT_SEC) : bool {
