@@ -49,6 +49,7 @@ def document_module_imgui_boost_runtime() {
         group_by_regex("Live commands",           mod, %regex~^imgui_(snapshot|click|force_set|open|close|focus|await|mouse_pos|mouse_click|mouse_scroll|key_press|key_release|key_char)$%%),
         group_by_regex("Synthetic input",         mod, %regex~^(synth_mouse_move|synth_mouse_button|synth_mouse_wheel|synth_key_press|synth_key_release|synth_char|release_held_buttons|release_held_keys|get_synth_cursor|get_synth_keys|imgui_synth_tick|user_control_enabled|set_user_control_enabled|set_user_control|register_real_input_toggle|register_synth_frame_hook|register_synth_stop_hook)$%%),
         group_by_regex("Debug logging",           mod, %regex~^(log_section|log_section_on|imgui_log_section|imgui_log_drain)$%%),
+        group_by_regex("Memory debugging",         mod, %regex~^(imgui_debug_memory|imgui_reset_memory_baseline|imgui_memory_report)$%%),
         group_by_regex("Snapshot transform",      mod, %regex~^(push_snapshot_item_transform|pop_snapshot_item_transform|capture_item_bbox|capture_current_item_rect)$%%),
         group_by_regex("Await modifiers",         mod, %regex~^(AwaitModifiers|AwaitArgs|AwaitResult|with_await)$%%),
         group_by_regex("JSON serialization",      mod, %regex~^(widget_entry_jv|state_jv|to_JV|from_JV|JV|serialize).*%%),
@@ -136,6 +137,7 @@ def document_module_imgui_visual_aids() {
         group_by_regex("HUD",               mod, %regex~^(paint_key_hud|glyph_for_imgui_key|paint_hud|imgui_key_hud|imgui_focus_rect).*%%),
         group_by_regex("Cursor sprite",     mod, %regex~^(cursor_sprite|imgui_cursor_sprite)$%%),
         group_by_regex("Override hooks",    mod, %regex~^apply_synth_io_override$%%),
+        group_by_regex("Memory debugging",  mod, %regex~^imgui_memory_debug$%%),
         group_by_regex("Color utilities",   mod, %regex~^rgba$%%),
         group_by_regex("Serve / lifecycle", mod, %regex~^(imgui_visual_aids_serve|visual_aids_init|render_visual_aids|effective_).*%%),
         hide_group(group_by_regex("Internal", mod, %regex~^(_|priv_).*%%))
