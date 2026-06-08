@@ -1572,6 +1572,10 @@ def public with_imgui_app(feature_path : string;
         return if (f == null)
         if (!wait_until_ready(app, ready_timeout_sec)) {
             unready = true
+            // Tell the host to exit so fread_to_eof returns once it drains, instead
+            // of blocking until the test_timeout_sec popen watchdog (the readiness
+            // decision was already made at ready_timeout_sec — don't waste the rest).
+            post_signal(app, "/shutdown")
             captured = unsafe(fread_to_eof(f))
             return
         }
