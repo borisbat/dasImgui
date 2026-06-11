@@ -161,7 +161,7 @@ struct imguiTempFn {
 
         bool anyString = false;
         for ( auto &arg : fn->arguments ) {
-            if ( arg->type->constant && arg->type->ref && arg->type->dim.size() == 0 ) {
+            if ( arg->type->constant && arg->type->ref && !arg->type->isArray() ) {
                 if ( arg->type->baseType == Type::tFloat2 || arg->type->baseType == Type::tFloat4 ) {
                     arg->type->ref = false;
                 }
