@@ -457,6 +457,29 @@ def public click(app : ImguiApp; target : string) : JsonValue? {
     return send_imgui_command(app.transport, "imgui_click", JV((target = target)))
 }
 
+def public double_click(app : ImguiApp; target : string) : JsonValue? {
+    //! Faithful double-click on ``target``'s bbox center: two press/release taps within
+    //! ImGui's ``MouseDoubleClickTime`` (built as an ``imgui_mouse_play`` timeline) so
+    //! ``IsMouseDoubleClicked`` fires — e.g. enter-directory / open-file in a file dialog.
+    //! Re-snapshots to resolve the center client-side (like ``drag``); the target must be rendered.
+    var snap = snapshot(app)
+    let pos = widget_click_point(snap, target)
+    var events <- [
+        JV((t_ms = 0,   kind = "move",   x = last_cursor_x, y = last_cursor_y)),
+        JV((t_ms = 400, kind = "move",   x = pos._0,        y = pos._1)),
+        JV((t_ms = 500, kind = "button", button = 0,        action = "press")),
+        JV((t_ms = 560, kind = "button", button = 0,        action = "release")),
+        JV((t_ms = 660, kind = "button", button = 0,        action = "press")),
+        JV((t_ms = 720, kind = "button", button = 0,        action = "release")),
+        JV((t_ms = 850, kind = "move",   x = pos._0,        y = pos._1))
+    ]
+    var r = post_command(app, "imgui_mouse_play", JV((events = events)))
+    unsafe { delete events; }
+    last_cursor_x = pos._0
+    last_cursor_y = pos._1
+    return r
+}
+
 def public right_click(app : ImguiApp; target : string) : JsonValue? {
     //! Synthesize a right-click on ``target`` (``imgui_click`` verb with ``button = 1``).
     //! Used by popup_context_item / popup_context_window drivers.
