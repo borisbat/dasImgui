@@ -22,6 +22,13 @@ overwrite-confirm step, a **directory-pick** mode, and keyboard shortcuts
 
 Source: ``examples/tutorial/file_dialog.das``.
 
+.. video:: file_dialog.mp4
+
+The recording opens the dialog in Save mode: the name field is pre-filled from
+``default_name``, the breadcrumb and editable path bar sit above a sortable
+Name / Size / Type / Modified table, the Images filter matches several extensions
+at once, and New Folder makes a directory in place.
+
 ************
 Walkthrough
 ************
