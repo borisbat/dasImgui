@@ -273,6 +273,33 @@ def public widget_rendered(var snap : JsonValue?; ident : string) : bool {
     return widget_exists(snap, ident) && (snap?["globals"]?[ident]?["rendered"] ?? true)
 }
 
+def public log_snapshot(app : ImguiApp; note : string = "") : void {
+    //! Dump the live UI state to the log (LOG_WARNING) — for every registered widget: its
+    //! ident, kind, ``rendered`` flag, bbox, and ``payload.value`` when present. The way to
+    //! see what a headless/CI run actually painted when you can't watch the window; pair it
+    //! with a failed assertion (dump on the failure path) so a red run is self-explaining.
+    var snap = snapshot(app)
+    let g = snap?["globals"]
+    if (g == null || !(g is _object)) {
+        to_log(LOG_WARNING, "log_snapshot [{note}]: snapshot has no widget registry")
+        return
+    }
+    let obj & = unsafe(g as _object)
+    to_log(LOG_WARNING, "log_snapshot [{note}]: {length(obj)} widgets")
+    for (k, v in keys(obj), values(obj)) {
+        let kind = v?["kind"] ?? "?"
+        let rend = v?["rendered"] ?? true
+        let bb = v?["bbox"]
+        let x = bb?["x"] ?? 0.0f
+        let y = bb?["y"] ?? 0.0f
+        let z = bb?["z"] ?? 0.0f
+        let wy = bb?["w"] ?? 0.0f
+        let val = v?["payload"]?["value"]
+        let vs = val == null ? "" : " value={val}"
+        to_log(LOG_WARNING, "  {k}  kind={kind} rendered={rend} bbox=({x},{y})-({z},{wy}){vs}")
+    }
+}
+
 // ===== Poll-until family =====
 
 def public wait_until_sec(app : ImguiApp;
