@@ -13,6 +13,7 @@ require imgui/imgui_containers_builtin public
 require imgui/imgui_table_builtin public
 require daslib/fio
 require strings
+require daslib/strings_boost
 
 //! Native, reusable file dialog built entirely from the boost DSL — so every
 //! interactive element registers on the snapshot registry and the whole dialog
@@ -41,11 +42,12 @@ enum FileDialogMode {
     open        //!< pick existing file(s) — multi-select per `max_selection`
     save        //!< type/confirm a name; overwrite-confirm if it exists
     create      //!< "New" — type a name (same name-entry path as save)
+    pick_dir    //!< choose a directory — the list shows folders only, OK confirms the selected (or current) folder
 }
 
 struct FileDialogFilter {
-    caption : string    //!< shown in the filter dropdown, e.g. "Levels (*.json)" (`label` is reserved in gen2)
-    ext : string        //!< extension without the dot, e.g. "json"; "" = all files
+    caption : string    //!< shown in the filter dropdown, e.g. "Images (*.png *.jpg)" (`label` is reserved in gen2)
+    ext : string        //!< extension(s) without the dot, ';'-separated ("png;jpg;jpeg"); "" = all files
 }
 
 struct FileDialogConfig {
@@ -54,6 +56,7 @@ struct FileDialogConfig {
     filters : array<FileDialogFilter>       //!< empty => all files
     mode : FileDialogMode = FileDialogMode.open
     max_selection : int = 1                 //!< open mode; 0 = unlimited
+    default_name : string = ""              //!< save/create: pre-filled filename
 }
 
 // ===== Internal state =====
@@ -63,6 +66,7 @@ struct private Entry {
     is_dir : bool
     size : uint64
     ext : string    //!< dotted extension (".das"), "" if none / dir — drives the Type cell + Type sort
+    mtime : clock   //!< last-modified time — drives the Modified cell + Modified sort
 }
 
 struct private DialogState {
@@ -85,6 +89,8 @@ struct private DialogState {
     sort_desc : bool = false
     open : bool = false
     error : string
+    dir_error : string                      // error shown inside the New Folder sub-modal
+    path_focused : bool = false             // PATH_FIELD held focus last frame (routes Enter: navigate vs confirm)
 }
 
 var private g_fd : DialogState = DialogState()
@@ -92,11 +98,13 @@ var private g_fd : DialogState = DialogState()
 let private COL_NAME = 1u
 let private COL_SIZE = 2u
 let private COL_TYPE = 3u
+let private COL_DATE = 4u
 
 // Indexed widget-state tables (the dynamic-row / dynamic-button idiom).
 var private ROW : table<int; ClickState>
 var private SIZE_CELL : table<int; NarrativeState>
 var private TYPE_CELL : table<int; NarrativeState>
+var private DATE_CELL : table<int; NarrativeState>
 var private CRUMB : table<int; ClickState>
 var private CRUMB_SL : table<int; EmptyMarkerState>
 
@@ -109,20 +117,62 @@ def private active_ext() : string {
     return ""
 }
 
-// "foo.json" matches ext "json" iff it ends in exactly ".json" (the level_names
-// idiom — uses fio's replace_extension, never hand-rolled rfind/slice).
+// "foo.json" matches the pre-split pattern list ["json"] / ["png","jpg"] iff it ends in
+// exactly ".<one of them>" (fio's replace_extension — never hand-rolled rfind/slice).
+// Empty list = all files. The caller splits the active filter ONCE so scan_dir doesn't
+// re-split (and leak) the same pattern string for every file in the directory.
+def private matches_ext(name : string; pats : array<string>) : bool {
+    if (empty(pats)) {
+        return true
+    }
+    let base = replace_extension(name, "")
+    for (e in pats) {
+        if (!empty(e) && "{base}.{e}" == name) {
+            return true
+        }
+    }
+    return false
+}
+
 def private has_ext(name : string; ext : string) : bool {
     if (empty(ext)) {
         return true
     }
-    return replace_extension(name, "") + "." + ext == name
+    var pats <- split(ext, ";")
+    let ok = matches_ext(name, pats)
+    delete pats
+    return ok
 }
 
 def private ensure_ext(name : string; ext : string) : string {
     if (empty(ext) || has_ext(name, ext)) {
         return name
     }
-    return "{name}.{ext}"
+    var parts <- split(ext, ";")
+    // append the first NON-EMPTY pattern; a spec like ";png" or ";" must not yield "name."
+    var leaf = name
+    for (p in parts) {
+        if (!empty(p)) {
+            leaf = "{name}.{p}"
+            break
+        }
+    }
+    delete parts
+    return leaf
+}
+
+//! Build a filter list from a C#-style pipe spec — alternating caption / extension
+//! list: ``"daslang|das|Images|png;jpg;jpeg|All files|"``. Each extension list is
+//! ';'-separated (matching `FileDialogFilter.ext`); an empty list means all files.
+def public file_filters(spec : string) : array<FileDialogFilter> {
+    var parts <- split(spec, "|")
+    // ceil-pair: an odd part count (user dropped the final '|') keeps the trailing caption
+    // as an all-files filter ("") rather than silently truncating it off the list.
+    var out <- [for (i in range((length(parts) + 1) / 2));
+        FileDialogFilter(caption = parts[i * 2],
+                         ext = i * 2 + 1 < length(parts) ? parts[i * 2 + 1] : "")]
+    delete parts
+    return <- out
 }
 
 // Human-readable size with one decimal. uint interpolates as hex, so the
@@ -159,6 +209,13 @@ def private is_valid_filename(name : string) : bool {
 def private scan_dir() {
     g_fd.entries |> clear()
     let ext = active_ext()
+    let dirs_only = g_fd.mode == FileDialogMode.pick_dir
+    // split the active filter's pattern list ONCE here, not once per file in matches_ext;
+    // empty ext => empty list => all files (split("", ";") would yield [""], not [], so guard).
+    var pats : array<string>
+    if (!empty(ext)) {
+        pats <- split(ext, ";")
+    }
     dir(g_fd.cur_dir) $(nm) {
         if (nm == "." || nm == "..") {
             return
@@ -168,11 +225,12 @@ def private scan_dir() {
             return
         }
         if (fs.is_dir) {
-            g_fd.entries |> push(Entry(name = nm, is_dir = true, size = 0ul, ext = ""))
-        } elif (has_ext(nm, ext)) {
-            g_fd.entries |> push(Entry(name = nm, is_dir = false, size = fs.size, ext = extension(nm)))
+            g_fd.entries |> push(Entry(name = nm, is_dir = true, size = 0ul, ext = "", mtime = fs.mtime))
+        } elif (!dirs_only && matches_ext(nm, pats)) {
+            g_fd.entries |> push(Entry(name = nm, is_dir = false, size = fs.size, ext = extension(nm), mtime = fs.mtime))
         }
     }
+    delete pats
 }
 
 def private compare_entry(a : Entry; b : Entry) : int {
@@ -187,6 +245,12 @@ def private compare_entry(a : Entry; b : Entry) : int {
         if (a.ext < b.ext) {
             ord = -1
         } elif (a.ext > b.ext) {
+            ord = 1
+        }
+    } elif (g_fd.sort_col == int(COL_DATE)) {
+        if (a.mtime < b.mtime) {
+            ord = -1
+        } elif (a.mtime > b.mtime) {
             ord = 1
         }
     } else {
@@ -243,6 +307,9 @@ def private navigate_to(d : string) {
     g_fd.selection |> clear()
     g_fd.anchor = -1
     g_fd.error = ""
+    // keep the editable path field in sync with where we are
+    PATH_FIELD.pending_value = g_fd.cur_dir
+    PATH_FIELD.has_pending = true
     scan_dir()
     rebuild_view()
     rebuild_crumbs()
@@ -327,6 +394,13 @@ def private confirm_multi(var paths : array<string>) : FileDialogResult {
 
 def private try_confirm() : FileDialogResult {
     g_fd.error = ""
+    if (g_fd.mode == FileDialogMode.pick_dir) {
+        // a selected folder, else the directory we're currently browsing
+        if (length(g_fd.selection) == 1 && g_fd.entries[g_fd.selection[0]].is_dir) {
+            return confirm_single(path_join(g_fd.cur_dir, g_fd.entries[g_fd.selection[0]].name))
+        }
+        return confirm_single(g_fd.cur_dir)
+    }
     if (g_fd.mode == FileDialogMode.open) {
         var paths <- [for (s in g_fd.selection);
             path_join(g_fd.cur_dir, g_fd.entries[s].name);
@@ -375,12 +449,17 @@ def public file_dialog_open(cfg : FileDialogConfig) {
     g_fd.sort_col = int(COL_NAME)
     g_fd.sort_desc = false
     g_fd.error = ""
+    g_fd.dir_error = ""
+    g_fd.path_focused = false
     g_fd.open = true
-    NAME_FIELD.pending_value = ""
+    NAME_FIELD.pending_value = cfg.default_name   // "" for open/pick_dir callers; pre-fill for save/create
     NAME_FIELD.has_pending = true
+    PATH_FIELD.pending_value = g_fd.cur_dir
+    PATH_FIELD.has_pending = true
     ROW |> clear()
     SIZE_CELL |> clear()
     TYPE_CELL |> clear()
+    DATE_CELL |> clear()
     CRUMB |> clear()
     CRUMB_SL |> clear()
     scan_dir()
@@ -399,6 +478,10 @@ def public file_dialog_draw() : FileDialogResult {
     var confirm_path = ""
     SetNextWindowSize(ImVec2(720.0f, 520.0f), ImGuiCond.FirstUseEver)
     popup_modal(FILEDLG, (text = g_fd.title, closable = false, flags = ImGuiWindowFlags.None)) {
+        // PATH_FIELD's focus is sampled at the END of the body; capture last frame's
+        // value now so the Enter handler (also at the end) can route Enter to path-nav
+        // vs confirm even though the input deactivates itself on the Enter keystroke.
+        let was_path_focused = g_fd.path_focused
         // --- breadcrumb / nav ---
         if (button(UP, (text = ".."))) {
             nav_to = parent(g_fd.cur_dir)
@@ -411,8 +494,27 @@ def public file_dialog_draw() : FileDialogResult {
                 nav_to = seg            // deferred: navigate_to rebuilds crumbs — can't run mid-loop
             }
         }
-        // --- filter ---
-        if (!empty(g_fd.filter_labels)) {
+        // --- editable path + drive jump + new folder ---
+        input_text(PATH_FIELD, (text = "##path"))
+        g_fd.path_focused = IsItemActive()
+        same_line()
+        if (button(GO, (text = "Go"))) {
+            let p = normalize(PATH_FIELD.value)
+            if (stat(p).is_dir) {
+                nav_to = p
+            } else {
+                g_fd.error = "no such directory"
+            }
+        }
+        same_line()
+        if (button(NEWFOLDER, (text = "New Folder"))) {
+            g_fd.dir_error = ""
+            NEWDIR_NAME.pending_value = ""
+            NEWDIR_NAME.has_pending = true
+            NEWDIR.pending_open = true
+        }
+        // --- filter (extensions are meaningless in directory-pick mode) ---
+        if (!empty(g_fd.filter_labels) && g_fd.mode != FileDialogMode.pick_dir) {
             combo(FILTER_COMBO, (text = "##filter", items := g_fd.filter_labels))
             if (FILTER_COMBO.value != g_fd.filter_idx && FILTER_COMBO.value >= 0) {
                 g_fd.filter_idx = FILTER_COMBO.value
@@ -429,12 +531,13 @@ def public file_dialog_draw() : FileDialogResult {
         let tflags = (ImGuiTableFlags.BordersOuter | ImGuiTableFlags.RowBg |
                       ImGuiTableFlags.Resizable | ImGuiTableFlags.ScrollY |
                       ImGuiTableFlags.Sortable)
-        data_table(FILE_TABLE, (text = "##files", columns = 3, flags = tflags,
+        data_table(FILE_TABLE, (text = "##files", columns = 4, flags = tflags,
                                 outer_size = float2(0.0f, 340.0f), inner_width = 0.0f)) {
             table_setup_scroll_freeze(0, 1)
             table_setup_column("Name", ImGuiTableColumnFlags.DefaultSort | ImGuiTableColumnFlags.WidthStretch, 0.0f, COL_NAME)
             table_setup_column("Size", ImGuiTableColumnFlags.WidthFixed, 90.0f, COL_SIZE)
             table_setup_column("Type", ImGuiTableColumnFlags.WidthFixed, 80.0f, COL_TYPE)
+            table_setup_column("Modified", ImGuiTableColumnFlags.WidthFixed, 130.0f, COL_DATE)
             table_headers_row()
             sort_specs() $(specs) {
                 if (!empty(specs)) {
@@ -468,6 +571,8 @@ def public file_dialog_draw() : FileDialogResult {
                 text(SIZE_CELL[idx], (text = e.is_dir ? "" : fmt_size(e.size)))
                 table_set_column_index(2)
                 text(TYPE_CELL[idx], (text = e.is_dir ? "Folder" : (empty(e.ext) ? "File" : e.ext)))
+                table_set_column_index(3)
+                text(DATE_CELL[idx], (text = format_time(e.mtime, "%Y-%m-%d %H:%M")))
             }
         }
         // Apply the deferred row action now the loop is finished (safe to rebuild).
@@ -486,15 +591,16 @@ def public file_dialog_draw() : FileDialogResult {
             }
         }
         separator(BOTTOM_SEP)
-        // --- bottom bar ---
-        if (g_fd.mode != FileDialogMode.open) {
+        // --- bottom bar (name field only in the type-a-name modes) ---
+        if (g_fd.mode == FileDialogMode.save || g_fd.mode == FileDialogMode.create) {
             input_text(NAME_FIELD, (text = "Name"))
         }
         if (!empty(g_fd.error)) {
             text(ERR_LABEL, (text = g_fd.error))
         }
         let ok_label = (g_fd.mode == FileDialogMode.open ? "Open" :
-                        (g_fd.mode == FileDialogMode.save ? "Save" : "Create"))
+                        g_fd.mode == FileDialogMode.pick_dir ? "Select Folder" :
+                        g_fd.mode == FileDialogMode.save ? "Save" : "Create")
         if (button(BTN_OK, (text = ok_label))) {
             result = try_confirm()
         }
@@ -516,6 +622,57 @@ def public file_dialog_draw() : FileDialogResult {
             same_line()
             if (button(OW_NO, (text = "Cancel"))) {
                 OVERWRITE.pending_close = true
+            }
+        }
+        // --- new folder (NEWDIR_NAME flagless so the Create button reads the live
+        // value; Enter is caught here instead of via EnterReturnsTrue, same reason
+        // as NAME_FIELD) ---
+        SetNextWindowSize(ImVec2(360.0f, 0.0f), ImGuiCond.FirstUseEver)
+        popup_modal(NEWDIR, (text = "New Folder", closable = false, flags = ImGuiWindowFlags.AlwaysAutoResize)) {
+            input_text(NEWDIR_NAME, (text = "Name"))
+            if (!empty(g_fd.dir_error)) {
+                text(NEWDIR_ERR, (text = g_fd.dir_error))
+            }
+            separator(NEWDIR_SEP)
+            let enter = IsKeyPressed(ImGuiKey.Enter, false) || IsKeyPressed(ImGuiKey.KeypadEnter, false)
+            if (button(NEWDIR_OK, (text = "Create")) || enter) {
+                let nm = NEWDIR_NAME.value
+                if (!is_valid_filename(nm)) {
+                    g_fd.dir_error = "invalid folder name"
+                } else {
+                    var err = ""
+                    if (mkdir_rec(path_join(g_fd.cur_dir, nm), err)) {
+                        NEWDIR.pending_close = true
+                        g_fd.dir_error = ""
+                        navigate_to(g_fd.cur_dir)   // rescan so the new folder shows up
+                    } else {
+                        g_fd.dir_error = empty(err) ? "could not create folder" : err
+                    }
+                }
+            }
+            same_line()
+            if (button(NEWDIR_CANCEL, (text = "Cancel"))) {
+                NEWDIR.pending_close = true
+                g_fd.dir_error = ""
+            }
+        }
+        // --- keyboard: Enter confirms (or navigates when the path field had focus),
+        // Backspace goes up a directory when no text field is being edited ---
+        let sub_open = OVERWRITE.open || NEWDIR.open
+        if (!sub_open) {
+            if (IsKeyPressed(ImGuiKey.Enter, false) || IsKeyPressed(ImGuiKey.KeypadEnter, false)) {
+                if (was_path_focused) {
+                    let p = normalize(PATH_FIELD.value)
+                    if (stat(p).is_dir) {
+                        navigate_to(p)
+                    } else {
+                        g_fd.error = "no such directory"
+                    }
+                } else {
+                    result = try_confirm()
+                }
+            } elif (!IsAnyItemActive() && IsKeyPressed(ImGuiKey.Backspace, false)) {
+                navigate_to(parent(g_fd.cur_dir))
             }
         }
     }

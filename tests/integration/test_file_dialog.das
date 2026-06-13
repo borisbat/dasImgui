@@ -115,6 +115,10 @@ def test_file_dialog(t : T?) {
             t |> success(widget_exists(od, "FILEDLG/UP"), "breadcrumb '..' button present")
             t |> success(widget_exists(od, "FILEDLG/BTN_OK"), "OK button present")
             t |> success(widget_exists(od, "FILEDLG/BTN_CANCEL"), "Cancel button present")
+            // T1/T2 chrome (reuses this snapshot — no extra round-trips)
+            t |> success(widget_exists(od, "FILEDLG/PATH_FIELD"), "editable path bar present")
+            t |> success(widget_exists(od, "FILEDLG/GO"), "path-bar Go button present")
+            t |> success(widget_exists(od, "FILEDLG/NEWFOLDER"), "New Folder button present")
 
             // folder double-click enters the directory — regresses the row-loop
             // rebuild crash (navigate_to mutating entries/view mid-iteration).
