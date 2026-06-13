@@ -477,6 +477,11 @@ def public double_click(app : ImguiApp; target : string) : JsonValue? {
     unsafe { delete events; }
     last_cursor_x = pos._0
     last_cursor_y = pos._1
+    // SYNC: let the two-tap timeline fully play (both releases must fire) before returning —
+    // a following command (imgui_click / a second imgui_mouse_play) would otherwise drive the
+    // synth mouse while this timeline is still in flight, stomping it: the double-click is lost
+    // and the next click lands in a corrupted mouse state. Mirrors every other mouse_play poster.
+    wait_for_mouse_idle(app)
     return r
 }
 
