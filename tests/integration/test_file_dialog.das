@@ -42,21 +42,37 @@ def private count_crumbs_in(var snap : JsonValue?) : int {
 
 def private count_crumbs(app : ImguiApp) : int => count_crumbs_in(snapshot(app))
 
-// First file row whose Type cell reads "Folder" — entry indices are contiguous
-// (0..n-1), so scan the TYPE_CELL[i] payloads on one snapshot.
-def private find_folder_row(app : ImguiApp) : string {
-    var s = snapshot(app)
+// TOPMOST rendered row (smallest bbox.y) whose Type cell == "Folder" (want_folder) or is
+// any non-folder file. Two requirements make a later click land:
+//  - widget_rendered (painted this frame), not just widget_exists (registered): a row can
+//    register a frame before it's laid out (e.g. right after a filter rescan grows the list).
+//  - topmost-by-y: a row near the table's bottom scroll-clip edge is rendered but its center
+//    can fall outside the clip and miss the click, so pick the one comfortably inside.
+// Returns "" when none is clickably visible (e.g. files sit below the fold under many dirs);
+// callers treat that as "skip" rather than fail — no flake.
+def private first_row(var snap : JsonValue?; want_folder : bool) : string {
+    var best = ""
+    var best_y = 1.0e9f
     for (i in range(400)) {
+        let row = "FILEDLG/FILE_TABLE/ROW[{i}]"
         let cell = "FILEDLG/FILE_TABLE/TYPE_CELL[{i}]"
-        if (!widget_exists(s, cell)) {
+        if (!widget_exists(snap, cell) || !widget_rendered(snap, row)) {
             continue
         }
-        if ((widget_payload_field(s, cell, "value") ?? "") == "Folder") {
-            return "FILEDLG/FILE_TABLE/ROW[{i}]"
+        let v = widget_payload_field(snap, cell, "value") ?? ""
+        if (empty(v) || (v == "Folder") != want_folder) {
+            continue
+        }
+        let y = snap?["globals"]?[row]?["bbox"]?["y"] ?? 1.0e9f
+        if (y < best_y) {
+            best_y = y
+            best = row
         }
     }
-    return ""
+    return best
 }
+
+def private find_folder_row(app : ImguiApp) : string => first_row(snapshot(app), true)
 
 [test]
 def test_file_dialog(t : T?) {
@@ -109,5 +125,32 @@ def test_file_dialog(t : T?) {
         force_set_value(d, "FILEDLG/NAME_FIELD", JV("zzz_unit_test"))
         click(d, "FILEDLG/BTN_OK")
         t |> success(wait_result(d, "zzz_unit_test"), "save confirm returns a path containing the typed name")
+
+        // --- save mode: double-clicking an EXISTING file must route through the
+        // overwrite-confirm modal, not confirm directly (regression for that gate).
+        // Needs a clickably-visible file row; files sort below all folders, so when the
+        // start dir has more folders than the table shows (e.g. a repo root) no file is
+        // visible and this sub-check skips — it covers the routing wherever a file IS
+        // visible (most dirs) without flaking where it isn't. The double_click verb +
+        // row-double-click path itself is exercised CI-wide by the open-mode folder case. ---
+        click(d, "FDLG_WIN/BTN_SAVE")
+        if (wait_for_widget(d, "FILEDLG/FILE_TABLE", 10.0f) != null) {
+            force_set_value(d, "FILEDLG/FILTER_COMBO", JV(1))   // widen to "All files"
+            var file_snap = wait_until_sec(d, 3.0f) $(var fsnap) {
+                return !empty(first_row(fsnap, false))
+            }
+            if (file_snap != null) {
+                double_click(d, first_row(file_snap, false))
+                t |> success(wait_for_widget(d, "FILEDLG/OVERWRITE/OW_YES", 5.0f) != null,
+                    "save-mode double-click on an existing file opens overwrite-confirm (not a direct save)")
+                click(d, "FILEDLG/OVERWRITE/OW_YES")
+                // confirm closed the dialog: the table stops rendering (widget_exists stays
+                // true after first render, so check rendered-this-frame, not presence).
+                let closed = wait_until_sec(d, 5.0f) $(var csnap) {
+                    return !widget_rendered(csnap, "FILEDLG/FILE_TABLE")
+                }
+                t |> success(closed != null, "overwrite-confirm Yes commits the save and closes the dialog")
+            }
+        }
     }
 }

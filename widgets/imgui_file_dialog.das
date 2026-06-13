@@ -474,7 +474,16 @@ def public file_dialog_draw() : FileDialogResult {
         if (!empty(nav_to)) {
             navigate_to(nav_to)
         } elif (!empty(confirm_path)) {
-            result = confirm_single(confirm_path)
+            if (g_fd.mode == FileDialogMode.open) {
+                result = confirm_single(confirm_path)
+            } else {
+                // save/create: a double-clicked file exists by definition, so it must pass
+                // the same overwrite gate as the name+OK path instead of confirming directly.
+                g_fd.pending_leaf = base_name(confirm_path)
+                NAME_FIELD.pending_value = g_fd.pending_leaf
+                NAME_FIELD.has_pending = true
+                OVERWRITE.pending_open = true
+            }
         }
         separator(BOTTOM_SEP)
         // --- bottom bar ---
