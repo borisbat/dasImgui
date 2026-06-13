@@ -46,13 +46,20 @@ def test_file_dialog_modes(t : T?) {
         t |> success(wait_result(d, "kbd_enter_test"), "Enter confirms the save (keyboard)")
 
         // --- pick_dir mode: folders-only, no name field, Select Folder confirms a dir ---
+        // wait_for_VISIBLE (painted this frame), not wait_for_widget: FILE_TABLE / BTN_OK were
+        // already registered by the earlier save dialog, so wait_for_widget returns on the stale
+        // entry before the pick_dir modal re-renders — and the BTN_OK click then dispatches into a
+        // not-yet-laid-out target and is silently dropped (the macOS-CI failure; ubuntu's frame
+        // cadence masked it). wait_for_visible is the framework's gate for a re-shown click target.
         click(d, "FDLG_WIN/BTN_PICKDIR")
-        var pd = wait_for_widget(d, "FILEDLG/FILE_TABLE", 10.0f)
+        var pd = wait_for_visible(d, "FILEDLG/FILE_TABLE", 10.0f)
         t |> success(pd != null, "pick-folder dialog renders the table")
         if (pd != null) {
             t |> success(!widget_rendered(pd, "FILEDLG/NAME_FIELD"), "pick_dir hides the name field")
             t |> success(widget_exists(pd, "FILEDLG/BTN_OK"), "Select Folder button present")
         }
+        // gate the click on its target being painted this frame, else the host-side resolve misses
+        t |> success(wait_for_visible(d, "FILEDLG/BTN_OK", 5.0f) != null, "Select Folder button painted")
         click(d, "FILEDLG/BTN_OK")
         let confirmed = wait_until_sec(d, 5.0f) $(var s) {
             return !widget_rendered(s, "FILEDLG/FILE_TABLE")
