@@ -14,36 +14,33 @@ require strings
 //! not raw ImGui). Boots the tutorial demo, opens the dialog in open mode
 //! (asserts the breadcrumb / sortable table / OK button register), cancels,
 //! then opens save mode, types a filename, confirms, and checks the demo's
-//! result text echoes the typed name. GL + a window are required, so this is a
-//! LOCAL rail — macOS CI has no GL.
+//! result text echoes the typed name. Runs headless (no GL / no window) — it
+//! drives the dialog purely over the live API, so it runs in CI on both ubuntu
+//! and macOS via `--headless`, like the rest of the integration suite.
 
 let FILE_DIALOG_FEATURE = "modules/dasImgui/examples/tutorial/file_dialog.das"
 
-def private result_value(app : ImguiApp) : string {
-    var s = snapshot(app)
-    return widget_payload_field(s, "FDLG_WIN/RESULT", "value") ?? ""
-}
-
+// Budgeted poll (poll interval + real timeout) — never a tight busy-loop, which
+// in headless can spin to completion before the UI updates (false negative) and
+// pegs a core. wait_until_sec is the headless-safe poller (timeline-aware).
 def private wait_result(app : ImguiApp; needle : string) : bool {
-    for (_ in range(120)) {
-        if (find(result_value(app), needle) >= 0) {
-            return true
-        }
-    }
-    return false
+    return wait_until_sec(app, 5.0f) $(var snap) {
+        return find(widget_payload_field(snap, "FDLG_WIN/RESULT", "value") ?? "", needle) >= 0
+    } != null
 }
 
-def private count_crumbs(app : ImguiApp) : int {
-    var s = snapshot(app)
+def private count_crumbs_in(var snap : JsonValue?) : int {
     var n = 0
     for (i in range(64)) {
-        if (!widget_exists(s, "FILEDLG/CRUMB[{i}]")) {
+        if (!widget_exists(snap, "FILEDLG/CRUMB[{i}]")) {
             break
         }
         n++
     }
     return n
 }
+
+def private count_crumbs(app : ImguiApp) : int => count_crumbs_in(snapshot(app))
 
 // First file row whose Type cell reads "Folder" — entry indices are contiguous
 // (0..n-1), so scan the TYPE_CELL[i] payloads on one snapshot.
@@ -88,13 +85,9 @@ def test_file_dialog(t : T?) {
             if (!empty(folder)) {
                 let before = count_crumbs(d)
                 double_click(d, folder)
-                var entered = false
-                for (_ in range(180)) {
-                    if (count_crumbs(d) > before) {
-                        entered = true
-                        break
-                    }
-                }
+                let entered = wait_until_sec(d, 5.0f) $(var cs) {
+                    return count_crumbs_in(cs) > before
+                } != null
                 t |> success(entered, "folder double-click enters the dir without crashing ({folder})")
             }
 

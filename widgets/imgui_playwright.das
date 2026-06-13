@@ -458,22 +458,25 @@ def public click(app : ImguiApp; target : string) : JsonValue? {
 }
 
 def public double_click(app : ImguiApp; target : string) : JsonValue? {
-    //! Faithful double-click on ``target``'s bbox center: two press/release taps within
-    //! ImGui's ``MouseDoubleClickTime`` (built as an ``imgui_mouse_play`` timeline) so
+    //! Faithful double-click on ``target``'s bbox center: two press/release taps so
     //! ``IsMouseDoubleClicked`` fires — e.g. enter-directory / open-file in a file dialog.
     //! Re-snapshots to resolve the center client-side (like ``drag``); the target must be rendered.
+    //! Frame-paced (``t_ms`` = frame index, like ``drag``): the host advances exactly one event
+    //! per frame, so the two taps are guaranteed to land on distinct frames a couple of frames
+    //! apart — well inside ``MouseDoubleClickTime`` at any frame rate, and never collapsed into one
+    //! frame the way a wall-clock timeline can be on a slow/stalled host (which drops the double-click).
     var snap = snapshot(app)
     let pos = widget_click_point(snap, target)
     var events <- [
-        JV((t_ms = 0,   kind = "move",   x = last_cursor_x, y = last_cursor_y)),
-        JV((t_ms = 400, kind = "move",   x = pos._0,        y = pos._1)),
-        JV((t_ms = 500, kind = "button", button = 0,        action = "press")),
-        JV((t_ms = 560, kind = "button", button = 0,        action = "release")),
-        JV((t_ms = 660, kind = "button", button = 0,        action = "press")),
-        JV((t_ms = 720, kind = "button", button = 0,        action = "release")),
-        JV((t_ms = 850, kind = "move",   x = pos._0,        y = pos._1))
+        JV((t_ms = 0, kind = "move",   x = last_cursor_x, y = last_cursor_y)),
+        JV((t_ms = 1, kind = "move",   x = pos._0,        y = pos._1)),
+        JV((t_ms = 2, kind = "button", button = 0,        action = "press")),
+        JV((t_ms = 3, kind = "button", button = 0,        action = "release")),
+        JV((t_ms = 4, kind = "button", button = 0,        action = "press")),
+        JV((t_ms = 5, kind = "button", button = 0,        action = "release")),
+        JV((t_ms = 6, kind = "move",   x = pos._0,        y = pos._1))
     ]
-    var r = post_command(app, "imgui_mouse_play", JV((events = events)))
+    var r = post_command(app, "imgui_mouse_play", JV((events = events, frame_paced = true)))
     unsafe { delete events; }
     last_cursor_x = pos._0
     last_cursor_y = pos._1

@@ -62,6 +62,7 @@ struct private Entry {
     name : string
     is_dir : bool
     size : uint64
+    ext : string    //!< dotted extension (".das"), "" if none / dir — drives the Type cell + Type sort
 }
 
 struct private DialogState {
@@ -136,7 +137,7 @@ def private fmt_size(b : uint64) : string {
         let t = int(b * 10ul / 1048576ul)
         return "{t / 10}.{t % 10} MB"
     }
-    let t = int(b * 10ul / 1073741824ul)
+    let t = int64(b * 10ul / 1073741824ul)   // int64: the GB tier is unbounded (int32 overflows >~214 TB)
     return "{t / 10}.{t % 10} GB"
 }
 
@@ -167,9 +168,9 @@ def private scan_dir() {
             return
         }
         if (fs.is_dir) {
-            g_fd.entries |> push(Entry(name = nm, is_dir = true, size = 0ul))
+            g_fd.entries |> push(Entry(name = nm, is_dir = true, size = 0ul, ext = ""))
         } elif (has_ext(nm, ext)) {
-            g_fd.entries |> push(Entry(name = nm, is_dir = false, size = fs.size))
+            g_fd.entries |> push(Entry(name = nm, is_dir = false, size = fs.size, ext = extension(nm)))
         }
     }
 }
@@ -180,6 +181,12 @@ def private compare_entry(a : Entry; b : Entry) : int {
         if (a.size < b.size) {
             ord = -1
         } elif (a.size > b.size) {
+            ord = 1
+        }
+    } elif (g_fd.sort_col == int(COL_TYPE)) {
+        if (a.ext < b.ext) {
+            ord = -1
+        } elif (a.ext > b.ext) {
             ord = 1
         }
     } else {
@@ -409,6 +416,10 @@ def public file_dialog_draw() : FileDialogResult {
             combo(FILTER_COMBO, (text = "##filter", items := g_fd.filter_labels))
             if (FILTER_COMBO.value != g_fd.filter_idx && FILTER_COMBO.value >= 0) {
                 g_fd.filter_idx = FILTER_COMBO.value
+                // selection holds indices into `entries`; scan_dir rebuilds it, so old
+                // indices would dangle (OOB / wrong row in try_confirm). Clear them.
+                g_fd.selection |> clear()
+                g_fd.anchor = -1
                 scan_dir()
                 rebuild_view()
             }
@@ -456,7 +467,7 @@ def public file_dialog_draw() : FileDialogResult {
                 table_set_column_index(1)
                 text(SIZE_CELL[idx], (text = e.is_dir ? "" : fmt_size(e.size)))
                 table_set_column_index(2)
-                text(TYPE_CELL[idx], (text = e.is_dir ? "Folder" : (empty(active_ext()) ? "File" : active_ext())))
+                text(TYPE_CELL[idx], (text = e.is_dir ? "Folder" : (empty(e.ext) ? "File" : e.ext)))
             }
         }
         // Apply the deferred row action now the loop is finished (safe to rebuild).
