@@ -56,6 +56,13 @@ def private count_crumbs(app : ImguiApp) : int => count_crumbs_in(snapshot(app))
 // Returns "" when no matching row is fully visible (e.g. files sit below the fold under a
 // many-folder start dir); callers treat that as "skip" rather than fail — no flake.
 def private first_row(var snap : JsonValue?; want_folder : bool) : string {
+    // If the bracketing separators are absent (e.g. renamed), we can't establish the band —
+    // skip rather than de-clip: a clean skip beats reintroducing the half-clipped-click flake.
+    // (Falling back to FILE_TABLE's own bbox is NOT an option — container widgets register
+    // (0,0)-(0,0), which is the always-reject bug this finder was rewritten to escape.)
+    if (!widget_exists(snap, "FILEDLG/NAV_SEP") || !widget_exists(snap, "FILEDLG/BOTTOM_SEP")) {
+        return ""
+    }
     let nav = snap?["globals"]?["FILEDLG/NAV_SEP"]?["bbox"]
     let bot = snap?["globals"]?["FILEDLG/BOTTOM_SEP"]?["bbox"]
     let t_top = nav?["w"] ?? 0.0f      // bottom edge of NAV_SEP = top of the table band
