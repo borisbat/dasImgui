@@ -62,6 +62,9 @@ def initialize(project_path : string) {
     register_native_path("imgui", "imgui_docking_builtin", "{project_path}/widgets/imgui_docking_builtin.das")
     // Tables — data_table container + table_setup_*/table_next_*/table_set_column_index pass-throughs.
     register_native_path("imgui", "imgui_table_builtin", "{project_path}/widgets/imgui_table_builtin.das")
+    // File dialog — reusable native New/Open/Save (popup_modal + data_table + selectable_label +
+    // input_text + combo), fully playwright-drivable; no raw-ImGui C++ dependency.
+    register_native_path("imgui", "imgui_file_dialog", "{project_path}/widgets/imgui_file_dialog.das")
     // Window-size constraints — lambda-bearing overload (3-arg SetNextWindowSizeConstraints).
     register_native_path("imgui", "imgui_window_constraints_builtin", "{project_path}/widgets/imgui_window_constraints_builtin.das")
     // Drawlist rail — with_window_drawlist / with_foreground_drawlist /

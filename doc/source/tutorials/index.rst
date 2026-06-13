@@ -42,6 +42,7 @@ construction.
    recording.rst
    harness_headless_mode.rst
    data_table.rst
+   file_dialog.rst
    window_size_constraints.rst
    with_tab_stop.rst
    color_button_hover.rst

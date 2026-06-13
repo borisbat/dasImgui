@@ -273,6 +273,33 @@ def public widget_rendered(var snap : JsonValue?; ident : string) : bool {
     return widget_exists(snap, ident) && (snap?["globals"]?[ident]?["rendered"] ?? true)
 }
 
+def public log_snapshot(app : ImguiApp; note : string = "") : void {
+    //! Dump the live UI state to the log (LOG_WARNING) — for every registered widget: its
+    //! ident, kind, ``rendered`` flag, bbox, and ``payload.value`` when present. The way to
+    //! see what a headless/CI run actually painted when you can't watch the window; pair it
+    //! with a failed assertion (dump on the failure path) so a red run is self-explaining.
+    var snap = snapshot(app)
+    let g = snap?["globals"]
+    if (g == null || !(g is _object)) {
+        to_log(LOG_WARNING, "log_snapshot [{note}]: snapshot has no widget registry")
+        return
+    }
+    let obj & = unsafe(g as _object)
+    to_log(LOG_WARNING, "log_snapshot [{note}]: {length(obj)} widgets")
+    for (k, v in keys(obj), values(obj)) {
+        let kind = v?["kind"] ?? "?"
+        let rend = v?["rendered"] ?? true
+        let bb = v?["bbox"]
+        let x = bb?["x"] ?? 0.0f
+        let y = bb?["y"] ?? 0.0f
+        let z = bb?["z"] ?? 0.0f
+        let wy = bb?["w"] ?? 0.0f
+        let val = v?["payload"]?["value"]
+        let vs = val == null ? "" : " value={val}"
+        to_log(LOG_WARNING, "  {k}  kind={kind} rendered={rend} bbox=({x},{y})-({z},{wy}){vs}")
+    }
+}
+
 // ===== Poll-until family =====
 
 def public wait_until_sec(app : ImguiApp;
@@ -455,6 +482,41 @@ def public await_quiescent(app : ImguiApp;
 def public click(app : ImguiApp; target : string) : JsonValue? {
     //! Synthesize a left-click on ``target`` (``imgui_click`` verb).
     return send_imgui_command(app.transport, "imgui_click", JV((target = target)))
+}
+
+def public double_click(app : ImguiApp; target : string) : JsonValue? {
+    //! Faithful double-click on ``target``'s bbox center: two press/release taps so
+    //! ``IsMouseDoubleClicked`` fires — e.g. enter-directory / open-file in a file dialog.
+    //! Re-snapshots to resolve the center client-side (like ``drag``); the target must be rendered.
+    //! Frame-paced (``t_ms`` = frame index, like ``drag``): the host advances exactly one event
+    //! per frame, so the two taps are guaranteed to land on distinct frames a couple of frames
+    //! apart — well inside ``MouseDoubleClickTime`` at any frame rate, and never collapsed into one
+    //! frame the way a wall-clock timeline can be on a slow/stalled host (which drops the double-click).
+    //! Returns ``{ok=false, error}`` when ``target`` isn't in the snapshot or isn't rendered this
+    //! frame (``widget_click_point`` would otherwise default the bbox to (0,0) and click nowhere).
+    var snap = snapshot(app)
+    if (!(snap |> widget_exists(target))) return JV((ok = false, error = "double_click target unresolved: {target}"))
+    if (!(snap |> widget_rendered(target))) return JV((ok = false, error = "double_click target not rendered this frame: {target}"))
+    let pos = widget_click_point(snap, target)
+    var events <- [
+        JV((t_ms = 0, kind = "move",   x = last_cursor_x, y = last_cursor_y)),
+        JV((t_ms = 1, kind = "move",   x = pos._0,        y = pos._1)),
+        JV((t_ms = 2, kind = "button", button = 0,        action = "press")),
+        JV((t_ms = 3, kind = "button", button = 0,        action = "release")),
+        JV((t_ms = 4, kind = "button", button = 0,        action = "press")),
+        JV((t_ms = 5, kind = "button", button = 0,        action = "release")),
+        JV((t_ms = 6, kind = "move",   x = pos._0,        y = pos._1))
+    ]
+    var r = post_command(app, "imgui_mouse_play", JV((events = events, frame_paced = true)))
+    unsafe { delete events; }
+    last_cursor_x = pos._0
+    last_cursor_y = pos._1
+    // SYNC: let the two-tap timeline fully play (both releases must fire) before returning —
+    // a following command (imgui_click / a second imgui_mouse_play) would otherwise drive the
+    // synth mouse while this timeline is still in flight, stomping it: the double-click is lost
+    // and the next click lands in a corrupted mouse state. Mirrors every other mouse_play poster.
+    wait_for_mouse_idle(app)
+    return r
 }
 
 def public right_click(app : ImguiApp; target : string) : JsonValue? {
