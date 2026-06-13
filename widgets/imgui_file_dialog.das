@@ -13,6 +13,7 @@ require imgui/imgui_containers_builtin public
 require imgui/imgui_table_builtin public
 require daslib/fio
 require strings
+require daslib/strings_boost
 
 //! Native, reusable file dialog built entirely from the boost DSL — so every
 //! interactive element registers on the snapshot registry and the whole dialog
@@ -41,11 +42,12 @@ enum FileDialogMode {
     open        //!< pick existing file(s) — multi-select per `max_selection`
     save        //!< type/confirm a name; overwrite-confirm if it exists
     create      //!< "New" — type a name (same name-entry path as save)
+    pick_dir    //!< choose a directory — the list shows folders only, OK confirms the selected (or current) folder
 }
 
 struct FileDialogFilter {
-    caption : string    //!< shown in the filter dropdown, e.g. "Levels (*.json)" (`label` is reserved in gen2)
-    ext : string        //!< extension without the dot, e.g. "json"; "" = all files
+    caption : string    //!< shown in the filter dropdown, e.g. "Images (*.png *.jpg)" (`label` is reserved in gen2)
+    ext : string        //!< extension(s) without the dot, ';'-separated ("png;jpg;jpeg"); "" = all files
 }
 
 struct FileDialogConfig {
@@ -54,6 +56,7 @@ struct FileDialogConfig {
     filters : array<FileDialogFilter>       //!< empty => all files
     mode : FileDialogMode = FileDialogMode.open
     max_selection : int = 1                 //!< open mode; 0 = unlimited
+    default_name : string = ""              //!< save/create: pre-filled filename
 }
 
 // ===== Internal state =====
@@ -63,6 +66,7 @@ struct private Entry {
     is_dir : bool
     size : uint64
     ext : string    //!< dotted extension (".das"), "" if none / dir — drives the Type cell + Type sort
+    mtime : clock   //!< last-modified time — drives the Modified cell + Modified sort
 }
 
 struct private DialogState {
@@ -94,11 +98,13 @@ var private g_fd : DialogState = DialogState()
 let private COL_NAME = 1u
 let private COL_SIZE = 2u
 let private COL_TYPE = 3u
+let private COL_DATE = 4u
 
 // Indexed widget-state tables (the dynamic-row / dynamic-button idiom).
 var private ROW : table<int; ClickState>
 var private SIZE_CELL : table<int; NarrativeState>
 var private TYPE_CELL : table<int; NarrativeState>
+var private DATE_CELL : table<int; NarrativeState>
 var private CRUMB : table<int; ClickState>
 var private CRUMB_SL : table<int; EmptyMarkerState>
 
@@ -111,20 +117,41 @@ def private active_ext() : string {
     return ""
 }
 
-// "foo.json" matches ext "json" iff it ends in exactly ".json" (the level_names
-// idiom — uses fio's replace_extension, never hand-rolled rfind/slice).
+// "foo.json" matches the ';'-separated pattern list "json" / "png;jpg" iff it ends
+// in exactly ".<one of them>" (the level_names idiom — uses fio's replace_extension,
+// never hand-rolled rfind/slice). Empty list = all files.
 def private has_ext(name : string; ext : string) : bool {
     if (empty(ext)) {
         return true
     }
-    return replace_extension(name, "") + "." + ext == name
+    let base = replace_extension(name, "")
+    for (e in split(ext, ";")) {
+        if (!empty(e) && "{base}.{e}" == name) {
+            return true
+        }
+    }
+    return false
 }
 
 def private ensure_ext(name : string; ext : string) : string {
     if (empty(ext) || has_ext(name, ext)) {
         return name
     }
-    return "{name}.{ext}"
+    var parts <- split(ext, ";")           // append the first pattern in the list
+    let leaf = empty(parts) ? name : "{name}.{parts[0]}"
+    delete parts
+    return leaf
+}
+
+//! Build a filter list from a C#-style pipe spec — alternating caption / extension
+//! list: ``"daslang|das|Images|png;jpg;jpeg|All files|"``. Each extension list is
+//! ';'-separated (matching `FileDialogFilter.ext`); an empty list means all files.
+def public file_filters(spec : string) : array<FileDialogFilter> {
+    var parts <- split(spec, "|")
+    var out <- [for (i in range(length(parts) / 2));
+        FileDialogFilter(caption = parts[i * 2], ext = parts[i * 2 + 1])]
+    delete parts
+    return <- out
 }
 
 // Human-readable size with one decimal. uint interpolates as hex, so the
@@ -161,6 +188,7 @@ def private is_valid_filename(name : string) : bool {
 def private scan_dir() {
     g_fd.entries |> clear()
     let ext = active_ext()
+    let dirs_only = g_fd.mode == FileDialogMode.pick_dir
     dir(g_fd.cur_dir) $(nm) {
         if (nm == "." || nm == "..") {
             return
@@ -170,9 +198,9 @@ def private scan_dir() {
             return
         }
         if (fs.is_dir) {
-            g_fd.entries |> push(Entry(name = nm, is_dir = true, size = 0ul, ext = ""))
-        } elif (has_ext(nm, ext)) {
-            g_fd.entries |> push(Entry(name = nm, is_dir = false, size = fs.size, ext = extension(nm)))
+            g_fd.entries |> push(Entry(name = nm, is_dir = true, size = 0ul, ext = "", mtime = fs.mtime))
+        } elif (!dirs_only && has_ext(nm, ext)) {
+            g_fd.entries |> push(Entry(name = nm, is_dir = false, size = fs.size, ext = extension(nm), mtime = fs.mtime))
         }
     }
 }
@@ -189,6 +217,12 @@ def private compare_entry(a : Entry; b : Entry) : int {
         if (a.ext < b.ext) {
             ord = -1
         } elif (a.ext > b.ext) {
+            ord = 1
+        }
+    } elif (g_fd.sort_col == int(COL_DATE)) {
+        if (a.mtime < b.mtime) {
+            ord = -1
+        } elif (a.mtime > b.mtime) {
             ord = 1
         }
     } else {
@@ -332,6 +366,13 @@ def private confirm_multi(var paths : array<string>) : FileDialogResult {
 
 def private try_confirm() : FileDialogResult {
     g_fd.error = ""
+    if (g_fd.mode == FileDialogMode.pick_dir) {
+        // a selected folder, else the directory we're currently browsing
+        if (length(g_fd.selection) == 1 && g_fd.entries[g_fd.selection[0]].is_dir) {
+            return confirm_single(path_join(g_fd.cur_dir, g_fd.entries[g_fd.selection[0]].name))
+        }
+        return confirm_single(g_fd.cur_dir)
+    }
     if (g_fd.mode == FileDialogMode.open) {
         var paths <- [for (s in g_fd.selection);
             path_join(g_fd.cur_dir, g_fd.entries[s].name);
@@ -383,13 +424,14 @@ def public file_dialog_open(cfg : FileDialogConfig) {
     g_fd.dir_error = ""
     g_fd.path_focused = false
     g_fd.open = true
-    NAME_FIELD.pending_value = ""
+    NAME_FIELD.pending_value = cfg.default_name   // "" for open/pick_dir callers; pre-fill for save/create
     NAME_FIELD.has_pending = true
     PATH_FIELD.pending_value = g_fd.cur_dir
     PATH_FIELD.has_pending = true
     ROW |> clear()
     SIZE_CELL |> clear()
     TYPE_CELL |> clear()
+    DATE_CELL |> clear()
     CRUMB |> clear()
     CRUMB_SL |> clear()
     scan_dir()
@@ -443,8 +485,8 @@ def public file_dialog_draw() : FileDialogResult {
             NEWDIR_NAME.has_pending = true
             NEWDIR.pending_open = true
         }
-        // --- filter ---
-        if (!empty(g_fd.filter_labels)) {
+        // --- filter (extensions are meaningless in directory-pick mode) ---
+        if (!empty(g_fd.filter_labels) && g_fd.mode != FileDialogMode.pick_dir) {
             combo(FILTER_COMBO, (text = "##filter", items := g_fd.filter_labels))
             if (FILTER_COMBO.value != g_fd.filter_idx && FILTER_COMBO.value >= 0) {
                 g_fd.filter_idx = FILTER_COMBO.value
@@ -461,12 +503,13 @@ def public file_dialog_draw() : FileDialogResult {
         let tflags = (ImGuiTableFlags.BordersOuter | ImGuiTableFlags.RowBg |
                       ImGuiTableFlags.Resizable | ImGuiTableFlags.ScrollY |
                       ImGuiTableFlags.Sortable)
-        data_table(FILE_TABLE, (text = "##files", columns = 3, flags = tflags,
+        data_table(FILE_TABLE, (text = "##files", columns = 4, flags = tflags,
                                 outer_size = float2(0.0f, 340.0f), inner_width = 0.0f)) {
             table_setup_scroll_freeze(0, 1)
             table_setup_column("Name", ImGuiTableColumnFlags.DefaultSort | ImGuiTableColumnFlags.WidthStretch, 0.0f, COL_NAME)
             table_setup_column("Size", ImGuiTableColumnFlags.WidthFixed, 90.0f, COL_SIZE)
             table_setup_column("Type", ImGuiTableColumnFlags.WidthFixed, 80.0f, COL_TYPE)
+            table_setup_column("Modified", ImGuiTableColumnFlags.WidthFixed, 130.0f, COL_DATE)
             table_headers_row()
             sort_specs() $(specs) {
                 if (!empty(specs)) {
@@ -500,6 +543,8 @@ def public file_dialog_draw() : FileDialogResult {
                 text(SIZE_CELL[idx], (text = e.is_dir ? "" : fmt_size(e.size)))
                 table_set_column_index(2)
                 text(TYPE_CELL[idx], (text = e.is_dir ? "Folder" : (empty(e.ext) ? "File" : e.ext)))
+                table_set_column_index(3)
+                text(DATE_CELL[idx], (text = format_time(e.mtime, "%Y-%m-%d %H:%M")))
             }
         }
         // Apply the deferred row action now the loop is finished (safe to rebuild).
@@ -518,15 +563,16 @@ def public file_dialog_draw() : FileDialogResult {
             }
         }
         separator(BOTTOM_SEP)
-        // --- bottom bar ---
-        if (g_fd.mode != FileDialogMode.open) {
+        // --- bottom bar (name field only in the type-a-name modes) ---
+        if (g_fd.mode == FileDialogMode.save || g_fd.mode == FileDialogMode.create) {
             input_text(NAME_FIELD, (text = "Name"))
         }
         if (!empty(g_fd.error)) {
             text(ERR_LABEL, (text = g_fd.error))
         }
         let ok_label = (g_fd.mode == FileDialogMode.open ? "Open" :
-                        (g_fd.mode == FileDialogMode.save ? "Save" : "Create"))
+                        g_fd.mode == FileDialogMode.pick_dir ? "Select Folder" :
+                        g_fd.mode == FileDialogMode.save ? "Save" : "Create")
         if (button(BTN_OK, (text = ok_label))) {
             result = try_confirm()
         }
