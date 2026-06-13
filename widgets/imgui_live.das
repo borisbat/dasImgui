@@ -56,8 +56,12 @@ def public live_imgui_init(window : GLFWwindow?; glsl_version : string = "#versi
     //! Idempotent ImGui context create + backend init; safe across reload (reuses preserved ctx).
     //! Picks content scale: ``--imgui-content-scale=<float>`` override wins;
     //! otherwise queries ``glfwGetWindowContentScale``. Loads JetBrains Mono at
-    //! ``14 * scale`` px, applies the daslang theme, and calls
-    //! ``ScaleAllSizes(scale)`` so paddings/spacings/rounding match the display.
+    //! ``14 * scale`` px (crisp atlas) and applies the daslang theme. For the
+    //! auto-detected path it divides out the GL backend's framebuffer/window
+    //! ratio (``io.DisplayFramebufferScale``, already applied at render) so the
+    //! UI isn't double-scaled on macOS retina: ``ScaleAllSizes`` gets the residual
+    //! and ``io.FontGlobalScale`` compensates the oversized atlas. On Windows DPI
+    //! (framebuffer == window) and under an explicit override this is a no-op.
     //! Call from your script's ``init()``.
     if (live_imgui_ctx != null) {
         SetCurrentContext(live_imgui_ctx)
@@ -65,8 +69,16 @@ def public live_imgui_init(window : GLFWwindow?; glsl_version : string = "#versi
     }
     live_imgui_ctx = CreateContext(null)
     ensure_scale_parsed()
+    // The font atlas always bakes at 14 * content_scale px (crisp); layout_scale
+    // drives ScaleAllSizes and font_global drives io.FontGlobalScale, together
+    // bringing the *displayed* size back to the intended physical size.
+    var layout_scale = live_imgui_content_scale
+    var font_global = 1.0f
     if (g_scale_override > 0.0f) {
+        // Explicit override: the caller states the final magnification directly
+        // (recording / playwright force logical 1x). Honor it verbatim.
         live_imgui_content_scale = max(g_scale_override, 1.0f)
+        layout_scale = live_imgui_content_scale
     } elif (window != null) {
         var xs = 1.0f
         var ys = 1.0f
@@ -74,10 +86,31 @@ def public live_imgui_init(window : GLFWwindow?; glsl_version : string = "#versi
         // Some backends report 0 if the monitor is unavailable; clamp so
         // we never divide visual sizes to nothing.
         live_imgui_content_scale = max(max(xs, ys), 1.0f)
+        // The GL backend already upscales the whole UI by framebuffer/window at
+        // render time (io.DisplayFramebufferScale). On macOS retina that ratio
+        // equals the content scale, so scaling the layout by content scale too
+        // double-counts it — the UI renders 2x too big. Divide the backend's
+        // ratio back out of the layout, and keep the font crisp by baking the
+        // atlas at full content-scale px while compensating with FontGlobalScale.
+        // On Windows DPI the framebuffer == window (ratio 1), so nothing changes.
+        var fbw = 0
+        var fbh = 0
+        var winw = 0
+        var winh = 0
+        glfwGetFramebufferSize(window, safe_addr(fbw), safe_addr(fbh))
+        glfwGetWindowSize(window, safe_addr(winw), safe_addr(winh))
+        var fb_ratio = 1.0f
+        if (winw > 0 && winh > 0) {
+            fb_ratio = max(max(float(fbw) / float(winw), float(fbh) / float(winh)), 1.0f)
+        }
+        layout_scale = max(live_imgui_content_scale / fb_ratio, 1.0f)
+        font_global = 1.0f / fb_ratio
     }
     load_daslang_font(14.0f * live_imgui_content_scale)
     apply_daslang_theme()
-    ScaleAllSizes(GetStyle(), live_imgui_content_scale)
+    ScaleAllSizes(GetStyle(), layout_scale)
+    var io & = unsafe(GetIO())
+    io.FontGlobalScale = font_global
     ImGui_ImplGlfw_InitForOpenGL(window, true)
     ImGui_ImplOpenGL3_Init(glsl_version)
     return live_imgui_ctx
