@@ -4,18 +4,21 @@
 file_dialog
 #######################
 
-A native, reusable **New / Open / Save** file dialog, built entirely from the
-boost DSL and living in ``imgui/imgui_file_dialog``. Because it is composed from
+A native, reusable **New / Open / Save / Pick-Folder** file dialog, built entirely
+from the boost DSL and living in ``imgui/imgui_file_dialog``. Because it is composed from
 boost widgets (``popup_modal`` / ``data_table`` / ``selectable_label`` /
 ``input_text`` / ``combo`` / ``button``) rather than a bound C++ file-dialog
 library, **every element registers on the snapshot registry** — the whole dialog
 is :ref:`imgui_playwright <tutorial_driving_outside>`-drivable (a bound C++
 dialog renders raw ImGui and would be invisible to it).
 
-It mirrors the core UX of a desktop file picker: a clickable directory
-breadcrumb plus ``..``, a sortable Name / Size / Type table, an extension-filter
-dropdown, multi-select in open mode, a filename field in save / create mode, and
-an overwrite-confirm step.
+It mirrors the core UX of a desktop file picker: a clickable directory breadcrumb
+plus ``..`` and an **editable path bar** (type a path or a different drive, press
+*Enter*), a **New Folder** button, a sortable Name / Size / Type / **Modified**
+table, a **multi-extension** filter dropdown, multi-select in open mode, a filename
+field (with an optional pre-filled default) in save / create mode, an
+overwrite-confirm step, a **directory-pick** mode, and keyboard shortcuts
+(*Enter* confirms, *Backspace* goes up a directory).
 
 Source: ``examples/tutorial/file_dialog.das``.
 
@@ -55,15 +58,16 @@ Public API
 .. code-block:: das
 
    enum FileDialogResult { none; confirmed; cancelled }
-   enum FileDialogMode   { open; save; create }   // 'new' is a reserved keyword
+   enum FileDialogMode   { open; save; create; pick_dir }   // 'new' is a reserved keyword
 
-   struct FileDialogFilter { caption : string; ext : string }  // ext without the dot; "" = all
+   struct FileDialogFilter { caption : string; ext : string }  // ext: ';'-separated ("png;jpg"); "" = all
    struct FileDialogConfig {
        title : string = "Select File"
        start_dir : string = ""                   // "" => current working directory
        filters : array<FileDialogFilter>         // empty => all files
        mode : FileDialogMode = FileDialogMode.open
        max_selection : int = 1                   // open mode; 0 = unlimited
+       default_name : string = ""                // save/create: pre-filled filename
    }
 
    def public file_dialog_open(cfg : FileDialogConfig) : void
@@ -72,6 +76,8 @@ Public API
    def public file_dialog_selected_path() : string      // first selection (convenience)
    def public file_dialog_current_dir() : string
    def public file_dialog_is_open() : bool
+   // convenience: parse a C#-style "caption|ext;ext|caption|ext|..." pipe spec
+   def public file_filters(spec : string) : array<FileDialogFilter>
 
 The result is polled, not pushed: ``file_dialog_draw()`` returns ``confirmed``
 exactly on the frame the user commits, ``cancelled`` on the frame they close /
@@ -86,10 +92,22 @@ Modes
   a range, clamped to ``max_selection`` (``0`` = unlimited). Double-clicking a
   file confirms it; double-clicking a directory enters it.
 * **save** / **create** — type a name in the filename field (clicking a row fills
-  it). The active filter's extension is appended if missing. If the name already
-  exists, an **overwrite-confirm** sub-modal (``FILEDLG/OVERWRITE``) gates the
-  commit. (``create`` is the "New" flavor — same name-entry path; ``new`` itself
-  is a reserved keyword, hence the enum name.)
+  it; ``default_name`` pre-fills it on open). The active filter's first extension
+  is appended if missing. If the name already exists, an **overwrite-confirm**
+  sub-modal (``FILEDLG/OVERWRITE``) gates the commit. (``create`` is the "New"
+  flavor — same name-entry path; ``new`` itself is a reserved keyword, hence the
+  enum name.)
+* **pick_dir** — choose a directory. The list shows folders only, the filter and
+  name field are hidden, and **Select Folder** confirms the highlighted folder
+  (or, with nothing selected, the directory you are browsing).
+
+A filter's ``ext`` is a ``;``-separated pattern list, so ``"png;jpg;jpeg"`` is one
+"Images" filter matching all three. ``file_filters(...)`` builds the typed list
+from the terse C# pipe form: ``"daslang|das|Images|png;jpg|All files|"``.
+
+Keyboard: *Enter* / *Keypad-Enter* confirms (or, when the path bar has focus,
+navigates to it); *Backspace* goes up a directory when no text field is being
+edited; *Escape* cancels.
 
 Navigation and sorting
 =======================
@@ -97,15 +115,21 @@ Navigation and sorting
 The current directory is listed with ``daslib/fio``'s ``dir`` + per-entry
 ``stat`` (so directories are always shown for navigation, files are filtered by
 the active extension). A clickable breadcrumb of ancestor directories plus a
-``..`` button drive ``navigate_to``; directories always sort first.
+``..`` button drive ``navigate_to``; directories always sort first. The
+**editable path bar** (``FILEDLG/PATH_FIELD`` + ``FILEDLG/GO``) jumps to any typed
+absolute path — including a different drive on Windows — validated via
+``stat().is_dir``, and **New Folder** (``FILEDLG/NEWFOLDER`` → the
+``FILEDLG/NEWDIR`` sub-modal) creates a directory with ``fio``'s ``mkdir_rec``.
 
 The file list is a :ref:`data_table <tutorial_data_table>` with the
-``Sortable`` flag and three ``table_setup_column`` calls tagged with stable
-``user_id`` values (``COL_NAME`` / ``COL_SIZE`` / ``COL_TYPE``). A
-``sort_specs()`` block captures the active sort key and re-orders the view
-(directories first, then the chosen column). Each row's first cell is a
-``selectable_label`` with ``SpanAllColumns | AllowDoubleClick`` so a click
-anywhere on the row selects it and a double-click enters / confirms.
+``Sortable`` flag and four ``table_setup_column`` calls tagged with stable
+``user_id`` values (``COL_NAME`` / ``COL_SIZE`` / ``COL_TYPE`` / ``COL_DATE``). The
+Modified column renders each entry's ``stat().mtime`` via the ``format_time``
+builtin and sorts on the ``clock`` ``<`` / ``>`` operators. A ``sort_specs()``
+block captures the active sort key and re-orders the view (directories first, then
+the chosen column). Each row's first cell is a ``selectable_label`` with
+``SpanAllColumns | AllowDoubleClick`` so a click anywhere on the row selects it and
+a double-click enters / confirms.
 
 Drivability
 ===========
@@ -125,6 +149,12 @@ operate the dialog by id:
    * - Parent / breadcrumb
      - ``FILEDLG/UP`` · ``FILEDLG/CRUMB[i]``
      - ``imgui_click``
+   * - Path bar / Go
+     - ``FILEDLG/PATH_FIELD`` · ``FILEDLG/GO``
+     - ``imgui_force_set {"value": "path"}`` then click ``GO``
+   * - New Folder
+     - ``FILEDLG/NEWFOLDER`` → ``FILEDLG/NEWDIR/NEWDIR_NAME`` · ``.../NEWDIR_OK`` · ``.../NEWDIR_CANCEL``
+     - ``imgui_click`` / ``imgui_force_set``
    * - Filter dropdown
      - ``FILEDLG/FILTER_COMBO``
      - ``imgui_force_set {"value": N}``

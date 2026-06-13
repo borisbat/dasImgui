@@ -28,9 +28,11 @@ require imgui/imgui_file_dialog
 
 var private g_status = "(nothing selected yet)"
 
+// Two equivalent ways to build the filter list. The typed array is explicit;
+// `file_filters` parses the terse C#-style "caption|ext;ext|caption|ext|..."
+// pipe spec (';'-separated extensions = a multi-extension filter, "" = all).
 def private das_filters() : array<FileDialogFilter> {
-    return <- [FileDialogFilter(caption = "daslang (*.das)", ext = "das"),
-        FileDialogFilter(caption = "All files", ext = "")]
+    return <- file_filters("daslang (*.das)|das|Images (*.png *.jpg)|png;jpg;jpeg|All files|")
 }
 
 [export]
@@ -45,7 +47,7 @@ def update() {
     }
     harness_new_frame()
 
-    SetNextWindowSize(ImVec2(440.0f, 200.0f), ImGuiCond.FirstUseEver)
+    SetNextWindowSize(ImVec2(520.0f, 200.0f), ImGuiCond.FirstUseEver)
     window(FDLG_WIN, (text = "file_dialog demo", closable = false, flags = ImGuiWindowFlags.None)) {
         text(LEAD, (text = "Open the native file dialog in each mode:"))
         if (button(BTN_OPEN, (text = "Open..."))) {
@@ -54,13 +56,20 @@ def update() {
         }
         same_line()
         if (button(BTN_SAVE, (text = "Save As..."))) {
+            // default_name pre-fills the filename field
             file_dialog_open(FileDialogConfig(title = "Save File As", start_dir = "",
-                filters <- das_filters(), mode = FileDialogMode.save, max_selection = 1))
+                filters <- das_filters(), mode = FileDialogMode.save, max_selection = 1,
+                default_name = "untitled.das"))
         }
         same_line()
         if (button(BTN_CREATE, (text = "New..."))) {
             file_dialog_open(FileDialogConfig(title = "New File", start_dir = "",
                 filters <- das_filters(), mode = FileDialogMode.create, max_selection = 1))
+        }
+        same_line()
+        if (button(BTN_PICKDIR, (text = "Pick Folder..."))) {
+            file_dialog_open(FileDialogConfig(title = "Select Folder", start_dir = "",
+                mode = FileDialogMode.pick_dir))
         }
         separator(SEP)
         text(RESULT, (text = g_status))
@@ -71,7 +80,7 @@ def update() {
     let r = file_dialog_draw()
     if (r == FileDialogResult.confirmed) {
         var sel <- file_dialog_selection()
-        g_status = "picked {length(sel)} file(s): {file_dialog_selected_path()}"
+        g_status = "picked {length(sel)} item(s): {file_dialog_selected_path()}"
         delete sel
     } elif (r == FileDialogResult.cancelled) {
         g_status = "cancelled"
