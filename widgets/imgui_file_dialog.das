@@ -85,6 +85,8 @@ struct private DialogState {
     sort_desc : bool = false
     open : bool = false
     error : string
+    dir_error : string                      // error shown inside the New Folder sub-modal
+    path_focused : bool = false             // PATH_FIELD held focus last frame (routes Enter: navigate vs confirm)
 }
 
 var private g_fd : DialogState = DialogState()
@@ -243,6 +245,9 @@ def private navigate_to(d : string) {
     g_fd.selection |> clear()
     g_fd.anchor = -1
     g_fd.error = ""
+    // keep the editable path field in sync with where we are
+    PATH_FIELD.pending_value = g_fd.cur_dir
+    PATH_FIELD.has_pending = true
     scan_dir()
     rebuild_view()
     rebuild_crumbs()
@@ -375,9 +380,13 @@ def public file_dialog_open(cfg : FileDialogConfig) {
     g_fd.sort_col = int(COL_NAME)
     g_fd.sort_desc = false
     g_fd.error = ""
+    g_fd.dir_error = ""
+    g_fd.path_focused = false
     g_fd.open = true
     NAME_FIELD.pending_value = ""
     NAME_FIELD.has_pending = true
+    PATH_FIELD.pending_value = g_fd.cur_dir
+    PATH_FIELD.has_pending = true
     ROW |> clear()
     SIZE_CELL |> clear()
     TYPE_CELL |> clear()
@@ -399,6 +408,10 @@ def public file_dialog_draw() : FileDialogResult {
     var confirm_path = ""
     SetNextWindowSize(ImVec2(720.0f, 520.0f), ImGuiCond.FirstUseEver)
     popup_modal(FILEDLG, (text = g_fd.title, closable = false, flags = ImGuiWindowFlags.None)) {
+        // PATH_FIELD's focus is sampled at the END of the body; capture last frame's
+        // value now so the Enter handler (also at the end) can route Enter to path-nav
+        // vs confirm even though the input deactivates itself on the Enter keystroke.
+        let was_path_focused = g_fd.path_focused
         // --- breadcrumb / nav ---
         if (button(UP, (text = ".."))) {
             nav_to = parent(g_fd.cur_dir)
@@ -410,6 +423,25 @@ def public file_dialog_draw() : FileDialogResult {
             if (button(CRUMB[ci], (text = empty(lbl) ? seg : lbl))) {
                 nav_to = seg            // deferred: navigate_to rebuilds crumbs — can't run mid-loop
             }
+        }
+        // --- editable path + drive jump + new folder ---
+        input_text(PATH_FIELD, (text = "##path"))
+        g_fd.path_focused = IsItemActive()
+        same_line()
+        if (button(GO, (text = "Go"))) {
+            let p = normalize(PATH_FIELD.value)
+            if (stat(p).is_dir) {
+                nav_to = p
+            } else {
+                g_fd.error = "no such directory"
+            }
+        }
+        same_line()
+        if (button(NEWFOLDER, (text = "New Folder"))) {
+            g_fd.dir_error = ""
+            NEWDIR_NAME.pending_value = ""
+            NEWDIR_NAME.has_pending = true
+            NEWDIR.pending_open = true
         }
         // --- filter ---
         if (!empty(g_fd.filter_labels)) {
@@ -516,6 +548,57 @@ def public file_dialog_draw() : FileDialogResult {
             same_line()
             if (button(OW_NO, (text = "Cancel"))) {
                 OVERWRITE.pending_close = true
+            }
+        }
+        // --- new folder (NEWDIR_NAME flagless so the Create button reads the live
+        // value; Enter is caught here instead of via EnterReturnsTrue, same reason
+        // as NAME_FIELD) ---
+        SetNextWindowSize(ImVec2(360.0f, 0.0f), ImGuiCond.FirstUseEver)
+        popup_modal(NEWDIR, (text = "New Folder", closable = false, flags = ImGuiWindowFlags.AlwaysAutoResize)) {
+            input_text(NEWDIR_NAME, (text = "Name"))
+            if (!empty(g_fd.dir_error)) {
+                text(NEWDIR_ERR, (text = g_fd.dir_error))
+            }
+            separator(NEWDIR_SEP)
+            let enter = IsKeyPressed(ImGuiKey.Enter, false) || IsKeyPressed(ImGuiKey.KeypadEnter, false)
+            if (button(NEWDIR_OK, (text = "Create")) || enter) {
+                let nm = NEWDIR_NAME.value
+                if (!is_valid_filename(nm)) {
+                    g_fd.dir_error = "invalid folder name"
+                } else {
+                    var err = ""
+                    if (mkdir_rec(path_join(g_fd.cur_dir, nm), err)) {
+                        NEWDIR.pending_close = true
+                        g_fd.dir_error = ""
+                        navigate_to(g_fd.cur_dir)   // rescan so the new folder shows up
+                    } else {
+                        g_fd.dir_error = empty(err) ? "could not create folder" : err
+                    }
+                }
+            }
+            same_line()
+            if (button(NEWDIR_CANCEL, (text = "Cancel"))) {
+                NEWDIR.pending_close = true
+                g_fd.dir_error = ""
+            }
+        }
+        // --- keyboard: Enter confirms (or navigates when the path field had focus),
+        // Backspace goes up a directory when no text field is being edited ---
+        let sub_open = OVERWRITE.open || NEWDIR.open
+        if (!sub_open) {
+            if (IsKeyPressed(ImGuiKey.Enter, false) || IsKeyPressed(ImGuiKey.KeypadEnter, false)) {
+                if (was_path_focused) {
+                    let p = normalize(PATH_FIELD.value)
+                    if (stat(p).is_dir) {
+                        navigate_to(p)
+                    } else {
+                        g_fd.error = "no such directory"
+                    }
+                } else {
+                    result = try_confirm()
+                }
+            } elif (!IsAnyItemActive() && IsKeyPressed(ImGuiKey.Backspace, false)) {
+                navigate_to(parent(g_fd.cur_dir))
             }
         }
     }
