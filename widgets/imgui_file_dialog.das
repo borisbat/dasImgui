@@ -117,15 +117,16 @@ def private active_ext() : string {
     return ""
 }
 
-// "foo.json" matches the ';'-separated pattern list "json" / "png;jpg" iff it ends
-// in exactly ".<one of them>" (the level_names idiom — uses fio's replace_extension,
-// never hand-rolled rfind/slice). Empty list = all files.
-def private has_ext(name : string; ext : string) : bool {
-    if (empty(ext)) {
+// "foo.json" matches the pre-split pattern list ["json"] / ["png","jpg"] iff it ends in
+// exactly ".<one of them>" (fio's replace_extension — never hand-rolled rfind/slice).
+// Empty list = all files. The caller splits the active filter ONCE so scan_dir doesn't
+// re-split (and leak) the same pattern string for every file in the directory.
+def private matches_ext(name : string; pats : array<string>) : bool {
+    if (empty(pats)) {
         return true
     }
     let base = replace_extension(name, "")
-    for (e in split(ext, ";")) {
+    for (e in pats) {
         if (!empty(e) && "{base}.{e}" == name) {
             return true
         }
@@ -133,12 +134,29 @@ def private has_ext(name : string; ext : string) : bool {
     return false
 }
 
+def private has_ext(name : string; ext : string) : bool {
+    if (empty(ext)) {
+        return true
+    }
+    var pats <- split(ext, ";")
+    let ok = matches_ext(name, pats)
+    delete pats
+    return ok
+}
+
 def private ensure_ext(name : string; ext : string) : string {
     if (empty(ext) || has_ext(name, ext)) {
         return name
     }
-    var parts <- split(ext, ";")           // append the first pattern in the list
-    let leaf = empty(parts) ? name : "{name}.{parts[0]}"
+    var parts <- split(ext, ";")
+    // append the first NON-EMPTY pattern; a spec like ";png" or ";" must not yield "name."
+    var leaf = name
+    for (p in parts) {
+        if (!empty(p)) {
+            leaf = "{name}.{p}"
+            break
+        }
+    }
     delete parts
     return leaf
 }
@@ -148,8 +166,11 @@ def private ensure_ext(name : string; ext : string) : string {
 //! ';'-separated (matching `FileDialogFilter.ext`); an empty list means all files.
 def public file_filters(spec : string) : array<FileDialogFilter> {
     var parts <- split(spec, "|")
-    var out <- [for (i in range(length(parts) / 2));
-        FileDialogFilter(caption = parts[i * 2], ext = parts[i * 2 + 1])]
+    // ceil-pair: an odd part count (user dropped the final '|') keeps the trailing caption
+    // as an all-files filter ("") rather than silently truncating it off the list.
+    var out <- [for (i in range((length(parts) + 1) / 2));
+        FileDialogFilter(caption = parts[i * 2],
+                         ext = i * 2 + 1 < length(parts) ? parts[i * 2 + 1] : "")]
     delete parts
     return <- out
 }
@@ -189,6 +210,12 @@ def private scan_dir() {
     g_fd.entries |> clear()
     let ext = active_ext()
     let dirs_only = g_fd.mode == FileDialogMode.pick_dir
+    // split the active filter's pattern list ONCE here, not once per file in matches_ext;
+    // empty ext => empty list => all files (split("", ";") would yield [""], not [], so guard).
+    var pats : array<string>
+    if (!empty(ext)) {
+        pats <- split(ext, ";")
+    }
     dir(g_fd.cur_dir) $(nm) {
         if (nm == "." || nm == "..") {
             return
@@ -199,10 +226,11 @@ def private scan_dir() {
         }
         if (fs.is_dir) {
             g_fd.entries |> push(Entry(name = nm, is_dir = true, size = 0ul, ext = "", mtime = fs.mtime))
-        } elif (!dirs_only && has_ext(nm, ext)) {
+        } elif (!dirs_only && matches_ext(nm, pats)) {
             g_fd.entries |> push(Entry(name = nm, is_dir = false, size = fs.size, ext = extension(nm), mtime = fs.mtime))
         }
     }
+    delete pats
 }
 
 def private compare_entry(a : Entry; b : Entry) : int {
