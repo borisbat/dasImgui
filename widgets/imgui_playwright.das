@@ -300,6 +300,29 @@ def public log_snapshot(app : ImguiApp; note : string = "") : void {
     }
 }
 
+// ===== Auto-dump on timeout =====
+
+var private g_auto_dump_on_timeout = true
+
+def public set_auto_dump_on_timeout(enabled : bool) : void {
+    //! Toggle the wait-family auto-dump (default **on**). When on, any ``wait_*`` helper that
+    //! gives up logs the live UI state once via ``log_snapshot`` before returning ``null`` / ``false``,
+    //! so a red headless or slow-CI run is self-explaining with zero per-test dump code. Turn it
+    //! **off** around a *negative* wait — one where the timeout is the asserted, expected outcome
+    //! (e.g. confirming a widget never appears) — so the log isn't spammed with an expected miss.
+    g_auto_dump_on_timeout = enabled
+}
+
+def public auto_dump_on_timeout_enabled() : bool => g_auto_dump_on_timeout
+
+def private dump_on_timeout(app : ImguiApp; what : string) : void {
+    // One full UI dump on the wait-family timeout path: `what` labels which wait gave up, the dump
+    // body (log_snapshot) shows what the frame actually painted. Gated by the public toggle.
+    if (g_auto_dump_on_timeout) {
+        log_snapshot(app, "wait timeout: {what}")
+    }
+}
+
 // ===== Poll-until family =====
 
 def public wait_until_sec(app : ImguiApp;
@@ -317,6 +340,7 @@ def public wait_until_sec(app : ImguiApp;
         if (snap != null && invoke(pred, snap)) return snap
         sleep(FRAME_POLL_INTERVAL_MS)
     }
+    dump_on_timeout(app, "wait_until_sec ({timeout_sec}s)")
     return null
 }
 
@@ -346,6 +370,7 @@ def public wait_for_widget(app : ImguiApp; widget_ident : string;
         if (snap != null && widget_exists(snap, widget_ident)) return snap
         sleep(FRAME_POLL_INTERVAL_MS)
     }
+    dump_on_timeout(app, "wait_for_widget {widget_ident}")
     return null
 }
 
@@ -364,6 +389,7 @@ def public wait_for_visible(app : ImguiApp; widget_ident : string;
         if (snap != null && widget_rendered(snap, widget_ident)) return snap
         sleep(FRAME_POLL_INTERVAL_MS)
     }
+    dump_on_timeout(app, "wait_for_visible {widget_ident}")
     return null
 }
 
@@ -1380,6 +1406,7 @@ def public wait_for_key_idle(app : ImguiApp; timeout_sec : float = DEFAULT_FRAME
         if (!(r?["playing"] ?? true)) return true
         sleep(FRAME_POLL_INTERVAL_MS)
     }
+    dump_on_timeout(app, "wait_for_key_idle")
     return false
 }
 
@@ -1394,6 +1421,7 @@ def public wait_for_mouse_idle(app : ImguiApp; timeout_sec : float = DEFAULT_FRA
         if (!(r?["playing"] ?? true)) return true
         sleep(FRAME_POLL_INTERVAL_MS)
     }
+    dump_on_timeout(app, "wait_for_mouse_idle")
     return false
 }
 

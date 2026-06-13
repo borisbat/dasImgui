@@ -44,17 +44,29 @@ def private count_crumbs(app : ImguiApp) : int => count_crumbs_in(snapshot(app))
 
 // TOPMOST reliably-clickable row whose Type cell == "Folder" (want_folder) or is any
 // non-folder file. A row is reliably clickable only when its whole bbox sits inside the
-// table's clip rect: a row straddling the bottom scroll edge is still "rendered" but its
+// table's visible band: a row straddling the bottom scroll edge is still "rendered" but its
 // center can fall outside the clip and the click misses (this is what broke macOS CI — a
 // file row near the bottom was picked and the double-click landed nowhere). So:
 //  - widget_rendered (painted this frame), not just widget_exists (registered);
-//  - row bbox fully within FILE_TABLE's bbox (small margin), then topmost-by-y.
+//  - row bbox fully within the band, then topmost-by-y.
+// The band is bracketed by the NAV_SEP / BOTTOM_SEP separators (leaf widgets with real
+// bboxes). The data_table CONTAINER registers a zero bbox — only leaf widgets capture an item
+// rect — so clipping against it rejected EVERY row and silently skipped both double-click
+// sub-checks; the separators give the actual visible top/bottom instead.
 // Returns "" when no matching row is fully visible (e.g. files sit below the fold under a
 // many-folder start dir); callers treat that as "skip" rather than fail — no flake.
 def private first_row(var snap : JsonValue?; want_folder : bool) : string {
-    let tbb = snap?["globals"]?["FILEDLG/FILE_TABLE"]?["bbox"]
-    let t_top = tbb?["y"] ?? 0.0f
-    let t_bot = tbb?["w"] ?? 1.0e9f
+    // If the bracketing separators are absent (e.g. renamed), we can't establish the band —
+    // skip rather than de-clip: a clean skip beats reintroducing the half-clipped-click flake.
+    // (Falling back to FILE_TABLE's own bbox is NOT an option — container widgets register
+    // (0,0)-(0,0), which is the always-reject bug this finder was rewritten to escape.)
+    if (!widget_exists(snap, "FILEDLG/NAV_SEP") || !widget_exists(snap, "FILEDLG/BOTTOM_SEP")) {
+        return ""
+    }
+    let nav = snap?["globals"]?["FILEDLG/NAV_SEP"]?["bbox"]
+    let bot = snap?["globals"]?["FILEDLG/BOTTOM_SEP"]?["bbox"]
+    let t_top = nav?["w"] ?? 0.0f      // bottom edge of NAV_SEP = top of the table band
+    let t_bot = bot?["y"] ?? 1.0e9f    // top edge of BOTTOM_SEP = bottom of the table band
     var best = ""
     var best_y = 1.0e9f
     for (i in range(400)) {
@@ -151,10 +163,9 @@ def test_file_dialog(t : T?) {
             if (file_snap != null) {
                 let frow = first_row(file_snap, false)
                 double_click(d, frow)
+                // wait_for_widget auto-dumps the UI state on timeout (set_auto_dump_on_timeout,
+                // default on), so a miss here is self-explaining with no per-test dump call.
                 let ow = wait_for_widget(d, "FILEDLG/OVERWRITE/OW_YES", 5.0f)
-                if (ow == null) {
-                    log_snapshot(d, "no overwrite modal after save-mode double-click on {frow}")
-                }
                 t |> success(ow != null,
                     "save-mode double-click on an existing file opens overwrite-confirm (not a direct save)")
                 click(d, "FILEDLG/OVERWRITE/OW_YES")
