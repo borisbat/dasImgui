@@ -465,7 +465,11 @@ def public double_click(app : ImguiApp; target : string) : JsonValue? {
     //! per frame, so the two taps are guaranteed to land on distinct frames a couple of frames
     //! apart — well inside ``MouseDoubleClickTime`` at any frame rate, and never collapsed into one
     //! frame the way a wall-clock timeline can be on a slow/stalled host (which drops the double-click).
+    //! Returns ``{ok=false, error}`` when ``target`` isn't in the snapshot or isn't rendered this
+    //! frame (``widget_click_point`` would otherwise default the bbox to (0,0) and click nowhere).
     var snap = snapshot(app)
+    if (!(snap |> widget_exists(target))) return JV((ok = false, error = "double_click target unresolved: {target}"))
+    if (!(snap |> widget_rendered(target))) return JV((ok = false, error = "double_click target not rendered this frame: {target}"))
     let pos = widget_click_point(snap, target)
     var events <- [
         JV((t_ms = 0, kind = "move",   x = last_cursor_x, y = last_cursor_y)),

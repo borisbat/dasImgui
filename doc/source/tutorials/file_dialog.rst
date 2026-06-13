@@ -133,7 +133,7 @@ operate the dialog by id:
      - sort via header click
    * - File row *i*
      - ``FILEDLG/FILE_TABLE/ROW[i]``
-     - ``imgui_click``
+     - ``imgui_click`` (select) · ``double_click`` (enter dir / open file)
    * - Filename field
      - ``FILEDLG/NAME_FIELD``
      - ``imgui_force_set {"value": "name"}``

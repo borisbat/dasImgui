@@ -42,15 +42,48 @@ def private count_crumbs_in(var snap : JsonValue?) : int {
 
 def private count_crumbs(app : ImguiApp) : int => count_crumbs_in(snapshot(app))
 
-// TOPMOST rendered row (smallest bbox.y) whose Type cell == "Folder" (want_folder) or is
-// any non-folder file. Two requirements make a later click land:
-//  - widget_rendered (painted this frame), not just widget_exists (registered): a row can
-//    register a frame before it's laid out (e.g. right after a filter rescan grows the list).
-//  - topmost-by-y: a row near the table's bottom scroll-clip edge is rendered but its center
-//    can fall outside the clip and miss the click, so pick the one comfortably inside.
-// Returns "" when none is clickably visible (e.g. files sit below the fold under many dirs);
-// callers treat that as "skip" rather than fail — no flake.
+// Live-style UI dump for diagnosing failures on a slow CI box (the macOS runner is
+// dog-slow): logs the table clip rect, every rendered row's type + y-extent, the
+// NAME_FIELD value, and whether the overwrite modal is up. Called on the failure path so
+// a red CI run shows exactly what the dialog looked like instead of leaving us to guess.
+def private dump_ui_state(app : ImguiApp; note : string) {
+    var s = snapshot(app)
+    let tbl = "FILEDLG/FILE_TABLE"
+    let tr = widget_rendered(s, tbl)
+    let tbb = s?["globals"]?[tbl]?["bbox"]
+    let t_top = tbb?["y"] ?? 0.0f
+    let t_bot = tbb?["w"] ?? 0.0f
+    let owy = "FILEDLG/OVERWRITE/OW_YES"
+    let ow_present = widget_exists(s, owy)
+    let nm = widget_payload_field(s, "FILEDLG/NAME_FIELD", "value") ?? "(none)"
+    to_log(LOG_WARNING, "UI DUMP [{note}]: FILE_TABLE rendered={tr} clip_y=[{t_top}..{t_bot}] OVERWRITE_present={ow_present} NAME_FIELD='{nm}'")
+    for (i in range(80)) {
+        let row = "FILEDLG/FILE_TABLE/ROW[{i}]"
+        let cell = "FILEDLG/FILE_TABLE/TYPE_CELL[{i}]"
+        if (!widget_exists(s, cell) || !widget_rendered(s, row)) {
+            continue
+        }
+        let v = widget_payload_field(s, cell, "value") ?? ""
+        let rb = s?["globals"]?[row]?["bbox"]
+        let ry0 = rb?["y"] ?? 0.0f
+        let ry1 = rb?["w"] ?? 0.0f
+        to_log(LOG_WARNING, "  ROW[{i}] type='{v}' y=[{ry0}..{ry1}]")
+    }
+}
+
+// TOPMOST reliably-clickable row whose Type cell == "Folder" (want_folder) or is any
+// non-folder file. A row is reliably clickable only when its whole bbox sits inside the
+// table's clip rect: a row straddling the bottom scroll edge is still "rendered" but its
+// center can fall outside the clip and the click misses (this is what broke macOS CI — a
+// file row near the bottom was picked and the double-click landed nowhere). So:
+//  - widget_rendered (painted this frame), not just widget_exists (registered);
+//  - row bbox fully within FILE_TABLE's bbox (small margin), then topmost-by-y.
+// Returns "" when no matching row is fully visible (e.g. files sit below the fold under a
+// many-folder start dir); callers treat that as "skip" rather than fail — no flake.
 def private first_row(var snap : JsonValue?; want_folder : bool) : string {
+    let tbb = snap?["globals"]?["FILEDLG/FILE_TABLE"]?["bbox"]
+    let t_top = tbb?["y"] ?? 0.0f
+    let t_bot = tbb?["w"] ?? 1.0e9f
     var best = ""
     var best_y = 1.0e9f
     for (i in range(400)) {
@@ -63,9 +96,14 @@ def private first_row(var snap : JsonValue?; want_folder : bool) : string {
         if (empty(v) || (v == "Folder") != want_folder) {
             continue
         }
-        let y = snap?["globals"]?[row]?["bbox"]?["y"] ?? 1.0e9f
-        if (y < best_y) {
-            best_y = y
+        let rb = snap?["globals"]?[row]?["bbox"]
+        let ry0 = rb?["y"] ?? -1.0e9f
+        let ry1 = rb?["w"] ?? 1.0e9f
+        if (ry0 < t_top || ry1 > t_bot - 4.0f) {        // not fully inside the clip rect
+            continue
+        }
+        if (ry0 < best_y) {
+            best_y = ry0
             best = row
         }
     }
@@ -140,8 +178,13 @@ def test_file_dialog(t : T?) {
                 return !empty(first_row(fsnap, false))
             }
             if (file_snap != null) {
-                double_click(d, first_row(file_snap, false))
-                t |> success(wait_for_widget(d, "FILEDLG/OVERWRITE/OW_YES", 5.0f) != null,
+                let frow = first_row(file_snap, false)
+                double_click(d, frow)
+                let ow = wait_for_widget(d, "FILEDLG/OVERWRITE/OW_YES", 5.0f)
+                if (ow == null) {
+                    dump_ui_state(d, "no overwrite modal after save-mode double-click on {frow}")
+                }
+                t |> success(ow != null,
                     "save-mode double-click on an existing file opens overwrite-confirm (not a direct save)")
                 click(d, "FILEDLG/OVERWRITE/OW_YES")
                 // confirm closed the dialog: the table stops rendering (widget_exists stays
