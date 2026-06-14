@@ -77,6 +77,7 @@ require strings
 var private g_headless          : bool = false
 var private g_headless_max_frames : int = 0
 var private g_headless_max_uptime_sec : float = 0.0f
+var private g_no_ini            : bool = false
 var private g_parsed            : bool = false
 
 var private g_headless_ctx      : ImGuiContext? = null
@@ -91,6 +92,7 @@ def private ensure_parsed() {
     return if (g_parsed)
     g_parsed = true
     let args <- get_user_args()
+    g_no_ini = (find_bool_flag_raw_value(args, "--no-imgui-ini") |> unwrap_or("false")) == "true"
     let raw_headless = find_bool_flag_raw_value(args, "--headless")
     g_headless = (raw_headless |> unwrap_or("false")) == "true"
     let raw_frames = find_flag_raw_value(args, "--headless-frames")
@@ -108,6 +110,17 @@ def public harness_is_headless() : bool {
     return g_headless
 }
 
+def public harness_wants_no_ini() : bool {
+    //! True if ``--no-imgui-ini`` was on the command line (``with_imgui_app``
+    //! passes it for every test spawn). ``harness_init`` calls
+    //! ``DisableIniPersistence`` when set, so ImGui never loads or saves
+    //! imgui.ini. Apps that gate default-layout setup on ``fexist("imgui.ini")``
+    //! must also check this: with persistence off, ImGui restores nothing, so a
+    //! stale imgui.ini on disk is NOT a reason to skip building the default layout.
+    ensure_parsed()
+    return g_no_ini
+}
+
 def public harness_init(title : string; width : int = 800; height : int = 600) {
     //! Windowed: ``live_create_window`` + ``live_imgui_init`` (which also applies
     //! the daslang theme + JetBrains Mono font). Headless: ``CreateContext`` +
@@ -118,6 +131,9 @@ def public harness_init(title : string; width : int = 800; height : int = 600) {
         apply_daslang_theme()
         imgui_headless_init_fonts()
         imgui_headless_set_display_size(float(width), float(height))
+        if (g_no_ini) {
+            DisableIniPersistence()
+        }
         return
     }
     // Opt into per-monitor DPI on Windows so glfwCreateWindow scales the
@@ -127,6 +143,13 @@ def public harness_init(title : string; width : int = 800; height : int = 600) {
     glfwWindowHint(int(GLFW_SCALE_TO_MONITOR), 1)
     live_create_window(title, width, height)
     live_imgui_init(live_window)
+    // --no-imgui-ini (with_imgui_app passes it for every test spawn): null the
+    // ini AFTER live_imgui_init creates the context, BEFORE the first NewFrame,
+    // so a windowed GL test starts from the app's default layout and never
+    // reads/writes a stale imgui.ini in the spawn CWD.
+    if (g_no_ini) {
+        DisableIniPersistence()
+    }
 }
 
 def public harness_begin_frame() : bool {
