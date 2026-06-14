@@ -1639,8 +1639,12 @@ def public with_imgui_app(feature_path : string;
     }
     argv |> push("--live-port={port}")
     argv |> push(app_path)
+    // App user-args follow `--`. Always disable imgui.ini: a test spawn must
+    // start from the feature's default layout and never read/write a stale
+    // imgui.ini in the spawn CWD (deterministic + no cross-test pollution).
+    argv |> push("--")
+    argv |> push("--no-imgui-ini")
     if (playwright_wants_headless()) {
-        argv |> push("--")
         argv |> push("--headless")
         // Cascade guard: harness self-exits a few seconds before the popen
         // watchdog gives up. If body panics and /shutdown is never sent
