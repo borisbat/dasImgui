@@ -344,6 +344,25 @@ def public wait_until_sec(app : ImguiApp;
     return null
 }
 
+def public wait_cond(app : ImguiApp;
+                     timeout_sec : float;
+                     pred : block<() : bool>) : bool {
+    //! Bare wall-clock condition poll — no snapshot, no widget coupling. Polls ``pred()`` until it
+    //! returns true, up to ``timeout_sec`` real seconds; returns true on match, false on timeout.
+    //! The ``cmd_*`` sibling of ``wait_until_sec``: for state gated on a command round-trip (sim
+    //! tick, camera mode, scene count) rather than a widget snapshot field. Replaces the hand-rolled
+    //! ``for (_ in range(N)) { if (cond) break }`` busy-poll, which bounds by frame count with no
+    //! sleep and so expires prematurely against the multi-kHz headless server (see ``wait_until``).
+    let start = ref_time_ticks()
+    let timeout_usec = int(timeout_sec * 1000000.0f)
+    while (get_time_usec(start) < timeout_usec) {
+        if (invoke(pred)) return true
+        sleep(FRAME_POLL_INTERVAL_MS)
+    }
+    dump_on_timeout(app, "wait_cond ({timeout_sec}s)")
+    return false
+}
+
 def public wait_until(app : ImguiApp;
                       max_frames : int;
                       pred : block<(var snap : JsonValue?) : bool>) : JsonValue? {
