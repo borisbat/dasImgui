@@ -154,7 +154,7 @@ def document_module_imgui_playwright() {
         group_by_regex("Recording / narration", mod, %regex~^(say|say_begin|say_hash|hold_through_voice|drag_through_voice|type_into_voice|combo_pick_voice|toggle_tree_voice|close_button_voice|click_render_voice|menu_pick_voice|record_check_value|record_check_changed|record_check_unchanged|record_check_rendered|record_check_kind_count|record_check)$%%),
         group_by_regex("Content-time gating", mod, %regex~^(wait_content_frames|hold_content|record_frame_count|hold_remainder_content)$%%),
         group_by_regex("Snapshots",         mod, %regex~^(snapshot|log_snapshot|expect_value|expect_render).*%%),
-        group_by_regex("Polling / await",   mod, %regex~^(wait_until.*|wait_for_.*|await_quiescent|await_probe|set_auto_dump_on_timeout|auto_dump_on_timeout_enabled)$%%),
+        group_by_regex("Polling / await",   mod, %regex~^(wait_until.*|wait_for_.*|wait_cond|await_quiescent|await_probe|set_auto_dump_on_timeout|auto_dump_on_timeout_enabled)$%%),
         group_by_regex("Pause control",     mod, %regex~^(pause|unpause|with_paused)$%%),
         group_by_regex("Transport plumbing", mod, %regex~^(post_command|send_imgui_command|receive_imgui_command).*%%),
         hide_group(group_by_regex("Internal", mod, %regex~^(_|priv_|dasimgui_module_root).*%%))
