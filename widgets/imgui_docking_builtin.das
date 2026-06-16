@@ -53,6 +53,7 @@ struct DockWindowState {
     @optional pending_close : bool            //! imgui_close queued; applied next frame
     @optional pending_dock_to : uint = 0u     //! imgui_dock queued; SetNextWindowDockID(value) next frame
     @optional pending_undock : bool           //! imgui_undock queued; SetNextWindowDockID(0) next frame
+    @optional pending_raise : bool            //! imgui_raise queued; SetNextWindowFocus() next frame (selects the tab when docked)
     @optional pending_pos : float2            //! imgui_set_window_pos queued — pos
     @optional pending_pos_set : bool          //! gates pending_pos (so (0,0) is a valid request)
     @optional pending_size : float2           //! imgui_set_window_pos queued — size
@@ -78,7 +79,7 @@ def private dockspace_finalize(widget_ident : string; kind : string;
 }
 
 def private dock_window_finalize(widget_ident : string; var state : DockWindowState) {
-    //! dock_window finalize. State path; the per-kind [widget_dispatch] handles open/close/dock/undock/set_window_pos.
+    //! dock_window finalize. State path; the per-kind [widget_dispatch] handles open/close/dock/undock/raise/set_window_pos.
     var entry : WidgetEntry
     unsafe {
         container_finalize(widget_ident, "dock_window", entry,
@@ -109,6 +110,8 @@ def _dock_window_dispatch(var state : DockWindowState; action : string; payload 
         }
     } elif (action == "undock") {
         state.pending_undock = true
+    } elif (action == "raise") {
+        state.pending_raise = true
     } elif (action == "set_window_pos") {
         // Payload: ``{x, y[, w, h]}`` — pos always set, size optional. The one
         // place we still touch JsonValue at dispatch time; alternative would
@@ -191,6 +194,10 @@ def dock_window(var state : DockWindowState; text : string; closable : bool;
     if (state.pending_undock) {
         SetNextWindowDockID(0u, ImGuiCond.Always)
         state.pending_undock = false
+    }
+    if (state.pending_raise) {
+        SetNextWindowFocus()       // raises the tab to the front when this window is docked in a stack
+        state.pending_raise = false
     }
     if (state.pending_pos_set) {
         SetNextWindowPos(ImVec2(state.pending_pos.x, state.pending_pos.y), ImGuiCond.Always)
