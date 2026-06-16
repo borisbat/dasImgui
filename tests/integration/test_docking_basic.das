@@ -17,7 +17,9 @@ require daslib/json_boost public
 //!   3. Live commands — `imgui_undock` (window becomes floating),
 //!      `imgui_dock` (window re-docks to a target node), `imgui_dock_reset`
 //!      (state.has_initial_layout flips false → setup re-runs),
-//!      `imgui_close` on a closable dock_window flips `state.open` false.
+//!      `imgui_close` on a closable dock_window flips `state.open` false,
+//!      `imgui_raise` selects a window's tab when it's stacked (Console + Output
+//!      share one node; raising flips which one's children render).
 //!
 //! One host spawn, six subtests; `reset(d)` re-simulates the compiled program
 //! into a fresh context between subtests (no recompile) so each starts from a
@@ -173,6 +175,36 @@ def test_docking_basic(t : T?) {
             post_command(d, "imgui_dock_reset", JV((target = "DOCK_ROOT")))
             let re_docked = wait_for_payload_value(d, "DOCK_ROOT/EXPLORER", "docked", true, 300)
             t |> success(re_docked, "EXPLORER re-docks after imgui_dock_reset round-trip")
+        }
+        reset(d)
+
+        t |> run("raise") <| @(t : T?) {
+            // Console + Output share one dock node (a tab pair). A backgrounded tab's children aren't
+            // painted (registered-but-`rendered:false`), so selecting a tab is observable as its child
+            // starting to paint and the other's stopping. There's no command to click a dock node's
+            // internal tab bar, so imgui_raise is the automation rail for it. Verified both directions.
+            var snap = wait_for_widget(d, "DOCK_ROOT/CONSOLE", 15.0f)
+            if (snap == null) {
+                t |> success(false, "snapshot reachable")
+                return
+            }
+            // Output is the front tab initially (docked last); Console is backgrounded.
+            t |> success(wait_for_visible(d, "DOCK_ROOT/OUTPUT/CLEAR_BTN", 5.0f) != null,
+                         "OUTPUT starts as the front tab — CLEAR_BTN paints")
+            t |> success(!widget_rendered(snapshot(d), "DOCK_ROOT/CONSOLE/CONSOLE_BTN"),
+                         "CONSOLE starts backgrounded — its child does not paint")
+
+            // Raise Console -> it becomes the front tab; its child paints, Output's stops.
+            post_command(d, "imgui_raise", JV((target = "DOCK_ROOT/CONSOLE")))
+            t |> success(wait_for_visible(d, "DOCK_ROOT/CONSOLE/CONSOLE_BTN", 5.0f) != null,
+                         "imgui_raise CONSOLE selected its tab — CONSOLE_BTN paints")
+            t |> success(wait_cond(d, 5.0f) $() => !widget_rendered(snapshot(d), "DOCK_ROOT/OUTPUT/CLEAR_BTN"),
+                         "...and OUTPUT is backgrounded — its child stops painting")
+
+            // Raise Output back -> the tab switches the other way.
+            post_command(d, "imgui_raise", JV((target = "DOCK_ROOT/OUTPUT")))
+            t |> success(wait_for_visible(d, "DOCK_ROOT/OUTPUT/CLEAR_BTN", 5.0f) != null,
+                         "imgui_raise OUTPUT switched the tab back — CLEAR_BTN paints again")
         }
     }
 }

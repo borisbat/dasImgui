@@ -158,7 +158,7 @@ through the reload, and the dock state lives inside that context).
 Driving from outside
 ====================
 
-Four live commands cover the docking surface. Targets are path-qualified
+Several live commands cover the docking surface. Targets are path-qualified
 — the dockspace pushes its name onto the path, so panel targets are
 ``DOCK_ROOT/<name>``:
 
@@ -182,12 +182,20 @@ Four live commands cover the docking surface. Targets are path-qualified
    curl -X POST -d '{"name":"imgui_close","args":{"target":"DOCK_ROOT/OUTPUT"}}' \
         localhost:9090/command
 
+   # Raise a panel to the front of its dock node — selects its tab when stacked
+   curl -X POST -d '{"name":"imgui_raise","args":{"target":"DOCK_ROOT/OUTPUT"}}' \
+        localhost:9090/command
+
 ``imgui_dock`` is the inverse of ``imgui_undock`` — it takes a ``value`` of
 type ``uint`` (a dock-node id from a prior ``DockBuilder*`` call) and
 re-docks the panel into that node. ``imgui_set_window_pos`` is the
 companion you'll usually pair with ``imgui_undock``, since a freshly
 undocked window picks its position from ``imgui.ini`` (or ``(0,0)`` if
-the window has never floated).
+the window has never floated). ``imgui_raise`` brings a panel to the front
+of its dock node — when several panels share a node (so they render as a tab
+strip) it selects that panel's tab; it's the automation counterpart of
+clicking a tab, which a real click can't reach (the dock node's tab bar is
+ImGui-internal, not a registered widget).
 
 Next steps
 ==========

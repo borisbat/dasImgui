@@ -2214,6 +2214,14 @@ def imgui_undock(input : JsonValue?) : JsonValue? {
     return with_await(input, r)
 }
 
+[live_command(description = "Raise a dock_window to the front of its dock node — selects its tab when it's stacked with others ('target' name)")]
+def imgui_raise(input : JsonValue?) : JsonValue? {
+    //! Live-command: bring the dock_window named by ``input["target"]`` to the front of its dock node — when several windows are docked into one node (so they render as a tab strip), this selects that window's tab. Routes through SetNextWindowFocus() on the next frame. The automation counterpart of clicking a tab; ``imgui_click`` can't reach a dock node's internal tab bar.
+    let r = dispatch_or_err("raise", input)
+    if (r._is_ok) dispatch_post_command_hooks("raise", r._value)
+    return with_await(input, r)
+}
+
 [live_command(description = "Clear a dockspace's DockBuilder layout so the user's setup runs again ('target' = dockspace name)")]
 def imgui_dock_reset(input : JsonValue?) : JsonValue? {
     //! Live-command: reset the dockspace named by ``input["target"]`` — clears the DockBuilder node tree and flips ``state.has_initial_layout`` back to false so the user's setup function re-runs on the next frame.

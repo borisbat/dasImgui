@@ -56,7 +56,8 @@ def setup_default_layout(dock_id : uint) {
     DockBuilderSplitNode(bottom_id, ImGuiDir.Left, 0.55f, bl_id, br_id)
     DockBuilderDockWindow("Explorer",   left_id)
     DockBuilderDockWindow("Source",     top_id)
-    DockBuilderDockWindow("Output",     bl_id)
+    DockBuilderDockWindow("Console",    bl_id)   // Console + Output share bl_id -> they tab; Output docked
+    DockBuilderDockWindow("Output",     bl_id)   // last => Output is the front tab initially
     DockBuilderDockWindow("Properties", br_id)
     DockBuilderFinish(dock_id)
 }
@@ -98,6 +99,13 @@ def update() {
                              flags = ImGuiWindowFlags.None)) {
             text("> ready.")
             button(CLEAR_BTN, (text = "Clear"))
+        }
+        // Console shares Output's dock node, so the two render as a tab pair —
+        // background-tab children don't render until selected (imgui_raise / a tab click).
+        dock_window(CONSOLE, (text = "Console", closable = false,
+                              flags = ImGuiWindowFlags.None)) {
+            text("log tail")
+            button(CONSOLE_BTN, (text = "Scroll to end"))
         }
         dock_window(PROPERTIES, (text = "Properties", closable = false,
                                  flags = ImGuiWindowFlags.None)) {
