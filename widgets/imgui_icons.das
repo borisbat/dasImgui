@@ -624,10 +624,12 @@ def public icon(name : string; size : float = 20.0f; weight : float = 1.0f) {
     Dummy(float2(size, size))
 }
 
-def public icon_button(id : string; glyph : string; size : float = 20.0f; weight : float = 1.0f) : bool {
-    //! Square icon button that matches the daslang theme: chrome reads ImGuiCol.Button*,
-    //! glyph is the amber accent (Text when pressed). `id` is the unique ImGui id — use
-    //! distinct ids for repeated glyphs (e.g. per list row); `glyph` is the icon name.
+def public icon_button_draw(id : string; glyph : string; size : float = 20.0f; weight : float = 1.0f) : bool {
+    //! Low-level icon button: `InvisibleButton(id)` + themed chrome (ImGuiCol.Button*) + amber
+    //! glyph (Text when pressed); returns true on click. NOT a registered widget — for the
+    //! snapshot-visible, playwright-drivable form use the `icon_button` [widget] in
+    //! imgui_widgets_builtin (`icon_button(STATE, (glyph=..., tip=...))`). Use this directly only
+    //! for transient chrome that no test drives by path. `id` must be unique per call site.
     let style & = GetStyle()
     let pad = style.FramePadding
     let full = float2(size + pad.x * 2.0f, size + pad.y * 2.0f)
@@ -650,9 +652,4 @@ def public icon_button(id : string; glyph : string; size : float = 20.0f; weight
         th = (2.0f / 24.0f) * size * weight)
     draw_icon(glyph, ctx)
     return pressed
-}
-
-def public icon_button(name : string; size : float = 20.0f; weight : float = 1.0f) : bool {
-    //! Convenience: id and glyph are both `name`. Use the (id, glyph) form for repeated icons.
-    return icon_button(name, name, size, weight)
 }

@@ -9,6 +9,7 @@ module imgui_widgets_builtin shared
 require imgui public
 require imgui/imgui_boost_runtime public
 require imgui/imgui_boost_v2 public
+require imgui/imgui_icons
 require daslib/json public
 require daslib/json_boost
 require strings
@@ -425,6 +426,27 @@ def button(var state : ClickState; text : string;
         state.click_count++
     }
     click_finalize(widget_ident, "button", state)
+    return clicked
+}
+
+[widget]
+def icon_button(var state : ClickState; glyph : string;
+                tip : string = ""; size : float = 20.0f; weight : float = 1.0f) : bool {
+    //! Themed square icon button drawn from imgui_icons (no font glyph / atlas) — `glyph` is an
+    //! icon name (see imgui_icons). Snapshot-visible and playwright-drivable (kind "icon_button");
+    //! click semantics mirror `button`. A non-empty `tip` shows a hover tooltip. `size` is the
+    //! glyph box side in px (use base*content_scale for HDPI), `weight` scales stroke thickness.
+    //! Pass args in declared order (glyph, tip, size, weight) — the indexed call form is positional.
+    let clicked = icon_button_draw(widget_ident, glyph, size, weight)
+    if (!empty(tip) && BeginItemTooltip()) {
+        TextUnformatted(tip)
+        EndTooltip()
+    }
+    state.clicked = clicked
+    if (clicked) {
+        state.click_count++
+    }
+    click_finalize(widget_ident, "icon_button", state)
     return clicked
 }
 
@@ -1546,7 +1568,7 @@ def public passes_filter(var state : TextFilterState; line : string) : bool {
     return PassFilter(state.filter, line)
 }
 
-def public is_active(var state : TextFilterState) : bool {
+def public is_active(state : TextFilterState) : bool {
     //! `ImGuiTextFilter::IsActive()` — true iff parsing produced at least
     //! one include OR exclude term. Use this to gate filter-active vs
     //! filter-inactive code paths (e.g. clipper-cull vs sequential scan
