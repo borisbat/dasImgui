@@ -76,4 +76,8 @@ def initialize(project_path : string) {
     // IM_COL32 packer split out from v1 imgui_boost (the legacy module is
     // non-compileable during the v2 refactor; rgba+constants live here).
     register_native_path("imgui", "imgui_colors", "{project_path}/widgets/imgui_colors.das")
+    // Vector icon set — asset-free glyphs drawn onto the ImDrawList on a 24-grid
+    // (no SVG/atlas), tinted from the theme amber. icon() / icon_button(); a
+    // general, growing set (transport, edit, mix, synth, scene tools, chrome).
+    register_native_path("imgui", "imgui_icons", "{project_path}/widgets/imgui_icons.das")
 }
