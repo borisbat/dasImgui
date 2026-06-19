@@ -610,6 +610,12 @@ def public close_widget(app : ImguiApp; target : string) : JsonValue? {
     return send_imgui_command(app.transport, "imgui_close", JV((target = target)))
 }
 
+def public select_widget(app : ImguiApp; target : string) : JsonValue? {
+    //! Activate ``target`` tab_item (``imgui_select`` verb) — the automation counterpart of clicking a tab
+    //! (ImGui owns active-tab selection, so an inactive tab can't be reached by ``click``).
+    return send_imgui_command(app.transport, "imgui_select", JV((target = target)))
+}
+
 def public drag(app : ImguiApp; target : string;
                 dx : float; dy : float;
                 steps : int = 4; button : int = 0) : JsonValue? {

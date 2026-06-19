@@ -513,6 +513,8 @@ struct TabItemState {
     @optional flags : ImGuiTabItemFlags       //! per-call ImGuiTabItemFlags
     @optional pending_open : bool             //! imgui_open queued; applied next frame
     @optional pending_close : bool            //! imgui_close queued; applied next frame
+    @optional pending_select : bool           //! imgui_select queued; applied next frame (SetSelected)
+    @optional selected : bool                 //! observed: is this the active tab this frame (snapshot-visible)
 }
 
 struct TooltipState {
@@ -2187,6 +2189,17 @@ def imgui_close(input : JsonValue?) : JsonValue? {
     //! Live-command: close the container named by ``input["target"]`` (window/popup/tree_node/collapsing_header/tab_item).
     let r = dispatch_or_err("close", input)
     if (r._is_ok) dispatch_post_command_hooks("close", r._value)
+    return with_await(input, r)
+}
+
+[live_command(description = "Select (activate) a tab_item in a tab_bar ('target' name)")]
+def imgui_select(input : JsonValue?) : JsonValue? {
+    //! Live-command: activate the ``tab_item`` named by ``input["target"]`` — the automation
+    //! counterpart of clicking a tab in a ``tab_bar`` (ImGui owns active-tab selection, so an
+    //! inactive tab can't be reached by ``imgui_click``). Routes through ImGuiTabItemFlags.SetSelected
+    //! on the next frame. The selected tab records ``state.selected = true`` for snapshot consumers.
+    let r = dispatch_or_err("select", input)
+    if (r._is_ok) dispatch_post_command_hooks("select", r._value)
     return with_await(input, r)
 }
 

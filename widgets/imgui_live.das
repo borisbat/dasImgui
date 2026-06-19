@@ -113,6 +113,11 @@ def public live_imgui_init(window : GLFWwindow?; glsl_version : string = "#versi
     io.FontGlobalScale = font_global
     ImGui_ImplGlfw_InitForOpenGL(window, true)
     ImGui_ImplOpenGL3_Init(glsl_version)
+    // Give the window a defined cursor from the instant it appears — the backend's
+    // per-frame UpdateMouseCursor only takes over from frame 1, and macOS won't
+    // refresh an inherited cursor until the mouse moves. Per-widget SetMouseCursor
+    // and the backend's resize/hand cursors still apply from the first frame on.
+    imgui_set_default_cursor(window)
     return live_imgui_ctx
 }
 
