@@ -74,6 +74,18 @@ DAS_MOD_API void das_imgui_set_real_input_callbacks ( bool enabled ) {
     else ImGui_ImplGlfw_RestoreCallbacks(w);
 }
 
+// Set a defined Arrow cursor on the window at init, before the first frame. The GLFW
+// backend's per-frame UpdateMouseCursor only kicks in from frame 1, and on macOS Cocoa
+// only refreshes the cursor on movement — so without this the window shows whatever
+// shape was inherited at creation until the mouse moves. One standard cursor, created
+// once; GLFW frees it at glfwTerminate.
+DAS_MOD_API void das_imgui_set_default_cursor ( GLFWwindow * window ) {
+    if ( !window ) return;
+    static GLFWcursor * arrow = nullptr;
+    if ( !arrow ) arrow = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
+    if ( arrow ) glfwSetCursor(window, arrow);
+}
+
 // making custom builtin module
 class Module_imgui_app : public Module {
     ModuleLibrary lib;
@@ -116,6 +128,9 @@ public:
         // imgui_live_core to suppress real input AT THE SOURCE when user control is off.
         addExtern<DAS_BIND_FUN(das_imgui_set_real_input_callbacks)>(*this,lib,"imgui_set_real_input_callbacks",
             SideEffects::worstDefault, "das_imgui_set_real_input_callbacks");
+        // Default Arrow cursor at init (covers the pre-first-frame / macOS no-move-refresh gap).
+        addExtern<DAS_BIND_FUN(das_imgui_set_default_cursor)>(*this,lib,"imgui_set_default_cursor",
+            SideEffects::worstDefault, "das_imgui_set_default_cursor");
         addExtern<DAS_BIND_FUN(ImGui_ImplGlfw_MouseButtonCallback)>(*this,lib,"ImGui_ImplGlfw_MouseButtonCallback",
             SideEffects::worstDefault, "ImGui_ImplGlfw_MouseButtonCallback");
         addExtern<DAS_BIND_FUN(ImGui_ImplGlfw_ScrollCallback)>(*this,lib,"ImGui_ImplGlfw_ScrollCallback",
@@ -168,6 +183,7 @@ public:
         tw << "DAS_MOD_API void das_imgui_synth_key ( int key, bool down );\n";
         tw << "DAS_MOD_API void das_imgui_synth_input_char ( uint32_t cp );\n";
         tw << "DAS_MOD_API void das_imgui_set_real_input_callbacks ( bool enabled );\n";
+        tw << "DAS_MOD_API void das_imgui_set_default_cursor ( GLFWwindow * window );\n";
         return ModuleAotType::cpp;
     }
 };
