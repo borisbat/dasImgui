@@ -46,7 +46,7 @@ def document_module_imgui_boost_runtime() {
         group_by_regex("Path machinery",          mod, %regex~^(container_path_push|container_path_pop|widget_path_key|container_path_key|active_widget_path)$%%),
         group_by_regex("Coroutines",              mod, %regex~^(advance_coroutines|spawn_coroutine)$%%),
         group_by_regex("Window control",          mod, %regex~^imgui_(dock|undock|dock_reset|raise|set_window_pos|set_window_size)$%%),
-        group_by_regex("Live commands",           mod, %regex~^imgui_(snapshot|click|force_set|open|close|focus|await|mouse_pos|mouse_click|mouse_scroll|key_press|key_release|key_char)$%%),
+        group_by_regex("Live commands",           mod, %regex~^imgui_(snapshot|click|force_set|open|close|select|focus|await|mouse_pos|mouse_click|mouse_scroll|key_press|key_release|key_char)$%%),
         group_by_regex("Synthetic input",         mod, %regex~^(synth_mouse_move|synth_mouse_button|synth_mouse_wheel|synth_key_press|synth_key_release|synth_char|release_held_buttons|release_held_keys|get_synth_cursor|get_synth_keys|imgui_synth_tick|user_control_enabled|set_user_control_enabled|set_user_control|register_real_input_toggle|register_synth_frame_hook|register_synth_stop_hook)$%%),
         group_by_regex("Debug logging",           mod, %regex~^(log_section|log_section_on|imgui_log_section|imgui_log_drain)$%%),
         group_by_regex("Memory debugging",         mod, %regex~^(imgui_debug_memory|imgui_reset_memory_baseline|imgui_memory_report)$%%),

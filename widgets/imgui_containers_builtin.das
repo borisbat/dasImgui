@@ -502,6 +502,12 @@ def tab_item(var state : TabItemState; text : string; closable : bool;
         state.open = false
         state.pending_close = false
     }
+    // imgui_select queues activation: pass SetSelected for one frame, then clear.
+    var eff_flags = flags
+    if (state.pending_select) {
+        eff_flags |= ImGuiTabItemFlags.SetSelected
+        state.pending_select = false
+    }
     state.flags = flags
     if (!closable || state.open) {
         var p_open : bool? = null
@@ -510,7 +516,8 @@ def tab_item(var state : TabItemState; text : string; closable : bool;
                 p_open = addr(state.open)
             }
         }
-        let im_open = BeginTabItem(text, p_open, flags)
+        let im_open = BeginTabItem(text, p_open, eff_flags)
+        state.selected = im_open   // observable active-tab state (snapshot-visible)
         //! Same rationale as ``menu()``: the tab strip header is the
         //! ``IsItem*`` target right after BeginTabItem. Inside the body
         //! ``last item`` shifts to per-widget items and EndTabItem pops it.
@@ -806,6 +813,8 @@ def _tab_item_dispatch(var state : TabItemState; action : string; payload : stri
         state.pending_open = true
     } elif (action == "close") {
         state.pending_close = true
+    } elif (action == "select") {
+        state.pending_select = true
     }
 }
 
