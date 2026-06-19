@@ -660,7 +660,13 @@ def public file_dialog_draw() : FileDialogResult {
         // Backspace goes up a directory when no text field is being edited ---
         let sub_open = OVERWRITE.open || NEWDIR.open
         if (!sub_open) {
-            if (IsKeyPressed(ImGuiKey.Enter, false) || IsKeyPressed(ImGuiKey.KeypadEnter, false)) {
+            if (IsKeyPressed(ImGuiKey.Escape, false)) {
+                // ESC cancels the dialog (explicit — a focused name/path field would otherwise
+                // eat the keystroke and the modal wouldn't auto-close). Mirrors the Cancel button.
+                FILEDLG.pending_close = true
+                g_fd.open = false
+                result = FileDialogResult.cancelled
+            } elif (IsKeyPressed(ImGuiKey.Enter, false) || IsKeyPressed(ImGuiKey.KeypadEnter, false)) {
                 if (was_path_focused) {
                     let p = normalize(PATH_FIELD.value)
                     if (stat(p).is_dir) {
