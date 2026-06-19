@@ -5,6 +5,7 @@ options no_unused_function_arguments = false
 
 require dastest/testing_boost public
 require imgui/imgui_playwright public
+require imgui
 require daslib/json public
 require daslib/json_boost public
 require strings
@@ -15,7 +16,6 @@ require strings
 //! key over the live API), like the rest of the file_dialog suite.
 
 let FILE_DIALOG_FEATURE = "modules/dasImgui/examples/tutorial/file_dialog.das"
-let KEY_ESCAPE : int = 526   // ImGuiKey.Escape (Tab=512, Enter=525, Escape=526)
 
 [test]
 def test_file_dialog_esc(t : T?) {
@@ -31,7 +31,7 @@ def test_file_dialog_esc(t : T?) {
                      "open dialog renders the file table")
 
         // ESC cancels — no name/path field is focused on open, so the modal must close itself.
-        key_tap(d, KEY_ESCAPE)
+        key_tap(d, int(ImGuiKey.Escape))
         t |> success(wait_until_sec(d, 5.0f) $(var s) {
                 return find(widget_payload_field(s, "FDLG_WIN/RESULT", "value") ?? "", "cancelled") >= 0
             } != null,
