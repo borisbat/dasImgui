@@ -517,6 +517,18 @@ struct TabItemState {
     @optional selected : bool                 //! observed: is this the active tab this frame (snapshot-visible)
 }
 
+struct WrapTabBarState {
+    //! Backs the `wrap_tab_bar` container (the multi-row / wrapping tab bar
+    //! ImGui lacks). Active tab is an index into the tab list, like `combo`:
+    //! `imgui_force_set {"value":N}` selects tab N next frame. `labels` mirrors
+    //! the tabs seen last frame (the header strip is laid out a frame behind so
+    //! it can precede the bodies).
+    @live value : int                         //! active tab index; preserved across reload
+    @optional has_pending : bool              //! imgui_force_set queued; consumed next frame
+    @optional pending_value : int             //! next-frame index queued by imgui_force_set
+    @optional labels : array<string>          //! tab labels from the previous frame (snapshot-visible)
+}
+
 struct TooltipState {
     //! Backs both `tooltip` and `item_tooltip`. Tooltips don't persist —
     //! they're a per-frame chrome pop.

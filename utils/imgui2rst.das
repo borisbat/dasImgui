@@ -28,7 +28,7 @@ require imgui/imgui_widgets_builtin
 def document_module_imgui_boost_v2() {
     var mod = find_module("imgui_boost_v2")
     var groups <- array<DocGroup>(
-        group_by_regex("Container macros",       mod, %regex~^(window|child|group|tab_bar|tab_item|menu_bar|menu|popup|modal|tree_node|collapsing_header)$%%),
+        group_by_regex("Container macros",       mod, %regex~^(window|child|group|tab_bar|tab_item|wrap_tab_bar|wrap_tab_item|menu_bar|menu|popup|modal|tree_node|collapsing_header)$%%),
         group_by_regex("Widget annotation macros", mod, %regex~^(define_widget|widget|container)$%%),
         group_by_regex("ID scope macros",        mod, %regex~^(with_id|with_path)$%%),
         group_by_regex("Style scope macros",     mod, %regex~^(with_style|with_color|with_var)$%%),

@@ -559,6 +559,104 @@ def edit_tab_item(var p_open : bool? implicit; text : string;
     edit_container_open_close_finalize(widget_ident, "edit_tab_item", p_open, header_bbox)
 }
 
+// ===== Wrapping tab bar (multi-row) =====
+// ImGui's native TabBar shrinks tabs to fit (ellipsizing labels) or scrolls
+// them behind arrows; it never wraps to multiple rows. `wrap_tab_bar` /
+// `wrap_tab_item` draw the tab headers as a wrapped strip of highlighted
+// buttons (as many rows as the width needs) and render only the active tab's
+// body. The body renders AFTER the whole strip, so the strip is laid out from
+// the labels collected on the PREVIOUS frame — a label-set change appears one
+// frame late (never visible for a stable category list after frame 1).
+
+struct private WrapCtx {
+    value : int               // active tab index for this bar
+    count : int               // running declaration index of wrap_tab_item calls
+    labels : array<string>    // labels collected this frame -> state.labels
+}
+var private g_wrap : array<WrapCtx>   // bar stack (supports nesting)
+
+[widget_dispatch]
+def _wrap_tab_bar_dispatch(var state : WrapTabBarState; action : string; payload : string) {
+    if (action == "set") {
+        unsafe {
+            sscan_json_at(payload, addr(state.pending_value),
+                          *reinterpret<TypeInfo const?>(typeinfo rtti_typeinfo(type<int>)))
+        }
+        state.has_pending = true
+    }
+}
+
+def private draw_wrap_strip(var state : WrapTabBarState) {
+    let n = length(state.labels)
+    return if (n == 0)
+    state.value = clamp(state.value, 0, n - 1)
+    let pad = GetStyle().FramePadding.x
+    let spacing = GetStyle().ItemSpacing.x
+    let vis_x2 = GetWindowPos().x + GetWindowContentRegionMax().x
+    var last_x2 = 0.0f
+    for (i in range(n)) {
+        let lbl = state.labels[i]
+        if (i > 0) {
+            let bw = CalcTextSize(lbl).x + pad * 2.0f
+            if (last_x2 + spacing + bw < vis_x2) {
+                SameLine()
+            }
+        }
+        let is_active = i == state.value
+        if (is_active) {
+            PushStyleColor(ImGuiCol.Button, GetStyleColorVec4(ImGuiCol.ButtonActive))
+        }
+        if (Button(lbl, ImVec2(0.0f, 0.0f))) {
+            state.value = i
+        }
+        if (is_active) {
+            PopStyleColor(1)
+        }
+        last_x2 = GetItemRectMax().x
+    }
+    Separator()
+}
+
+[container]
+def wrap_tab_bar(var state : WrapTabBarState; blk : block) {
+    //! A multi-row, wrapping tab bar — the container ImGui's native `tab_bar`
+    //! isn't: when tabs overflow the width it shrinks/ellipsizes or scrolls,
+    //! while this one wraps the header strip onto as many rows as needed and
+    //! shows only the active tab's body. Active tab is an index;
+    //! `imgui_force_set {"value":N}` selects tab N next frame. Pair with
+    //! `wrap_tab_item`. The header strip lays out from the labels seen on the
+    //! previous frame, so a changed label set appears one frame late.
+    if (state.has_pending) {
+        state.value = state.pending_value
+        state.has_pending = false
+    }
+    draw_wrap_strip(state)
+    var ctx : WrapCtx
+    ctx.value = state.value
+    g_wrap |> emplace(ctx)
+    invoke(blk)
+    let top = length(g_wrap) - 1
+    state.labels <- g_wrap[top].labels
+    g_wrap |> resize(top)
+    pending_value_container_finalize(widget_ident, "wrap_tab_bar", state)
+}
+
+def public wrap_tab_item(text : string; blk : block) {
+    //! One tab of a `wrap_tab_bar`. Its body block renders only while this tab
+    //! is the active one. Tabs are indexed in declaration order — keep the
+    //! order stable across frames (the header strip is laid out a frame behind).
+    let top = length(g_wrap) - 1
+    return if (top < 0)
+    let idx = g_wrap[top].count
+    g_wrap[top].count = idx + 1
+    g_wrap[top].labels |> push(text)
+    if (idx == g_wrap[top].value) {
+        PushID(text)
+        invoke(blk)
+        PopID()
+    }
+}
+
 // ===== Tooltip family =====
 
 [container]
