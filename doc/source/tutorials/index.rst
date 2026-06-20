@@ -61,3 +61,4 @@ construction.
    popups.rst
    edit_tab_item.rst
    icons.rst
+   wrap_tab_bar.rst
