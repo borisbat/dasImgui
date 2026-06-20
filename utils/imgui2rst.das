@@ -23,6 +23,7 @@ require imgui/imgui_style_builtin
 require imgui/imgui_transport
 require imgui/imgui_visual_aids
 require imgui/imgui_widgets_builtin
+require imgui/imgui_icons
 
 
 def document_module_imgui_boost_v2() {
@@ -200,6 +201,60 @@ def dasimgui_root() : string {
     return dir_name(dir_name(string(m.fileName)))
 }
 
+// dasImgui icon catalog — a hand-built visual reference page. imgui_icons draws
+// runtime vector geometry (no asset files), so the catalog images are rendered
+// offline by utils/make_icon_doc.das into _static/icons/<name>.png (committed)
+// and laid out here grouped by category. Enumeration comes straight from the
+// module's public catalog accessors, so the page can never drift from the set.
+let RULE = "----------------------------------------"
+
+def generate_icon_catalog() {
+    let path = "{topic_root}/imgui_icons.rst"
+    mkdir_rec(dir_name(path))
+    var f = fopen(path, "wb")
+    if (f == null) {
+        panic("can't open {path}")
+    }
+    fwrite(f, "\n")
+    fwrite(f, "Icon set\n========\n\n")
+    fwrite(f, "The dasImgui icon set is a growing collection of asset-free vector glyphs ")
+    fwrite(f, "drawn directly onto the ImGui draw list -- no SVG, no texture atlas. Every ")
+    fwrite(f, "glyph is geometry on a logical 24x24 grid, tinted from the daslang amber accent.\n\n")
+    fwrite(f, "Draw a glyph at the cursor with ``icon(name, size)``; for a clickable, ")
+    fwrite(f, "snapshot-visible button use the ``icon_button`` widget (see ")
+    fwrite(f, ":doc:`imgui_widgets_builtin`). Enumerate the set programmatically with ")
+    fwrite(f, "``icon_count`` / ``icon_name`` / ``icon_category`` -- e.g. to build a picker. ")
+    fwrite(f, "Reference a glyph inline in prose with the ``:icon:`name``` role, e.g. the ")
+    fwrite(f, ":icon:`play` button.\n\n")
+
+    var cur = ""
+    var grid_open = false
+    for (i in range(icon_count())) {
+        let nm = icon_name(i)
+        let cat = icon_category(i)
+        if (cat != cur) {
+            if (grid_open) {
+                fwrite(f, "   </div>\n\n")
+            }
+            cur = cat
+            fwrite(f, "{cat}\n{RULE}\n\n")
+            fwrite(f, ".. raw:: html\n\n")
+            fwrite(f, "   <div class=\"icon-catalog\">\n")
+            grid_open = true
+        }
+        fwrite(f, "   <figure class=\"icon-card\"><img src=\"../../_static/icons/{nm}.png\" alt=\"{nm}\"><figcaption>{nm}</figcaption></figure>\n")
+    }
+    if (grid_open) {
+        fwrite(f, "   </div>\n\n")
+    }
+
+    fwrite(f, "API\n{RULE}\n\n")
+    fwrite(f, "- ``icon(name : string; size : float = 20.0; weight : float = 1.0)`` -- draw a glyph at the cursor (no interaction); advances the cursor.\n")
+    fwrite(f, "- ``icon_button_draw(id, glyph : string; size, weight : float)`` -- low-level clickable icon button; returns true on click. Prefer the ``icon_button`` widget for snapshot / playwright support.\n")
+    fwrite(f, "- ``icon_count() : int`` / ``icon_name(i) : string`` / ``icon_category(i) : string`` -- enumerate the catalog (the source of this page).\n\n")
+    fclose(f)
+}
+
 [export]
 def main {
     disable_profiler(this_context())
@@ -220,5 +275,6 @@ def main {
         document_module_imgui_playwright()
         document_module_imgui_live()
         document_module_imgui_transport()
+        generate_icon_catalog()
     }
 }

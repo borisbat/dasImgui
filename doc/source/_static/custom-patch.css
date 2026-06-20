@@ -136,3 +136,49 @@ html { scroll-padding-top: 80px; }
 .rst-content dt.sig-object { color: var(--fg-dim); }
 .rst-content dt.sig-object .sig-name,
 .rst-content dt.sig-object .sig-name.descname { color: var(--amber) !important; }
+
+/* G12 — :icon:`name` inline glyph (PNGs from utils/make_icon_doc.das). The
+ * source images are 128x128 amber-on-transparent; ride the text baseline. */
+.rst-content img.dasimgui-icon {
+    height: 1.2em;
+    width: auto;
+    vertical-align: -0.22em;
+    margin: 0 0.12em;
+}
+/* Catalog table: larger fixed tiles, left-aligned in their cell. */
+.rst-content img.dasimgui-icon-tile {
+    height: 34px;
+    width: 34px;
+    vertical-align: middle;
+}
+
+/* Icon catalog grid (generated imgui_icons.rst). Card per glyph: image + name. */
+.rst-content .icon-catalog {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 8px 0 24px;
+}
+.rst-content .icon-catalog .icon-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 80px;
+    padding: 10px 4px 6px;
+    margin: 0;
+    background: var(--bg-2);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+}
+.rst-content .icon-catalog .icon-card img {
+    width: 36px;
+    height: 36px;
+}
+.rst-content .icon-catalog .icon-card figcaption {
+    margin-top: 8px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--fg-faint);
+    text-align: center;
+    word-break: break-word;
+}
