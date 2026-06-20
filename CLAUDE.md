@@ -109,20 +109,19 @@ def update() {
 }
 ```
 
-**`harness_*` (in `imgui_harness`):** higher-level wrapper used by `examples/features/*.das` and `examples/imgui_demo/harness_*.das`. Same flow folded into 3 calls. The synth IO override is OPT-IN:
+**`harness_*` (in `imgui_harness`):** higher-level wrapper used by `examples/features/*.das` and `examples/imgui_demo/harness_*.das`. Same flow folded into 3 calls:
 
 ```daslang
 [export]
 def update() {
     if (!harness_begin_frame()) return
-    harness_apply_synth_io()          //! REQUIRED if recorder drives synth IO
-    harness_new_frame()
+    harness_new_frame()               // runs imgui_synth_tick() built-in — synth IO drains here
     // ... widgets ...
     harness_end_frame()
 }
 ```
 
-**Always call `harness_apply_synth_io()` if the harness is the target of any `record_*.das` driver or any test that posts `imgui_mouse_play`/`imgui_key_play`.** Without it, GLFW's mouse poll overwrites the synth pos every frame — cursor sprite is invisible in recordings, synth clicks never reach widget hover/active state, menus stay closed.
+**`harness_new_frame()` runs `imgui_synth_tick()` itself** (between the backend `*_NewFrame()` and ImGui's `NewFrame()`), so synthetic mouse/keyboard and `set_user_control` work on every harness app with **no opt-in** — a harness recording/test that posts `imgui_mouse_play` / `imgui_click` needs no extra call. (Earlier versions exposed a separate `harness_apply_synth_io()`; that was folded into `harness_new_frame()` and no longer exists.) The `live_*` lifecycle has no such fold — it must call `apply_synth_io_override()` explicitly (see above).
 
 ## Lint (`widgets/imgui_lint.das`)
 

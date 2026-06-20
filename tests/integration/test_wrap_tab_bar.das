@@ -46,3 +46,36 @@ def test_wrap_tab_bar(t : T?) {
         t |> success(!widget_rendered(snap2, "WTB_WIN/WTB_BAR/WTB_B0"), "tab 0 body hidden after switch")
     }
 }
+
+[test]
+def test_wrap_tab_bar_click_by_name(t : T?) {
+    // The header strip registers each tab as a clickable alias WTB_BAR/<label>
+    // (register_clickable_bbox), so a REAL synth click selects a tab by name -
+    // not just force_set by index. This is what the tutorial recording drives.
+    with_imgui_app(WRAP_FEATURE) $(d) {
+        var snap = wait_for_widget(d, "WTB_WIN/WTB_BAR/lava", 30.0f)
+        t |> success(snap != null, "lava header registers as a clickable alias by name")
+        if (snap == null) {
+            return
+        }
+        t |> equal(find_widget(snap, "WTB_WIN/WTB_BAR/lava")?["kind"] ?? "", "wrap_tab_item",
+                   "header alias kind is wrap_tab_item")
+
+        // Click "lava" (index 2) by name -> active index follows.
+        click(d, "WTB_WIN/WTB_BAR/lava")
+        var snap_lava = wait_until_sec(d, 15.0f) $(var s) {
+            return (widget_payload_field(s, "WTB_WIN/WTB_BAR", "value") ?? -1) == 2
+        }
+        t |> success(snap_lava != null, "clicking lava by name selects tab 2")
+        if (snap_lava != null) {
+            t |> success(widget_rendered(snap_lava, "WTB_WIN/WTB_BAR/WTB_B2"), "lava body renders after click")
+        }
+
+        // Click a header on the second wrapped row ("grid", index 6) -> follows too.
+        click(d, "WTB_WIN/WTB_BAR/grid")
+        var snap_grid = wait_until_sec(d, 15.0f) $(var s) {
+            return (widget_payload_field(s, "WTB_WIN/WTB_BAR", "value") ?? -1) == 6
+        }
+        t |> success(snap_grid != null, "clicking grid (second row) by name selects tab 6")
+    }
+}
