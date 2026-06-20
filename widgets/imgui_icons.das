@@ -504,113 +504,149 @@ def private ic_clock(var ctx : IconCtx) {
     Disc(ctx, 12.0f, 12.0f, 0.8f)
 }
 
+// ===== Catalog (single source of truth) =====
+// One row per glyph drives the dispatch table below, the public catalog
+// accessors, the doc generator (utils/imgui2rst), and utils/make_icon_doc.
+// To add a glyph: write an `ic_*` routine above, then add ONE row here.
+
+struct private IconDef {
+    name     : string
+    category : string
+    draw     : function<(var ctx : IconCtx) : void>
+}
+
+let private CATALOG <- [
+    // Transport
+    IconDef(name="play",          category="Transport",        draw=@@ ic_play),
+    IconDef(name="pause",         category="Transport",        draw=@@ ic_pause),
+    IconDef(name="stop",          category="Transport",        draw=@@ ic_stop),
+    IconDef(name="record",        category="Transport",        draw=@@ ic_record),
+    IconDef(name="loop",          category="Transport",        draw=@@ ic_loop),
+    IconDef(name="prev",          category="Transport",        draw=@@ ic_prev),
+    IconDef(name="next",          category="Transport",        draw=@@ ic_next),
+    IconDef(name="rewind",        category="Transport",        draw=@@ ic_rewind),
+    IconDef(name="forward",       category="Transport",        draw=@@ ic_forward),
+    // Edit
+    IconDef(name="cut",           category="Edit",             draw=@@ ic_cut),
+    IconDef(name="add",           category="Edit",             draw=@@ ic_add),
+    IconDef(name="duplicate",     category="Edit",             draw=@@ ic_duplicate),
+    IconDef(name="delete",        category="Edit",             draw=@@ ic_delete),
+    IconDef(name="undo",          category="Edit",             draw=@@ ic_undo),
+    IconDef(name="redo",          category="Edit",             draw=@@ ic_redo),
+    IconDef(name="zoom-in",       category="Edit",             draw=@@ ic_zoom_in),
+    IconDef(name="zoom-out",      category="Edit",             draw=@@ ic_zoom_out),
+    // Visualize
+    IconDef(name="waveform",      category="Visualize",        draw=@@ ic_waveform),
+    IconDef(name="spectrum",      category="Visualize",        draw=@@ ic_spectrum),
+    IconDef(name="envelope",      category="Visualize",        draw=@@ ic_envelope),
+    IconDef(name="filter",        category="Visualize",        draw=@@ ic_filter),
+    IconDef(name="eq",            category="Visualize",        draw=@@ ic_eq),
+    IconDef(name="grid",          category="Visualize",        draw=@@ ic_grid),
+    // Mix
+    IconDef(name="volume",        category="Mix",              draw=@@ ic_volume),
+    IconDef(name="mute",          category="Mix",              draw=@@ ic_mute),
+    IconDef(name="fader",         category="Mix",              draw=@@ ic_fader),
+    IconDef(name="sliders",       category="Mix",              draw=@@ ic_sliders),
+    IconDef(name="pan",           category="Mix",              draw=@@ ic_pan),
+    IconDef(name="metronome",     category="Mix",              draw=@@ ic_metronome),
+    IconDef(name="mic",           category="Mix",              draw=@@ ic_mic),
+    IconDef(name="headphones",    category="Mix",              draw=@@ ic_headphones),
+    // Organize
+    IconDef(name="layers",        category="Organize",         draw=@@ ic_layers),
+    IconDef(name="folder",        category="Organize",         draw=@@ ic_folder),
+    IconDef(name="save",          category="Organize",         draw=@@ ic_save),
+    IconDef(name="export",        category="Organize",         draw=@@ ic_export),
+    IconDef(name="import",        category="Organize",         draw=@@ ic_import),
+    IconDef(name="visible",       category="Organize",         draw=@@ ic_visible),
+    IconDef(name="lock",          category="Organize",         draw=@@ ic_lock),
+    IconDef(name="unlock",        category="Organize",         draw=@@ ic_unlock),
+    IconDef(name="marker",        category="Organize",         draw=@@ ic_marker),
+    IconDef(name="snap",          category="Organize",         draw=@@ ic_snap),
+    // Synth
+    IconDef(name="solo",          category="Synth",            draw=@@ ic_solo),
+    IconDef(name="link",          category="Synth",            draw=@@ ic_link),
+    IconDef(name="unlink",        category="Synth",            draw=@@ ic_unlink),
+    IconDef(name="dice",          category="Synth",            draw=@@ ic_dice),
+    IconDef(name="mutate",        category="Synth",            draw=@@ ic_mutate),
+    IconDef(name="wave-sine",     category="Synth",            draw=@@ ic_wave_sine),
+    IconDef(name="wave-square",   category="Synth",            draw=@@ ic_wave_square),
+    IconDef(name="wave-saw",      category="Synth",            draw=@@ ic_wave_saw),
+    IconDef(name="wave-triangle", category="Synth",            draw=@@ ic_wave_triangle),
+    IconDef(name="wave-noise",    category="Synth",            draw=@@ ic_wave_noise),
+    IconDef(name="bell",          category="Synth",            draw=@@ ic_bell),
+    IconDef(name="knob",          category="Synth",            draw=@@ ic_knob),
+    IconDef(name="copy",          category="Synth",            draw=@@ ic_copy),
+    IconDef(name="paste",         category="Synth",            draw=@@ ic_paste),
+    // Scene tools
+    IconDef(name="cursor",        category="Scene tools",      draw=@@ ic_cursor),
+    IconDef(name="select-box",    category="Scene tools",      draw=@@ ic_select_box),
+    IconDef(name="hand",          category="Scene tools",      draw=@@ ic_hand),
+    IconDef(name="move",          category="Scene tools",      draw=@@ ic_move),
+    IconDef(name="rotate",        category="Scene tools",      draw=@@ ic_rotate),
+    IconDef(name="scale",         category="Scene tools",      draw=@@ ic_scale),
+    IconDef(name="flip-h",        category="Scene tools",      draw=@@ ic_flip_h),
+    IconDef(name="flip-v",        category="Scene tools",      draw=@@ ic_flip_v),
+    // Scene objects
+    IconDef(name="cube",          category="Scene objects",    draw=@@ ic_cube),
+    IconDef(name="node",          category="Scene objects",    draw=@@ ic_node),
+    IconDef(name="terrain",       category="Scene objects",    draw=@@ ic_terrain),
+    IconDef(name="light",         category="Scene objects",    draw=@@ ic_light),
+    IconDef(name="camera",        category="Scene objects",    draw=@@ ic_camera),
+    IconDef(name="target",        category="Scene objects",    draw=@@ ic_target),
+    IconDef(name="warning",       category="Scene objects",    draw=@@ ic_warning),
+    IconDef(name="zone",          category="Scene objects",    draw=@@ ic_zone),
+    IconDef(name="bolt",          category="Scene objects",    draw=@@ ic_bolt),
+    // Arrange
+    IconDef(name="merge",         category="Arrange",          draw=@@ ic_merge),
+    IconDef(name="split",         category="Arrange",          draw=@@ ic_split),
+    IconDef(name="group",         category="Arrange",          draw=@@ ic_group),
+    IconDef(name="ungroup",       category="Arrange",          draw=@@ ic_ungroup),
+    IconDef(name="edit",          category="Arrange",          draw=@@ ic_edit),
+    IconDef(name="to-front",      category="Arrange",          draw=@@ ic_to_front),
+    IconDef(name="to-back",       category="Arrange",          draw=@@ ic_to_back),
+    IconDef(name="align-left",    category="Arrange",          draw=@@ ic_align_left),
+    IconDef(name="align-center",  category="Arrange",          draw=@@ ic_align_center),
+    IconDef(name="align-right",   category="Arrange",          draw=@@ ic_align_right),
+    // Editor transport
+    IconDef(name="step-forward",  category="Editor transport", draw=@@ ic_step_forward),
+    IconDef(name="skip-start",    category="Editor transport", draw=@@ ic_skip_start),
+    IconDef(name="skip-end",      category="Editor transport", draw=@@ ic_skip_end),
+    IconDef(name="refresh",       category="Editor transport", draw=@@ ic_refresh),
+    // View
+    IconDef(name="zoom-fit",      category="View",             draw=@@ ic_zoom_fit),
+    IconDef(name="zoom-reset",    category="View",             draw=@@ ic_zoom_reset),
+    IconDef(name="fullscreen",    category="View",             draw=@@ ic_fullscreen),
+    IconDef(name="hidden",        category="View",             draw=@@ ic_hidden),
+    // File
+    IconDef(name="new",           category="File",             draw=@@ ic_new),
+    // General
+    IconDef(name="gear",          category="General",          draw=@@ ic_gear),
+    IconDef(name="search",        category="General",          draw=@@ ic_search),
+    IconDef(name="info",          category="General",          draw=@@ ic_info),
+    IconDef(name="help",          category="General",          draw=@@ ic_help),
+    IconDef(name="close",         category="General",          draw=@@ ic_close),
+    IconDef(name="check",         category="General",          draw=@@ ic_check),
+    IconDef(name="chevron-right", category="General",          draw=@@ ic_chevron_right),
+    IconDef(name="chevron-down",  category="General",          draw=@@ ic_chevron_down),
+    IconDef(name="grip",          category="General",          draw=@@ ic_grip),
+    IconDef(name="minus",         category="General",          draw=@@ ic_minus),
+    IconDef(name="palette",       category="General",          draw=@@ ic_palette),
+    IconDef(name="pin",           category="General",          draw=@@ ic_pin),
+    IconDef(name="clock",         category="General",          draw=@@ ic_clock)
+]
+
+var private DISPATCH : table<string; function<(var ctx : IconCtx) : void>>
+
 // ===== Dispatch =====
 def draw_icon(name : string; var ctx : IconCtx) {
-    if (name == "play") { ic_play(ctx) }
-    elif (name == "pause") { ic_pause(ctx) }
-    elif (name == "stop") { ic_stop(ctx) }
-    elif (name == "record") { ic_record(ctx) }
-    elif (name == "loop") { ic_loop(ctx) }
-    elif (name == "prev") { ic_prev(ctx) }
-    elif (name == "next") { ic_next(ctx) }
-    elif (name == "rewind") { ic_rewind(ctx) }
-    elif (name == "forward") { ic_forward(ctx) }
-    elif (name == "cut") { ic_cut(ctx) }
-    elif (name == "add") { ic_add(ctx) }
-    elif (name == "duplicate") { ic_duplicate(ctx) }
-    elif (name == "delete") { ic_delete(ctx) }
-    elif (name == "undo") { ic_undo(ctx) }
-    elif (name == "redo") { ic_redo(ctx) }
-    elif (name == "zoom-in") { ic_zoom_in(ctx) }
-    elif (name == "zoom-out") { ic_zoom_out(ctx) }
-    elif (name == "waveform") { ic_waveform(ctx) }
-    elif (name == "spectrum") { ic_spectrum(ctx) }
-    elif (name == "envelope") { ic_envelope(ctx) }
-    elif (name == "filter") { ic_filter(ctx) }
-    elif (name == "eq") { ic_eq(ctx) }
-    elif (name == "grid") { ic_grid(ctx) }
-    elif (name == "volume") { ic_volume(ctx) }
-    elif (name == "mute") { ic_mute(ctx) }
-    elif (name == "fader") { ic_fader(ctx) }
-    elif (name == "sliders") { ic_sliders(ctx) }
-    elif (name == "pan") { ic_pan(ctx) }
-    elif (name == "metronome") { ic_metronome(ctx) }
-    elif (name == "mic") { ic_mic(ctx) }
-    elif (name == "headphones") { ic_headphones(ctx) }
-    elif (name == "layers") { ic_layers(ctx) }
-    elif (name == "folder") { ic_folder(ctx) }
-    elif (name == "save") { ic_save(ctx) }
-    elif (name == "export") { ic_export(ctx) }
-    elif (name == "import") { ic_import(ctx) }
-    elif (name == "visible") { ic_visible(ctx) }
-    elif (name == "lock") { ic_lock(ctx) }
-    elif (name == "unlock") { ic_unlock(ctx) }
-    elif (name == "marker") { ic_marker(ctx) }
-    elif (name == "snap") { ic_snap(ctx) }
-    // --- expansion set ---
-    elif (name == "solo") { ic_solo(ctx) }
-    elif (name == "link") { ic_link(ctx) }
-    elif (name == "unlink") { ic_unlink(ctx) }
-    elif (name == "dice") { ic_dice(ctx) }
-    elif (name == "mutate") { ic_mutate(ctx) }
-    elif (name == "wave-sine") { ic_wave_sine(ctx) }
-    elif (name == "wave-square") { ic_wave_square(ctx) }
-    elif (name == "wave-saw") { ic_wave_saw(ctx) }
-    elif (name == "wave-triangle") { ic_wave_triangle(ctx) }
-    elif (name == "wave-noise") { ic_wave_noise(ctx) }
-    elif (name == "bell") { ic_bell(ctx) }
-    elif (name == "knob") { ic_knob(ctx) }
-    elif (name == "copy") { ic_copy(ctx) }
-    elif (name == "paste") { ic_paste(ctx) }
-    elif (name == "cursor") { ic_cursor(ctx) }
-    elif (name == "select-box") { ic_select_box(ctx) }
-    elif (name == "hand") { ic_hand(ctx) }
-    elif (name == "move") { ic_move(ctx) }
-    elif (name == "rotate") { ic_rotate(ctx) }
-    elif (name == "scale") { ic_scale(ctx) }
-    elif (name == "flip-h") { ic_flip_h(ctx) }
-    elif (name == "flip-v") { ic_flip_v(ctx) }
-    elif (name == "cube") { ic_cube(ctx) }
-    elif (name == "node") { ic_node(ctx) }
-    elif (name == "terrain") { ic_terrain(ctx) }
-    elif (name == "light") { ic_light(ctx) }
-    elif (name == "camera") { ic_camera(ctx) }
-    elif (name == "target") { ic_target(ctx) }
-    elif (name == "warning") { ic_warning(ctx) }
-    elif (name == "zone") { ic_zone(ctx) }
-    elif (name == "bolt") { ic_bolt(ctx) }
-    elif (name == "merge") { ic_merge(ctx) }
-    elif (name == "split") { ic_split(ctx) }
-    elif (name == "group") { ic_group(ctx) }
-    elif (name == "ungroup") { ic_ungroup(ctx) }
-    elif (name == "edit") { ic_edit(ctx) }
-    elif (name == "to-front") { ic_to_front(ctx) }
-    elif (name == "to-back") { ic_to_back(ctx) }
-    elif (name == "align-left") { ic_align_left(ctx) }
-    elif (name == "align-center") { ic_align_center(ctx) }
-    elif (name == "align-right") { ic_align_right(ctx) }
-    elif (name == "step-forward") { ic_step_forward(ctx) }
-    elif (name == "skip-start") { ic_skip_start(ctx) }
-    elif (name == "skip-end") { ic_skip_end(ctx) }
-    elif (name == "refresh") { ic_refresh(ctx) }
-    elif (name == "zoom-fit") { ic_zoom_fit(ctx) }
-    elif (name == "zoom-reset") { ic_zoom_reset(ctx) }
-    elif (name == "fullscreen") { ic_fullscreen(ctx) }
-    elif (name == "hidden") { ic_hidden(ctx) }
-    elif (name == "new") { ic_new(ctx) }
-    elif (name == "gear") { ic_gear(ctx) }
-    elif (name == "search") { ic_search(ctx) }
-    elif (name == "info") { ic_info(ctx) }
-    elif (name == "help") { ic_help(ctx) }
-    elif (name == "close") { ic_close(ctx) }
-    elif (name == "check") { ic_check(ctx) }
-    elif (name == "chevron-right") { ic_chevron_right(ctx) }
-    elif (name == "chevron-down") { ic_chevron_down(ctx) }
-    elif (name == "grip") { ic_grip(ctx) }
-    elif (name == "minus") { ic_minus(ctx) }
-    elif (name == "palette") { ic_palette(ctx) }
-    elif (name == "pin") { ic_pin(ctx) }
-    elif (name == "clock") { ic_clock(ctx) }
+    if (empty(DISPATCH)) {
+        for (d in CATALOG) {
+            DISPATCH[d.name] = d.draw
+        }
+    }
+    if (key_exists(DISPATCH, name)) {
+        invoke(DISPATCH[name], ctx)
+    }
 }
 
 // ===== Public API =====
@@ -652,4 +688,23 @@ def public icon_button_draw(id : string; glyph : string; size : float = 20.0f; w
         th = (2.0f / 24.0f) * size * weight)
     draw_icon(glyph, ctx)
     return pressed
+}
+
+// ===== Catalog accessors =====
+// Enumerate the set without exposing the draw routines. Used by the doc
+// generator and make_icon_doc; also handy for building an in-app icon picker.
+
+def public icon_count() : int {
+    //! Number of icons in the set.
+    return length(CATALOG)
+}
+
+def public icon_name(i : int) : string {
+    //! Glyph name at catalog index `i` (0..icon_count()-1) — pass to `icon` / `icon_button`.
+    return CATALOG[i].name
+}
+
+def public icon_category(i : int) : string {
+    //! Catalog category (grouping label) of the glyph at index `i`.
+    return CATALOG[i].category
 }

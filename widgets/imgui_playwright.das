@@ -1087,7 +1087,8 @@ def public hold_remainder_content(app : ImguiApp; dwell_ms : uint; start_frames 
 
 def private is_button_kind(kind : string) : bool {
     return (kind == "button" || kind == "small_button" || kind == "arrow_button" ||
-            kind == "invisible_button" || kind == "image_button" || kind == "tab_item_button")
+            kind == "invisible_button" || kind == "image_button" || kind == "tab_item_button" ||
+            kind == "icon_button")
 }
 
 def private split_alias(target : string) : tuple<string; int> {

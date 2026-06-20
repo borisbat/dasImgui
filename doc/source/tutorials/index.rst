@@ -60,3 +60,4 @@ construction.
    tree_image_misc.rst
    popups.rst
    edit_tab_item.rst
+   icons.rst

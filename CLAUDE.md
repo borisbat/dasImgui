@@ -210,6 +210,18 @@ Sphinx-based tutorial site. CI gates `-W` (warnings-as-errors) BUT pre-runs `uti
 
 Tutorial pages live in `doc/source/tutorials/*.rst` and embed MP4 recordings from `doc/source/_static/tutorials/*.mp4` via the local `.. video:: name.mp4` directive (registered in `doc/source/tutorial_video.py`). Each tutorial appears in `doc/source/tutorials/index.rst`'s toctree.
 
+### Icon catalog (`imgui_icons`)
+
+The icon set ships a generated catalog page (`generated/imgui_icons.rst`, built by `generate_icon_catalog()` in `utils/imgui2rst.das` straight from the module's `icon_count`/`icon_name`/`icon_category` accessors — it can't drift from the set). Its images are **committed PNGs** under `doc/source/_static/icons/<name>.png`, one per glyph. The `:icon:`name`` inline role (registered in `doc/source/icon_role.py`) renders a glyph inline in any `//!` docstring or handmade page.
+
+`imgui_icons` draws **runtime vector geometry** (no asset files), so the PNGs are rendered offline by **`utils/make_icon_doc.das`** — the single regeneration entry point — which drives a real ImGui frame and reads back the framebuffer, so it must run **windowed** (not in CI):
+
+```bash
+<daslang>/bin/Release/daslang -project_root . utils/make_icon_doc.das
+```
+
+Run it after adding/changing a glyph in `widgets/imgui_icons.das`, then commit the new PNGs. A missing PNG fails the `-W` sphinx build (the catalog references it), so CI catches a forgotten regen.
+
 ## Tutorial recordings — MP4 in source, APNG ignored
 
 **`doc/source/_static/tutorials/*.mp4` ships in-tree** (~5 MB total for the full set). The `.apng` plus all voiceover/music intermediates (`voiceover/*.wav`, `*.manifest.json`, `*.sidecar.json`, `*_music.wav`, `*.mp4.ffmpeg.txt`) are gitignored — only the `.mp4` deliverable is tracked.

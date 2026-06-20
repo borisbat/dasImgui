@@ -13,7 +13,7 @@ import time
 # Make the vendored `daslang` Sphinx domain importable.
 sys.path.insert(0, os.path.abspath('.'))
 
-extensions = ['daslang', 'tutorial_video', 'sphinx.ext.intersphinx']
+extensions = ['daslang', 'tutorial_video', 'icon_role', 'sphinx.ext.intersphinx']
 
 # Resolve cross-refs to daslang core (JsonValue, ImGuiCol, etc.) against the
 # published daslang documentation. Sphinx fetches objects.inv at build time.
