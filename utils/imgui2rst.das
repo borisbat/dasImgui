@@ -28,7 +28,7 @@ require imgui/imgui_widgets_builtin
 def document_module_imgui_boost_v2() {
     var mod = find_module("imgui_boost_v2")
     var groups <- array<DocGroup>(
-        group_by_regex("Container macros",       mod, %regex~^(window|child|group|tab_bar|tab_item|menu_bar|menu|popup|modal|tree_node|collapsing_header)$%%),
+        group_by_regex("Container macros",       mod, %regex~^(window|child|group|tab_bar|tab_item|wrap_tab_bar|wrap_tab_item|menu_bar|menu|popup|modal|tree_node|collapsing_header)$%%),
         group_by_regex("Widget annotation macros", mod, %regex~^(define_widget|widget|container)$%%),
         group_by_regex("ID scope macros",        mod, %regex~^(with_id|with_path)$%%),
         group_by_regex("Style scope macros",     mod, %regex~^(with_style|with_color|with_var)$%%),
@@ -83,7 +83,7 @@ def document_module_imgui_containers_builtin() {
     var mod = find_module("imgui_containers_builtin")
     var groups <- array<DocGroup>(
         group_by_regex("Windows",       mod, %regex~^(window|child|group|child_scroll_reenter|set_window_size|viewport_center|is_mouse_pos_valid)$%%),
-        group_by_regex("Tabs",          mod, %regex~^(tab_bar|tab_item)$%%),
+        group_by_regex("Tabs",          mod, %regex~^(tab_bar|tab_item|wrap_tab_bar|wrap_tab_item)$%%),
         group_by_regex("Trees",         mod, %regex~^(tree_node|collapsing_header)$%%),
         group_by_regex("Menus",         mod, %regex~^(menu_bar|menu|menu_item)$%%),
         group_by_regex("Popups",        mod, %regex~^(popup|modal|tooltip|open_popup|open_popup_on_item_click|close_current_popup|is_popup_open)$%%),
