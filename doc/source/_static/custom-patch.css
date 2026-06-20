@@ -145,12 +145,6 @@ html { scroll-padding-top: 80px; }
     vertical-align: -0.22em;
     margin: 0 0.12em;
 }
-/* Catalog table: larger fixed tiles, left-aligned in their cell. */
-.rst-content img.dasimgui-icon-tile {
-    height: 34px;
-    width: 34px;
-    vertical-align: middle;
-}
 
 /* Icon catalog grid (generated imgui_icons.rst). Card per glyph: image + name. */
 .rst-content .icon-catalog {
