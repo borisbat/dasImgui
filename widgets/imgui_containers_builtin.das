@@ -609,6 +609,10 @@ def private draw_wrap_strip(var state : WrapTabBarState) {
         if (Button(lbl, ImVec2(0.0f, 0.0f))) {
             state.value = i
         }
+        // Surface each header as <bar>/<label> so a real synth click can select
+        // a tab by name (not just imgui_force_set the index). Selection lands in
+        // state.value, which the container serializes for verification.
+        register_clickable_bbox(lbl, lbl, "wrap_tab_item")
         if (is_active) {
             PopStyleColor(1)
         }

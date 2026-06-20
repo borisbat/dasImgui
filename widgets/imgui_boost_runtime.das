@@ -1333,18 +1333,21 @@ def public register_radio_site_alias(widget_ident : string; v_button : int;
     widgets_mark_seen(alias, alias, "radio_button_int", state_addr, ti)
 }
 
-def public register_handle_bbox(tag : string) {
-    //! Surface a split/dock drag-handle's geometry as a child alias ``<container>/HANDLE``,
-    //! so external drivers and recordings can target a REAL synthetic drag at the handle
-    //! instead of only ``imgui_force_set``-ing the fraction. Geometry-only (no state): written
-    //! straight into ``g_registry``, so it rides the per-frame clear and surfaces via
-    //! ``imgui_snapshot``'s registry-only pass with no freshness bookkeeping. Call from inside
-    //! the ``[container]`` body, right after the handle ``InvisibleButton(tag, …)`` — the
-    //! open-container chain still names this split, and ``GetItemRectMin/Max`` / ``GetID(tag)``
-    //! still report the handle. Mirrors ``register_radio_site_alias``.
-    let alias = widget_path_key("HANDLE")
-    check_unique_render(alias, "splitter_handle")   // loud on a duplicated container ident, like every finalize
-    var entry = WidgetEntry(kind = "splitter_handle", hex_id = GetID(tag))
+def public register_clickable_bbox(alias_ident : string; id_tag : string; kind : string) {
+    //! Surface a draw-time clickable region (a raw ``Button`` / ``InvisibleButton`` a
+    //! ``[container]`` draws itself, with no ``[widget]`` of its own) as the child alias
+    //! ``<container>/alias_ident``, so external drivers and recordings can target a REAL
+    //! synthetic click/drag by path instead of only ``imgui_force_set``. Geometry-only (no
+    //! state): written straight into ``g_registry``, so it rides the per-frame clear and
+    //! surfaces via ``imgui_snapshot``'s registry-only pass with no freshness bookkeeping.
+    //! Call from inside the ``[container]`` body, right after the ``Button(id_tag, …)`` —
+    //! the open-container chain still names this container, and ``GetItemRectMin/Max`` /
+    //! ``GetID(id_tag)`` still report that item. ``id_tag`` is the ImGui label/id passed to
+    //! the button (used for ``GetID``); ``alias_ident`` is the snapshot path leaf (usually
+    //! the same string). The generic form behind ``register_handle_bbox``.
+    let alias = widget_path_key(alias_ident)
+    check_unique_render(alias, kind)   // loud on a duplicated alias, like every finalize
+    var entry = WidgetEntry(kind = kind, hex_id = GetID(id_tag))
     let rmin = GetItemRectMin()
     let rmax = GetItemRectMax()
     capture_item_bbox(entry, float4(rmin.x, rmin.y, rmax.x, rmax.y))
@@ -1353,6 +1356,16 @@ def public register_handle_bbox(tag : string) {
     g_id_to_path[entry.hex_id] = alias
     g_id_to_bbox[entry.hex_id] = entry.bbox
     g_registry[alias] <- entry
+}
+
+def public register_handle_bbox(tag : string) {
+    //! Surface a split/dock drag-handle's geometry as a child alias ``<container>/HANDLE``,
+    //! so external drivers and recordings can target a REAL synthetic drag at the handle
+    //! instead of only ``imgui_force_set``-ing the fraction. Call from inside the
+    //! ``[container]`` body, right after the handle ``InvisibleButton(tag, …)``. Thin
+    //! specialization of ``register_clickable_bbox`` with the fixed ``HANDLE`` alias (a
+    //! split has exactly one handle). Mirrors ``register_radio_site_alias``.
+    register_clickable_bbox("HANDLE", tag, "splitter_handle")
 }
 
 def private widgets_mark_seen(bare_ident : string; path_key : string;
@@ -1507,7 +1520,7 @@ def private widget_meta_jv(_path_key : string; meta : WidgetMeta) : JsonValue? {
 
 def private io_jv() : JsonValue? {
     let pos = GetMousePos()
-    var tab : table<string; JsonValue?>
+    var tab : table<string; JsonValue?>   // nolint:STYLE021 - active_id/active_widget below are conditional keys; JV((...)) can't express conditional fields
     tab |> insert("mouse_pos", JV(float2(pos.x, pos.y)))
     tab |> insert("mouse_buttons", JV(IsMouseDown(ImGuiMouseButton.Left),
                                       IsMouseDown(ImGuiMouseButton.Middle),
@@ -1577,6 +1590,11 @@ def private classify_target(target : string) : tuple<int; string> {
         return (1, target)
     }
     if (key_exists(g_widgets, target)) return (2, target)
+    // Geometry-only clickable aliases (register_clickable_bbox / register_handle_bbox):
+    // no dispatcher, click/drag by bbox only -> level 1 (like a hex_id), resolved by path
+    // via widget_rect's g_registry hit. Lets a wrap_tab_item header / split handle be
+    // clicked BY NAME, not just by hex_id.
+    if (key_exists(g_registry, target)) return (1, target)
     return (0, target)
 }
 
