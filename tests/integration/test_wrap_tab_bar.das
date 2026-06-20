@@ -19,7 +19,9 @@ let WRAP_FEATURE = "modules/dasImgui/examples/tutorial/wrap_tab_bar.das"
 [test]
 def test_wrap_tab_bar(t : T?) {
     with_imgui_app(WRAP_FEATURE) $(d) {
-        var snap = wait_for_widget(d, "WTB_WIN/WTB_BAR", 15.0f)
+        // 30s (not the usual 15) — the macOS CI lane runs serially on a starved
+        // runner; the host can take >15s to spawn + render its first widget frame.
+        var snap = wait_for_widget(d, "WTB_WIN/WTB_BAR", 30.0f)
         t |> success(snap != null, "wrap_tab_bar renders")
         if (snap == null) {
             return
@@ -33,7 +35,7 @@ def test_wrap_tab_bar(t : T?) {
 
         // drive: select tab 2 (lava) by index — exercises has_pending/pending_value
         force_set_value(d, "WTB_WIN/WTB_BAR", JV(2))
-        var snap2 = wait_until_sec(d, 5.0f) $(var s) {
+        var snap2 = wait_until_sec(d, 15.0f) $(var s) {
             return (widget_payload_field(s, "WTB_WIN/WTB_BAR", "value") ?? -1) == 2
         }
         t |> success(snap2 != null, "force_set selects tab 2")

@@ -83,7 +83,7 @@ def document_module_imgui_containers_builtin() {
     var mod = find_module("imgui_containers_builtin")
     var groups <- array<DocGroup>(
         group_by_regex("Windows",       mod, %regex~^(window|child|group|child_scroll_reenter|set_window_size|viewport_center|is_mouse_pos_valid)$%%),
-        group_by_regex("Tabs",          mod, %regex~^(tab_bar|tab_item)$%%),
+        group_by_regex("Tabs",          mod, %regex~^(tab_bar|tab_item|wrap_tab_bar|wrap_tab_item)$%%),
         group_by_regex("Trees",         mod, %regex~^(tree_node|collapsing_header)$%%),
         group_by_regex("Menus",         mod, %regex~^(menu_bar|menu|menu_item)$%%),
         group_by_regex("Popups",        mod, %regex~^(popup|modal|tooltip|open_popup|open_popup_on_item_click|close_current_popup|is_popup_open)$%%),
