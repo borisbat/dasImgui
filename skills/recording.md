@@ -112,7 +112,7 @@ The recorder captures the host's framebuffer at `fps` Hz from `record_start` to 
 
 If the host is a **tutorial** (`examples/tutorial/*.das`, `live_*` lifecycle): nothing extra — these already call `apply_synth_io_override()` between `ImGui_ImplGlfw_NewFrame()` and `NewFrame()`. That override drains BOTH the synth-IO timelines AND `advance_coroutines` — the latter is what advances `imgui_click`'s animated `click_at_coro`; without it, a hand-rolled tutorial loop's synth clicks silently no-op.
 
-If the host is a **harness** (`examples/features/*.das`, `harness_*` lifecycle): the harness **must call `harness_apply_synth_io()`** between `harness_begin_frame()` and `harness_new_frame()`. Without it `synth_cursor_owned` stays false (GLFW's poll wins the race), the cursor sprite + trail paint at the off-window OS cursor (invisible in the recording), and synth clicks never reach ImGui's hover/active state. The harness exposes it as OPTIONAL because most feature smokes only `wait_for_widget`; once you record one, it's mandatory.
+If the host is a **harness** (`examples/features/*.das`, `harness_*` lifecycle): nothing extra — `harness_new_frame()` runs `imgui_synth_tick()` built-in (between the backend `*_NewFrame()` and ImGui's `NewFrame()`), so synth IO drains on every harness app with no opt-in. (Earlier versions required a separate `harness_apply_synth_io()` call; it was folded into `harness_new_frame()` and no longer exists.) Without that tick, `synth_cursor_owned` would stay false (GLFW's poll wins the race), the cursor sprite + trail would paint at the off-window OS cursor, and synth clicks would never reach ImGui's hover/active state — but `harness_new_frame()` already prevents all of that.
 
 ## Driver model (current)
 
@@ -210,7 +210,7 @@ mcp__daslang__live_command name="imgui_mouse_play" args='{"events":[{"t_ms":0,"k
 mcp__daslang__live_command name="screenshot" args='{"file":"<dasimgui>/diag.png"}'
 ```
 
-`Read` the PNG. If the screenshot shows what you expect but the APNG doesn't, the bug is in the recording path; if neither shows it, the synth IO isn't draining (recheck `harness_apply_synth_io`).
+`Read` the PNG. If the screenshot shows what you expect but the APNG doesn't, the bug is in the recording path; if neither shows it, the synth IO isn't draining (a harness host drains it in `harness_new_frame()`; a `live_*` host must call `apply_synth_io_override()`).
 
 **Probe 2 — extract APNG frames.**
 
