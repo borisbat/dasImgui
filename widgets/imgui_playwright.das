@@ -24,6 +24,7 @@ require math
 let DEFAULT_LIVE_PORT : int = 9090                   // daslang-live's live_api default port
 let DEFAULT_DEADLOCK_SANITY_SEC : float = 120.0f     // backstop for the frame-counter-never-advances case (crash / true deadlock); never trips on slow-but-progressing
 let DEFAULT_READY_TIMEOUT_SEC : float = 30.0f        // /status must turn 200 OK within this — covers daslang-live boot + GLFW + ImGui ctx
+let MACOS_READY_TIMEOUT_SEC : float = 90.0f          // free Apple-Silicon CI runners (3 vCPU, serial sweep) occasionally take ~40s before daslang-live serves /status — 30s is too tight there
 let ATTACH_PROBE_SEC : float = 0.3f                  // with_recording_app's attach-vs-spawn detection — short enough to feel instant when nothing's listening
 let DEFAULT_TEST_TIMEOUT_SEC : float = 120.0f        // upper bound on the entire popen lifetime, including body + drain
 let DEFAULT_RELOAD_TIMEOUT_SEC : float = 30.0f       // POST /reload to /status.has_error == false convergence
@@ -187,6 +188,14 @@ def public wait_until_ready(app : ImguiApp; timeout_sec : float) : bool {
         sleep(READY_POLL_INTERVAL_MS)
     }
     return false
+}
+
+def private host_ready_timeout_sec() : float {
+    //! Readiness gate for a spawned daslang-live host. Bumped on macOS: the free
+    //! Apple-Silicon CI runners (3 vCPU, serial sweep) occasionally take ~40s before
+    //! the host's libhv loop serves /status, which trips the 30s default and errors a
+    //! random test in the sweep. Win/Linux start in <3s, so they keep the tight gate.
+    return get_platform_name() == "darwin" ? MACOS_READY_TIMEOUT_SEC : DEFAULT_READY_TIMEOUT_SEC
 }
 
 def public get_text(app : ImguiApp; uri : string) : string {
@@ -1645,7 +1654,7 @@ def public with_imgui_app(feature_path : string;
     //! into the spawn so the harness's headless arm fires inside the subprocess.
     let exe = daslang_live_exe()
     let port = DEFAULT_LIVE_PORT + playwright_worker_index()
-    let ready_timeout_sec = DEFAULT_READY_TIMEOUT_SEC
+    let ready_timeout_sec = host_ready_timeout_sec()
     let test_timeout_sec = DEFAULT_TEST_TIMEOUT_SEC
     let app_path = resolve_feature_path(feature_path, feature_root, feature_prefix)
     // -load_module points the spawned daslang-live at the dasImgui module so
@@ -1861,7 +1870,7 @@ def public with_recording_app(feature_path : string;
     let test_timeout_sec = float(eff_max_seconds) + 30.0f
     let exit_code = unsafe(popen_argv(argv, test_timeout_sec, $(f) {
         return if (f == null)
-        if (!wait_until_ready(app, DEFAULT_READY_TIMEOUT_SEC)) {
+        if (!wait_until_ready(app, host_ready_timeout_sec())) {
             unready = true
             captured = unsafe(fread_to_eof(f))
             return
@@ -1896,7 +1905,7 @@ def public with_recording_app(feature_path : string;
         captured = unsafe(fread_to_eof(f))
     }))
     if (unready) {
-        panic("daslang-live not ready after {DEFAULT_READY_TIMEOUT_SEC}s.\nstdout/stderr:\n{captured}")
+        panic("daslang-live not ready after {host_ready_timeout_sec()}s.\nstdout/stderr:\n{captured}")
     }
     if (exit_code == popen_timed_out) {
         panic("daslang-live timed out (>{test_timeout_sec}s).\nstdout/stderr:\n{captured}")
