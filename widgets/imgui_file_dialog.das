@@ -94,6 +94,7 @@ struct private DialogState {
 }
 
 var private g_fd : DialogState = DialogState()
+var private g_last_dir : string   //!< dir of the last confirmed selection — reused as the default start_dir within a session (app may persist it via file_dialog_last_dir / file_dialog_set_last_dir)
 
 let private COL_NAME = 1u
 let private COL_SIZE = 2u
@@ -382,6 +383,7 @@ def private confirm_single(path : string) : FileDialogResult {
     g_fd.result |> push(path)
     FILEDLG.pending_close = true
     g_fd.open = false
+    g_last_dir = g_fd.cur_dir   // remember the folder so the next open starts here, not at cwd
     return FileDialogResult.confirmed
 }
 
@@ -389,6 +391,7 @@ def private confirm_multi(var paths : array<string>) : FileDialogResult {
     g_fd.result <- paths
     FILEDLG.pending_close = true
     g_fd.open = false
+    g_last_dir = g_fd.cur_dir
     return FileDialogResult.confirmed
 }
 
@@ -441,7 +444,9 @@ def public file_dialog_open(cfg : FileDialogConfig) {
     g_fd.filter_labels <- [for (f in cfg.filters); f.caption]
     g_fd.filter_idx = 0
     FILTER_COMBO.value = empty(cfg.filters) ? -1 : 0
-    g_fd.start_dir = normalize(empty(cfg.start_dir) ? getcwd() : cfg.start_dir)
+    // start at the explicit start_dir, else the last folder used this session, else cwd
+    let fallback = empty(g_last_dir) ? getcwd() : g_last_dir
+    g_fd.start_dir = normalize(empty(cfg.start_dir) ? fallback : cfg.start_dir)
     g_fd.cur_dir = g_fd.start_dir
     g_fd.selection |> clear()
     g_fd.result |> clear()
@@ -466,6 +471,19 @@ def public file_dialog_open(cfg : FileDialogConfig) {
     rebuild_view()
     rebuild_crumbs()
     FILEDLG.pending_open = true
+}
+
+//! The folder of the last confirmed selection this session ("" if none yet). Persist
+//! it to app config on exit, then restore via file_dialog_set_last_dir on startup to
+//! make the dialog reopen at the user's last folder across runs.
+def public file_dialog_last_dir() : string {
+    return g_last_dir
+}
+
+//! Seed the remembered start folder (e.g. from saved app config on startup). An empty
+//! string clears it (back to cwd-default).
+def public file_dialog_set_last_dir(dir : string) {
+    g_last_dir = empty(dir) ? "" : normalize(dir)
 }
 
 //! Render the modal if open and return this frame's result. Call every frame.

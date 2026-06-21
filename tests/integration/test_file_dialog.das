@@ -183,3 +183,49 @@ def test_file_dialog(t : T?) {
         }
     }
 }
+
+[test]
+def test_file_dialog_remembers_last_dir(t : T?) {
+    with_imgui_app(FILE_DIALOG_FEATURE) $(d) {
+        // Open save, navigate into a subfolder, confirm there — then REOPEN and assert the dialog lands
+        // back in that subfolder (it remembers the last confirmed folder this session) rather than the
+        // start dir. Drives the full capture-on-confirm -> reuse-on-open path over the live API.
+        var snap = wait_for_widget(d, "FDLG_WIN/BTN_SAVE", 15.0f)
+        t |> success(snap != null, "demo Save trigger renders")
+        if (snap == null) {
+            return
+        }
+        click(d, "FDLG_WIN/BTN_SAVE")
+        t |> success(wait_for_widget(d, "FILEDLG/FILE_TABLE", 10.0f) != null, "save dialog opens")
+        let p0 = widget_payload_field(snapshot(d), "FILEDLG/PATH_FIELD", "value") ?? ""
+
+        let folder = find_folder_row(d)
+        if (empty(folder)) {
+            // no clickably-visible folder at the start dir — can't exercise navigation; skip (no flake)
+            t |> success(true, "skipped — no visible folder at the start dir to navigate into")
+            return
+        }
+        let before = count_crumbs(d)
+        double_click(d, folder)
+        var entered = wait_until_sec(d, 5.0f) $(var cs) {
+            return count_crumbs_in(cs) > before
+        }
+        t |> success(entered != null, "navigated into a subfolder")
+        if (entered == null) {
+            return
+        }
+        let p1 = widget_payload_field(entered, "FILEDLG/PATH_FIELD", "value") ?? ""
+        t |> success(!empty(p1) && p1 != p0, "subfolder path differs from the start dir")
+
+        // confirm a save here — captures this folder as the remembered dir + closes the dialog
+        force_set_value(d, "FILEDLG/NAME_FIELD", JV("zzz_remember_probe"))
+        click(d, "FILEDLG/BTN_OK")
+        t |> success(wait_result(d, "zzz_remember_probe"), "save confirmed in the subfolder")
+
+        // reopen — must land in the remembered subfolder, not the original start dir
+        click(d, "FDLG_WIN/BTN_SAVE")
+        t |> success(wait_for_widget(d, "FILEDLG/FILE_TABLE", 10.0f) != null, "save dialog reopens")
+        let p2 = widget_payload_field(snapshot(d), "FILEDLG/PATH_FIELD", "value") ?? ""
+        t |> success(p2 == p1, "reopened at the remembered folder, not the start dir")
+    }
+}

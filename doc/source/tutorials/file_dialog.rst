@@ -83,6 +83,8 @@ Public API
    def public file_dialog_selected_path() : string      // first selection (convenience)
    def public file_dialog_current_dir() : string
    def public file_dialog_is_open() : bool
+   def public file_dialog_last_dir() : string                 // last confirmed folder this session
+   def public file_dialog_set_last_dir(dir : string) : void   // seed it (persist across runs)
    // convenience: parse a C#-style "caption|ext;ext|caption|ext|..." pipe spec
    def public file_filters(spec : string) : array<FileDialogFilter>
 
@@ -90,6 +92,12 @@ The result is polled, not pushed: ``file_dialog_draw()`` returns ``confirmed``
 exactly on the frame the user commits, ``cancelled`` on the frame they close /
 press *Escape*, and ``none`` otherwise. The accessors stay valid from the
 ``confirmed`` frame until the dialog is reopened.
+
+A blank ``start_dir`` opens the dialog at the last folder a selection was
+confirmed in this session, then the working directory. ``file_dialog_set_last_dir``
+seeds that folder (e.g. from saved app config on startup) and
+``file_dialog_last_dir`` reads it back to persist across runs; an explicit
+``start_dir`` always wins.
 
 Modes
 =====
