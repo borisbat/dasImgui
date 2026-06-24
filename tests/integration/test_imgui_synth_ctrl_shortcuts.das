@@ -54,25 +54,30 @@ def test_imgui_synth_ctrl_shortcuts(t : T?) {
         }
         reset(d)
 
-        //! Ctrl held via imgui_key_press should show up in the io.key_ctrl
-        //! snapshot field. Sanity check that imgui_live's bypass populates
-        //! the modifier state (NOT a routing test — that's the next case).
+        //! Ctrl held via imgui_key_press should show up in the io modifier
+        //! snapshot. Sanity check that imgui_live's bypass populates the
+        //! modifier state (NOT a routing test — that's the next case).
         t |> run("key_chord_ctrl_visible") <| @(t : T?) {
             var snap0 = wait_for_render(d, "MAIN_WIN/NAME_INPUT", 15.0f)
             t |> success(snap0 != null, "NAME_INPUT renders")
             if (snap0 == null) return
 
+            // ImGui swaps Cmd<>Ctrl inside AddKeyEvent when ConfigMacOSXBehaviors is on
+            // (default on macOS), so a synth LeftCtrl surfaces as the Super modifier there.
+            let macos = snap0?["io"]?["config_macos_behaviors"] ?? false
+            let mod_field = macos ? "key_super" : "key_ctrl"
+
             let ctrl_key = int(ImGuiKey.LeftCtrl)
             post_command(d, "imgui_key_press", JV((key = ctrl_key)))
             let saw_ctrl = wait_until(d, 240) $(var snap) {
-                return snap?["io"]?["key_ctrl"] ?? false
+                return snap?["io"]?[mod_field] ?? false
             }
-            t |> success(saw_ctrl != null, "io.key_ctrl == true while synth Ctrl held via imgui_live")
+            t |> success(saw_ctrl != null, "synth Ctrl held shows up in the io modifier state")
             post_command(d, "imgui_key_release", JV((key = ctrl_key)))
             let cleared = wait_until(d, 240) $(var snap) {
-                return !(snap?["io"]?["key_ctrl"] ?? true)
+                return !(snap?["io"]?[mod_field] ?? true)
             }
-            t |> success(cleared != null, "io.key_ctrl == false after release")
+            t |> success(cleared != null, "io modifier clears after release")
         }
         reset(d)
 

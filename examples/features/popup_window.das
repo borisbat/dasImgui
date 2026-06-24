@@ -23,7 +23,7 @@ var LAST_PICK : string = "(none yet)"
 def init() {
     harness_init("popup_window — container", 640, 480)
     var io & = unsafe(GetIO())
-    io.FontGlobalScale = 1.5
+    unsafe(GetStyle()).FontScaleMain = 1.5
 }
 
 [export]

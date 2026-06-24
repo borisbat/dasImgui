@@ -44,7 +44,7 @@ def init() {
     live_create_window("dasImgui display widgets", 940, 680)
     live_imgui_init(live_window)
     var io & = unsafe(GetIO())
-    io.FontGlobalScale = 1.4
+    unsafe(GetStyle()).FontScaleMain = 1.4
 }
 
 [export]
@@ -85,19 +85,18 @@ def update() {
 
         // Use the ImGui font atlas as our texture — always built by frame 1.
         let io & = unsafe(GetIO())
-        let font_tex = io.Fonts.TexID
-        if (font_tex == null) {
+        if (io.Fonts.TexData == null) {
             text("Font atlas not ready — wait for first frame.")
         } else {
             text("image() against the font atlas - varying uv + tint per call.")
-            image(IMG_PLAIN, (user_texture_id = font_tex,
+            image(IMG_PLAIN, (user_texture_id = io.Fonts.TexRef,
                               size = float2(96.0f, 96.0f),
                               uv0 = float2(0.0f, 0.0f),
                               uv1 = float2(1.0f, 1.0f),
                               tint_col = float4(1.0f, 1.0f, 1.0f, 1.0f),
                               border_col = float4(0.0f, 0.0f, 0.0f, 0.0f)))
             same_line(SL_IMG)
-            image(IMG_TINT, (user_texture_id = font_tex,
+            image(IMG_TINT, (user_texture_id = io.Fonts.TexRef,
                              size = float2(96.0f, 96.0f),
                              uv0 = float2(0.0f, 0.0f),
                              uv1 = float2(1.0f, 1.0f),

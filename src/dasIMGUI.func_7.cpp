@@ -64,7 +64,6 @@ void Module_dasIMGUI::initFunctions_7() {
 // from imgui.h:643:29
 	makeExtern< bool (*)(const char *,ImGuiDir) , ImGui::ArrowButton , SimNode_ExtFuncCall , imguiTempFn>(lib,"ArrowButton","ImGui::ArrowButton")
 		->args({"str_id","dir"})
-		->arg_type(1,makeType<ImGuiDir>(lib))
 		->addToModule(*this, SideEffects::worstDefault);
 // from imgui.h:644:29
 	makeExtern< bool (*)(const char *,bool *) , ImGui::Checkbox , SimNode_ExtFuncCall , imguiTempFn>(lib,"Checkbox","ImGui::Checkbox")

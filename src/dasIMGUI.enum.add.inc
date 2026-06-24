@@ -68,8 +68,6 @@ addEnumFlagOps<ImGuiHoveredFlags_>(*this,lib,"ImGuiHoveredFlags_");
 addEnumFlagOps<ImGuiDockNodeFlags_>(*this,lib,"ImGuiDockNodeFlags_");
 addEnumFlagOps<ImGuiDragDropFlags_>(*this,lib,"ImGuiDragDropFlags_");
 addEnumFlagOps<ImGuiDataType_>(*this,lib,"ImGuiDataType_");
-addEnumFlagOps<ImGuiDir>(*this,lib,"ImGuiDir");
-addEnumFlagOps<ImGuiSortDirection>(*this,lib,"ImGuiSortDirection");
 addEnumFlagOps<ImGuiConfigFlags_>(*this,lib,"ImGuiConfigFlags_");
 addEnumFlagOps<ImGuiBackendFlags_>(*this,lib,"ImGuiBackendFlags_");
 addEnumFlagOps<ImGuiCol_>(*this,lib,"ImGuiCol_");

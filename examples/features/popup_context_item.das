@@ -19,7 +19,7 @@ var LAST_ACTION : string = "(none yet)"
 def init() {
     harness_init("popup_context_item — container", 640, 480)
     var io & = unsafe(GetIO())
-    io.FontGlobalScale = 1.5
+    unsafe(GetStyle()).FontScaleMain = 1.5
 }
 
 [export]

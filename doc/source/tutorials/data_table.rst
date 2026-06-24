@@ -88,9 +88,10 @@ arguments as the underlying ImGui calls, snake_case names:
 ``TableState`` (the container's state struct) echoes per-call config —
 columns, flags, outer_size, inner_width — so snapshot consumers can read
 the table's shape without parsing the daslang call site. Multi-select
-hand-off remains deferred — pinned ImGui 1.90.6 doesn't expose
-``BeginMultiSelect`` / ``ImGuiMultiSelectIO``. A custom row-bg callback
-API would extend the state additively if added later.
+hand-off remains deferred — pinned ImGui 1.92.6 exposes
+``BeginMultiSelect`` / ``ImGuiMultiSelectIO``, but the boost-wrapper
+hand-off has not been designed yet. A custom row-bg callback API would
+extend the state additively if added later.
 
 Sortable tables
 ===============

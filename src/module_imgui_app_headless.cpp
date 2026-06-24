@@ -21,14 +21,31 @@ using namespace das;
 // =====================================================================
 
 DAS_MOD_API void das_imgui_headless_init_fonts() {
+    // Textures are backend-managed (ImFontAtlas::Build()/SetTexID()/TexID are gone
+    // under IMGUI_DISABLE_OBSOLETE_FUNCTIONS). The headless harness has no GPU
+    // backend, so it claims ImGuiBackendFlags_RendererHasTextures and drains
+    // the per-frame texture queue itself (das_imgui_headless_process_textures),
+    // satisfying NewFrame/Render without uploading anything.
     ImGuiIO & io = ImGui::GetIO();
-    if (!io.Fonts->IsBuilt()) {
-        io.Fonts->Build();
+    io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
+}
+
+DAS_MOD_API void das_imgui_headless_process_textures() {
+    // Fake backend: mark every queued texture as honored so ImGui's
+    // texture-status assertions pass. No pixels are uploaded — headless
+    // discards the draw data.
+    ImDrawData * dd = ImGui::GetDrawData();
+    if (dd == nullptr || dd->Textures == nullptr) return;
+    for (ImTextureData * tex : *dd->Textures) {
+        if (tex->Status == ImTextureStatus_WantCreate) {
+            tex->SetTexID((ImTextureID)(intptr_t)1);
+            tex->SetStatus(ImTextureStatus_OK);
+        } else if (tex->Status == ImTextureStatus_WantUpdates) {
+            tex->SetStatus(ImTextureStatus_OK);
+        } else if (tex->Status == ImTextureStatus_WantDestroy) {
+            tex->SetStatus(ImTextureStatus_Destroyed);
+        }
     }
-    // Satisfy ImGui's "is texture present?" assertion paths without an
-    // OpenGL backend — any non-zero TexID is acceptable when no draw
-    // data is consumed.
-    io.Fonts->TexID = (ImTextureID)1;
 }
 
 DAS_MOD_API void das_imgui_headless_set_display_size(float w, float h) {
@@ -60,6 +77,8 @@ public:
             SideEffects::worstDefault, "das_imgui_headless_set_display_size");
         addExtern<DAS_BIND_FUN(das_imgui_headless_advance_dt)>(*this,lib,"imgui_headless_advance_dt",
             SideEffects::worstDefault, "das_imgui_headless_advance_dt");
+        addExtern<DAS_BIND_FUN(das_imgui_headless_process_textures)>(*this,lib,"imgui_headless_process_textures",
+            SideEffects::worstDefault, "das_imgui_headless_process_textures");
         return true;
     }
     virtual ModuleAotType aotRequire ( TextWriter & tw ) const override {
@@ -67,6 +86,7 @@ public:
         tw << "DAS_MOD_API void das_imgui_headless_init_fonts();\n";
         tw << "DAS_MOD_API void das_imgui_headless_set_display_size(float w, float h);\n";
         tw << "DAS_MOD_API void das_imgui_headless_advance_dt(float dt);\n";
+        tw << "DAS_MOD_API void das_imgui_headless_process_textures();\n";
         return ModuleAotType::cpp;
     }
 };

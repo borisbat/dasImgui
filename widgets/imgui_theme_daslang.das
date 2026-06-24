@@ -119,9 +119,9 @@ def public apply_daslang_theme(var style : ImGuiStyle) {
 
     style.Colors[int(ImGuiCol.Tab)]                   = float4(0.122f, 0.102f, 0.071f, 1.0f)
     style.Colors[int(ImGuiCol.TabHovered)]            = btnHover
-    style.Colors[int(ImGuiCol.TabActive)]             = bg2
-    style.Colors[int(ImGuiCol.TabUnfocused)]          = title
-    style.Colors[int(ImGuiCol.TabUnfocusedActive)]    = titleActive
+    style.Colors[int(ImGuiCol.TabSelected)]           = bg2
+    style.Colors[int(ImGuiCol.TabDimmed)]             = title
+    style.Colors[int(ImGuiCol.TabDimmedSelected)]     = titleActive
 
     style.Colors[int(ImGuiCol.PlotLines)]             = amber
     style.Colors[int(ImGuiCol.PlotLinesHovered)]      = fg
@@ -136,7 +136,7 @@ def public apply_daslang_theme(var style : ImGuiStyle) {
 
     style.Colors[int(ImGuiCol.TextSelectedBg)]        = amberSoft
     style.Colors[int(ImGuiCol.DragDropTarget)]        = amber
-    style.Colors[int(ImGuiCol.NavHighlight)]          = amber
+    style.Colors[int(ImGuiCol.NavCursor)]          = amber
     style.Colors[int(ImGuiCol.NavWindowingHighlight)] = float4(0.910f, 0.631f, 0.227f, 0.70f)
     style.Colors[int(ImGuiCol.NavWindowingDimBg)]     = float4(0.0f, 0.0f, 0.0f, 0.50f)
     style.Colors[int(ImGuiCol.ModalWindowDimBg)]      = float4(0.0f, 0.0f, 0.0f, 0.55f)

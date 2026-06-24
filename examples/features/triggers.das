@@ -22,7 +22,7 @@ require imgui/imgui_harness
 def init() {
     harness_init("Phase 0b.1 — triggers", 800, 600)
     var io & = unsafe(GetIO())
-    io.FontGlobalScale = 1.5
+    unsafe(GetStyle()).FontScaleMain = 1.5
 }
 
 [export]
@@ -51,9 +51,8 @@ def update() {
         text("invisible-hotspot clicks: {HOTSPOT.click_count}")
 
         let io & = unsafe(GetIO())
-        let font_tex = io.Fonts.TexID
-        if (font_tex != null) {
-            image_button(FONT_BTN, (text = "font_atlas", user_texture_id = font_tex,
+        if (io.Fonts.TexData != null) {
+            image_button(FONT_BTN, (text = "font_atlas", user_texture_id = io.Fonts.TexRef,
                                     size = float2(48.0f, 48.0f)))
             text("image-button clicks: {FONT_BTN.click_count}")
         }

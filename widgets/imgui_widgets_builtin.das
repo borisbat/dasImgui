@@ -502,7 +502,7 @@ def invisible_button(var state : ClickState; text : string; size : float2;
 }
 
 [widget]
-def image_button(var state : ClickState; text : string; user_texture_id : void?; size : float2;
+def image_button(var state : ClickState; text : string; user_texture_id : ImTextureRef; size : float2;
                  uv0 : float2 = float2(0.0f, 0.0f);
                  uv1 : float2 = float2(1.0f, 1.0f);
                  bg_col : float4 = float4(0.0f, 0.0f, 0.0f, 0.0f);
@@ -1878,22 +1878,24 @@ def progress_bar(var state : ProgressBarState; fraction : float;
 }
 
 [widget]
-def image(var state : ImageState; user_texture_id : void?; size : float2;
+def image(var state : ImageState; user_texture_id : ImTextureRef; size : float2;
           uv0 : float2 = float2(0.0f, 0.0f);
           uv1 : float2 = float2(1.0f, 1.0f);
           tint_col : float4 = float4(1.0f, 1.0f, 1.0f, 1.0f);
           border_col : float4 = float4(0.0f, 0.0f, 0.0f, 0.0f)) {
-    //! Blit `user_texture_id` (an opaque ``ImTextureID``) into a `size`-pixel
-    //! rect with `uv0`/`uv1` sampling coordinates. `tint_col` modulates texel
-    //! color; `border_col` draws a border (zero alpha = none). The texture
-    //! handle is not part of telemetry (opaque); the rest of the args echo
+    //! Blit `user_texture_id` (an ``ImTextureRef`` — e.g. ``GetIO().Fonts.TexRef``)
+    //! into a `size`-pixel rect with `uv0`/`uv1` sampling coordinates. `tint_col`
+    //! modulates texel color. `border_col` is telemetry-only: ``Image`` takes no
+    //! per-call border color (the border comes from the ``ImGuiCol_Border`` style
+    //! at ``ImGuiStyleVar_ImageBorderSize`` thickness).
+    //! The texture handle is not part of telemetry; the rest of the args echo
     //! for snapshot assertions.
     state.size = size
     state.uv0 = uv0
     state.uv1 = uv1
     state.tint_col = tint_col
     state.border_col = border_col
-    Image(user_texture_id, size, uv0, uv1, tint_col, border_col)
+    ImageWithBg(user_texture_id, size, uv0, uv1, float4(0.0f, 0.0f, 0.0f, 0.0f), tint_col)
     image_finalize(widget_ident, "image", state)
 }
 

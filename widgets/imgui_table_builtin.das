@@ -23,8 +23,8 @@ require imgui/imgui_containers_builtin public
 //! Sort-spec capture goes through `sort_specs` (block-arg helper that
 //! yields a daslang-friendly `array<TableSortSpec>` and auto-clears the
 //! dirty flag). Multi-select / frozen-row indicators / custom row-bg
-//! callbacks would extend `TableState` additively in future PRs; pinned
-//! ImGui 1.90.6 does not include the MultiSelect API.
+//! callbacks would extend `TableState` additively in future PRs; no boost
+//! wrapper for the MultiSelect API exists yet.
 
 [container]
 def data_table(var state : TableState; text : string; columns : int;

@@ -1,6 +1,7 @@
 options gen2
 
 require imgui/imgui_harness
+require imgui/imgui_scope_builtin    // with_button_repeat
 
 // =============================================================================
 // FEATURE: internal_button_ex — the imgui_internal.h *Ex buttons that take a
@@ -32,7 +33,7 @@ var g_arrow = "(none)"
 def init() {
     harness_init("internal_button_ex - imgui_internal.h *Ex buttons + behavior flags", 760, 540)
     var io & = unsafe(GetIO())
-    io.FontGlobalScale = 1.25
+    unsafe(GetStyle()).FontScaleMain = 1.25
 }
 
 [export]
@@ -56,9 +57,11 @@ def update() {
         same_line()
         text("clicks: {g_plain}")
 
-        // Repeat (private flag) — held down fires repeatedly.
-        if (ButtonEx("Hold to repeat", auto_sz, ImGuiButtonFlags.None | ImGuiButtonFlagsPrivate.Repeat)) {
-            g_repeat++
+        // with_button_repeat pushes the ButtonRepeat item flag.
+        with_button_repeat(true) {
+            if (ButtonEx("Hold to repeat", auto_sz, ImGuiButtonFlags.None)) {
+                g_repeat++
+            }
         }
         same_line()
         text("repeat fires: {g_repeat}")
@@ -77,33 +80,37 @@ def update() {
         same_line()
         text("right-clicks: {g_right}")
 
-        // Two PRIVATE flags combined (private | private -> ImGuiButtonFlags).
-        if (ButtonEx("Repeat + on-press", auto_sz,
-                     ImGuiButtonFlagsPrivate.Repeat | ImGuiButtonFlagsPrivate.PressedOnClick)) {
-            g_combo++
+        // Repeat (item flag, via with_button_repeat) + PressedOnClick (ButtonFlag).
+        with_button_repeat(true) {
+            if (ButtonEx("Repeat + on-press", auto_sz,
+                         ImGuiButtonFlags.None | ImGuiButtonFlagsPrivate.PressedOnClick)) {
+                g_combo++
+            }
         }
         same_line()
         text("combo fires: {g_combo}")
         separator()
 
-        // ArrowButtonEx in all four directions, each with the Repeat flag.
+        // ArrowButtonEx in all four directions, repeat via with_button_repeat
         text("ArrowButtonEx(str_id, dir, size, flags): directional repeat buttons.")
         let asz = float2(28.0, 28.0)
-        let rep = ImGuiButtonFlags.None | ImGuiButtonFlagsPrivate.Repeat
-        if (ArrowButtonEx("a_left", ImGuiDir.Left, asz, rep)) {
-            g_arrow = "Left"
-        }
-        same_line()
-        if (ArrowButtonEx("a_right", ImGuiDir.Right, asz, rep)) {
-            g_arrow = "Right"
-        }
-        same_line()
-        if (ArrowButtonEx("a_up", ImGuiDir.Up, asz, rep)) {
-            g_arrow = "Up"
-        }
-        same_line()
-        if (ArrowButtonEx("a_down", ImGuiDir.Down, asz, rep)) {
-            g_arrow = "Down"
+        let rep = ImGuiButtonFlags.None
+        with_button_repeat(true) {
+            if (ArrowButtonEx("a_left", ImGuiDir.Left, asz, rep)) {
+                g_arrow = "Left"
+            }
+            same_line()
+            if (ArrowButtonEx("a_right", ImGuiDir.Right, asz, rep)) {
+                g_arrow = "Right"
+            }
+            same_line()
+            if (ArrowButtonEx("a_up", ImGuiDir.Up, asz, rep)) {
+                g_arrow = "Up"
+            }
+            same_line()
+            if (ArrowButtonEx("a_down", ImGuiDir.Down, asz, rep)) {
+                g_arrow = "Down"
+            }
         }
         same_line()
         text("last arrow: {g_arrow}")

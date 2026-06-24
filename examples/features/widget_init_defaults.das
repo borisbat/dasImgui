@@ -58,7 +58,7 @@ def show_defaults(var state : DefaultsState; action : string; payload : string) 
 def init() {
     harness_init("widget_init_defaults", 800, 600)
     var io & = unsafe(GetIO())
-    io.FontGlobalScale = 1.5
+    unsafe(GetStyle()).FontScaleMain = 1.5
 }
 
 [export]

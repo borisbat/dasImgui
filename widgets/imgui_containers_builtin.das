@@ -597,7 +597,7 @@ def private draw_wrap_strip(var state : WrapTabBarState) {
     state.value = clamp(state.value, 0, n - 1)
     let pad = GetStyle().FramePadding.x
     let spacing = GetStyle().ItemSpacing.x
-    let vis_x2 = GetWindowPos().x + GetWindowContentRegionMax().x
+    let vis_x2 = GetCursorScreenPos().x + GetContentRegionAvail().x
     var last_x2 = 0.0f
     for (i in range(n)) {
         let lbl = state.labels[i]

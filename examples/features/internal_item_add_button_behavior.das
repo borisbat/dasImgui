@@ -1,6 +1,7 @@
 options gen2
 
 require imgui/imgui_harness
+require imgui/imgui_scope_builtin    // with_button_repeat
 
 // =============================================================================
 // FEATURE: internal_item_add_button_behavior — assemble a working button entirely
@@ -62,7 +63,7 @@ def private custom_button(str_id : string; w, h : float; flags : ImGuiButtonFlag
 def init() {
     harness_init("internal_item_add_button_behavior - hand-rolled button from primitives", 760, 560)
     var io & = unsafe(GetIO())
-    io.FontGlobalScale = 1.25
+    unsafe(GetStyle()).FontScaleMain = 1.25
 }
 
 [export]
@@ -83,12 +84,15 @@ def update() {
         same_line()
         text("clicks: {g_plain}   hovered={r1._1} held={r1._2}")
 
-        // ----- 2. repeat button — fires while held (ButtonBehavior + Repeat flag) -----
-        let repeat_flags = ImGuiButtonFlags.None | ImGuiButtonFlagsPrivate.Repeat
-        let r2 = custom_button("custom: hold to repeat", 220.0, 36.0, repeat_flags)
-        g_repeat++ if (r2._0)
-        same_line()
-        text("repeat fires: {g_repeat}   hovered={r2._1} held={r2._2}")
+        // ----- 2. repeat button — fires while held -----
+        // with_button_repeat pushes the ButtonRepeat item flag so the inner
+        // ButtonBehavior picks it up from the item-flag stack.
+        with_button_repeat(true) {
+            let r2 = custom_button("custom: hold to repeat", 220.0, 36.0, ImGuiButtonFlags.None)
+            g_repeat++ if (r2._0)
+            same_line()
+            text("repeat fires: {g_repeat}   hovered={r2._1} held={r2._2}")
+        }
         separator()
 
         // ----- 3. ItemAdd 4-arg overload: a nav rect larger than the click box -----

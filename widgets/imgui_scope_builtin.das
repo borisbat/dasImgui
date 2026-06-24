@@ -43,17 +43,18 @@ def public with_disabled(disabled : bool; blk : block) {
 def public with_font(font : ImFont?; blk : block) {
     //! Run ``blk`` with ``PushFont(font)`` applied; matching ``PopFont()`` on return.
     //! ``font`` is typically obtained from the font atlas (e.g. ``GetIO().Fonts.Fonts[i]``).
-    PushFont(font)
+    //! ``0.0f`` keeps the current font size.
+    PushFont(font, 0.0f)
     invoke(blk)
     PopFont()
 }
 
 def public with_button_repeat(repeat : bool; blk : block) {
-    //! Run ``blk`` with ``PushButtonRepeat(repeat)`` applied; matching ``PopButtonRepeat()`` on return.
+    //! Run ``blk`` with the button-repeat item flag applied; cleared on return.
     //! When ``repeat=true``, held-down buttons fire repeated click events at the io.KeyRepeatRate cadence.
-    PushButtonRepeat(repeat)
+    PushItemFlag(int(ImGuiItemFlags.ButtonRepeat), repeat)
     invoke(blk)
-    PopButtonRepeat()
+    PopItemFlag()
 }
 
 def public with_clip_rect(clip_rect_min : float2; clip_rect_max : float2;
@@ -67,11 +68,11 @@ def public with_clip_rect(clip_rect_min : float2; clip_rect_max : float2;
 }
 
 def public with_tab_stop(tab_stop : bool; blk : block) {
-    //! Run ``blk`` with ``PushTabStop(tab_stop)`` applied; matching ``PopTabStop()`` on return.
+    //! Run ``blk`` with the tab-stop item flag applied; cleared on return.
     //! When ``tab_stop=false`` every widget inside ``blk`` is skipped by TAB / Shift+Tab focus cycling.
-    PushTabStop(tab_stop)
+    PushItemFlag(int(ImGuiItemFlags.NoTabStop), !tab_stop)
     invoke(blk)
-    PopTabStop()
+    PopItemFlag()
 }
 
 def public with_item_flag(flag : ImGuiItemFlags; enabled : bool; blk : block) {
@@ -184,13 +185,14 @@ def public with_combo_preview(blk : block) : bool {
     return opened
 }
 
-def public with_log(log_type : ImGuiLogType; auto_open_depth : int; blk : block) {
+def public with_log(log_type : ImGuiLogFlags; auto_open_depth : int; blk : block) {
     //! `LogBegin(log_type, auto_open_depth)` / `LogFinish()`. Captures the rendered text
     //! of every widget submitted in ``blk`` (plus any manual ``LogRenderedText``) to the
-    //! chosen target — ``ImGuiLogType.TTY`` / ``File`` / ``Clipboard`` / ``Buffer``.
+    //! chosen target — ``ImGuiLogFlags.OutputTTY`` / ``OutputFile`` / ``OutputClipboard`` /
+    //! ``OutputBuffer``.
     //! ``auto_open_depth`` is the tree depth to auto-expand (-1 = the default).
     //! Do NOT nest: LogBegin asserts that logging is not already active.
-    LogBegin(log_type, auto_open_depth)
+    LogBegin(int(log_type), auto_open_depth)
     invoke(blk)
     LogFinish()
 }

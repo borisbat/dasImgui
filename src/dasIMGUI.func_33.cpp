@@ -57,7 +57,6 @@ void Module_dasIMGUI::initFunctions_33() {
 // from imgui_internal.h:3904:29
 	makeExtern< void (*)(ImDrawList *,ImVec2,unsigned int,ImGuiDir,float) , ImGui::RenderArrow , SimNode_ExtFuncCall , imguiTempFn>(lib,"RenderArrow","ImGui::RenderArrow")
 		->args({"draw_list","pos","col","dir","scale"})
-		->arg_type(3,makeType<ImGuiDir>(lib))
 		->arg_init(4,new ExprConstFloat(1))
 		->addToModule(*this, SideEffects::worstDefault);
 // from imgui_internal.h:3905:29
@@ -71,7 +70,6 @@ void Module_dasIMGUI::initFunctions_33() {
 // from imgui_internal.h:3907:29
 	makeExtern< void (*)(ImDrawList *,ImVec2,ImVec2,ImGuiDir,unsigned int) , ImGui::RenderArrowPointingAt , SimNode_ExtFuncCall , imguiTempFn>(lib,"RenderArrowPointingAt","ImGui::RenderArrowPointingAt")
 		->args({"draw_list","pos","half_sz","direction","col"})
-		->arg_type(3,makeType<ImGuiDir>(lib))
 		->addToModule(*this, SideEffects::worstDefault);
 // from imgui_internal.h:3908:29
 	makeExtern< void (*)(ImDrawList *,ImVec2,float,unsigned int) , ImGui::RenderArrowDockMenu , SimNode_ExtFuncCall , imguiTempFn>(lib,"RenderArrowDockMenu","ImGui::RenderArrowDockMenu")
@@ -95,7 +93,6 @@ void Module_dasIMGUI::initFunctions_33() {
 // from imgui_internal.h:3920:29
 	makeExtern< bool (*)(const char *,ImGuiDir,ImVec2,int) , ImGui::ArrowButtonEx , SimNode_ExtFuncCall , imguiTempFn>(lib,"ArrowButtonEx","ImGui::ArrowButtonEx")
 		->args({"str_id","dir","size_arg","flags"})
-		->arg_type(1,makeType<ImGuiDir>(lib))
 		->arg_type(3,makeType<ImGuiButtonFlags_>(lib))
 		->arg_init(3,new ExprConstEnumeration(0,makeType<ImGuiButtonFlags_>(lib)))
 		->addToModule(*this, SideEffects::worstDefault);

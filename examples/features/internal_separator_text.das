@@ -24,7 +24,7 @@ require imgui/imgui_harness
 def init() {
     harness_init("internal_separator_text - SeparatorEx / TextEx / SeparatorTextEx", 760, 540)
     var io & = unsafe(GetIO())
-    io.FontGlobalScale = 1.25
+    unsafe(GetStyle()).FontScaleMain = 1.25
 }
 
 [export]

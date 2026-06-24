@@ -66,7 +66,7 @@ def setup_default_layout(dock_id : uint) {
 def init() {
     harness_init("Phase 7 — docking", 1024, 720)
     var io & = unsafe(GetIO())
-    io.FontGlobalScale = 1.5
+    unsafe(GetStyle()).FontScaleMain = 1.5
     io.ConfigFlags |= ImGuiConfigFlags.DockingEnable
 }
 

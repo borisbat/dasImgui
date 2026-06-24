@@ -23,7 +23,7 @@ require imgui/imgui_harness
 def init() {
     harness_init("Phase 0b.3 — containers (window family)", 800, 600)
     var io & = unsafe(GetIO())
-    io.FontGlobalScale = 1.5
+    unsafe(GetStyle()).FontScaleMain = 1.5
 }
 
 [export]
@@ -53,7 +53,7 @@ def update() {
         separator()
 
         child(LEFT_PANEL, (text = "left", size = float2(180.0f, 120.0f),
-                           child_flags = ImGuiChildFlags.Border,
+                           child_flags = ImGuiChildFlags.Borders,
                            window_flags = ImGuiWindowFlags.None)) {
             text("child window")
             checkbox(WIRE, (text = "Wireframe"))

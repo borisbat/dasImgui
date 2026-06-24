@@ -23,7 +23,7 @@ var DROP_COUNT : int = 0
 def init() {
     harness_init("drag_drop — source + target", 720, 480)
     var io & = unsafe(GetIO())
-    io.FontGlobalScale = 1.5
+    unsafe(GetStyle()).FontScaleMain = 1.5
 }
 
 [export]

@@ -25,7 +25,7 @@ require imgui/imgui_harness
 def init() {
     harness_init("internal_item_flag - imgui_internal.h PushItemFlag/PopItemFlag family", 720, 460)
     var io & = unsafe(GetIO())
-    io.FontGlobalScale = 1.25
+    unsafe(GetStyle()).FontScaleMain = 1.25
 }
 
 [export]
@@ -44,18 +44,19 @@ def update() {
         // its real checked state (the classic tri-state look).
         text("MixedValue:")
         checkbox(CB_NORMAL, (text = "plain checkbox"))
-        with_item_flag(ImGuiItemFlags.MixedValue, true) {
+        with_item_flag(ImGuiItemFlags.None | ImGuiItemFlagsPrivate.MixedValue, true) {
             checkbox(CB_MIXED, (text = "same checkbox, drawn as a dash"))
         }
         separator()
 
         // ReadOnly | NoNav — two flags combined into one push via the | operator
         // (imgui_enums). ReadOnly freezes the value on drag; NoNav skips the slider
-        // in keyboard/gamepad navigation. ImGuiItemFlags is an internal enum, so its
-        // bitwise | comes from imgui_enums, not the binder's addEnumFlagOps.
+        // in keyboard/gamepad navigation. ReadOnly lives in the private
+        // ImGuiItemFlagsPrivate enum; the cross-enum | (imgui_enums) combines it with
+        // the public NoNav into one ImGuiItemFlags.
         text("ReadOnly | NoNav (flags combined with the | operator):")
         slider_float(SL_RW, (text = "editable"))
-        with_item_flag(ImGuiItemFlags.ReadOnly | ImGuiItemFlags.NoNav, true) {
+        with_item_flag(ImGuiItemFlagsPrivate.ReadOnly | ImGuiItemFlags.NoNav, true) {
             slider_float(SL_RO, (text = "read-only (drag does nothing), skipped by nav"))
         }
         separator()
@@ -64,7 +65,7 @@ def update() {
         // it; without the flag the wide button would swallow the overlap.
         text("AllowOverlap: the small button sits on top of the wide one.")
         let p = GetCursorScreenPos()
-        with_item_flag(ImGuiItemFlags.AllowOverlap, true) {
+        with_item_flag(ImGuiItemFlags.None | ImGuiItemFlagsPrivate.AllowOverlap, true) {
             button(OVL_UNDER, (text = "wide button underneath", size = float2(300.0, 36.0)))
         }
         SetCursorScreenPos(p)

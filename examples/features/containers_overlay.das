@@ -28,7 +28,7 @@ var TASK_ROW : table<int; ClickState>
 def init() {
     harness_init("Phase 0b.3 — containers (overlay family)", 800, 640)
     var io & = unsafe(GetIO())
-    io.FontGlobalScale = 1.5
+    unsafe(GetStyle()).FontScaleMain = 1.5
 }
 
 [export]

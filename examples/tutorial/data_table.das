@@ -132,7 +132,7 @@ def init() {
     // purpose - not a blanket change to live_imgui_init.
     DisableIniPersistence()
     var io & = unsafe(GetIO())
-    io.FontGlobalScale = 1.4
+    unsafe(GetStyle()).FontScaleMain = 1.4
 }
 
 [export]

@@ -56,7 +56,7 @@ def init() {
     live_create_window("dasImgui color tutorial", 800, 700)
     live_imgui_init(live_window)
     var io & = unsafe(GetIO())
-    io.FontGlobalScale = 1.4
+    unsafe(GetStyle()).FontScaleMain = 1.4
 }
 
 [export]

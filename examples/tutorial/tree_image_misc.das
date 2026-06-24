@@ -53,7 +53,7 @@ def init() {
     live_create_window("dasImgui tree_node_ex + image tutorial", 980, 720)
     live_imgui_init(live_window)
     var io & = unsafe(GetIO())
-    io.FontGlobalScale = 1.4
+    unsafe(GetStyle()).FontScaleMain = 1.4
 }
 
 [export]
@@ -88,9 +88,8 @@ def update() {
         // ---- Stage 2: image — display, no click ----
         text("image (display widget - paints a texture; no ClickState):")
         let io & = unsafe(GetIO())
-        let font_tex = io.Fonts.TexID
-        if (font_tex != null) {
-            image(TI_IMG, (user_texture_id = font_tex,
+        if (io.Fonts.TexData != null) {
+            image(TI_IMG, (user_texture_id = io.Fonts.TexRef,
                            size = float2(128.0f, 128.0f),
                            uv0 = float2(0.0f, 0.0f),
                            uv1 = float2(1.0f, 1.0f),

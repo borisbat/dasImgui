@@ -47,7 +47,7 @@ def update() {
         tab_bar(BAR, (text = "MyTabBar",
                        flags = ImGuiTabBarFlags.AutoSelectNewTabs |
                                ImGuiTabBarFlags.Reorderable |
-                               ImGuiTabBarFlags.FittingPolicyResizeDown)) {
+                               ImGuiTabBarFlags.FittingPolicyShrink)) {
             if (tab_item_button(HELP, (text = "?",
                                         flags = ImGuiTabItemFlags.Leading |
                                                 ImGuiTabItemFlags.NoTooltip))) {

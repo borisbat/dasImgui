@@ -178,7 +178,7 @@ let private WIDGETS_TABS_ADV_NAMES : array<string> <- ["Artichoke", "Beetroot",
 // fills 3 initial tabs on first frame (mirrors cpp:1828-1831).
 var private WIDGETS_TABS_LT_FLAGS = int(ImGuiTabBarFlags.AutoSelectNewTabs |
                                         ImGuiTabBarFlags.Reorderable |
-                                        ImGuiTabBarFlags.FittingPolicyResizeDown)
+                                        ImGuiTabBarFlags.FittingPolicyShrink)
 var private WIDGETS_TABS_LT_ACTIVE : array<int>
 var private WIDGETS_TABS_LT_NEXT_ID = 0
 var private WIDGETS_TABS_LT_DYN : table<int; TabItemState>
@@ -772,8 +772,8 @@ def private TreeNodesSection() {
                  flags_value = ImGuiTreeNodeFlags.SpanFullWidth))
             edit_checkbox_flags(safe_addr(WIDGETS_TREE_BASE_FLAGS),
                 (id = "WIDGETS_TREE_FLAG_SPAN_TEXT_WIDTH",
-                 text = "ImGuiTreeNodeFlags_SpanTextWidth",
-                 flags_value = ImGuiTreeNodeFlags.SpanTextWidth))
+                 text = "ImGuiTreeNodeFlags_SpanLabelWidth",
+                 flags_value = ImGuiTreeNodeFlags.SpanLabelWidth))
             same_line(WIDGETS_SL_18)
             text_disabled("(?)")
             item_tooltip(WIDGETS_TREE_HM3_TIP) {
@@ -848,7 +848,7 @@ def private TreeNodesSection() {
                             }
                         }
                         if (i == 2) {
-                            // Item 2 has an inline button to demonstrate SpanTextWidth.
+                            // Item 2 has an inline button to demonstrate SpanLabelWidth.
                             same_line(WIDGETS_SL_21)
                             small_button(WIDGETS_TREE_INLINE_BTN, (text = "button"))
                         }
@@ -1034,9 +1034,10 @@ def private ImagesSection() {
             "storage to pass pointers or identifier to your own texture data. " +
             "Hover the texture for a zoomed view!"))
 
-        let my_tex_id = io.Fonts.TexID
-        let my_tex_w = float(io.Fonts.TexWidth)
-        let my_tex_h = float(io.Fonts.TexHeight)
+        // read the atlas size from TexData (ImTextureData) and pass
+        // io.Fonts.TexRef (ImTextureRef) directly to image().
+        let my_tex_w = float(io.Fonts.TexData.Width)
+        let my_tex_h = float(io.Fonts.TexData.Height)
 
         checkbox(WIDGETS_IMAGES_USE_TINT, (text = "Use Text Color for Tint"))
         text("{int(my_tex_w)}x{int(my_tex_h)}")
@@ -1046,7 +1047,7 @@ def private ImagesSection() {
         let tint_col = WIDGETS_IMAGES_USE_TINT.value \
             ? GetStyleColorVec4(ImGuiCol.Text) : float4(1.0f, 1.0f, 1.0f, 1.0f)
         let border_col = GetStyleColorVec4(ImGuiCol.Border)
-        image((user_texture_id = my_tex_id,
+        image((user_texture_id = io.Fonts.TexRef,
                size = float2(my_tex_w, my_tex_h),
                uv0 = uv_min, uv1 = uv_max,
                tint_col = tint_col, border_col = border_col))
@@ -1071,7 +1072,7 @@ def private ImagesSection() {
             let uv0 = float2(region_x / my_tex_w, region_y / my_tex_h)
             let uv1 = float2((region_x + region_sz) / my_tex_w,
                              (region_y + region_sz) / my_tex_h)
-            image((user_texture_id = my_tex_id,
+            image((user_texture_id = io.Fonts.TexRef,
                    size = float2(region_sz * zoom, region_sz * zoom),
                    uv0 = uv0, uv1 = uv1,
                    tint_col = tint_col, border_col = border_col))
@@ -1083,10 +1084,10 @@ def private ImagesSection() {
             if (i > 0) {
                 with_style((ImGuiStyleVar.FramePadding,
                             float2(float(i) - 1.0f, float(i) - 1.0f))) {
-                    ImageBtnAt(i, my_tex_id, my_tex_w, my_tex_h)
+                    ImageBtnAt(i, io.Fonts.TexRef, my_tex_w, my_tex_h)
                 }
             } else {
-                ImageBtnAt(i, my_tex_id, my_tex_w, my_tex_h)
+                ImageBtnAt(i, io.Fonts.TexRef, my_tex_w, my_tex_h)
             }
             same_line(WIDGETS_LOOP_IMG_SL[i])
         }
@@ -1097,7 +1098,7 @@ def private ImagesSection() {
 
 // ImageButton helper for the 8-button loop. Wrapped in its own function so
 // `with_style` can wrap a single call cleanly without an if/else split.
-def private ImageBtnAt(i : int; tex_id : void?; tex_w, tex_h : float) {
+def private ImageBtnAt(i : int; tex_id : ImTextureRef; tex_w, tex_h : float) {
     let size = float2(32.0f, 32.0f)
     let uv0 = float2(0.0f, 0.0f)
     let uv1 = float2(32.0f / tex_w, 32.0f / tex_h)
@@ -1764,10 +1765,10 @@ def private TabsAdvancedSection() {
         }
         if (edit_checkbox_flags(safe_addr(WIDGETS_TABS_ADV_FLAGS),
             (id = "WIDGETS_TABS_ADV_F_FIT_RESIZE",
-             text = "ImGuiTabBarFlags_FittingPolicyResizeDown",
-             flags_value = int(ImGuiTabBarFlags.FittingPolicyResizeDown)))) {
+             text = "ImGuiTabBarFlags_FittingPolicyShrink",
+             flags_value = int(ImGuiTabBarFlags.FittingPolicyShrink)))) {
             WIDGETS_TABS_ADV_FLAGS &= ~(POLICY_MASK ^
-                                        int(ImGuiTabBarFlags.FittingPolicyResizeDown))
+                                        int(ImGuiTabBarFlags.FittingPolicyShrink))
         }
         if (edit_checkbox_flags(safe_addr(WIDGETS_TABS_ADV_FLAGS),
             (id = "WIDGETS_TABS_ADV_F_FIT_SCROLL",
@@ -1841,10 +1842,10 @@ def private TabsLeadingTrailingSection() {
         }
         if (edit_checkbox_flags(safe_addr(WIDGETS_TABS_LT_FLAGS),
             (id = "WIDGETS_TABS_LT_F_FIT_RESIZE",
-             text = "ImGuiTabBarFlags_FittingPolicyResizeDown",
-             flags_value = int(ImGuiTabBarFlags.FittingPolicyResizeDown)))) {
+             text = "ImGuiTabBarFlags_FittingPolicyShrink",
+             flags_value = int(ImGuiTabBarFlags.FittingPolicyShrink)))) {
             WIDGETS_TABS_LT_FLAGS &= ~(LT_POLICY_MASK ^
-                                       int(ImGuiTabBarFlags.FittingPolicyResizeDown))
+                                       int(ImGuiTabBarFlags.FittingPolicyShrink))
         }
         if (edit_checkbox_flags(safe_addr(WIDGETS_TABS_LT_FLAGS),
             (id = "WIDGETS_TABS_LT_F_FIT_SCROLL",
@@ -2534,7 +2535,7 @@ def private ColorPickerSection() {
         if (WIDGETS_CP_ALPHA_HALF.value) {
             mf_int |= int(ImGuiColorEditFlags.AlphaPreviewHalf)
         } elif (WIDGETS_CP_ALPHA_PV.value) {
-            mf_int |= int(ImGuiColorEditFlags.AlphaPreview)
+            mf_int |= int(ImGuiColorEditFlags.AlphaOpaque)
         }
         let misc_flags = unsafe(reinterpret<ImGuiColorEditFlags>(mf_int))
 
@@ -3275,13 +3276,12 @@ def private QueryingWindowStatusSection() {
              text = "Embed everything inside a child window for testing _RootWindow flag."))
 
         // Optional outer-child wrapping — exercises _RootWindow / _ChildWindows
-        // distinction on the readouts below. cpp uses ImGuiChildFlags_Border
-        // (renamed Borders in newer imgui).
+        // distinction on the readouts below. cpp uses ImGuiChildFlags_Borders.
         if (WIDGETS_QWS_EMBED) {
             child(WIDGETS_QWS_OUTER_CHILD,
                 (text = "outer_child",
                  size = float2(0.0f, GetFontSize() * 20.0f),
-                 child_flags = ImGuiChildFlags.Border,
+                 child_flags = ImGuiChildFlags.Borders,
                  window_flags = ImGuiWindowFlags.None)) {
                 QueryingWindowStatusBody()
             }
@@ -3371,7 +3371,7 @@ def private QueryingWindowStatusBody() {
     // child to find.
     child(WIDGETS_QWS_INNER_CHILD,
         (text = "child", size = float2(0.0f, 50.0f),
-         child_flags = ImGuiChildFlags.Border,
+         child_flags = ImGuiChildFlags.Borders,
          window_flags = ImGuiWindowFlags.None)) {
         text("This is another child window for testing the _ChildWindows flag.")
     }

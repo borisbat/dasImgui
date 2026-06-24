@@ -61,10 +61,10 @@ def ShowAboutWindow() {
                 if (uint(io.ConfigFlags & ImGuiConfigFlags.NavEnableGamepad) != 0u) {
                     text(" NavEnableGamepad")
                 }
-                if (uint(io.ConfigFlags & ImGuiConfigFlags.NavEnableSetMousePos) != 0u) {
-                    text(" NavEnableSetMousePos")
+                if (io.ConfigNavMoveSetMousePos) {
+                    text(" ConfigNavMoveSetMousePos")
                 }
-                if (uint(io.ConfigFlags & ImGuiConfigFlags.NavNoCaptureKeyboard) != 0u) {
+                if (!io.ConfigNavCaptureKeyboard) {
                     text(" NavNoCaptureKeyboard")
                 }
                 if (uint(io.ConfigFlags & ImGuiConfigFlags.NoMouse) != 0u) {

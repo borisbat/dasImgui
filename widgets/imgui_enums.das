@@ -56,3 +56,21 @@ def public operator |(a, b : ImGuiButtonFlagsPrivate) : ImGuiButtonFlags {
     //! Two private flags combine into ``ImGuiButtonFlags`` (the *Ex arg type).
     return unsafe(reinterpret<ImGuiButtonFlags>(int(a) | int(b))) // nolint:PERF019
 }
+
+//! Cross-enum ``|`` for the item-flag pair. The private item flags
+//! (``MixedValue`` / ``ReadOnly`` / ``AllowOverlap`` / …) in ``ImGuiItemFlagsPrivate``
+//! combine with the public ``ImGuiItemFlags`` that ``with_item_flag`` / ``PushItemFlag``
+//! accept. A lone private flag uses ``ImGuiItemFlags.None | ImGuiItemFlagsPrivate.X``.
+
+def public operator |(a : ImGuiItemFlags; b : ImGuiItemFlagsPrivate) : ImGuiItemFlags {
+    return unsafe(reinterpret<ImGuiItemFlags>(int(a) | int(b)))
+}
+
+def public operator |(a : ImGuiItemFlagsPrivate; b : ImGuiItemFlags) : ImGuiItemFlags {
+    return unsafe(reinterpret<ImGuiItemFlags>(int(a) | int(b)))
+}
+
+def public operator |(a, b : ImGuiItemFlagsPrivate) : ImGuiItemFlags {
+    //! Two private flags combine into ``ImGuiItemFlags`` (the PushItemFlag arg type).
+    return unsafe(reinterpret<ImGuiItemFlags>(int(a) | int(b))) // nolint:PERF019
+}

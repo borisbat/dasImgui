@@ -34,7 +34,7 @@ var g_selected_text : string = ""
 def init() {
     harness_init("narrate placement test", int(VIEW_W), int(VIEW_H))
     var io & = unsafe(GetIO())
-    io.FontGlobalScale = 1.2
+    unsafe(GetStyle()).FontScaleMain = 1.2
 }
 
 def private grid_pos(r : int; c : int) : float2 {

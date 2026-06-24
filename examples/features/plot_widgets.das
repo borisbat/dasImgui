@@ -37,7 +37,7 @@ def fill_histogram(var arr : array<float>) {
 def init() {
     harness_init("Phase 1.5 — plot widgets", 800, 600)
     var io & = unsafe(GetIO())
-    io.FontGlobalScale = 1.5
+    unsafe(GetStyle()).FontScaleMain = 1.5
 }
 
 [export]

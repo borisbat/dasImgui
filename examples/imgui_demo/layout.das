@@ -54,7 +54,7 @@ var LAYOUT_CHILD_DISABLE_MOUSE_WHEEL = false
 var LAYOUT_CHILD_DISABLE_MENU = false
 var LAYOUT_CHILD_OFFSET_X = 0
 var LAYOUT_CHILD_OVERRIDE_BG = true
-var LAYOUT_CHILD_FLAGS = (ImGuiChildFlags.Border |
+var LAYOUT_CHILD_FLAGS = (ImGuiChildFlags.Borders |
                           ImGuiChildFlags.ResizeX |
                           ImGuiChildFlags.ResizeY)
 
@@ -205,7 +205,7 @@ def private ChildWindowsSection() {
         with_style((ImGuiStyleVar.ChildRounding, 5.0f)) {
             child(LAYOUT_CHILD_R,
                   (text = "ChildR", size = float2(0.0f, 260.0f),
-                   child_flags = ImGuiChildFlags.Border,
+                   child_flags = ImGuiChildFlags.Borders,
                    window_flags = unsafe(reinterpret<ImGuiWindowFlags>(win_flags_2)))) {
                 if (!LAYOUT_CHILD_DISABLE_MENU) {
                     menu_bar(LAYOUT_CHILD_MENUBAR) {
@@ -239,7 +239,7 @@ def private ChildWindowsSection() {
                 "to auto-fit to vertical contents."))
         }
         with_style((ImGuiCol.ChildBg, GetStyleColorVec4(ImGuiCol.FrameBg))) {
-            let flags3 = ImGuiChildFlags.Border | ImGuiChildFlags.ResizeY
+            let flags3 = ImGuiChildFlags.Borders | ImGuiChildFlags.ResizeY
             child(LAYOUT_CHILD_RESIZABLE,
                   (text = "ResizableChild",
                    size = float2(-FLT_MIN, GetTextLineHeightWithSpacing() * 8.0f),
@@ -265,7 +265,7 @@ def private ChildWindowsSection() {
             ImVec2(0.0f, GetTextLineHeightWithSpacing() * 1.0f),
             ImVec2(FLT_MAX,
                    GetTextLineHeightWithSpacing() * float(LAYOUT_CHILD_MAX_LINES)))
-        let flags4 = ImGuiChildFlags.Border | ImGuiChildFlags.AutoResizeY
+        let flags4 = ImGuiChildFlags.Borders | ImGuiChildFlags.AutoResizeY
         child(LAYOUT_CHILD_CONSTRAINED,
               (text = "ConstrainedChild",
                size = float2(-FLT_MIN, 0.0f),
@@ -286,7 +286,7 @@ def private ChildWindowsSection() {
             (id = "LAYOUT_CHILD_OVERRIDE_BG", text = "Override ChildBg color"))
         edit_checkbox_flags(safe_addr(LAYOUT_CHILD_FLAGS),
             (id = "LAYOUT_CHILD_F_BORDER", text = "ImGuiChildFlags_Border",
-             flags_value = ImGuiChildFlags.Border))
+             flags_value = ImGuiChildFlags.Borders))
         edit_checkbox_flags(safe_addr(LAYOUT_CHILD_FLAGS),
             (id = "LAYOUT_CHILD_F_AUWP", text = "ImGuiChildFlags_AlwaysUseWindowPadding",
              flags_value = ImGuiChildFlags.AlwaysUseWindowPadding))
@@ -555,7 +555,7 @@ def private BasicHorizontalLayoutSection() {
         text("Manual wrapping:")
         let style & = unsafe(GetStyle())
         let buttons_count = 20
-        let window_visible_x2 = GetWindowPos().x + GetWindowContentRegionMax().x
+        let window_visible_x2 = GetCursorScreenPos().x + GetContentRegionAvail().x
         for (n in range(buttons_count)) {
             with_id("wrap_{n}") {
                 button(LAYOUT_BHL_WRAP_BTN[n], (text = "Box", size = button_sz))
@@ -819,7 +819,7 @@ def private ScrollingSection() {
                             ImGuiWindowFlags.MenuBar : ImGuiWindowFlags.None)
                         child(LAYOUT_VS_CHILD[i],
                               (text = "##vs_{i}", size = float2(child_w, 200.0f),
-                               child_flags = ImGuiChildFlags.Border,
+                               child_flags = ImGuiChildFlags.Borders,
                                window_flags = child_flags)) {
                             menu_bar(LAYOUT_VS_MENU_BAR[i]) {
                                 text_unformatted("abc")
@@ -876,7 +876,7 @@ def private ScrollingSection() {
                 child(LAYOUT_HS_CHILD[i],
                       (text = "##hs_{i}",
                        size = float2(-100.0f, child_height),
-                       child_flags = ImGuiChildFlags.Border,
+                       child_flags = ImGuiChildFlags.Borders,
                        window_flags = unsafe(reinterpret<ImGuiWindowFlags>(hflags)))) {
                     var hit_track = false
                     for (item in range(100)) {
@@ -924,7 +924,7 @@ def private ScrollingSection() {
                                               GetFrameHeightWithSpacing() * 7.0f + 30.0f)
             child(LAYOUT_SCROLL_FB_CHILD,
                   (text = "scrolling", size = scrolling_child_size,
-                   child_flags = ImGuiChildFlags.Border,
+                   child_flags = ImGuiChildFlags.Borders,
                    window_flags = ImGuiWindowFlags.HorizontalScrollbar)) {
                 for (line in range(LAYOUT_SCROLL_HORIZ_LINES)) {
                     let num_buttons = 10 + (((line & 1) != 0) ? line * 9 :
@@ -1108,7 +1108,7 @@ def private HorizontalContentsSizeDemo() {
         if (LAYOUT_HSZ_SHOW_CHILD) {
             child(LAYOUT_HSZ_CHILD,
                   (text = "child", size = float2(0.0f, 0.0f),
-                   child_flags = ImGuiChildFlags.Border,
+                   child_flags = ImGuiChildFlags.Borders,
                    window_flags = ImGuiWindowFlags.None)) {}
         }
     }

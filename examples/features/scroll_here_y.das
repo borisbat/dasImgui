@@ -48,7 +48,7 @@ def update() {
         }
 
         child(SCROLL_AREA, (text = "rows", size = float2(460.0f, 360.0f),
-                            child_flags = ImGuiChildFlags.Border,
+                            child_flags = ImGuiChildFlags.Borders,
                             window_flags = ImGuiWindowFlags.None)) {
             for (i in range(ITEM_COUNT)) {
                 text(ROW[i], (text = "row {i}"))

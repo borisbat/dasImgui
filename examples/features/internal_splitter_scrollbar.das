@@ -28,7 +28,7 @@ var g_scroll = int64(0)
 def init() {
     harness_init("internal_splitter_scrollbar - splitter + scrollbar behaviors", 820, 600)
     var io & = unsafe(GetIO())
-    io.FontGlobalScale = 1.25
+    unsafe(GetStyle()).FontScaleMain = 1.25
 }
 
 [export]
@@ -101,7 +101,7 @@ def update() {
         // Scrollbar(ImGuiAxis.Y) below is the only one drawn for the (overflowing) child.
         text("Scrollbar(axis): the raw current-window scrollbar, drawn in this child:")
         child(SS_CHILD, (text = "scroll_child", size = float2(560.0f, 96.0f),
-                         child_flags = ImGuiChildFlags.Border,
+                         child_flags = ImGuiChildFlags.Borders,
                          window_flags = ImGuiWindowFlags.NoScrollbar)) {
             text("a child whose content is taller than its frame:")
             dummy(CHILD_FILL, ImVec2(1.0, 240.0))

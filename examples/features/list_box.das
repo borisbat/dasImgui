@@ -25,7 +25,7 @@ var LANG_ROW : table<int; ClickState>
 def init() {
     harness_init("list_box — unified scope form", 720, 540)
     var io & = unsafe(GetIO())
-    io.FontGlobalScale = 1.5
+    unsafe(GetStyle()).FontScaleMain = 1.5
 }
 
 [export]

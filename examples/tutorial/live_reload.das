@@ -116,7 +116,7 @@ def init() {
     live_imgui_init(live_window)
     DisableIniPersistence()
     var io & = unsafe(GetIO())
-    io.FontGlobalScale = 1.5
+    unsafe(GetStyle()).FontScaleMain = 1.5
 
     // Re-running init resets g_session_string each reload. (Initial-value
     // assignments at module scope run once at program load, but `init` is

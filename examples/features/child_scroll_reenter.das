@@ -35,7 +35,7 @@ def update() {
         text(LEAD, (text = "Hold the buttons to nudge SCROLLY's scroll position."))
 
         child(SCROLLY, (text = "lines", size = float2(440.0f, 320.0f),
-                        child_flags = ImGuiChildFlags.Border,
+                        child_flags = ImGuiChildFlags.Borders,
                         window_flags = ImGuiWindowFlags.None)) {
             for (i in range(50)) {
                 text(SCROLL_ROW[i], (text = "row {i}"))

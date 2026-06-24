@@ -338,10 +338,9 @@ def private ShowDemoWindowConfiguration() {
             edit_checkbox_flags(cf_ptr,
                 (id = "CFG_NAV_PAD", text = "io.ConfigFlags: NavEnableGamepad",
                  flags_value = ImGuiConfigFlags.NavEnableGamepad))
-            edit_checkbox_flags(cf_ptr,
+            edit_checkbox(unsafe(addr(io.ConfigNavMoveSetMousePos)),
                 (id = "CFG_NAV_MOUSE_POS",
-                 text = "io.ConfigFlags: NavEnableSetMousePos",
-                 flags_value = ImGuiConfigFlags.NavEnableSetMousePos))
+                 text = "io.ConfigNavMoveSetMousePos"))
             edit_checkbox_flags(cf_ptr,
                 (id = "CFG_NO_MOUSE", text = "io.ConfigFlags: NoMouse",
                  flags_value = ImGuiConfigFlags.NoMouse))

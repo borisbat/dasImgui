@@ -34,7 +34,7 @@ def update() {
         text(LEAD, (text = "1000-row virtual list — only the visible chunk is rendered each frame."))
 
         child(SCROLL_AREA, (text = "scroll", size = float2(400.0f, 360.0f),
-                            child_flags = ImGuiChildFlags.Border,
+                            child_flags = ImGuiChildFlags.Borders,
                             window_flags = ImGuiWindowFlags.None)) {
             list_clipper(ITEM_COUNT) $(start; end_) {
                 for (i in range(start, end_)) {

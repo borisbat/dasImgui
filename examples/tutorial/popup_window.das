@@ -44,7 +44,7 @@ def init() {
     live_create_window("dasImgui popup_window tutorial", 760, 480)
     live_imgui_init(live_window)
     var io & = unsafe(GetIO())
-    io.FontGlobalScale = 1.4
+    unsafe(GetStyle()).FontScaleMain = 1.4
 }
 
 [export]

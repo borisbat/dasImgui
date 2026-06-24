@@ -30,7 +30,7 @@ let TRACK_NAMES : array<string> <- ["bass", "lead", "drum", "vocals"]
 def init() {
     harness_init("inputs_indexed", 800, 600)
     var io & = unsafe(GetIO())
-    io.FontGlobalScale = 1.5
+    unsafe(GetStyle()).FontScaleMain = 1.5
     // Pre-populate so first-frame snapshot already has the right bounds + value.
     for (i in range(4)) {
         CHANNEL_VOL[i].bounds = (0.0f, 1.0f)

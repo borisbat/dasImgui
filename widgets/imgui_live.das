@@ -110,7 +110,7 @@ def public live_imgui_init(window : GLFWwindow?; glsl_version : string = "#versi
     apply_daslang_theme()
     ScaleAllSizes(GetStyle(), layout_scale)
     var io & = unsafe(GetIO())
-    io.FontGlobalScale = font_global
+    unsafe(GetStyle()).FontScaleMain = font_global
     ImGui_ImplGlfw_InitForOpenGL(window, true)
     ImGui_ImplOpenGL3_Init(glsl_version)
     // Give the window a defined cursor from the instant it appears — the backend's

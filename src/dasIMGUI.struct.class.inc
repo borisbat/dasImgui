@@ -34,8 +34,7 @@ struct ImGuiTableColumnSortSpecs_GeneratedAnnotation : ManagedStructureAnnotatio
 		addField<DAS_BIND_MANAGED_FIELD(ColumnUserID)>("ColumnUserID","ColumnUserID");
 		addField<DAS_BIND_MANAGED_FIELD(ColumnIndex)>("ColumnIndex","ColumnIndex");
 		addField<DAS_BIND_MANAGED_FIELD(SortOrder)>("SortOrder","SortOrder");
-		addField<ImGuiSortDirection,offsetof(ManagedType,SortDirection)>("SortDirection","SortDirection")
-			.adjustAot("das_reinterpret<ImGuiSortDirection>::pass(",")");
+		addField<DAS_BIND_MANAGED_FIELD(SortDirection)>("SortDirection","SortDirection");
 	}
 };
 
@@ -63,8 +62,7 @@ struct ImGuiStyle_GeneratedAnnotation : ManagedStructureAnnotation<ImGuiStyle> {
 		addField<DAS_BIND_MANAGED_FIELD(WindowBorderHoverPadding)>("WindowBorderHoverPadding","WindowBorderHoverPadding");
 		addField<DAS_BIND_MANAGED_FIELD(WindowMinSize)>("WindowMinSize","WindowMinSize");
 		addField<DAS_BIND_MANAGED_FIELD(WindowTitleAlign)>("WindowTitleAlign","WindowTitleAlign");
-		addField<ImGuiDir,offsetof(ManagedType,WindowMenuButtonPosition)>("WindowMenuButtonPosition","WindowMenuButtonPosition")
-			.adjustAot("das_reinterpret<ImGuiDir>::pass(",")");
+		addField<DAS_BIND_MANAGED_FIELD(WindowMenuButtonPosition)>("WindowMenuButtonPosition","WindowMenuButtonPosition");
 		addField<DAS_BIND_MANAGED_FIELD(ChildRounding)>("ChildRounding","ChildRounding");
 		addField<DAS_BIND_MANAGED_FIELD(ChildBorderSize)>("ChildBorderSize","ChildBorderSize");
 		addField<DAS_BIND_MANAGED_FIELD(PopupRounding)>("PopupRounding","PopupRounding");
@@ -104,8 +102,7 @@ struct ImGuiStyle_GeneratedAnnotation : ManagedStructureAnnotation<ImGuiStyle> {
 		addField<DAS_BIND_MANAGED_FIELD(DragDropTargetBorderSize)>("DragDropTargetBorderSize","DragDropTargetBorderSize");
 		addField<DAS_BIND_MANAGED_FIELD(DragDropTargetPadding)>("DragDropTargetPadding","DragDropTargetPadding");
 		addField<DAS_BIND_MANAGED_FIELD(ColorMarkerSize)>("ColorMarkerSize","ColorMarkerSize");
-		addField<ImGuiDir,offsetof(ManagedType,ColorButtonPosition)>("ColorButtonPosition","ColorButtonPosition")
-			.adjustAot("das_reinterpret<ImGuiDir>::pass(",")");
+		addField<DAS_BIND_MANAGED_FIELD(ColorButtonPosition)>("ColorButtonPosition","ColorButtonPosition");
 		addField<DAS_BIND_MANAGED_FIELD(ButtonTextAlign)>("ButtonTextAlign","ButtonTextAlign");
 		addField<DAS_BIND_MANAGED_FIELD(SelectableTextAlign)>("SelectableTextAlign","SelectableTextAlign");
 		addField<DAS_BIND_MANAGED_FIELD(SeparatorTextBorderSize)>("SeparatorTextBorderSize","SeparatorTextBorderSize");

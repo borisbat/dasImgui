@@ -49,7 +49,7 @@ def init() {
     live_create_window("dasImgui drawlist tutorial", 1000, 800)
     live_imgui_init(live_window)
     var io & = unsafe(GetIO())
-    io.FontGlobalScale = 1.2
+    unsafe(GetStyle()).FontScaleMain = 1.2
 }
 
 [export]
