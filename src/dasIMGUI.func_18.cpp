@@ -12,86 +12,96 @@
 namespace das {
 #include "dasIMGUI.func.aot.decl.inc"
 void Module_dasIMGUI::initFunctions_18() {
-// from imgui.h:986:32
+// from imgui.h:1139:29
+	makeExtern< bool (*)(int) , ImGui::IsMouseReleased , SimNode_ExtFuncCall , imguiTempFn>(lib,"IsMouseReleased","ImGui::IsMouseReleased")
+		->args({"button"})
+		->arg_type(0,makeType<ImGuiMouseButton_>(lib))
+		->addToModule(*this, SideEffects::worstDefault);
+// from imgui.h:1140:29
+	makeExtern< bool (*)(int) , ImGui::IsMouseDoubleClicked , SimNode_ExtFuncCall , imguiTempFn>(lib,"IsMouseDoubleClicked","ImGui::IsMouseDoubleClicked")
+		->args({"button"})
+		->arg_type(0,makeType<ImGuiMouseButton_>(lib))
+		->addToModule(*this, SideEffects::worstDefault);
+// from imgui.h:1141:29
+	makeExtern< bool (*)(int,float) , ImGui::IsMouseReleasedWithDelay , SimNode_ExtFuncCall , imguiTempFn>(lib,"IsMouseReleasedWithDelay","ImGui::IsMouseReleasedWithDelay")
+		->args({"button","delay"})
+		->arg_type(0,makeType<ImGuiMouseButton_>(lib))
+		->addToModule(*this, SideEffects::worstDefault);
+// from imgui.h:1142:29
+	makeExtern< int (*)(int) , ImGui::GetMouseClickedCount , SimNode_ExtFuncCall , imguiTempFn>(lib,"GetMouseClickedCount","ImGui::GetMouseClickedCount")
+		->args({"button"})
+		->arg_type(0,makeType<ImGuiMouseButton_>(lib))
+		->addToModule(*this, SideEffects::worstDefault);
+// from imgui.h:1143:29
+	makeExtern< bool (*)(const ImVec2 &,const ImVec2 &,bool) , ImGui::IsMouseHoveringRect , SimNode_ExtFuncCall , imguiTempFn>(lib,"IsMouseHoveringRect","ImGui::IsMouseHoveringRect")
+		->args({"r_min","r_max","clip"})
+		->arg_init(2,new ExprConstBool(true))
+		->addToModule(*this, SideEffects::worstDefault);
+// from imgui.h:1144:29
+	makeExtern< bool (*)(const ImVec2 *) , ImGui::IsMousePosValid , SimNode_ExtFuncCall , imguiTempFn>(lib,"IsMousePosValid","ImGui::IsMousePosValid")
+		->args({"mouse_pos"})
+		->arg_init(0,new ExprConstPtr())
+		->addToModule(*this, SideEffects::worstDefault);
+// from imgui.h:1145:29
+	makeExtern< bool (*)() , ImGui::IsAnyMouseDown , SimNode_ExtFuncCall , imguiTempFn>(lib,"IsAnyMouseDown","ImGui::IsAnyMouseDown")
+		->addToModule(*this, SideEffects::worstDefault);
+// from imgui.h:1146:29
+	makeExtern< ImVec2 (*)() , ImGui::GetMousePos , SimNode_ExtFuncCall , imguiTempFn>(lib,"GetMousePos","ImGui::GetMousePos")
+		->addToModule(*this, SideEffects::worstDefault);
+// from imgui.h:1147:29
+	makeExtern< ImVec2 (*)() , ImGui::GetMousePosOnOpeningCurrentPopup , SimNode_ExtFuncCall , imguiTempFn>(lib,"GetMousePosOnOpeningCurrentPopup","ImGui::GetMousePosOnOpeningCurrentPopup")
+		->addToModule(*this, SideEffects::worstDefault);
+// from imgui.h:1148:29
+	makeExtern< bool (*)(int,float) , ImGui::IsMouseDragging , SimNode_ExtFuncCall , imguiTempFn>(lib,"IsMouseDragging","ImGui::IsMouseDragging")
+		->args({"button","lock_threshold"})
+		->arg_type(0,makeType<ImGuiMouseButton_>(lib))
+		->arg_init(1,new ExprConstFloat(-1))
+		->addToModule(*this, SideEffects::worstDefault);
+// from imgui.h:1149:29
+	makeExtern< ImVec2 (*)(int,float) , ImGui::GetMouseDragDelta , SimNode_ExtFuncCall , imguiTempFn>(lib,"GetMouseDragDelta","ImGui::GetMouseDragDelta")
+		->args({"button","lock_threshold"})
+		->arg_type(0,makeType<ImGuiMouseButton_>(lib))
+		->arg_init(0,new ExprConstEnumeration(0,makeType<ImGuiMouseButton_>(lib)))
+		->arg_init(1,new ExprConstFloat(-1))
+		->addToModule(*this, SideEffects::worstDefault);
+// from imgui.h:1150:29
+	makeExtern< void (*)(int) , ImGui::ResetMouseDragDelta , SimNode_ExtFuncCall , imguiTempFn>(lib,"ResetMouseDragDelta","ImGui::ResetMouseDragDelta")
+		->args({"button"})
+		->arg_type(0,makeType<ImGuiMouseButton_>(lib))
+		->arg_init(0,new ExprConstEnumeration(0,makeType<ImGuiMouseButton_>(lib)))
+		->addToModule(*this, SideEffects::worstDefault);
+// from imgui.h:1151:32
 	makeExtern< int (*)() , ImGui::GetMouseCursor , SimNode_ExtFuncCall , imguiTempFn>(lib,"GetMouseCursor","ImGui::GetMouseCursor")
 		->res_type(makeType<ImGuiMouseCursor_>(lib))
 		->addToModule(*this, SideEffects::worstDefault);
-// from imgui.h:987:29
+// from imgui.h:1152:29
 	makeExtern< void (*)(int) , ImGui::SetMouseCursor , SimNode_ExtFuncCall , imguiTempFn>(lib,"SetMouseCursor","ImGui::SetMouseCursor")
 		->args({"cursor_type"})
 		->arg_type(0,makeType<ImGuiMouseCursor_>(lib))
 		->addToModule(*this, SideEffects::worstDefault);
-// from imgui.h:988:29
+// from imgui.h:1153:29
 	makeExtern< void (*)(bool) , ImGui::SetNextFrameWantCaptureMouse , SimNode_ExtFuncCall , imguiTempFn>(lib,"SetNextFrameWantCaptureMouse","ImGui::SetNextFrameWantCaptureMouse")
 		->args({"want_capture_mouse"})
 		->addToModule(*this, SideEffects::worstDefault);
-// from imgui.h:992:29
+// from imgui.h:1157:29
 	makeExtern< const char * (*)() , ImGui::GetClipboardText , SimNode_ExtFuncCall , imguiTempFn>(lib,"GetClipboardText","ImGui::GetClipboardText")
 		->addToModule(*this, SideEffects::worstDefault);
-// from imgui.h:993:29
+// from imgui.h:1158:29
 	makeExtern< void (*)(const char *) , ImGui::SetClipboardText , SimNode_ExtFuncCall , imguiTempFn>(lib,"SetClipboardText","ImGui::SetClipboardText")
 		->args({"text"})
 		->addToModule(*this, SideEffects::worstDefault);
-// from imgui.h:999:29
+// from imgui.h:1164:29
 	makeExtern< void (*)(const char *) , ImGui::LoadIniSettingsFromDisk , SimNode_ExtFuncCall , imguiTempFn>(lib,"LoadIniSettingsFromDisk","ImGui::LoadIniSettingsFromDisk")
 		->args({"ini_filename"})
 		->addToModule(*this, SideEffects::worstDefault);
-// from imgui.h:1000:29
+// from imgui.h:1165:29
 	makeExtern< void (*)(const char *,size_t) , ImGui::LoadIniSettingsFromMemory , SimNode_ExtFuncCall , imguiTempFn>(lib,"LoadIniSettingsFromMemory","ImGui::LoadIniSettingsFromMemory")
 		->args({"ini_data","ini_size"})
 		->arg_init(1,new ExprConstUInt64(0x0))
 		->addToModule(*this, SideEffects::worstDefault);
-// from imgui.h:1001:29
+// from imgui.h:1166:29
 	makeExtern< void (*)(const char *) , ImGui::SaveIniSettingsToDisk , SimNode_ExtFuncCall , imguiTempFn>(lib,"SaveIniSettingsToDisk","ImGui::SaveIniSettingsToDisk")
 		->args({"ini_filename"})
-		->addToModule(*this, SideEffects::worstDefault);
-// from imgui.h:1002:29
-	makeExtern< const char * (*)(size_t *) , ImGui::SaveIniSettingsToMemory , SimNode_ExtFuncCall , imguiTempFn>(lib,"SaveIniSettingsToMemory","ImGui::SaveIniSettingsToMemory")
-		->args({"out_ini_size"})
-		->arg_init(0,new ExprConstPtr())
-		->addToModule(*this, SideEffects::worstDefault);
-// from imgui.h:1006:29
-	makeExtern< void (*)(const char *) , ImGui::DebugTextEncoding , SimNode_ExtFuncCall , imguiTempFn>(lib,"DebugTextEncoding","ImGui::DebugTextEncoding")
-		->args({"text"})
-		->addToModule(*this, SideEffects::worstDefault);
-// from imgui.h:1007:29
-	makeExtern< void (*)(int) , ImGui::DebugFlashStyleColor , SimNode_ExtFuncCall , imguiTempFn>(lib,"DebugFlashStyleColor","ImGui::DebugFlashStyleColor")
-		->args({"idx"})
-		->arg_type(0,makeType<ImGuiCol_>(lib))
-		->addToModule(*this, SideEffects::worstDefault);
-// from imgui.h:1008:29
-	makeExtern< void (*)() , ImGui::DebugStartItemPicker , SimNode_ExtFuncCall , imguiTempFn>(lib,"DebugStartItemPicker","ImGui::DebugStartItemPicker")
-		->addToModule(*this, SideEffects::worstDefault);
-// from imgui.h:1009:29
-	makeExtern< bool (*)(const char *,size_t,size_t,size_t,size_t,size_t,size_t) , ImGui::DebugCheckVersionAndDataLayout , SimNode_ExtFuncCall , imguiTempFn>(lib,"DebugCheckVersionAndDataLayout","ImGui::DebugCheckVersionAndDataLayout")
-		->args({"version_str","sz_io","sz_style","sz_vec2","sz_vec4","sz_drawvert","sz_drawidx"})
-		->addToModule(*this, SideEffects::worstDefault);
-// from imgui.h:1017:29
-	makeExtern< void * (*)(size_t) , ImGui::MemAlloc , SimNode_ExtFuncCall , imguiTempFn>(lib,"MemAlloc","ImGui::MemAlloc")
-		->args({"size"})
-		->addToModule(*this, SideEffects::worstDefault);
-// from imgui.h:1018:29
-	makeExtern< void (*)(void *) , ImGui::MemFree , SimNode_ExtFuncCall , imguiTempFn>(lib,"MemFree","ImGui::MemFree")
-		->args({"ptr"})
-		->addToModule(*this, SideEffects::worstDefault);
-// from imgui.h:1023:33
-	makeExtern< ImGuiPlatformIO & (*)() , ImGui::GetPlatformIO , SimNode_ExtFuncCallRef , imguiTempFn>(lib,"GetPlatformIO","ImGui::GetPlatformIO")
-		->addToModule(*this, SideEffects::worstDefault);
-// from imgui.h:1024:33
-	makeExtern< void (*)() , ImGui::UpdatePlatformWindows , SimNode_ExtFuncCall , imguiTempFn>(lib,"UpdatePlatformWindows","ImGui::UpdatePlatformWindows")
-		->addToModule(*this, SideEffects::worstDefault);
-// from imgui.h:1025:33
-	makeExtern< void (*)(void *,void *) , ImGui::RenderPlatformWindowsDefault , SimNode_ExtFuncCall , imguiTempFn>(lib,"RenderPlatformWindowsDefault","ImGui::RenderPlatformWindowsDefault")
-		->args({"platform_render_arg","renderer_render_arg"})
-		->arg_init(0,new ExprConstPtr())
-		->arg_init(1,new ExprConstPtr())
-		->addToModule(*this, SideEffects::worstDefault);
-// from imgui.h:1026:33
-	makeExtern< void (*)() , ImGui::DestroyPlatformWindows , SimNode_ExtFuncCall , imguiTempFn>(lib,"DestroyPlatformWindows","ImGui::DestroyPlatformWindows")
-		->addToModule(*this, SideEffects::worstDefault);
-// from imgui.h:1027:33
-	makeExtern< ImGuiViewport * (*)(unsigned int) , ImGui::FindViewportByID , SimNode_ExtFuncCall , imguiTempFn>(lib,"FindViewportByID","ImGui::FindViewportByID")
-		->args({"id"})
 		->addToModule(*this, SideEffects::worstDefault);
 }
 }

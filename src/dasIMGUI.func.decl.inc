@@ -33,3 +33,5 @@ void initFunctions_29();
 void initFunctions_30();
 void initFunctions_31();
 void initFunctions_32();
+void initFunctions_33();
+void initFunctions_34();

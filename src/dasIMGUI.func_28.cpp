@@ -12,102 +12,90 @@
 namespace das {
 #include "dasIMGUI.func.aot.decl.inc"
 void Module_dasIMGUI::initFunctions_28() {
-	using _method_156 = das::das_call_member< const unsigned short * (ImFontAtlas::*)(),&ImFontAtlas::GetGlyphRangesDefault >;
-// from imgui.h:3131:33
-	makeExtern<DAS_CALL_METHOD(_method_156), SimNode_ExtFuncCall , imguiTempFn>(lib,"GetGlyphRangesDefault","das_call_member< const unsigned short * (ImFontAtlas::*)() , &ImFontAtlas::GetGlyphRangesDefault >::invoke")
+	addCtorAndUsing<ImTextureData>(*this,lib,"ImTextureData","ImTextureData");
+	using _method_148 = das::das_call_member< void (ImTextureData::*)(ImTextureFormat,int,int),&ImTextureData::Create >;
+// from imgui.h:3644:25
+	makeExtern<DAS_CALL_METHOD(_method_148), SimNode_ExtFuncCall , imguiTempFn>(lib,"Create","das_call_member< void (ImTextureData::*)(ImTextureFormat,int,int) , &ImTextureData::Create >::invoke")
+		->args({"self","format","w","h"})
+		->addToModule(*this, SideEffects::worstDefault);
+	using _method_149 = das::das_call_member< void (ImTextureData::*)(),&ImTextureData::DestroyPixels >;
+// from imgui.h:3645:25
+	makeExtern<DAS_CALL_METHOD(_method_149), SimNode_ExtFuncCall , imguiTempFn>(lib,"DestroyPixels","das_call_member< void (ImTextureData::*)() , &ImTextureData::DestroyPixels >::invoke")
 		->args({"self"})
 		->addToModule(*this, SideEffects::worstDefault);
-	using _method_157 = das::das_call_member< const unsigned short * (ImFontAtlas::*)(),&ImFontAtlas::GetGlyphRangesGreek >;
-// from imgui.h:3132:33
-	makeExtern<DAS_CALL_METHOD(_method_157), SimNode_ExtFuncCall , imguiTempFn>(lib,"GetGlyphRangesGreek","das_call_member< const unsigned short * (ImFontAtlas::*)() , &ImFontAtlas::GetGlyphRangesGreek >::invoke")
+	using _method_150 = das::das_call_member< void * (ImTextureData::*)(),&ImTextureData::GetPixels >;
+// from imgui.h:3646:25
+	makeExtern<DAS_CALL_METHOD(_method_150), SimNode_ExtFuncCall , imguiTempFn>(lib,"GetPixels","das_call_member< void * (ImTextureData::*)() , &ImTextureData::GetPixels >::invoke")
 		->args({"self"})
 		->addToModule(*this, SideEffects::worstDefault);
-	using _method_158 = das::das_call_member< const unsigned short * (ImFontAtlas::*)(),&ImFontAtlas::GetGlyphRangesKorean >;
-// from imgui.h:3133:33
-	makeExtern<DAS_CALL_METHOD(_method_158), SimNode_ExtFuncCall , imguiTempFn>(lib,"GetGlyphRangesKorean","das_call_member< const unsigned short * (ImFontAtlas::*)() , &ImFontAtlas::GetGlyphRangesKorean >::invoke")
+	using _method_151 = das::das_call_member< void * (ImTextureData::*)(int,int),&ImTextureData::GetPixelsAt >;
+// from imgui.h:3647:25
+	makeExtern<DAS_CALL_METHOD(_method_151), SimNode_ExtFuncCall , imguiTempFn>(lib,"GetPixelsAt","das_call_member< void * (ImTextureData::*)(int,int) , &ImTextureData::GetPixelsAt >::invoke")
+		->args({"self","x","y"})
+		->addToModule(*this, SideEffects::worstDefault);
+	using _method_152 = das::das_call_member< int (ImTextureData::*)() const,&ImTextureData::GetSizeInBytes >;
+// from imgui.h:3648:25
+	makeExtern<DAS_CALL_METHOD(_method_152), SimNode_ExtFuncCall , imguiTempFn>(lib,"GetSizeInBytes","das_call_member< int (ImTextureData::*)() const , &ImTextureData::GetSizeInBytes >::invoke")
 		->args({"self"})
 		->addToModule(*this, SideEffects::worstDefault);
-	using _method_159 = das::das_call_member< const unsigned short * (ImFontAtlas::*)(),&ImFontAtlas::GetGlyphRangesJapanese >;
-// from imgui.h:3134:33
-	makeExtern<DAS_CALL_METHOD(_method_159), SimNode_ExtFuncCall , imguiTempFn>(lib,"GetGlyphRangesJapanese","das_call_member< const unsigned short * (ImFontAtlas::*)() , &ImFontAtlas::GetGlyphRangesJapanese >::invoke")
+	using _method_153 = das::das_call_member< int (ImTextureData::*)() const,&ImTextureData::GetPitch >;
+// from imgui.h:3649:25
+	makeExtern<DAS_CALL_METHOD(_method_153), SimNode_ExtFuncCall , imguiTempFn>(lib,"GetPitch","das_call_member< int (ImTextureData::*)() const , &ImTextureData::GetPitch >::invoke")
 		->args({"self"})
 		->addToModule(*this, SideEffects::worstDefault);
-	using _method_160 = das::das_call_member< const unsigned short * (ImFontAtlas::*)(),&ImFontAtlas::GetGlyphRangesChineseFull >;
-// from imgui.h:3135:33
-	makeExtern<DAS_CALL_METHOD(_method_160), SimNode_ExtFuncCall , imguiTempFn>(lib,"GetGlyphRangesChineseFull","das_call_member< const unsigned short * (ImFontAtlas::*)() , &ImFontAtlas::GetGlyphRangesChineseFull >::invoke")
+	using _method_154 = das::das_call_member< ImTextureRef (ImTextureData::*)(),&ImTextureData::GetTexRef >;
+// from imgui.h:3650:25
+	makeExtern<DAS_CALL_METHOD(_method_154), SimNode_ExtFuncCallAndCopyOrMove , imguiTempFn>(lib,"GetTexRef","das_call_member< ImTextureRef (ImTextureData::*)() , &ImTextureData::GetTexRef >::invoke")
 		->args({"self"})
 		->addToModule(*this, SideEffects::worstDefault);
-	using _method_161 = das::das_call_member< const unsigned short * (ImFontAtlas::*)(),&ImFontAtlas::GetGlyphRangesChineseSimplifiedCommon >;
-// from imgui.h:3136:33
-	makeExtern<DAS_CALL_METHOD(_method_161), SimNode_ExtFuncCall , imguiTempFn>(lib,"GetGlyphRangesChineseSimplifiedCommon","das_call_member< const unsigned short * (ImFontAtlas::*)() , &ImFontAtlas::GetGlyphRangesChineseSimplifiedCommon >::invoke")
+	using _method_155 = das::das_call_member< ImTextureID (ImTextureData::*)() const,&ImTextureData::GetTexID >;
+// from imgui.h:3651:25
+	makeExtern<DAS_CALL_METHOD(_method_155), SimNode_ExtFuncCall , imguiTempFn>(lib,"GetTexID","das_call_member< ImTextureID (ImTextureData::*)() const , &ImTextureData::GetTexID >::invoke")
 		->args({"self"})
 		->addToModule(*this, SideEffects::worstDefault);
-	using _method_162 = das::das_call_member< const unsigned short * (ImFontAtlas::*)(),&ImFontAtlas::GetGlyphRangesCyrillic >;
-// from imgui.h:3137:33
-	makeExtern<DAS_CALL_METHOD(_method_162), SimNode_ExtFuncCall , imguiTempFn>(lib,"GetGlyphRangesCyrillic","das_call_member< const unsigned short * (ImFontAtlas::*)() , &ImFontAtlas::GetGlyphRangesCyrillic >::invoke")
+	using _method_156 = das::das_call_member< void (ImTextureData::*)(ImTextureID),&ImTextureData::SetTexID >;
+// from imgui.h:3656:13
+	makeExtern<DAS_CALL_METHOD(_method_156), SimNode_ExtFuncCall , imguiTempFn>(lib,"SetTexID","das_call_member< void (ImTextureData::*)(ImTextureID) , &ImTextureData::SetTexID >::invoke")
+		->args({"self","tex_id"})
+		->addToModule(*this, SideEffects::worstDefault);
+	using _method_157 = das::das_call_member< void (ImTextureData::*)(ImTextureStatus),&ImTextureData::SetStatus >;
+// from imgui.h:3657:13
+	makeExtern<DAS_CALL_METHOD(_method_157), SimNode_ExtFuncCall , imguiTempFn>(lib,"SetStatus","das_call_member< void (ImTextureData::*)(ImTextureStatus) , &ImTextureData::SetStatus >::invoke")
+		->args({"self","status"})
+		->addToModule(*this, SideEffects::worstDefault);
+	addCtorAndUsing<ImFontConfig>(*this,lib,"ImFontConfig","ImFontConfig");
+	addCtorAndUsing<ImFontGlyph>(*this,lib,"ImFontGlyph","ImFontGlyph");
+	addCtorAndUsing<ImFontGlyphRangesBuilder>(*this,lib,"ImFontGlyphRangesBuilder","ImFontGlyphRangesBuilder");
+	using _method_158 = das::das_call_member< void (ImFontGlyphRangesBuilder::*)(),&ImFontGlyphRangesBuilder::Clear >;
+// from imgui.h:3729:21
+	makeExtern<DAS_CALL_METHOD(_method_158), SimNode_ExtFuncCall , imguiTempFn>(lib,"Clear","das_call_member< void (ImFontGlyphRangesBuilder::*)() , &ImFontGlyphRangesBuilder::Clear >::invoke")
 		->args({"self"})
 		->addToModule(*this, SideEffects::worstDefault);
-	using _method_163 = das::das_call_member< const unsigned short * (ImFontAtlas::*)(),&ImFontAtlas::GetGlyphRangesThai >;
-// from imgui.h:3138:33
-	makeExtern<DAS_CALL_METHOD(_method_163), SimNode_ExtFuncCall , imguiTempFn>(lib,"GetGlyphRangesThai","das_call_member< const unsigned short * (ImFontAtlas::*)() , &ImFontAtlas::GetGlyphRangesThai >::invoke")
-		->args({"self"})
+	using _method_159 = das::das_call_member< bool (ImFontGlyphRangesBuilder::*)(size_t) const,&ImFontGlyphRangesBuilder::GetBit >;
+// from imgui.h:3730:21
+	makeExtern<DAS_CALL_METHOD(_method_159), SimNode_ExtFuncCall , imguiTempFn>(lib,"GetBit","das_call_member< bool (ImFontGlyphRangesBuilder::*)(size_t) const , &ImFontGlyphRangesBuilder::GetBit >::invoke")
+		->args({"self","n"})
 		->addToModule(*this, SideEffects::worstDefault);
-	using _method_164 = das::das_call_member< const unsigned short * (ImFontAtlas::*)(),&ImFontAtlas::GetGlyphRangesVietnamese >;
-// from imgui.h:3139:33
-	makeExtern<DAS_CALL_METHOD(_method_164), SimNode_ExtFuncCall , imguiTempFn>(lib,"GetGlyphRangesVietnamese","das_call_member< const unsigned short * (ImFontAtlas::*)() , &ImFontAtlas::GetGlyphRangesVietnamese >::invoke")
-		->args({"self"})
+	using _method_160 = das::das_call_member< void (ImFontGlyphRangesBuilder::*)(size_t),&ImFontGlyphRangesBuilder::SetBit >;
+// from imgui.h:3731:21
+	makeExtern<DAS_CALL_METHOD(_method_160), SimNode_ExtFuncCall , imguiTempFn>(lib,"SetBit","das_call_member< void (ImFontGlyphRangesBuilder::*)(size_t) , &ImFontGlyphRangesBuilder::SetBit >::invoke")
+		->args({"self","n"})
 		->addToModule(*this, SideEffects::worstDefault);
-	using _method_165 = das::das_call_member< int (ImFontAtlas::*)(int,int),&ImFontAtlas::AddCustomRectRegular >;
-// from imgui.h:3152:33
-	makeExtern<DAS_CALL_METHOD(_method_165), SimNode_ExtFuncCall , imguiTempFn>(lib,"AddCustomRectRegular","das_call_member< int (ImFontAtlas::*)(int,int) , &ImFontAtlas::AddCustomRectRegular >::invoke")
-		->args({"self","width","height"})
-		->addToModule(*this, SideEffects::worstDefault);
-	using _method_166 = das::das_call_member< int (ImFontAtlas::*)(ImFont *,unsigned short,int,int,float,const ImVec2 &),&ImFontAtlas::AddCustomRectFontGlyph >;
-// from imgui.h:3153:33
-	makeExtern<DAS_CALL_METHOD(_method_166), SimNode_ExtFuncCall , imguiTempFn>(lib,"AddCustomRectFontGlyph","das_call_member< int (ImFontAtlas::*)(ImFont *,unsigned short,int,int,float,const ImVec2 &) , &ImFontAtlas::AddCustomRectFontGlyph >::invoke")
-		->args({"self","font","id","width","height","advance_x","offset"})
-		->addToModule(*this, SideEffects::worstDefault);
-	using _method_167 = das::das_call_member< ImFontAtlasCustomRect * (ImFontAtlas::*)(int),&ImFontAtlas::GetCustomRectByIndex >;
-// from imgui.h:3154:33
-	makeExtern<DAS_CALL_METHOD(_method_167), SimNode_ExtFuncCall , imguiTempFn>(lib,"GetCustomRectByIndex","das_call_member< ImFontAtlasCustomRect * (ImFontAtlas::*)(int) , &ImFontAtlas::GetCustomRectByIndex >::invoke")
-		->args({"self","index"})
-		->addToModule(*this, SideEffects::worstDefault);
-	using _method_168 = das::das_call_member< void (ImFontAtlas::*)(const ImFontAtlasCustomRect *,ImVec2 *,ImVec2 *) const,&ImFontAtlas::CalcCustomRectUV >;
-// from imgui.h:3157:33
-	makeExtern<DAS_CALL_METHOD(_method_168), SimNode_ExtFuncCall , imguiTempFn>(lib,"CalcCustomRectUV","das_call_member< void (ImFontAtlas::*)(const ImFontAtlasCustomRect *,ImVec2 *,ImVec2 *) const , &ImFontAtlas::CalcCustomRectUV >::invoke")
-		->args({"self","rect","out_uv_min","out_uv_max"})
-		->addToModule(*this, SideEffects::worstDefault);
-	using _method_169 = das::das_call_member< bool (ImFontAtlas::*)(int,ImVec2 *,ImVec2 *,ImVec2[2],ImVec2[2]),&ImFontAtlas::GetMouseCursorTexData >;
-// from imgui.h:3158:33
-	makeExtern<DAS_CALL_METHOD(_method_169), SimNode_ExtFuncCall , imguiTempFn>(lib,"GetMouseCursorTexData","das_call_member< bool (ImFontAtlas::*)(int,ImVec2 *,ImVec2 *,ImVec2[2],ImVec2[2]) , &ImFontAtlas::GetMouseCursorTexData >::invoke")
-		->args({"self","cursor","out_offset","out_size","out_uv_border","out_uv_fill"})
-		->arg_type(1,makeType<ImGuiMouseCursor_>(lib))
-		->addToModule(*this, SideEffects::worstDefault);
-	addCtorAndUsing<ImFont>(*this,lib,"ImFont","ImFont");
-	using _method_170 = das::das_call_member< const ImFontGlyph * (ImFont::*)(unsigned short) const,&ImFont::FindGlyph >;
-// from imgui.h:3231:33
-	makeExtern<DAS_CALL_METHOD(_method_170), SimNode_ExtFuncCall , imguiTempFn>(lib,"FindGlyph","das_call_member< const ImFontGlyph * (ImFont::*)(unsigned short) const , &ImFont::FindGlyph >::invoke")
+	using _method_161 = das::das_call_member< void (ImFontGlyphRangesBuilder::*)(unsigned short),&ImFontGlyphRangesBuilder::AddChar >;
+// from imgui.h:3732:21
+	makeExtern<DAS_CALL_METHOD(_method_161), SimNode_ExtFuncCall , imguiTempFn>(lib,"AddChar","das_call_member< void (ImFontGlyphRangesBuilder::*)(unsigned short) , &ImFontGlyphRangesBuilder::AddChar >::invoke")
 		->args({"self","c"})
 		->addToModule(*this, SideEffects::worstDefault);
-	using _method_171 = das::das_call_member< const ImFontGlyph * (ImFont::*)(unsigned short) const,&ImFont::FindGlyphNoFallback >;
-// from imgui.h:3232:33
-	makeExtern<DAS_CALL_METHOD(_method_171), SimNode_ExtFuncCall , imguiTempFn>(lib,"FindGlyphNoFallback","das_call_member< const ImFontGlyph * (ImFont::*)(unsigned short) const , &ImFont::FindGlyphNoFallback >::invoke")
-		->args({"self","c"})
+	using _method_162 = das::das_call_member< void (ImFontGlyphRangesBuilder::*)(const char *,const char *),&ImFontGlyphRangesBuilder::AddText >;
+// from imgui.h:3733:21
+	makeExtern<DAS_CALL_METHOD(_method_162), SimNode_ExtFuncCall , imguiTempFn>(lib,"AddText","das_call_member< void (ImFontGlyphRangesBuilder::*)(const char *,const char *) , &ImFontGlyphRangesBuilder::AddText >::invoke")
+		->args({"self","text","text_end"})
+		->arg_init(2,new ExprConstString(""))
 		->addToModule(*this, SideEffects::worstDefault);
-	using _method_172 = das::das_call_member< float (ImFont::*)(unsigned short) const,&ImFont::GetCharAdvance >;
-// from imgui.h:3233:33
-	makeExtern<DAS_CALL_METHOD(_method_172), SimNode_ExtFuncCall , imguiTempFn>(lib,"GetCharAdvance","das_call_member< float (ImFont::*)(unsigned short) const , &ImFont::GetCharAdvance >::invoke")
-		->args({"self","c"})
-		->addToModule(*this, SideEffects::worstDefault);
-	using _method_173 = das::das_call_member< bool (ImFont::*)() const,&ImFont::IsLoaded >;
-// from imgui.h:3234:33
-	makeExtern<DAS_CALL_METHOD(_method_173), SimNode_ExtFuncCall , imguiTempFn>(lib,"IsLoaded","das_call_member< bool (ImFont::*)() const , &ImFont::IsLoaded >::invoke")
-		->args({"self"})
-		->addToModule(*this, SideEffects::worstDefault);
-	using _method_174 = das::das_call_member< const char * (ImFont::*)() const,&ImFont::GetDebugName >;
-// from imgui.h:3235:33
-	makeExtern<DAS_CALL_METHOD(_method_174), SimNode_ExtFuncCall , imguiTempFn>(lib,"GetDebugName","das_call_member< const char * (ImFont::*)() const , &ImFont::GetDebugName >::invoke")
-		->args({"self"})
+	using _method_163 = das::das_call_member< void (ImFontGlyphRangesBuilder::*)(const unsigned short *),&ImFontGlyphRangesBuilder::AddRanges >;
+// from imgui.h:3734:21
+	makeExtern<DAS_CALL_METHOD(_method_163), SimNode_ExtFuncCall , imguiTempFn>(lib,"AddRanges","das_call_member< void (ImFontGlyphRangesBuilder::*)(const unsigned short *) , &ImFontGlyphRangesBuilder::AddRanges >::invoke")
+		->args({"self","ranges"})
 		->addToModule(*this, SideEffects::worstDefault);
 }
 }

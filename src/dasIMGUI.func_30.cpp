@@ -12,88 +12,103 @@
 namespace das {
 #include "dasIMGUI.func.aot.decl.inc"
 void Module_dasIMGUI::initFunctions_30() {
-// from imgui_internal.h:3375:29
-	makeExtern< void (*)(unsigned int) , ImGui::MarkItemEdited , SimNode_ExtFuncCall , imguiTempFn>(lib,"MarkItemEdited","ImGui::MarkItemEdited")
-		->args({"id"})
+	using _method_182 = das::das_call_member< void (ImFontAtlas::*)(int),&ImFontAtlas::RemoveCustomRect >;
+// from imgui.h:3866:33
+	makeExtern<DAS_CALL_METHOD(_method_182), SimNode_ExtFuncCall , imguiTempFn>(lib,"RemoveCustomRect","das_call_member< void (ImFontAtlas::*)(int) , &ImFontAtlas::RemoveCustomRect >::invoke")
+		->args({"self","id"})
 		->addToModule(*this, SideEffects::worstDefault);
-// from imgui_internal.h:3376:29
-	makeExtern< void (*)(unsigned int) , ImGui::PushOverrideID , SimNode_ExtFuncCall , imguiTempFn>(lib,"PushOverrideID","ImGui::PushOverrideID")
-		->args({"id"})
+	using _method_183 = das::das_call_member< bool (ImFontAtlas::*)(int,ImFontAtlasRect *) const,&ImFontAtlas::GetCustomRect >;
+// from imgui.h:3867:33
+	makeExtern<DAS_CALL_METHOD(_method_183), SimNode_ExtFuncCall , imguiTempFn>(lib,"GetCustomRect","das_call_member< bool (ImFontAtlas::*)(int,ImFontAtlasRect *) const , &ImFontAtlas::GetCustomRect >::invoke")
+		->args({"self","id","out_r"})
 		->addToModule(*this, SideEffects::worstDefault);
-// from imgui_internal.h:3377:29
-	makeExtern< unsigned int (*)(const char *,const char *,unsigned int) , ImGui::GetIDWithSeed , SimNode_ExtFuncCall , imguiTempFn>(lib,"GetIDWithSeed","ImGui::GetIDWithSeed")
-		->args({"str_id_begin","str_id_end","seed"})
+	addCtorAndUsing<ImFontBaked>(*this,lib,"ImFontBaked","ImFontBaked");
+	using _method_184 = das::das_call_member< void (ImFontBaked::*)(),&ImFontBaked::ClearOutputData >;
+// from imgui.h:3960:33
+	makeExtern<DAS_CALL_METHOD(_method_184), SimNode_ExtFuncCall , imguiTempFn>(lib,"ClearOutputData","das_call_member< void (ImFontBaked::*)() , &ImFontBaked::ClearOutputData >::invoke")
+		->args({"self"})
 		->addToModule(*this, SideEffects::worstDefault);
-// from imgui_internal.h:3378:29
-	makeExtern< unsigned int (*)(int,unsigned int) , ImGui::GetIDWithSeed , SimNode_ExtFuncCall , imguiTempFn>(lib,"GetIDWithSeed","ImGui::GetIDWithSeed")
-		->args({"n","seed"})
+	using _method_185 = das::das_call_member< ImFontGlyph * (ImFontBaked::*)(unsigned short),&ImFontBaked::FindGlyph >;
+// from imgui.h:3961:33
+	makeExtern<DAS_CALL_METHOD(_method_185), SimNode_ExtFuncCall , imguiTempFn>(lib,"FindGlyph","das_call_member< ImFontGlyph * (ImFontBaked::*)(unsigned short) , &ImFontBaked::FindGlyph >::invoke")
+		->args({"self","c"})
 		->addToModule(*this, SideEffects::worstDefault);
-// from imgui_internal.h:3381:29
-	makeExtern< void (*)(const ImVec2 &,float) , ImGui::ItemSize , SimNode_ExtFuncCall , imguiTempFn>(lib,"ItemSize","ImGui::ItemSize")
-		->args({"size","text_baseline_y"})
-		->arg_init(1,new ExprConstFloat(-1))
+	using _method_186 = das::das_call_member< ImFontGlyph * (ImFontBaked::*)(unsigned short),&ImFontBaked::FindGlyphNoFallback >;
+// from imgui.h:3962:33
+	makeExtern<DAS_CALL_METHOD(_method_186), SimNode_ExtFuncCall , imguiTempFn>(lib,"FindGlyphNoFallback","das_call_member< ImFontGlyph * (ImFontBaked::*)(unsigned short) , &ImFontBaked::FindGlyphNoFallback >::invoke")
+		->args({"self","c"})
 		->addToModule(*this, SideEffects::worstDefault);
-// from imgui_internal.h:3382:29
-	makeExtern< void (*)(const ImRect &,float) , ImGui::ItemSize , SimNode_ExtFuncCall , imguiTempFn>(lib,"ItemSize","ImGui::ItemSize")
-		->args({"bb","text_baseline_y"})
-		->arg_init(1,new ExprConstFloat(-1))
+	using _method_187 = das::das_call_member< float (ImFontBaked::*)(unsigned short),&ImFontBaked::GetCharAdvance >;
+// from imgui.h:3963:33
+	makeExtern<DAS_CALL_METHOD(_method_187), SimNode_ExtFuncCall , imguiTempFn>(lib,"GetCharAdvance","das_call_member< float (ImFontBaked::*)(unsigned short) , &ImFontBaked::GetCharAdvance >::invoke")
+		->args({"self","c"})
 		->addToModule(*this, SideEffects::worstDefault);
-// from imgui_internal.h:3384:29
-	makeExtern< bool (*)(const ImRect &,unsigned int,int) , ImGui::ItemHoverable , SimNode_ExtFuncCall , imguiTempFn>(lib,"ItemHoverable","ImGui::ItemHoverable")
-		->args({"bb","id","item_flags"})
+	using _method_188 = das::das_call_member< bool (ImFontBaked::*)(unsigned short),&ImFontBaked::IsGlyphLoaded >;
+// from imgui.h:3964:33
+	makeExtern<DAS_CALL_METHOD(_method_188), SimNode_ExtFuncCall , imguiTempFn>(lib,"IsGlyphLoaded","das_call_member< bool (ImFontBaked::*)(unsigned short) , &ImFontBaked::IsGlyphLoaded >::invoke")
+		->args({"self","c"})
 		->addToModule(*this, SideEffects::worstDefault);
-// from imgui_internal.h:3386:29
-	makeExtern< bool (*)(const ImRect &,unsigned int) , ImGui::IsClippedEx , SimNode_ExtFuncCall , imguiTempFn>(lib,"IsClippedEx","ImGui::IsClippedEx")
-		->args({"bb","id"})
+	addCtorAndUsing<ImFont>(*this,lib,"ImFont","ImFont");
+	using _method_189 = das::das_call_member< bool (ImFont::*)(unsigned short),&ImFont::IsGlyphInFont >;
+// from imgui.h:4007:33
+	makeExtern<DAS_CALL_METHOD(_method_189), SimNode_ExtFuncCall , imguiTempFn>(lib,"IsGlyphInFont","das_call_member< bool (ImFont::*)(unsigned short) , &ImFont::IsGlyphInFont >::invoke")
+		->args({"self","c"})
 		->addToModule(*this, SideEffects::worstDefault);
-// from imgui_internal.h:3388:29
-	makeExtern< ImVec2 (*)(ImVec2,float,float) , ImGui::CalcItemSize , SimNode_ExtFuncCall , imguiTempFn>(lib,"CalcItemSize","ImGui::CalcItemSize")
-		->args({"size","default_w","default_h"})
+	using _method_190 = das::das_call_member< bool (ImFont::*)() const,&ImFont::IsLoaded >;
+// from imgui.h:4008:33
+	makeExtern<DAS_CALL_METHOD(_method_190), SimNode_ExtFuncCall , imguiTempFn>(lib,"IsLoaded","das_call_member< bool (ImFont::*)() const , &ImFont::IsLoaded >::invoke")
+		->args({"self"})
 		->addToModule(*this, SideEffects::worstDefault);
-// from imgui_internal.h:3389:29
-	makeExtern< float (*)(const ImVec2 &,float) , ImGui::CalcWrapWidthForPos , SimNode_ExtFuncCall , imguiTempFn>(lib,"CalcWrapWidthForPos","ImGui::CalcWrapWidthForPos")
-		->args({"pos","wrap_pos_x"})
+	using _method_191 = das::das_call_member< const char * (ImFont::*)() const,&ImFont::GetDebugName >;
+// from imgui.h:4009:33
+	makeExtern<DAS_CALL_METHOD(_method_191), SimNode_ExtFuncCall , imguiTempFn>(lib,"GetDebugName","das_call_member< const char * (ImFont::*)() const , &ImFont::GetDebugName >::invoke")
+		->args({"self"})
 		->addToModule(*this, SideEffects::worstDefault);
-// from imgui_internal.h:3392:29
-	makeExtern< ImVec2 (*)() , ImGui::GetContentRegionMaxAbs , SimNode_ExtFuncCall , imguiTempFn>(lib,"GetContentRegionMaxAbs","ImGui::GetContentRegionMaxAbs")
+	using _method_192 = das::das_call_member< ImFontBaked * (ImFont::*)(float,float),&ImFont::GetFontBaked >;
+// from imgui.h:4014:33
+	makeExtern<DAS_CALL_METHOD(_method_192), SimNode_ExtFuncCall , imguiTempFn>(lib,"GetFontBaked","das_call_member< ImFontBaked * (ImFont::*)(float,float) , &ImFont::GetFontBaked >::invoke")
+		->args({"self","font_size","density"})
+		->arg_init(2,new ExprConstFloat(-1))
 		->addToModule(*this, SideEffects::worstDefault);
-// from imgui_internal.h:3396:29
-	makeExtern< void (*)(int,bool) , ImGui::PushItemFlag , SimNode_ExtFuncCall , imguiTempFn>(lib,"PushItemFlag","ImGui::PushItemFlag")
-		->args({"option","enabled"})
+	using _method_193 = das::das_call_member< ImVec2 (ImFont::*)(float,float,float,const char *,const char *,const char **),&ImFont::CalcTextSizeA >;
+// from imgui.h:4015:33
+	makeExtern<DAS_CALL_METHOD(_method_193), SimNode_ExtFuncCall , imguiTempFn>(lib,"CalcTextSizeA","das_call_member< ImVec2 (ImFont::*)(float,float,float,const char *,const char *,const char **) , &ImFont::CalcTextSizeA >::invoke")
+		->args({"self","size","max_width","wrap_width","text_begin","text_end","out_remaining"})
+		->arg_init(5,new ExprConstString(""))
+		->arg_init(6,new ExprConstPtr())
 		->addToModule(*this, SideEffects::worstDefault);
-// from imgui_internal.h:3397:29
-	makeExtern< void (*)() , ImGui::PopItemFlag , SimNode_ExtFuncCall , imguiTempFn>(lib,"PopItemFlag","ImGui::PopItemFlag")
+	using _method_194 = das::das_call_member< const char * (ImFont::*)(float,const char *,const char *,float),&ImFont::CalcWordWrapPosition >;
+// from imgui.h:4016:33
+	makeExtern<DAS_CALL_METHOD(_method_194), SimNode_ExtFuncCall , imguiTempFn>(lib,"CalcWordWrapPosition","das_call_member< const char * (ImFont::*)(float,const char *,const char *,float) , &ImFont::CalcWordWrapPosition >::invoke")
+		->args({"self","size","text","text_end","wrap_width"})
 		->addToModule(*this, SideEffects::worstDefault);
-// from imgui_internal.h:3401:29
-	makeExtern< void (*)(ImGuiLogType,int) , ImGui::LogBegin , SimNode_ExtFuncCall , imguiTempFn>(lib,"LogBegin","ImGui::LogBegin")
-		->args({"type","auto_open_depth"})
+	using _method_195 = das::das_call_member< void (ImFont::*)(ImDrawList *,float,const ImVec2 &,unsigned int,unsigned short,const ImVec4 *),&ImFont::RenderChar >;
+// from imgui.h:4017:33
+	makeExtern<DAS_CALL_METHOD(_method_195), SimNode_ExtFuncCall , imguiTempFn>(lib,"RenderChar","das_call_member< void (ImFont::*)(ImDrawList *,float,const ImVec2 &,unsigned int,unsigned short,const ImVec4 *) , &ImFont::RenderChar >::invoke")
+		->args({"self","draw_list","size","pos","col","c","cpu_fine_clip"})
+		->arg_init(6,new ExprConstPtr())
 		->addToModule(*this, SideEffects::worstDefault);
-// from imgui_internal.h:3404:29
-	makeExtern< void (*)(const char *,const char *) , ImGui::LogSetNextTextDecoration , SimNode_ExtFuncCall , imguiTempFn>(lib,"LogSetNextTextDecoration","ImGui::LogSetNextTextDecoration")
-		->args({"prefix","suffix"})
+	using _method_196 = das::das_call_member< void (ImFont::*)(ImDrawList *,float,const ImVec2 &,unsigned int,const ImVec4 &,const char *,const char *,float,int),&ImFont::RenderText >;
+// from imgui.h:4018:33
+	makeExtern<DAS_CALL_METHOD(_method_196), SimNode_ExtFuncCall , imguiTempFn>(lib,"RenderText","das_call_member< void (ImFont::*)(ImDrawList *,float,const ImVec2 &,unsigned int,const ImVec4 &,const char *,const char *,float,int) , &ImFont::RenderText >::invoke")
+		->args({"self","draw_list","size","pos","col","clip_rect","text_begin","text_end","wrap_width","flags"})
+		->arg_init(8,new ExprConstFloat(0))
+		->arg_init(9,new ExprConstInt(0))
 		->addToModule(*this, SideEffects::worstDefault);
-// from imgui_internal.h:3408:29
-	makeExtern< void (*)(unsigned int,int) , ImGui::OpenPopupEx , SimNode_ExtFuncCall , imguiTempFn>(lib,"OpenPopupEx","ImGui::OpenPopupEx")
-		->args({"id","popup_flags"})
-		->arg_type(1,makeType<ImGuiPopupFlags_>(lib))
-		->arg_init(1,new ExprConstEnumeration(0,makeType<ImGuiPopupFlags_>(lib)))
+	using _method_197 = das::das_call_member< void (ImFont::*)(),&ImFont::ClearOutputData >;
+// from imgui.h:4024:33
+	makeExtern<DAS_CALL_METHOD(_method_197), SimNode_ExtFuncCall , imguiTempFn>(lib,"ClearOutputData","das_call_member< void (ImFont::*)() , &ImFont::ClearOutputData >::invoke")
+		->args({"self"})
 		->addToModule(*this, SideEffects::worstDefault);
-// from imgui_internal.h:3409:29
-	makeExtern< void (*)(int,bool) , ImGui::ClosePopupToLevel , SimNode_ExtFuncCall , imguiTempFn>(lib,"ClosePopupToLevel","ImGui::ClosePopupToLevel")
-		->args({"remaining","restore_focus_to_window_under_popup"})
+	using _method_198 = das::das_call_member< void (ImFont::*)(unsigned short,unsigned short),&ImFont::AddRemapChar >;
+// from imgui.h:4025:33
+	makeExtern<DAS_CALL_METHOD(_method_198), SimNode_ExtFuncCall , imguiTempFn>(lib,"AddRemapChar","das_call_member< void (ImFont::*)(unsigned short,unsigned short) , &ImFont::AddRemapChar >::invoke")
+		->args({"self","from_codepoint","to_codepoint"})
 		->addToModule(*this, SideEffects::worstDefault);
-// from imgui_internal.h:3411:29
-	makeExtern< void (*)() , ImGui::ClosePopupsExceptModals , SimNode_ExtFuncCall , imguiTempFn>(lib,"ClosePopupsExceptModals","ImGui::ClosePopupsExceptModals")
-		->addToModule(*this, SideEffects::worstDefault);
-// from imgui_internal.h:3412:29
-	makeExtern< bool (*)(unsigned int,int) , ImGui::IsPopupOpen , SimNode_ExtFuncCall , imguiTempFn>(lib,"IsPopupOpen","ImGui::IsPopupOpen")
-		->args({"id","popup_flags"})
-		->arg_type(1,makeType<ImGuiPopupFlags_>(lib))
-		->addToModule(*this, SideEffects::worstDefault);
-// from imgui_internal.h:3413:29
-	makeExtern< bool (*)(unsigned int,int) , ImGui::BeginPopupEx , SimNode_ExtFuncCall , imguiTempFn>(lib,"BeginPopupEx","ImGui::BeginPopupEx")
-		->args({"id","extra_flags"})
-		->arg_type(1,makeType<ImGuiWindowFlags_>(lib))
+	using _method_199 = das::das_call_member< bool (ImFont::*)(unsigned int,unsigned int),&ImFont::IsGlyphRangeUnused >;
+// from imgui.h:4026:33
+	makeExtern<DAS_CALL_METHOD(_method_199), SimNode_ExtFuncCall , imguiTempFn>(lib,"IsGlyphRangeUnused","das_call_member< bool (ImFont::*)(unsigned int,unsigned int) , &ImFont::IsGlyphRangeUnused >::invoke")
+		->args({"self","c_begin","c_last"})
 		->addToModule(*this, SideEffects::worstDefault);
 }
 }
