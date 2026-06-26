@@ -365,11 +365,16 @@ def popup_window(var state : PopupWindowState; str_id : string;
     //! the pushed IDENT so child widgets remain disambiguated.
     PopID()
     let im_open = BeginPopup(str_id, flags)
-    PushID(widget_ident)
     if (im_open) {
+        // Body renders under widget_ident inside the popup window; pop it before
+        // EndPopup so the popup's ID stack balances (1.92 errors on a leftover push).
+        PushID(widget_ident)
         invoke(blk)
+        PopID()
         EndPopup()
     }
+    // Restore widget_ident on the parent stack for the [container] finalize's pop.
+    PushID(widget_ident)
     stateless_finalize(widget_ident, "popup_window", state)
 }
 
