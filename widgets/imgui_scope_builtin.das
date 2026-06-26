@@ -40,11 +40,14 @@ def public with_disabled(disabled : bool; blk : block) {
     EndDisabled()
 }
 
-def public with_font(font : ImFont?; blk : block) {
-    //! Run ``blk`` with ``PushFont(font)`` applied; matching ``PopFont()`` on return.
-    //! ``font`` is typically obtained from the font atlas (e.g. ``GetIO().Fonts.Fonts[i]``).
-    //! ``0.0f`` keeps the current font size.
-    PushFont(font, 0.0f)
+def public with_font(font : ImFont?; size : float = 0.0f; blk : block) {
+    //! Run ``blk`` with ``PushFont(font, size)`` applied; matching ``PopFont()`` on return.
+    //! ``font`` is typically obtained from the font atlas (e.g. ``GetIO().Fonts.Fonts[i]``);
+    //! pass ``null`` to keep the current font and re-size it only.
+    //! ``size`` is the pixel height the font is rasterized at (imgui 1.92 dynamic fonts);
+    //! ``0.0f`` (the default) keeps the current size, so ``with_font(font) { ... }`` is a
+    //! pure font swap as before.
+    PushFont(font, size)
     invoke(blk)
     PopFont()
 }
