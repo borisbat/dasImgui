@@ -68,7 +68,7 @@ def init() {
     live_create_window("dasImgui editing_external", 760, 560)
     live_imgui_init(live_window)
     var io & = unsafe(GetIO())
-    io.FontGlobalScale = 1.2
+    unsafe(GetStyle()).FontScaleMain = 1.2
 }
 
 [export]

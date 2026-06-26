@@ -215,6 +215,9 @@ def public harness_end_frame() {
     if (harness_is_headless()) {
         end_of_frame()
         Render()
+        // drain the backend texture queue with fake IDs (no GPU backend in
+        // headless) so texture-status assertions pass next frame.
+        imgui_headless_process_textures()
         return
     }
     end_of_frame()

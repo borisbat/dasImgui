@@ -20,7 +20,7 @@ require imgui/imgui_harness
 def init() {
     harness_init("§4.7 — with_style", 640, 480)
     var io & = unsafe(GetIO())
-    io.FontGlobalScale = 1.5
+    unsafe(GetStyle()).FontScaleMain = 1.5
 }
 
 [export]

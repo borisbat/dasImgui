@@ -73,7 +73,7 @@ def init() {
     // session's window pos/size can't drift the framing. Tutorial-scoped on purpose.
     DisableIniPersistence()
     var io & = unsafe(GetIO())
-    io.FontGlobalScale = 1.5
+    unsafe(GetStyle()).FontScaleMain = 1.5
 }
 
 [export]

@@ -1825,9 +1825,11 @@ def public set_user_control_enabled(enabled : bool) {
     } else {
         // Take over: clear keys/buttons latched right now so their release events
         // aren't dropped by the per-frame queue clear, leaving ImGui with stuck
-        // input. ClearInputKeys() (imgui 1.90.6) also zeroes MouseDown[]/MousePos.
+        // input. ClearInputKeys() clears keys, ClearInputMouse() clears mouse —
+        // call both to cover keys + mouse.
         var io & = unsafe(GetIO())
         io |> ClearInputKeys()
+        io |> ClearInputMouse()
     }
 }
 

@@ -21,7 +21,7 @@ require imgui/imgui_harness
 def init() {
     harness_init("imgui_synth_mouse", 640, 480)
     var io & = unsafe(GetIO())
-    io.FontGlobalScale = 1.5
+    unsafe(GetStyle()).FontScaleMain = 1.5
 }
 
 [export]

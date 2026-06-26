@@ -37,8 +37,12 @@ namespace das {
     DAS_MOD_API bool PassFilter ( ImGuiTextFilter & filter, const char* text );
     DAS_MOD_API char* text_range_string(ImGuiTextFilter::ImGuiTextRange &r, das::Context *context, das::LineInfoArg *at);
     DAS_MOD_API void AddText( ImDrawList & drawList, const ImVec2& pos, ImU32 col, const char* text );
-    DAS_MOD_API void AddText2( ImDrawList & drawList, const ImFont* font, float font_size, const ImVec2& pos, ImU32 col,
+    DAS_MOD_API void AddText2( ImDrawList & drawList, ImFont* font, float font_size, const ImVec2& pos, ImU32 col,
         const char* text_begin, float wrap_width = 0.0f, const ImVec4* cpu_fine_clip_rect = nullptr);
+    // image API — const ImTextureRef& wrappers (const-arg binding).
+    DAS_MOD_API void Image_das( const ImTextureRef & tex_ref, const ImVec2 & image_size, const ImVec2 & uv0, const ImVec2 & uv1 );
+    DAS_MOD_API void ImageWithBg_das( const ImTextureRef & tex_ref, const ImVec2 & image_size, const ImVec2 & uv0, const ImVec2 & uv1, const ImVec4 & bg_col, const ImVec4 & tint_col );
+    DAS_MOD_API bool ImageButton_das( const char* str_id, const ImTextureRef & tex_ref, const ImVec2 & image_size, const ImVec2 & uv0, const ImVec2 & uv1, const ImVec4 & bg_col, const ImVec4 & tint_col );
     // imgui_internal.h Render*Clipped / Ellipsis text helpers — text_end is forced to
     // nullptr (a daslang string can't express the NULL these need for "auto-strlen";
     // a non-null "" over-reads past the buffer → crash). text_size_if_known is forced
@@ -48,7 +52,7 @@ namespace das {
     DAS_MOD_API void RenderTextClippedExW( ImDrawList* draw_list, const ImVec2& pos_min, const ImVec2& pos_max,
         const char* text, const ImVec2& align, const ImRect* clip_rect );
     DAS_MOD_API void RenderTextEllipsisW( ImDrawList* draw_list, const ImVec2& pos_min, const ImVec2& pos_max,
-        float clip_max_x, float ellipsis_max_x, const char* text );
+        float ellipsis_max_x, const char* text );
     // imgui_internal.h custom-widget primitives — ItemAdd (two overloads) + ButtonBehavior.
     DAS_MOD_API bool ItemAddW( const ImRect& bb, ImGuiID id, ImGuiItemFlags extra_flags = 0 );
     DAS_MOD_API bool ItemAddNavW( const ImRect& bb, ImGuiID id, const ImRect& nav_bb, ImGuiItemFlags extra_flags = 0 );
@@ -69,7 +73,7 @@ namespace das {
     DAS_MOD_API void InsertChars(ImGuiInputTextCallbackData & data, int pos, const char* text );
     DAS_MOD_API void SetNextWindowSizeConstraints(vec4f snwscc, const ImVec2& size_min, const ImVec2& size_max, Context * context, LineInfoArg * at );
     DAS_MOD_API void SetNextWindowSizeConstraintsNoCallback(const ImVec2& size_min, const ImVec2& size_max);
-    DAS_MOD_API ImGuiSortDirection_ GetColumnSortDirection ( const ImGuiTableColumnSortSpecs * specs );
+    DAS_MOD_API ImGuiSortDirection GetColumnSortDirection ( const ImGuiTableColumnSortSpecs * specs );
     DAS_MOD_API const ImGuiTableColumnSortSpecs * GetSortSpec ( ImGuiTableSortSpecs * specs, int idx );
     DAS_MOD_API ImVec2 CalcTextSize(const char* text,bool hide_text_after_double_hash, float wrap_width);
     DAS_MOD_API bool Combo ( vec4f cg, const char * label, int * current_item, int items_count, int popup_max_height_in_items, Context * ctx, LineInfoArg * at );

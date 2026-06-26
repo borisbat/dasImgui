@@ -2003,8 +2003,8 @@ def private show_tree_view() {
             (id = "TBL_TREE_F_SPANFW", text = "ImGuiTreeNodeFlags_SpanFullWidth",
              flags_value = ImGuiTreeNodeFlags.SpanFullWidth))
         edit_checkbox_flags(safe_addr(TABLES_TREE_NODE_FLAGS),
-            (id = "TBL_TREE_F_SPANTW", text = "ImGuiTreeNodeFlags_SpanTextWidth",
-             flags_value = ImGuiTreeNodeFlags.SpanTextWidth))
+            (id = "TBL_TREE_F_SPANTW", text = "ImGuiTreeNodeFlags_SpanLabelWidth",
+             flags_value = ImGuiTreeNodeFlags.SpanLabelWidth))
         edit_checkbox_flags(safe_addr(TABLES_TREE_NODE_FLAGS),
             (id = "TBL_TREE_F_SPANAC", text = "ImGuiTreeNodeFlags_SpanAllColumns",
              flags_value = ImGuiTreeNodeFlags.SpanAllColumns))

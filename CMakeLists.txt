@@ -10,10 +10,10 @@ SET(DAS_IMGUI_DIR ${CMAKE_CURRENT_LIST_DIR})
 
 # imgui via FetchContent
 include(FetchContent)
-SET(IMGUI_VERSION "1.90.6-docking")
+SET(IMGUI_VERSION "1.92.6-docking")
 FetchContent_Declare(imgui_src
     URL https://github.com/ocornut/imgui/archive/refs/tags/v${IMGUI_VERSION}.tar.gz
-    URL_HASH SHA256=fc7f81d009ef718917aee0ac3ea1c74c8a5cfc8016049ad153b4d91d302b8aef
+    URL_HASH SHA256=5e84cdaa6a6041586a0d11a3071b749734a0439d66fdbdad37ae5b27e37d396c
     SOURCE_DIR ${DAS_IMGUI_DIR}/imgui
 )
 FetchContent_MakeAvailable(imgui_src)
@@ -83,6 +83,8 @@ SET(DAS_IMGUI_BIND_SRC
     ${DAS_IMGUI_DIR}/src/dasIMGUI.func_30.cpp
     ${DAS_IMGUI_DIR}/src/dasIMGUI.func_31.cpp
     ${DAS_IMGUI_DIR}/src/dasIMGUI.func_32.cpp
+    ${DAS_IMGUI_DIR}/src/dasIMGUI.func_33.cpp
+    ${DAS_IMGUI_DIR}/src/dasIMGUI.func_34.cpp
 )
 
 # imgui app source files

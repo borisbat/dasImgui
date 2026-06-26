@@ -62,3 +62,7 @@ construction.
    edit_tab_item.rst
    icons.rst
    wrap_tab_bar.rst
+   dynamic_fonts.rst
+   texture_ref.rst
+   item_flags.rst
+   log_capture.rst

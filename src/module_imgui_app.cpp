@@ -149,10 +149,9 @@ public:
         addExtern<DAS_BIND_FUN(ImGui_ImplOpenGL3_RenderDrawData)>(*this,lib,"ImGui_ImplOpenGL3_RenderDrawData",
             SideEffects::worstDefault, "ImGui_ImplOpenGL3_RenderDrawData");
 
-        addExtern<DAS_BIND_FUN(ImGui_ImplOpenGL3_CreateFontsTexture)>(*this,lib,"ImGui_ImplOpenGL3_CreateFontsTexture",
-            SideEffects::worstDefault, "ImGui_ImplOpenGL3_CreateFontsTexture");
-        addExtern<DAS_BIND_FUN(ImGui_ImplOpenGL3_DestroyFontsTexture)>(*this,lib,"ImGui_ImplOpenGL3_DestroyFontsTexture",
-            SideEffects::worstDefault, "ImGui_ImplOpenGL3_DestroyFontsTexture");
+        // ImGui_ImplOpenGL3_CreateFontsTexture/DestroyFontsTexture are not bound —
+        // the backend creates/destroys textures automatically via the
+        // RendererHasTextures texture queue inside RenderDrawData. No das callers existed.
         addExtern<DAS_BIND_FUN(ImGui_ImplOpenGL3_CreateDeviceObjects)>(*this,lib,"ImGui_ImplOpenGL3_CreateDeviceObjects",
             SideEffects::worstDefault, "ImGui_ImplOpenGL3_CreateDeviceObjects");
         addExtern<DAS_BIND_FUN(ImGui_ImplOpenGL3_DestroyDeviceObjects)>(*this,lib,"ImGui_ImplOpenGL3_DestroyDeviceObjects",

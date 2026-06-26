@@ -31,7 +31,7 @@ let FONTS = ["Sans", "Serif", "Mono", "Cursive", "Display"]
 def init() {
     harness_init("Phase 0b.4 — text inputs", 760, 620)
     var io & = unsafe(GetIO())
-    io.FontGlobalScale = 1.5
+    unsafe(GetStyle()).FontScaleMain = 1.5
 }
 
 [export]

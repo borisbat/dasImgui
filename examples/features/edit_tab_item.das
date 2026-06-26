@@ -41,7 +41,7 @@ def update() {
         separator()
 
         tab_bar(BAR, (text = "MyBar",
-                      flags = ImGuiTabBarFlags.FittingPolicyResizeDown)) {
+                      flags = ImGuiTabBarFlags.FittingPolicyShrink)) {
             edit_tab_item(safe_addr(g_tab_a_open),
                           (id = "TAB_A", text = "alpha",
                            flags = ImGuiTabItemFlags.None)) {

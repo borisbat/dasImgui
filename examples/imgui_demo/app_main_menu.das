@@ -72,7 +72,7 @@ def ShowExampleMenuFile() {
     menu(FILE_OPTIONS_A, (text = "Options", enabled = true)) {
         menu_item(FILE_OPTIONS_ENABLED, (text = "Enabled", init = true))
         child(FILE_CHILD, (text = "child", size = float2(0.0f, 60.0f),
-                           child_flags = ImGuiChildFlags.Border,
+                           child_flags = ImGuiChildFlags.Borders,
                            window_flags = ImGuiWindowFlags.None)) {
             for (i in range(10)) {
                 text(FILE_CHILD_SCROLL[i], (text = "Scrolling Text {i}"))

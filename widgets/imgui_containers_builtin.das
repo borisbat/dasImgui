@@ -365,11 +365,16 @@ def popup_window(var state : PopupWindowState; str_id : string;
     //! the pushed IDENT so child widgets remain disambiguated.
     PopID()
     let im_open = BeginPopup(str_id, flags)
-    PushID(widget_ident)
     if (im_open) {
+        // Body renders under widget_ident inside the popup window; pop it before
+        // EndPopup so the popup's ID stack balances (1.92 errors on a leftover push).
+        PushID(widget_ident)
         invoke(blk)
+        PopID()
         EndPopup()
     }
+    // Restore widget_ident on the parent stack for the [container] finalize's pop.
+    PushID(widget_ident)
     stateless_finalize(widget_ident, "popup_window", state)
 }
 
@@ -592,7 +597,7 @@ def private draw_wrap_strip(var state : WrapTabBarState) {
     state.value = clamp(state.value, 0, n - 1)
     let pad = GetStyle().FramePadding.x
     let spacing = GetStyle().ItemSpacing.x
-    let vis_x2 = GetWindowPos().x + GetWindowContentRegionMax().x
+    let vis_x2 = GetCursorScreenPos().x + GetContentRegionAvail().x
     var last_x2 = 0.0f
     for (i in range(n)) {
         let lbl = state.labels[i]

@@ -5,6 +5,8 @@ DAS_BASE_BIND_ENUM_GEN(ImGuiWindowFlags_,ImGuiWindowFlags);
 
 DAS_BASE_BIND_ENUM_GEN(ImGuiChildFlags_,ImGuiChildFlags);
 
+DAS_BASE_BIND_ENUM_GEN(ImGuiItemFlags_,ImGuiItemFlags);
+
 DAS_BASE_BIND_ENUM_GEN(ImGuiInputTextFlags_,ImGuiInputTextFlags);
 
 DAS_BASE_BIND_ENUM_GEN(ImGuiTreeNodeFlags_,ImGuiTreeNodeFlags);
@@ -29,11 +31,13 @@ DAS_BASE_BIND_ENUM_GEN(ImGuiDragDropFlags_,ImGuiDragDropFlags);
 
 DAS_BASE_BIND_ENUM_GEN(ImGuiDataType_,ImGuiDataType);
 
-DAS_BASE_BIND_ENUM_GEN(ImGuiDir_,ImGuiDir);
+DAS_BASE_BIND_ENUM_GEN(ImGuiDir,ImGuiDir);
 
-DAS_BASE_BIND_ENUM_GEN(ImGuiSortDirection_,ImGuiSortDirection);
+DAS_BASE_BIND_ENUM_GEN(ImGuiSortDirection,ImGuiSortDirection);
 
 DAS_BASE_BIND_ENUM_GEN(ImGuiKey,ImGuiKey);
+
+DAS_BASE_BIND_ENUM_GEN(ImGuiInputFlags_,ImGuiInputFlags);
 
 DAS_BASE_BIND_ENUM_GEN(ImGuiConfigFlags_,ImGuiConfigFlags);
 
@@ -65,15 +69,27 @@ DAS_BASE_BIND_ENUM_GEN(ImGuiTableRowFlags_,ImGuiTableRowFlags);
 
 DAS_BASE_BIND_ENUM_GEN(ImGuiTableBgTarget_,ImGuiTableBgTarget);
 
+DAS_BASE_BIND_ENUM_GEN(ImGuiListClipperFlags_,ImGuiListClipperFlags);
+
+DAS_BASE_BIND_ENUM_GEN(ImGuiMultiSelectFlags_,ImGuiMultiSelectFlags);
+
+DAS_BASE_BIND_ENUM_GEN(ImGuiSelectionRequestType,ImGuiSelectionRequestType);
+
 DAS_BASE_BIND_ENUM_GEN(ImDrawFlags_,ImDrawFlags);
 
 DAS_BASE_BIND_ENUM_GEN(ImDrawListFlags_,ImDrawListFlags);
 
+DAS_BASE_BIND_ENUM_GEN(ImTextureFormat,ImTextureFormat);
+
+DAS_BASE_BIND_ENUM_GEN(ImTextureStatus,ImTextureStatus);
+
 DAS_BASE_BIND_ENUM_GEN(ImFontAtlasFlags_,ImFontAtlasFlags);
+
+DAS_BASE_BIND_ENUM_GEN(ImFontFlags_,ImFontFlags);
 
 DAS_BASE_BIND_ENUM_GEN(ImGuiViewportFlags_,ImGuiViewportFlags);
 
-DAS_BASE_BIND_ENUM_GEN(ImGuiItemFlags_,ImGuiItemFlags);
+DAS_BASE_BIND_ENUM_GEN(ImGuiItemFlagsPrivate_,ImGuiItemFlagsPrivate);
 
 DAS_BASE_BIND_ENUM_GEN(ImGuiButtonFlagsPrivate_,ImGuiButtonFlagsPrivate);
 
@@ -85,9 +101,9 @@ DAS_BASE_BIND_ENUM_GEN(ImGuiTextFlags_,ImGuiTextFlags);
 
 DAS_BASE_BIND_ENUM_GEN(ImGuiTooltipFlags_,ImGuiTooltipFlags);
 
-DAS_BASE_BIND_ENUM_GEN(ImGuiLogType,ImGuiLogType);
+DAS_BASE_BIND_ENUM_GEN(ImGuiLogFlags_,ImGuiLogFlags);
 
 DAS_BASE_BIND_ENUM_GEN(ImGuiAxis,ImGuiAxis);
 
-DAS_BASE_BIND_ENUM_GEN(ImGuiNavHighlightFlags_,ImGuiNavHighlightFlags);
+DAS_BASE_BIND_ENUM_GEN(ImGuiNavRenderCursorFlags_,ImGuiNavRenderCursorFlags);
 

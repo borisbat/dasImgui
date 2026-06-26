@@ -27,7 +27,7 @@ require imgui/imgui_harness
 def init() {
     harness_init("internal_layout_calc - imgui_internal.h layout helpers", 760, 690)
     var io & = unsafe(GetIO())
-    io.FontGlobalScale = 1.25
+    unsafe(GetStyle()).FontScaleMain = 1.25
 }
 
 [export]
@@ -90,12 +90,13 @@ def update() {
         dummy(SPACER2, ImVec2(700.0, 56.0))
         separator()
 
-        // GetContentRegionMaxAbs - absolute screen coord of the content region's
-        // far (bottom-right) corner; marked with a crosshair + ring.
-        text("GetContentRegionMaxAbs: absolute screen coord of the content's far corner.")
+        // Absolute screen coord of the content region's far (bottom-right) corner;
+        // marked with a crosshair + ring. cursor-screen-pos + content-region-avail
+        // gives the far corner.
+        text("content far corner (cursor + GetContentRegionAvail): absolute screen coord.")
         let o3 = GetCursorScreenPos()
         with_window_drawlist() $(var dl) {
-            let m = GetContentRegionMaxAbs()
+            let m = o3 + GetContentRegionAvail()
             let cx = m.x - 8.0
             let cy = m.y - 8.0
             dl |> add_line(ImVec2(cx - 12.0, cy), ImVec2(cx + 12.0, cy), mark, 2.0)

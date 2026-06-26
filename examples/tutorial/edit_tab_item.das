@@ -59,7 +59,7 @@ def init() {
     live_create_window("dasImgui edit_tab_item tutorial", 760, 560)
     live_imgui_init(live_window)
     var io & = unsafe(GetIO())
-    io.FontGlobalScale = 1.4
+    unsafe(GetStyle()).FontScaleMain = 1.4
 }
 
 [export]
@@ -93,7 +93,7 @@ def update() {
 
         // ---- The tab bar — three edit_tab_item instances ----
         tab_bar(ET_BAR, (text = "MyBar",
-                          flags = ImGuiTabBarFlags.FittingPolicyResizeDown)) {
+                          flags = ImGuiTabBarFlags.FittingPolicyShrink)) {
             edit_tab_item(safe_addr(g_tab_a_open),
                           (id = "ET_TAB_A", text = "alpha",
                            flags = ImGuiTabItemFlags.None)) {

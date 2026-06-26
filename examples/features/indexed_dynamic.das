@@ -30,7 +30,7 @@ var private CHANNEL_VOL : table<int; SliderStateFloat>
 def init() {
     harness_init("indexed_dynamic", 600, 500)
     var io & = unsafe(GetIO())
-    io.FontGlobalScale = 1.5
+    unsafe(GetStyle()).FontScaleMain = 1.5
 }
 
 def find_max_key(t : table<int; SliderStateFloat>) : int {

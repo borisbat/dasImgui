@@ -48,8 +48,8 @@ require imgui/imgui_icons
 def init() {
     live_create_window("dasImgui icons tutorial", 680, 560)
     live_imgui_init(live_window)
-    var io & = unsafe(GetIO())
-    io.FontGlobalScale = 1.4
+    var style & = unsafe(GetStyle())
+    style.FontScaleMain = 1.4f
 }
 
 [export]

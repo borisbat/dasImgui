@@ -69,7 +69,7 @@ def init() {
     // blanket change to live_imgui_init.
     DisableIniPersistence()
     var io & = unsafe(GetIO())
-    io.FontGlobalScale = 1.2
+    unsafe(GetStyle()).FontScaleMain = 1.2
 
     // Seed the three constraints once at init — daslang lambdas hold their
     // own capture state, so a single per-shape struct is enough for all

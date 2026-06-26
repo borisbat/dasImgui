@@ -10,7 +10,6 @@ require imgui/imgui_scope_builtin
 require imgui/imgui_id_builtin
 require imgui/imgui_layout_builtin       // group + same_line for Circle Tess samples
 require imgui/imgui_drawlist_builtin     // add_circle / with_window_drawlist for samples
-require daslib/safe_addr                  // window-scoped font scale edit_drag_float
 require daslib/enum_trait
 require math                              // max / floor for Circle Tess preview
 
@@ -19,10 +18,6 @@ require math                              // max / floor for Circle Tess preview
 // the table declared at module scope.
 var private STYLE_COLOR_SAMELINE : table<int; EmptyMarkerState>
 var private STYLE_COLOR_NAME : table<int; NarrativeState>
-
-// Per-window post-baking font scale (cpp:6883 — static float window_scale).
-// Edited by the Fonts tab DragFloat; pushed via SetWindowFontScale per frame.
-var STYLE_WINDOW_SCALE = 1.0f
 
 // Circle Tessellation tooltip samples — 8 BeginGroup'd preview blocks shown
 // while the user is dragging Circle Tessellation Max Error (cpp:6919-6945).
@@ -181,7 +176,7 @@ def ShowStyleEditor() {
                 // doc comment).
                 child(STYLE_COLORS_CHILD,
                       (text = "##colors", size = float2(0.0f, 0.0f),
-                       child_flags = ImGuiChildFlags.Border,
+                       child_flags = ImGuiChildFlags.Borders,
                        window_flags = ImGuiWindowFlags.AlwaysVerticalScrollbar)) {
                     with_item_width(GetFontSize() * -12.0f) {
                         for (col in type<ImGuiCol>) {
@@ -204,21 +199,8 @@ def ShowStyleEditor() {
             tab_item(STYLE_TAB_FONTS, (text = "Fonts", closable = false,
                                        flags = ImGuiTabItemFlags.None)) {
                 // ShowFontAtlas (cpp:6872) skipped — debug helper.
-                // Window-scoped font scale — per-window-only post-baking scale.
-                // SetWindowFontScale on the current window when the value
-                // changes. cpp warns this is the wrong way to scale for sharpness
-                // (the right answer is reload font at the target size + rebuild
-                // atlas); kept here for parity.
-                if (edit_drag_float(safe_addr(STYLE_WINDOW_SCALE),
-                                    (id = "STYLE_WINDOW_SCALE",
-                                     text = "window scale",
-                                     speed = 0.005f,
-                                     v_min = 0.3f, v_max = 2.0f, format = "%.2f",
-                                     flags = ImGuiSliderFlags.AlwaysClamp))) {
-                    SetWindowFontScale(STYLE_WINDOW_SCALE)
-                }
-                var io & = unsafe(GetIO())
-                edit_drag_float(unsafe(addr(io.FontGlobalScale)),
+                // style.FontScaleMain is the global font scale.
+                edit_drag_float(unsafe(addr(style.FontScaleMain)),
                                 (id = "STYLE_FONT_GLOBAL_SCALE",
                                  text = "global scale",
                                  speed = 0.005f, v_min = 0.3f, v_max = 2.0f,

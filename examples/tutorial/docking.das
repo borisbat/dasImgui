@@ -86,7 +86,7 @@ def init() {
     // ini from a prior run would otherwise override the seed non-deterministically).
     DisableIniPersistence()
     var io & = unsafe(GetIO())
-    io.FontGlobalScale = 1.5
+    unsafe(GetStyle()).FontScaleMain = 1.5
     // The single flag that turns docking on for the whole session. Without
     // this, DockSpace() / DockSpaceOverViewport() render nothing.
     io.ConfigFlags |= ImGuiConfigFlags.DockingEnable

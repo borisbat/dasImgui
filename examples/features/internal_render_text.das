@@ -26,7 +26,7 @@ require imgui/imgui_harness
 def init() {
     harness_init("internal_render_text - imgui_internal.h Render* text helpers", 760, 540)
     var io & = unsafe(GetIO())
-    io.FontGlobalScale = 1.25
+    unsafe(GetStyle()).FontScaleMain = 1.25
 }
 
 def private box(var dl : ImDrawList?; x, y, w, h : float; edge : uint) {
@@ -95,7 +95,7 @@ def update() {
         with_window_drawlist() $(var dl) {
             box(dl, o4.x + 12.0, o4.y + 8.0, 220.0, 28.0, edge)
             RenderTextEllipsis(dl, ImVec2(o4.x + 16.0, o4.y + 12.0), ImVec2(ex, o4.y + 32.0),
-                               ex, ex, "this tab label is far too long to fit in its box")
+                               ex, "this tab label is far too long to fit in its box")
         }
         dummy(SPACER4, ImVec2(700.0, 44.0))
         separator()

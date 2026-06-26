@@ -23,7 +23,7 @@ let SAMPLES = 64
 def init() {
     harness_init("Phase 2.7 — plot_getter", 800, 600)
     var io & = unsafe(GetIO())
-    io.FontGlobalScale = 1.5
+    unsafe(GetStyle()).FontScaleMain = 1.5
 }
 
 [export]

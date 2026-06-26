@@ -78,11 +78,9 @@ class ImguiGen : CppGenBind {
             "ImGuiCol"                  => "ImGuiCol_",
             "ImGuiCond"                 => "ImGuiCond_",
             "ImGuiDataType"             => "ImGuiDataType_",
-            "ImGuiDir"                  => "ImGuiDir_",
             "ImGuiNavInput"             => "ImGuiNavInput_",
             "ImGuiMouseButton"          => "ImGuiMouseButton_",
             "ImGuiMouseCursor"          => "ImGuiMouseCursor_",
-            "ImGuiSortDirection"        => "ImGuiSortDirection_",
             "ImGuiStyleVar"             => "ImGuiStyleVar_",
             "ImGuiTableBgTarget"        => "ImGuiTableBgTarget_",
             "ImDrawFlags"               => "ImDrawFlags_",
@@ -120,9 +118,21 @@ class ImguiGen : CppGenBind {
         // ImVector, CountGrep=0) with a well-defined copy ctor, so daslang state
         // structs can hold one inline. Emitted by the binder now (was a manual
         // post-regen patch on src/dasIMGUI.struct.class.inc).
-        trivial_ctor_type_names <- {"ImGuiTextFilter" => true}
-        copyable_type_names <- {"ImGuiTextFilter" => true}
+        // ImTextureRef is { ImTextureData* _TexData; ImTextureID _TexID }
+        // — trivially copyable, passed by value to Image / ImageButton / ImageWithBg.
+        // Mark copyable so a const ImTextureRef (e.g. GetIO().Fonts.TexRef) binds to
+        // those by-value params.
+        trivial_ctor_type_names <- {"ImGuiTextFilter" => true, "ImTextureRef" => true}
+        copyable_type_names <- {"ImGuiTextFilter" => true, "ImTextureRef" => true}
         imgui_skip_func <- {
+            // Image / ImageButton / ImageWithBg take ImTextureRef BY VALUE (non-const);
+            // the auto-binding makes the das arg a non-const managed handle, which a
+            // const ImTextureRef (e.g. GetIO().Fonts.TexRef) can't bind to. Manual
+            // wrappers in dasIMGUI.main.cpp take `const ImTextureRef&` so the arg is
+            // const (like ImVec2), matching every call site.
+            "ImGui::Image" => true,
+            "ImGui::ImageButton" => true,
+            "ImGui::ImageWithBg" => true,
             "ImGui::TextUnformatted" => true,
             "ImGuiTextFilter::PassFilter" => true,
             "ImGuiTextBuffer::append" => true,
@@ -141,15 +151,16 @@ class ImguiGen : CppGenBind {
         // enum name. Override the strip-prefix so they bind as ImGuiButtonFlagsPrivate.Repeat
         // etc. (else enum_entry_name leaves the full `ImGuiButtonFlags_Repeat`).
         enum_prefix |> insert("ImGuiButtonFlagsPrivate_", "ImGuiButtonFlags")
+        // The private item flags (MixedValue, ReadOnly, AllowOverlap, NoNav, …) in
+        // ImGuiItemFlagsPrivate_ carry the public ImGuiItemFlags_ prefix — strip it
+        // so they bind as ImGuiItemFlags.MixedValue etc.
+        enum_prefix |> insert("ImGuiItemFlagsPrivate_", "ImGuiItemFlags")
         // ImGuiComboFlagsPrivate_'s one value is ImGuiComboFlags_CustomPreview (carries
         // the public ImGuiComboFlags_ prefix) — strip it so it binds as CustomPreview.
         enum_prefix |> insert("ImGuiComboFlagsPrivate_", "ImGuiComboFlags")
         // ImGuiAxis's tag has no trailing underscore but its values are ImGuiAxis_X /
         // ImGuiAxis_Y, so strip the full "ImGuiAxis_" prefix (default would leave "_X").
         enum_prefix |> insert("ImGuiAxis", "ImGuiAxis_")
-        // ImGuiLogType — same shape as ImGuiAxis: tag has no trailing underscore but its
-        // values are ImGuiLogType_TTY etc., so strip the full "ImGuiLogType_" prefix.
-        enum_prefix |> insert("ImGuiLogType", "ImGuiLogType_")
         // Family 1 — Render* draw helpers from imgui_internal.h. Every argument is
         // an already-bound public type (ImVec2, ImU32, ImDrawList*, ImGuiDir,
         // ImGuiMouseCursor, ImDrawFlags), so no internal struct/enum is pulled in.
@@ -180,13 +191,13 @@ class ImguiGen : CppGenBind {
             "ImGui::ShadeVertsTransformPos",
             "ImGui::PushItemFlag", "ImGui::PopItemFlag",
             "ImGui::CalcItemSize", "ImGui::CalcWrapWidthForPos",
-            "ImGui::GetContentRegionMaxAbs", "ImGui::ItemSize",
+            "ImGui::ItemSize",
             // Family 1-complete — Render* helpers that were dropped from family 1
             // because they take an ImRect; now that ImRect is aliased to float4
-            // (#166) they bind directly. RenderNavHighlight also pulls the
-            // ImGuiNavHighlightFlags_ enum (bound as int arg, like PushItemFlag).
-            "ImGui::RenderDragDropTargetRect", "ImGui::RenderNavHighlight",
-            "ImGui::RenderRectFilledRangeH", "ImGui::RenderRectFilledWithHole",
+            // (#166) they bind directly. RenderNavCursor also pulls the
+            // ImGuiNavRenderCursorFlags_ enum (bound as int arg, like PushItemFlag).
+            "ImGui::RenderDragDropTargetRectForItem", "ImGui::RenderNavCursor",
+            "ImGui::RenderRectFilledWithHole",
             // ID-stack seed / override helpers. Pure ImGuiID(uint)/const char*/int
             // in, ImGuiID/void out — no internal struct, enum, or nullable pointer.
             // GetIDWithSeed's two-pointer overload mirrors the public GetID(begin,end):
@@ -286,7 +297,8 @@ class ImguiGen : CppGenBind {
             "ImGui::LogBegin", "ImGui::LogSetNextTextDecoration"
         }
         internal_allow_enum <- {
-            "ImGuiItemFlags_", "ImGuiNavHighlightFlags_", "ImGuiTooltipFlags_",
+            "ImGuiItemFlags_", "ImGuiItemFlagsPrivate_",
+            "ImGuiNavRenderCursorFlags_", "ImGuiTooltipFlags_",
             "ImGuiButtonFlagsPrivate_",
             // Axis selector (None=-1 / X=0 / Y=1) for the scrollbar / splitter
             // behavior primitives. Plain enum, tag has no trailing underscore.
@@ -300,9 +312,9 @@ class ImguiGen : CppGenBind {
             // (enables BeginComboPreview). Combined into the public ImGuiComboFlags
             // inside the with_custom_preview_combo guard (imgui_scope_builtin.das).
             "ImGuiComboFlagsPrivate_",
-            // ImGuiLogType (None/TTY/File/Buffer/Clipboard) selects LogBegin's capture
-            // target. Plain enum, tag has no trailing underscore (prefix override below).
-            "ImGuiLogType"
+            // ImGuiLogFlags_ (Output{TTY,File,Buffer,Clipboard}) selects LogBegin's
+            // capture target.
+            "ImGuiLogFlags_"
         }
     }
     def is_internal : bool {

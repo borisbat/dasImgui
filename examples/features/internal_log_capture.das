@@ -54,7 +54,7 @@ def private render_report(logging : bool) {
 def init() {
     harness_init("internal_log_capture - LogBegin / LogRenderedText / decoration", 700, 560)
     var io & = unsafe(GetIO())
-    io.FontGlobalScale = 1.2
+    unsafe(GetStyle()).FontScaleMain = 1.2
 }
 
 [export]
@@ -85,7 +85,7 @@ def update() {
         g_capture_requested = false
         if (capture_now) {
             g_capture_count++
-            with_log(ImGuiLogType.Clipboard, -1) {
+            with_log(ImGuiLogFlags.OutputClipboard, -1) {
                 render_report(true)
             }
             g_last_clip := GetClipboardText()
@@ -97,7 +97,7 @@ def update() {
         text("Captures so far: {g_capture_count}. Note the '# ' header decoration and the")
         text("injected line below — neither is part of the on-screen report above:")
         child(CLIP_CHILD, (text = "clip", size = float2(640.0f, 200.0f),
-                           child_flags = ImGuiChildFlags.Border,
+                           child_flags = ImGuiChildFlags.Borders,
                            window_flags = ImGuiWindowFlags.None)) {
             text(CLIP_VIEW, (text = g_last_clip))
         }

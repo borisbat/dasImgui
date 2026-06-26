@@ -24,7 +24,7 @@ var LOG_ROW : table<int; NarrativeState>
 def init() {
     harness_init("Phase 1.2 — scroll state", 800, 600)
     var io & = unsafe(GetIO())
-    io.FontGlobalScale = 1.5
+    unsafe(GetStyle()).FontScaleMain = 1.5
 }
 
 [export]
@@ -49,7 +49,7 @@ def update() {
                        flags = ImGuiWindowFlags.None)) {
         text("Below: a fixed-size child region with its own scroll state.")
         child(LOG_REGION, (text = "##log", size = float2(320.0, 140.0),
-                           child_flags = ImGuiChildFlags.Border,
+                           child_flags = ImGuiChildFlags.Borders,
                            window_flags = ImGuiWindowFlags.None)) {
             for (i in range(0, 25)) {
                 text(LOG_ROW[i], (text = "log line {i}"))

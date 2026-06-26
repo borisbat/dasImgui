@@ -1,6 +1,12 @@
 // this file is generated via Daslang automatic binder
 // all user modifications will be lost after this file is re-generated
 
+template <> struct cast_arg<ImTextureRef> {
+	static __forceinline const ImTextureRef & to ( Context & ctx, SimNode * node ) {
+		vec4f res = node->eval(ctx);
+		return * cast<ImTextureRef *>::to(res);
+	}
+};
 template <> struct cast_arg<ImGuiTableSortSpecs> {
 	static __forceinline const ImGuiTableSortSpecs & to ( Context & ctx, SimNode * node ) {
 		vec4f res = node->eval(ctx);
@@ -85,10 +91,10 @@ template <> struct cast_arg<ImGuiTextBuffer> {
 		return * cast<ImGuiTextBuffer *>::to(res);
 	}
 };
-template <> struct cast_arg<ImGuiStorage::ImGuiStoragePair> {
-	static __forceinline const ImGuiStorage::ImGuiStoragePair & to ( Context & ctx, SimNode * node ) {
+template <> struct cast_arg<ImGuiStoragePair> {
+	static __forceinline const ImGuiStoragePair & to ( Context & ctx, SimNode * node ) {
 		vec4f res = node->eval(ctx);
-		return * cast<ImGuiStorage::ImGuiStoragePair *>::to(res);
+		return * cast<ImGuiStoragePair *>::to(res);
 	}
 };
 template <> struct cast_arg<ImGuiStorage> {
@@ -101,6 +107,30 @@ template <> struct cast_arg<ImGuiListClipper> {
 	static __forceinline const ImGuiListClipper & to ( Context & ctx, SimNode * node ) {
 		vec4f res = node->eval(ctx);
 		return * cast<ImGuiListClipper *>::to(res);
+	}
+};
+template <> struct cast_arg<ImGuiMultiSelectIO> {
+	static __forceinline const ImGuiMultiSelectIO & to ( Context & ctx, SimNode * node ) {
+		vec4f res = node->eval(ctx);
+		return * cast<ImGuiMultiSelectIO *>::to(res);
+	}
+};
+template <> struct cast_arg<ImGuiSelectionRequest> {
+	static __forceinline const ImGuiSelectionRequest & to ( Context & ctx, SimNode * node ) {
+		vec4f res = node->eval(ctx);
+		return * cast<ImGuiSelectionRequest *>::to(res);
+	}
+};
+template <> struct cast_arg<ImGuiSelectionBasicStorage> {
+	static __forceinline const ImGuiSelectionBasicStorage & to ( Context & ctx, SimNode * node ) {
+		vec4f res = node->eval(ctx);
+		return * cast<ImGuiSelectionBasicStorage *>::to(res);
+	}
+};
+template <> struct cast_arg<ImGuiSelectionExternalStorage> {
+	static __forceinline const ImGuiSelectionExternalStorage & to ( Context & ctx, SimNode * node ) {
+		vec4f res = node->eval(ctx);
+		return * cast<ImGuiSelectionExternalStorage *>::to(res);
 	}
 };
 template <> struct cast_arg<ImDrawCmd> {
@@ -145,6 +175,18 @@ template <> struct cast_arg<ImDrawData> {
 		return * cast<ImDrawData *>::to(res);
 	}
 };
+template <> struct cast_arg<ImTextureRect> {
+	static __forceinline const ImTextureRect & to ( Context & ctx, SimNode * node ) {
+		vec4f res = node->eval(ctx);
+		return * cast<ImTextureRect *>::to(res);
+	}
+};
+template <> struct cast_arg<ImTextureData> {
+	static __forceinline const ImTextureData & to ( Context & ctx, SimNode * node ) {
+		vec4f res = node->eval(ctx);
+		return * cast<ImTextureData *>::to(res);
+	}
+};
 template <> struct cast_arg<ImFontConfig> {
 	static __forceinline const ImFontConfig & to ( Context & ctx, SimNode * node ) {
 		vec4f res = node->eval(ctx);
@@ -163,16 +205,22 @@ template <> struct cast_arg<ImFontGlyphRangesBuilder> {
 		return * cast<ImFontGlyphRangesBuilder *>::to(res);
 	}
 };
-template <> struct cast_arg<ImFontAtlasCustomRect> {
-	static __forceinline const ImFontAtlasCustomRect & to ( Context & ctx, SimNode * node ) {
+template <> struct cast_arg<ImFontAtlasRect> {
+	static __forceinline const ImFontAtlasRect & to ( Context & ctx, SimNode * node ) {
 		vec4f res = node->eval(ctx);
-		return * cast<ImFontAtlasCustomRect *>::to(res);
+		return * cast<ImFontAtlasRect *>::to(res);
 	}
 };
 template <> struct cast_arg<ImFontAtlas> {
 	static __forceinline const ImFontAtlas & to ( Context & ctx, SimNode * node ) {
 		vec4f res = node->eval(ctx);
 		return * cast<ImFontAtlas *>::to(res);
+	}
+};
+template <> struct cast_arg<ImFontBaked> {
+	static __forceinline const ImFontBaked & to ( Context & ctx, SimNode * node ) {
+		vec4f res = node->eval(ctx);
+		return * cast<ImFontBaked *>::to(res);
 	}
 };
 template <> struct cast_arg<ImFont> {

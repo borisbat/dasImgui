@@ -28,7 +28,7 @@ var SHIRT_ROW : table<int; ClickState>
 def init() {
     harness_init("Phase 0b.2 — choice inputs", 720, 500)
     var io & = unsafe(GetIO())
-    io.FontGlobalScale = 1.5
+    unsafe(GetStyle()).FontScaleMain = 1.5
 }
 
 [export]

@@ -51,7 +51,7 @@ def init() {
     live_create_window("dasImgui child tutorial", 800, 540)
     live_imgui_init(live_window)
     var io & = unsafe(GetIO())
-    io.FontGlobalScale = 1.4
+    unsafe(GetStyle()).FontScaleMain = 1.4
 }
 
 [export]
@@ -76,7 +76,7 @@ def update() {
         text("A) Bordered fixed-size with vertical scroll")
         child(SCROLL_A, (text = "scroll_a",
                          size = float2(360.0f, 140.0f),
-                         child_flags = ImGuiChildFlags.Border,
+                         child_flags = ImGuiChildFlags.Borders,
                          window_flags = ImGuiWindowFlags.None)) {
             for (i in range(20)) {
                 text(SCROLL_ROW[i], (text = "row {i} - content overflows the visible region"))
@@ -105,7 +105,7 @@ def update() {
         text("C) Border + horizontal scroll - wide content")
         child(SCROLL_C, (text = "scroll_c",
                         size = float2(720.0f, 90.0f),
-                        child_flags = ImGuiChildFlags.Border,
+                        child_flags = ImGuiChildFlags.Borders,
                         window_flags = ImGuiWindowFlags.HorizontalScrollbar)) {
             // One long line — forces horizontal scroll because no wrap.
             text(LONG_LINE, (text = "very wide content: lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua ut enim ad minim veniam quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo"))

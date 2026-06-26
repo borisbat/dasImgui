@@ -12,84 +12,81 @@
 namespace das {
 #include "dasIMGUI.func.aot.decl.inc"
 void Module_dasIMGUI::initFunctions_1() {
-// from imgui.h:311:29
+	addCtorAndUsing<ImTextureRef>(*this,lib,"ImTextureRef","ImTextureRef");
+	addCtorAndUsing<ImTextureRef,unsigned long long>(*this,lib,"ImTextureRef","ImTextureRef")
+		->args({"tex_id"});
+	using _method_1 = das::das_call_member< ImTextureID (ImTextureRef::*)() const,&ImTextureRef::GetTexID >;
+// from imgui.h:378:25
+	makeExtern<DAS_CALL_METHOD(_method_1), SimNode_ExtFuncCall , imguiTempFn>(lib,"GetTexID","das_call_member< ImTextureID (ImTextureRef::*)() const , &ImTextureRef::GetTexID >::invoke")
+		->args({"self"})
+		->addToModule(*this, SideEffects::worstDefault);
+// from imgui.h:397:29
 	makeExtern< ImGuiContext * (*)(ImFontAtlas *) , ImGui::CreateContext , SimNode_ExtFuncCall , imguiTempFn>(lib,"CreateContext","ImGui::CreateContext")
 		->args({"shared_font_atlas"})
 		->arg_init(0,new ExprConstPtr())
 		->addToModule(*this, SideEffects::worstDefault);
-// from imgui.h:312:29
+// from imgui.h:398:29
 	makeExtern< void (*)(ImGuiContext *) , ImGui::DestroyContext , SimNode_ExtFuncCall , imguiTempFn>(lib,"DestroyContext","ImGui::DestroyContext")
 		->args({"ctx"})
 		->arg_init(0,new ExprConstPtr())
 		->addToModule(*this, SideEffects::worstDefault);
-// from imgui.h:313:29
+// from imgui.h:399:29
 	makeExtern< ImGuiContext * (*)() , ImGui::GetCurrentContext , SimNode_ExtFuncCall , imguiTempFn>(lib,"GetCurrentContext","ImGui::GetCurrentContext")
 		->addToModule(*this, SideEffects::worstDefault);
-// from imgui.h:314:29
+// from imgui.h:400:29
 	makeExtern< void (*)(ImGuiContext *) , ImGui::SetCurrentContext , SimNode_ExtFuncCall , imguiTempFn>(lib,"SetCurrentContext","ImGui::SetCurrentContext")
 		->args({"ctx"})
 		->addToModule(*this, SideEffects::worstDefault);
-// from imgui.h:317:29
+// from imgui.h:403:29
 	makeExtern< ImGuiIO & (*)() , ImGui::GetIO , SimNode_ExtFuncCallRef , imguiTempFn>(lib,"GetIO","ImGui::GetIO")
 		->addToModule(*this, SideEffects::worstDefault);
-// from imgui.h:318:29
+// from imgui.h:404:32
+	makeExtern< ImGuiPlatformIO & (*)() , ImGui::GetPlatformIO , SimNode_ExtFuncCallRef , imguiTempFn>(lib,"GetPlatformIO","ImGui::GetPlatformIO")
+		->addToModule(*this, SideEffects::worstDefault);
+// from imgui.h:405:29
 	makeExtern< ImGuiStyle & (*)() , ImGui::GetStyle , SimNode_ExtFuncCallRef , imguiTempFn>(lib,"GetStyle","ImGui::GetStyle")
 		->addToModule(*this, SideEffects::worstDefault);
-// from imgui.h:319:29
+// from imgui.h:406:29
 	makeExtern< void (*)() , ImGui::NewFrame , SimNode_ExtFuncCall , imguiTempFn>(lib,"NewFrame","ImGui::NewFrame")
 		->addToModule(*this, SideEffects::worstDefault);
-// from imgui.h:320:29
+// from imgui.h:407:29
 	makeExtern< void (*)() , ImGui::EndFrame , SimNode_ExtFuncCall , imguiTempFn>(lib,"EndFrame","ImGui::EndFrame")
 		->addToModule(*this, SideEffects::worstDefault);
-// from imgui.h:321:29
+// from imgui.h:408:29
 	makeExtern< void (*)() , ImGui::Render , SimNode_ExtFuncCall , imguiTempFn>(lib,"Render","ImGui::Render")
 		->addToModule(*this, SideEffects::worstDefault);
-// from imgui.h:322:29
+// from imgui.h:409:29
 	makeExtern< ImDrawData * (*)() , ImGui::GetDrawData , SimNode_ExtFuncCall , imguiTempFn>(lib,"GetDrawData","ImGui::GetDrawData")
 		->addToModule(*this, SideEffects::worstDefault);
-// from imgui.h:325:29
+// from imgui.h:412:29
 	makeExtern< void (*)(bool *) , ImGui::ShowDemoWindow , SimNode_ExtFuncCall , imguiTempFn>(lib,"ShowDemoWindow","ImGui::ShowDemoWindow")
 		->args({"p_open"})
 		->arg_init(0,new ExprConstPtr())
 		->addToModule(*this, SideEffects::worstDefault);
-// from imgui.h:326:29
+// from imgui.h:413:29
 	makeExtern< void (*)(bool *) , ImGui::ShowMetricsWindow , SimNode_ExtFuncCall , imguiTempFn>(lib,"ShowMetricsWindow","ImGui::ShowMetricsWindow")
 		->args({"p_open"})
 		->arg_init(0,new ExprConstPtr())
 		->addToModule(*this, SideEffects::worstDefault);
-// from imgui.h:327:29
+// from imgui.h:414:29
 	makeExtern< void (*)(bool *) , ImGui::ShowDebugLogWindow , SimNode_ExtFuncCall , imguiTempFn>(lib,"ShowDebugLogWindow","ImGui::ShowDebugLogWindow")
 		->args({"p_open"})
 		->arg_init(0,new ExprConstPtr())
 		->addToModule(*this, SideEffects::worstDefault);
-// from imgui.h:328:29
+// from imgui.h:415:29
 	makeExtern< void (*)(bool *) , ImGui::ShowIDStackToolWindow , SimNode_ExtFuncCall , imguiTempFn>(lib,"ShowIDStackToolWindow","ImGui::ShowIDStackToolWindow")
 		->args({"p_open"})
 		->arg_init(0,new ExprConstPtr())
 		->addToModule(*this, SideEffects::worstDefault);
-// from imgui.h:329:29
+// from imgui.h:416:29
 	makeExtern< void (*)(bool *) , ImGui::ShowAboutWindow , SimNode_ExtFuncCall , imguiTempFn>(lib,"ShowAboutWindow","ImGui::ShowAboutWindow")
 		->args({"p_open"})
 		->arg_init(0,new ExprConstPtr())
 		->addToModule(*this, SideEffects::worstDefault);
-// from imgui.h:330:29
+// from imgui.h:417:29
 	makeExtern< void (*)(ImGuiStyle *) , ImGui::ShowStyleEditor , SimNode_ExtFuncCall , imguiTempFn>(lib,"ShowStyleEditor","ImGui::ShowStyleEditor")
 		->args({"ref"})
 		->arg_init(0,new ExprConstPtr())
-		->addToModule(*this, SideEffects::worstDefault);
-// from imgui.h:331:29
-	makeExtern< bool (*)(const char *) , ImGui::ShowStyleSelector , SimNode_ExtFuncCall , imguiTempFn>(lib,"ShowStyleSelector","ImGui::ShowStyleSelector")
-		->args({"label"})
-		->addToModule(*this, SideEffects::worstDefault);
-// from imgui.h:332:29
-	makeExtern< void (*)(const char *) , ImGui::ShowFontSelector , SimNode_ExtFuncCall , imguiTempFn>(lib,"ShowFontSelector","ImGui::ShowFontSelector")
-		->args({"label"})
-		->addToModule(*this, SideEffects::worstDefault);
-// from imgui.h:333:29
-	makeExtern< void (*)() , ImGui::ShowUserGuide , SimNode_ExtFuncCall , imguiTempFn>(lib,"ShowUserGuide","ImGui::ShowUserGuide")
-		->addToModule(*this, SideEffects::worstDefault);
-// from imgui.h:334:29
-	makeExtern< const char * (*)() , ImGui::GetVersion , SimNode_ExtFuncCall , imguiTempFn>(lib,"GetVersion","ImGui::GetVersion")
 		->addToModule(*this, SideEffects::worstDefault);
 }
 }

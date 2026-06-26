@@ -55,7 +55,7 @@ def init() {
     live_create_window("dasImgui buttons tutorial", 800, 720)
     live_imgui_init(live_window)
     var io & = unsafe(GetIO())
-    io.FontGlobalScale = 1.4
+    unsafe(GetStyle()).FontScaleMain = 1.4
 }
 
 [export]
@@ -103,10 +103,9 @@ def update() {
 
         // ---- Stage 5: image_button — textured button (font atlas) ----
         let io & = unsafe(GetIO())
-        let font_tex = io.Fonts.TexID
-        if (font_tex != null) {
+        if (io.Fonts.TexData != null) {
             image_button(BT_IMG, (text = "##font",
-                                  user_texture_id = font_tex,
+                                  user_texture_id = io.Fonts.TexRef,
                                   size = float2(48.0f, 48.0f)))
             text("BT_IMG clicks = {BT_IMG.click_count}  // textured 48×48 of the font atlas")
         }
@@ -115,7 +114,7 @@ def update() {
         // ---- Stage 6: tab_item_button — must live inside a tab_bar ----
         text("tab_item_button — leading '?' tallies, trailing '+' grows the bar:")
         tab_bar(BT_BAR, (text = "MyBar",
-                          flags = ImGuiTabBarFlags.FittingPolicyResizeDown)) {
+                          flags = ImGuiTabBarFlags.FittingPolicyShrink)) {
             tab_item_button(BT_HELP, (text = "?",
                                        flags = ImGuiTabItemFlags.Leading |
                                                ImGuiTabItemFlags.NoTooltip))

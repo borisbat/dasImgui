@@ -124,7 +124,7 @@ daslang.exe -project_root . my_app.das
 
 ## imgui version
 
-v1.90.6-docking (fetched via CMake FetchContent at build time).
+v1.92.6-docking (fetched via CMake FetchContent at build time).
 
 ## Documentation
 

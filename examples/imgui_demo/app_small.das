@@ -72,7 +72,7 @@ def ShowExampleAppLayout() : bool {
             }
         }
         // Left pane — resizable child with 100 selectable rows.
-        let left_flags = int(ImGuiChildFlags.Border | ImGuiChildFlags.ResizeX)
+        let left_flags = int(ImGuiChildFlags.Borders | ImGuiChildFlags.ResizeX)
         child(SMALL_LAYOUT_LEFT_CHILD,
               (text = "left pane", size = float2(150.0f, 0.0f),
                child_flags = unsafe(reinterpret<ImGuiChildFlags>(left_flags)),

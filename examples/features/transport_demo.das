@@ -20,7 +20,7 @@ require imgui/imgui_harness
 def init() {
     harness_init("Phase 2.6 — transport_demo", 800, 600)
     var io & = unsafe(GetIO())
-    io.FontGlobalScale = 1.5
+    unsafe(GetStyle()).FontScaleMain = 1.5
 }
 
 [export]

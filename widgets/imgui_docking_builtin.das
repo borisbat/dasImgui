@@ -146,7 +146,8 @@ def dockspace(var state : DockSpaceState; flags : ImGuiDockNodeFlags; blk : bloc
     }
     state.flags = flags
     let viewport = GetMainViewport()
-    let id = DockSpaceOverViewport(viewport, int(flags), null)
+    // leading dockspace_id arg: 0 = auto-generate.
+    let id = DockSpaceOverViewport(0u, viewport, int(flags), null)
     state.dock_id = id
     invoke(blk)
     dockspace_finalize(widget_ident, "dockspace", state)

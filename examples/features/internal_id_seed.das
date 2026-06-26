@@ -39,7 +39,7 @@ def private hex8(v : uint) : string {
 def init() {
     harness_init("internal_id_seed - imgui_internal.h ID seed / override helpers", 760, 560)
     var io & = unsafe(GetIO())
-    io.FontGlobalScale = 1.25
+    unsafe(GetStyle()).FontScaleMain = 1.25
 }
 
 [export]

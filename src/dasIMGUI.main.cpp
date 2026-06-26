@@ -43,7 +43,7 @@ namespace das {
     void DockBuilderSetNodeSize_das(ImGuiID node_id, const ImVec2 & size) {
         ImGui::DockBuilderSetNodeSize(node_id, size);
     }
-    ImGuiID DockBuilderSplitNode_das(ImGuiID parent_id, ImGuiDir_ split_dir, float ratio,
+    ImGuiID DockBuilderSplitNode_das(ImGuiID parent_id, ImGuiDir split_dir, float ratio,
                                      ImGuiID & out_at_dir, ImGuiID & out_at_opp) {
         ImGuiID a = 0, b = 0;
         ImGuiID r = ImGui::DockBuilderSplitNode(parent_id, split_dir, ratio, &a, &b);
@@ -314,9 +314,22 @@ namespace das {
         drawList.AddText(pos, col, text);
     }
 
-    void AddText2( ImDrawList & drawList, const ImFont* font, float font_size, const ImVec2& pos, ImU32 col,
+    void AddText2( ImDrawList & drawList, ImFont* font, float font_size, const ImVec2& pos, ImU32 col,
         const char* text_begin, float wrap_width, const ImVec4* cpu_fine_clip_rect) {
         drawList.AddText(font,font_size,pos,col,text_begin,nullptr,wrap_width,cpu_fine_clip_rect);
+    }
+
+    // Image/ImageButton/ImageWithBg take ImTextureRef BY VALUE. These wrappers
+    // take `const ImTextureRef&` so the daslang arg binds as const (like ImVec2),
+    // letting a const ImTextureRef (GetIO().Fonts.TexRef) pass through.
+    void Image_das( const ImTextureRef & tex_ref, const ImVec2 & image_size, const ImVec2 & uv0, const ImVec2 & uv1 ) {
+        ImGui::Image(tex_ref, image_size, uv0, uv1);
+    }
+    void ImageWithBg_das( const ImTextureRef & tex_ref, const ImVec2 & image_size, const ImVec2 & uv0, const ImVec2 & uv1, const ImVec4 & bg_col, const ImVec4 & tint_col ) {
+        ImGui::ImageWithBg(tex_ref, image_size, uv0, uv1, bg_col, tint_col);
+    }
+    bool ImageButton_das( const char* str_id, const ImTextureRef & tex_ref, const ImVec2 & image_size, const ImVec2 & uv0, const ImVec2 & uv1, const ImVec4 & bg_col, const ImVec4 & tint_col ) {
+        return ImGui::ImageButton(str_id, tex_ref, image_size, uv0, uv1, bg_col, tint_col);
     }
 
     // imgui_internal.h Render*Clipped / Ellipsis — see aot_dasIMGUI.h for why
@@ -332,8 +345,9 @@ namespace das {
     }
 
     void RenderTextEllipsisW( ImDrawList* draw_list, const ImVec2& pos_min, const ImVec2& pos_max,
-        float clip_max_x, float ellipsis_max_x, const char* text ) {
-        ImGui::RenderTextEllipsis(draw_list, pos_min, pos_max, clip_max_x, ellipsis_max_x, text, nullptr, nullptr);
+        float ellipsis_max_x, const char* text ) {
+        // RenderTextEllipsis takes no separate clip_max_x arg.
+        ImGui::RenderTextEllipsis(draw_list, pos_min, pos_max, ellipsis_max_x, text, nullptr, nullptr);
     }
 
     // imgui_internal.h ItemAdd — two overloads so the optional separate nav rect
@@ -473,13 +487,13 @@ namespace das {
         ImGui::GetIO().IniFilename = nullptr;
     }
 
-    ImGuiSortDirection_ GetColumnSortDirection ( const ImGuiTableColumnSortSpecs * specs ) {
+    ImGuiSortDirection GetColumnSortDirection ( const ImGuiTableColumnSortSpecs * specs ) {
         // Takes pointer (not reference) for daslang interop consistency with `GetSortSpec`.
         // The bitfield-stored `SortDirection` is exposed as this free helper because
         // `ImU8 SortDirection : 8` doesn't survive the generated struct-annotation binding.
         // Renamed from bare `SortDirection` to avoid `decltype(&das::SortDirection)` ambiguity
         // with the struct member `ImGuiTableColumnSortSpecs::SortDirection` under MSVC.
-        return ImGuiSortDirection_(specs->SortDirection);
+        return ImGuiSortDirection(specs->SortDirection);
     }
 
     const ImGuiTableColumnSortSpecs * GetSortSpec ( ImGuiTableSortSpecs * specs, int idx ) {
@@ -593,6 +607,16 @@ namespace das {
                 ->args({"drawList","font","font_size","pos","col","text","wrap_width","cpu_fine_clip_rect"})
                     ->arg_init(6,new ExprConstFloat(0.0f))
                     ->arg_init(7,new ExprConstPtr());
+        // image API — const ImTextureRef& wrappers (see das:: defs above).
+        addExtern<DAS_BIND_FUN(das::Image_das), SimNode_ExtFuncCall, imguiTempFn>(*this, lib, "Image",
+            SideEffects::worstDefault, "das::Image_das")
+                ->args({"tex_ref","image_size","uv0","uv1"});
+        addExtern<DAS_BIND_FUN(das::ImageWithBg_das), SimNode_ExtFuncCall, imguiTempFn>(*this, lib, "ImageWithBg",
+            SideEffects::worstDefault, "das::ImageWithBg_das")
+                ->args({"tex_ref","image_size","uv0","uv1","bg_col","tint_col"});
+        addExtern<DAS_BIND_FUN(das::ImageButton_das), SimNode_ExtFuncCall, imguiTempFn>(*this, lib, "ImageButton",
+            SideEffects::worstDefault, "das::ImageButton_das")
+                ->args({"str_id","tex_ref","image_size","uv0","uv1","bg_col","tint_col"});
         // imgui_internal.h Render*Clipped / Ellipsis text helpers (wrappers pin text_end
         // + text_size_if_known to nullptr — see das:: defs above). align defaults to
         // ImVec2(0,0), clip_rect to null, so the common call is just (pos_min,pos_max,text).
@@ -608,7 +632,7 @@ namespace das {
                     ->arg_init(5,new ExprConstPtr());
         addExtern<DAS_BIND_FUN(das::RenderTextEllipsisW), SimNode_ExtFuncCall, imguiTempFn>(*this, lib, "RenderTextEllipsis",
             SideEffects::worstDefault, "das::RenderTextEllipsisW")
-                ->args({"draw_list","pos_min","pos_max","clip_max_x","ellipsis_max_x","text"});
+                ->args({"draw_list","pos_min","pos_max","ellipsis_max_x","text"});
         // imgui_internal.h custom-widget primitives. ItemAdd is two overloads —
         // without / with an explicit nav rect. extra_flags defaults, so the das
         // calls are ItemAdd(bb,id[,flags]) and ItemAdd(bb,id,nav_bb[,flags]); at

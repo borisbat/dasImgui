@@ -98,7 +98,6 @@ let private ALLOWED_IMGUI : table<string> <- {
     "GetScrollMaxX", "GetScrollMaxY",
     // Cursor write-state — paired with the read-side Get* above.
     "SetCursorPos", "SetCursorPosX", "SetCursorPosY", "SetCursorScreenPos",
-    "GetWindowContentRegionMax",
     // Drag-drop payload primitives — caller owns memory, payload typing is
     // user-controlled. v2 drag_drop_source/_target containers gate the body;
     // these calls are the payload exchange inside.
@@ -135,17 +134,17 @@ let private ALLOWED_IMGUI : table<string> <- {
     "ShadeVertsLinearColorGradientKeepAlpha", "ShadeVertsLinearUV",
     "ShadeVertsTransformPos",
     // Item / layout helpers cherry-picked from imgui_internal.h (family 4).
-    // Geometry math (CalcItemSize/CalcWrapWidthForPos/GetContentRegionMaxAbs) plus
+    // Geometry math (CalcItemSize/CalcWrapWidthForPos) plus
     // ItemSize (reserve layout space for a custom-drawn item) — host-agnostic, no v2
     // state. Bound via bind_imgui.das internal_allow_func; ImRect arg of ItemSize's
     // rect overload is aliased to float4 (cb_dasIMGUI.h).
-    "CalcItemSize", "CalcWrapWidthForPos", "GetContentRegionMaxAbs", "ItemSize",
+    "CalcItemSize", "CalcWrapWidthForPos", "ItemSize",
     // Family 1-complete — Render* helpers that take an ImRect, dropped from family 1
-    // until ImRect was aliased to float4 (#166). RenderDragDropTargetRect/RenderNavHighlight
-    // draw into the current window; RenderRectFilledRangeH/WithHole take an ImDrawList.
+    // until ImRect was aliased to float4 (#166). RenderDragDropTargetRectForItem/RenderNavCursor
+    // draw into the current window; RenderRectFilledWithHole takes an ImDrawList.
     // Host-agnostic, no v2 state. Bound via bind_imgui.das internal_allow_func.
-    "RenderDragDropTargetRect", "RenderNavHighlight",
-    "RenderRectFilledRangeH", "RenderRectFilledWithHole",
+    "RenderDragDropTargetRectForItem", "RenderNavCursor",
+    "RenderRectFilledWithHole",
     // ID-stack seed / override helpers cherry-picked from imgui_internal.h.
     // Host-agnostic: hash/seed an ImGuiID, query the hovered/focus ID, or
     // push a raw override onto the ID stack. Bound via bind_imgui.das
