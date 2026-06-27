@@ -4,7 +4,6 @@
 #include <GL/gl3w.h>
 #include <GLFW/glfw3.h>
 
-#include "../imgui/backends/imgui_impl_opengl3.h"
 #include "../imgui/backends/imgui_impl_glfw.h"
 
 using namespace das;
@@ -23,11 +22,6 @@ MAKE_EXTERNAL_TYPE_FACTORY(ImDrawData,ImDrawData);
 
 DAS_MOD_API void glfw_error_callback(int error, const char* description) {
     printf("Glfw Error %d: %s\n", error, description);
-}
-
-DAS_MOD_API void das_ImGui_ImplOpenGL3_Init ( const char * version ) {
-    gl3wInit();
-    ImGui_ImplOpenGL3_Init(version);
 }
 
 // =====================================================================
@@ -139,23 +133,6 @@ public:
             SideEffects::worstDefault, "ImGui_ImplGlfw_KeyCallback");
         addExtern<DAS_BIND_FUN(ImGui_ImplGlfw_CharCallback)>(*this,lib,"ImGui_ImplGlfw_CharCallback",
             SideEffects::worstDefault, "ImGui_ImplGlfw_CharCallback");
-        // OpenGL
-        addExtern<DAS_BIND_FUN(das_ImGui_ImplOpenGL3_Init)>(*this,lib,"ImGui_ImplOpenGL3_Init",
-            SideEffects::worstDefault, "das_ImGui_ImplOpenGL3_Init");
-        addExtern<DAS_BIND_FUN(ImGui_ImplOpenGL3_Shutdown)>(*this,lib,"ImGui_ImplOpenGL3_Shutdown",
-            SideEffects::worstDefault, "ImGui_ImplOpenGL3_Shutdown");
-        addExtern<DAS_BIND_FUN(ImGui_ImplOpenGL3_NewFrame)>(*this,lib,"ImGui_ImplOpenGL3_NewFrame",
-            SideEffects::worstDefault, "ImGui_ImplOpenGL3_NewFrame");
-        addExtern<DAS_BIND_FUN(ImGui_ImplOpenGL3_RenderDrawData)>(*this,lib,"ImGui_ImplOpenGL3_RenderDrawData",
-            SideEffects::worstDefault, "ImGui_ImplOpenGL3_RenderDrawData");
-
-        // ImGui_ImplOpenGL3_CreateFontsTexture/DestroyFontsTexture are not bound —
-        // the backend creates/destroys textures automatically via the
-        // RendererHasTextures texture queue inside RenderDrawData. No das callers existed.
-        addExtern<DAS_BIND_FUN(ImGui_ImplOpenGL3_CreateDeviceObjects)>(*this,lib,"ImGui_ImplOpenGL3_CreateDeviceObjects",
-            SideEffects::worstDefault, "ImGui_ImplOpenGL3_CreateDeviceObjects");
-        addExtern<DAS_BIND_FUN(ImGui_ImplOpenGL3_DestroyDeviceObjects)>(*this,lib,"ImGui_ImplOpenGL3_DestroyDeviceObjects",
-            SideEffects::worstDefault, "ImGui_ImplOpenGL3_DestroyDeviceObjects");
 #endif
         // Synth IO bypass (imgui_live driver).
         addExtern<DAS_BIND_FUN(das_imgui_synth_mouse_pos)>(*this,lib,"imgui_synth_mouse_pos",
@@ -174,8 +151,6 @@ public:
     virtual ModuleAotType aotRequire ( TextWriter & tw ) const override {
         tw << "#include \"../modules/dasImgui/src/imgui_stub.h\"\n";
         tw << "#include <backends/imgui_impl_glfw.h>\n";
-        tw << "#include <backends/imgui_impl_opengl3.h>\n";
-        tw << "DAS_MOD_API void das_ImGui_ImplOpenGL3_Init ( const char * version );\n";
         tw << "DAS_MOD_API void das_imgui_synth_mouse_pos ( float x, float y );\n";
         tw << "DAS_MOD_API void das_imgui_synth_mouse_button ( int button, bool down );\n";
         tw << "DAS_MOD_API void das_imgui_synth_mouse_wheel ( float dx, float dy );\n";

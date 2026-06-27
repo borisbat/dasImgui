@@ -97,14 +97,13 @@ Two distinct frame-loop APIs:
 def update() {
     if (!live_begin_frame()) return
     begin_frame()
-    ImGui_ImplOpenGL3_NewFrame()
     ImGui_ImplGlfw_NewFrame()
     apply_synth_io_override()         //! REQUIRED for synth IO to drain
     NewFrame()
     // ... widgets ...
     end_of_frame()
     Render()
-    // ... GL clear + ImGui_ImplOpenGL3_RenderDrawData ...
+    // ... GL clear + live_imgui_render() ...
     live_end_frame()
 }
 ```

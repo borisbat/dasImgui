@@ -91,7 +91,6 @@ SET(DAS_IMGUI_BIND_SRC
 SET(DAS_IMGUI_APP_SRC
     ${DAS_IMGUI_DIR}/src/module_imgui_app.cpp
     ${imgui_INCLUDE_DIR}/backends/imgui_impl_glfw.cpp
-    ${imgui_INCLUDE_DIR}/backends/imgui_impl_opengl3.cpp
     ${DAS_IMGUI_DIR}/gl3w/GL/gl3w.cpp
 )
 

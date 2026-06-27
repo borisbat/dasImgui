@@ -2,13 +2,11 @@ options gen2
 
 require imgui
 require imgui_app
-require glfw/glfw_boost
 require opengl/opengl_boost
 require live/glfw_live
 require live/live_api
 require live/live_commands
 require live/live_vars
-require live/opengl_live
 require live_host
 require imgui/imgui_live
 require imgui/imgui_boost_runtime
@@ -115,8 +113,8 @@ def init() {
     live_create_window("dasImgui live_reload tutorial", 1040, 720)
     live_imgui_init(live_window)
     DisableIniPersistence()
-    var io & = unsafe(GetIO())
-    unsafe(GetStyle()).FontScaleMain = 1.5
+    let io & = unsafe(GetIO())
+    GetStyle().FontScaleMain = 1.5
 
     // Re-running init resets g_session_string each reload. (Initial-value
     // assignments at module scope run once at program load, but `init` is
@@ -133,7 +131,6 @@ def update() {
 
     begin_frame()
 
-    ImGui_ImplOpenGL3_NewFrame()
     ImGui_ImplGlfw_NewFrame()
     apply_synth_io_override()
     NewFrame()
@@ -178,7 +175,7 @@ def update() {
     glViewport(0, 0, w, h)
     glClearColor(0.10f, 0.10f, 0.12f, 1.0f)
     glClear(GL_COLOR_BUFFER_BIT)
-    ImGui_ImplOpenGL3_RenderDrawData(GetDrawData())
+    live_imgui_render()
 
     // Always match live_begin_frame with live_end_frame to keep the
     // frame pump alive on the daslang-live side.

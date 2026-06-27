@@ -57,7 +57,6 @@ def update() {
     if (!live_begin_frame()) return
     begin_frame()
 
-    ImGui_ImplOpenGL3_NewFrame()
     ImGui_ImplGlfw_NewFrame()
     apply_synth_io_override()
     NewFrame()
@@ -116,7 +115,7 @@ def update() {
     glViewport(0, 0, w, h)
     glClearColor(0.10f, 0.10f, 0.12f, 1.0f)
     glClear(GL_COLOR_BUFFER_BIT)
-    ImGui_ImplOpenGL3_RenderDrawData(GetDrawData())
+    live_imgui_render()
 
     live_end_frame()
 }

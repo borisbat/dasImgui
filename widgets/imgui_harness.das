@@ -186,7 +186,7 @@ def public harness_begin_frame() : bool {
     }
     return false if (!live_begin_frame())
     begin_frame()
-    ImGui_ImplOpenGL3_NewFrame()
+    // (no ImGui_ImplOpenGL3_NewFrame — the das renderer builds its objects at init, nothing per-frame)
     ImGui_ImplGlfw_NewFrame()
     // Single clock: drive ImGui DeltaTime from the master clock (get_dt), so lockstep
     // recording uses the fixed step; normal mode get_dt()==wall dt (no-op). Guard >0.
@@ -227,7 +227,7 @@ def public harness_end_frame() {
     glViewport(0, 0, w, h)
     glClearColor(0.10f, 0.10f, 0.12f, 1.0f)
     glClear(GL_COLOR_BUFFER_BIT)
-    ImGui_ImplOpenGL3_RenderDrawData(GetDrawData())
+    live_imgui_render()
     live_end_frame()
 }
 

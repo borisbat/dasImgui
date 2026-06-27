@@ -54,8 +54,8 @@ Two equivalent ways to drive a frame loop:
   (`harness_begin_frame`, `harness_new_frame`, `harness_end_frame`). Supports
   `--headless`. **Use this for new code, feature demos, tests, and most apps.**
 - **`require live/glfw_live` + `require imgui/imgui_live`** — manual frame
-  with separate `ImGui_ImplOpenGL3_NewFrame` / `ImGui_ImplGlfw_NewFrame` /
-  `NewFrame` / `Render` / `glClear` / `RenderDrawData` calls. Used by
+  with separate `ImGui_ImplGlfw_NewFrame` / `NewFrame` / `Render` / `glClear` /
+  `live_imgui_render` calls. Used by
   `examples/tutorial/*.das` so the tutorial can demonstrate the full stack.
   **Use this only when you need explicit control** over each backend call
   (custom GL clear color per frame, custom font atlas building, etc.).

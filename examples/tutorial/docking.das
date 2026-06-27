@@ -2,13 +2,11 @@ options gen2
 
 require imgui
 require imgui_app
-require glfw/glfw_boost
 require opengl/opengl_boost
 require live/glfw_live
 require live/live_api
 require live/live_commands
 require live/live_vars
-require live/opengl_live
 require live_host
 require imgui/imgui_live
 require imgui/imgui_boost_runtime
@@ -86,7 +84,7 @@ def init() {
     // ini from a prior run would otherwise override the seed non-deterministically).
     DisableIniPersistence()
     var io & = unsafe(GetIO())
-    unsafe(GetStyle()).FontScaleMain = 1.5
+    GetStyle().FontScaleMain = 1.5
     // The single flag that turns docking on for the whole session. Without
     // this, DockSpace() / DockSpaceOverViewport() render nothing.
     io.ConfigFlags |= ImGuiConfigFlags.DockingEnable
@@ -97,7 +95,6 @@ def update() {
     if (!live_begin_frame()) return
     begin_frame()
 
-    ImGui_ImplOpenGL3_NewFrame()
     ImGui_ImplGlfw_NewFrame()
     apply_synth_io_override()
     NewFrame()
@@ -138,7 +135,7 @@ def update() {
     glViewport(0, 0, w, h)
     glClearColor(0.10f, 0.10f, 0.12f, 1.0f)
     glClear(GL_COLOR_BUFFER_BIT)
-    ImGui_ImplOpenGL3_RenderDrawData(GetDrawData())
+    live_imgui_render()
 
     live_end_frame()
 }
