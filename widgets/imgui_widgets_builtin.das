@@ -1935,6 +1935,11 @@ def set_item_tooltip(var state : NarrativeState; text : string;
     if (IsItemHovered(flags)) {
         SetTooltip(text)
         narrative_finalize(widget_ident, "set_item_tooltip", state)
+    } else {
+        // Not hovered: the tooltip didn't render, so we skip narrative_finalize (it stays unregistered
+        // in the snapshot). But widget_prelude's PushID(widget_ident) ran unconditionally, so we must
+        // still pop it here or the ID stack leaks — ImGui 1.92 flags this as "Missing PopID()".
+        PopID()
     }
 }
 

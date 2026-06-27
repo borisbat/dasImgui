@@ -31,6 +31,7 @@ let DEFAULT_RELOAD_TIMEOUT_SEC : float = 30.0f       // POST /reload to /status.
 let DEFAULT_FRAME_WAIT_SEC : float = 10.0f           // upper bound on "first frame to render the named widget"
 
 let READY_POLL_INTERVAL_MS : uint = 100u             // ms between /status polls — wait_until_ready and reload convergence
+let READY_POLL_REQUEST_TIMEOUT_SEC : int = 2         // per-poll http timeout for the readiness probe: fail-fast-and-retry so one slow round-trip on a loaded runner (the host serves /status off the main loop, so a stalled frame delays it) doesn't burn the whole budget on a single 10s DEFAULT_REQUEST_TIMEOUT_SEC block
 let FRAME_POLL_INTERVAL_MS : uint = 100u             // ms between snapshot polls — 10 req/sec; under libhv's Windows
                                                      // event-loop cap (~16 req/sec) that previously stalled the test
                                                      // sweep on heavy imgui_demo harnesses (see tests.yml comment).
@@ -184,7 +185,7 @@ def public wait_until_ready(app : ImguiApp; timeout_sec : float) : bool {
     let start = ref_time_ticks()
     let timeout_usec = int(timeout_sec * 1000000.0f)
     while (get_time_usec(start) < timeout_usec) {
-        if (http_get("{app.base_url}/status").status == int(http_status.OK)) return true
+        if (http_get("{app.base_url}/status", READY_POLL_REQUEST_TIMEOUT_SEC).status == int(http_status.OK)) return true
         sleep(READY_POLL_INTERVAL_MS)
     }
     return false
