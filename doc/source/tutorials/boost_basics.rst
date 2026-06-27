@@ -56,15 +56,15 @@ The frame loop
 
 #. ``live_begin_frame()`` — return early if the window is closing.
 #. ``begin_frame()`` — boost-side per-frame setup (registry, command dispatch).
-#. ``ImGui_ImplOpenGL3_NewFrame`` / ``ImGui_ImplGlfw_NewFrame`` /
-   ``apply_synth_io_override`` / ``NewFrame`` — the ImGui backend
-   prologue. ``apply_synth_io_override`` lets synthetic mouse/keyboard
+#. ``ImGui_ImplGlfw_NewFrame`` / ``apply_synth_io_override`` /
+   ``NewFrame`` — the ImGui input + frame prologue.
+   ``apply_synth_io_override`` lets synthetic mouse/keyboard
    events from live-commands win against the GLFW backend's per-frame
    poll (needed for tutorial recordings).
 #. The widget block (see below).
 #. ``end_of_frame()`` / ``Render()`` — boost-side bookkeeping, then ImGui
    composes the draw list.
-#. ``glViewport`` / ``glClear`` / ``ImGui_ImplOpenGL3_RenderDrawData`` — paint.
+#. ``glViewport`` / ``glClear`` / ``live_imgui_render`` — paint (pure-das GL renderer).
 #. ``live_end_frame()`` — swap buffers, advance live-reload housekeeping.
 
 The window container

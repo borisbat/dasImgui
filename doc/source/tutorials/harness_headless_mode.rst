@@ -72,7 +72,7 @@ The harness exports five helpers; each branches on
 
 ``harness_begin_frame() : bool``
    * Windowed: poll GLFW events, run boost ``begin_frame``, then
-     ``ImGui_ImplOpenGL3_NewFrame`` + ``ImGui_ImplGlfw_NewFrame``.
+     ``ImGui_ImplGlfw_NewFrame`` (input).
    * Headless: feed ``ImGuiIO::DeltaTime`` from real wall-clock, run
      boost ``begin_frame``, advance the headless frame counter. If
      ``--headless-frames=N`` is set and the counter reaches ``N``, call
@@ -90,8 +90,8 @@ The harness exports five helpers; each branches on
 
 ``harness_end_frame()``
    * Windowed: boost ``end_of_frame`` + ``Render`` + viewport/clear +
-     ``ImGui_ImplOpenGL3_RenderDrawData`` + ``live_end_frame`` (swap
-     buffers).
+     ``live_imgui_render`` (pure-das GL renderer) + ``live_end_frame``
+     (swap buffers).
    * Headless: ``end_of_frame`` + ``Render``. The resulting
      ``ImDrawData`` is discarded — there is no GL backend to consume it.
 

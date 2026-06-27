@@ -78,7 +78,6 @@ def render_icon_frame(name : string; capture_to : string) {
         return
     }
     begin_frame()
-    ImGui_ImplOpenGL3_NewFrame()
     ImGui_ImplGlfw_NewFrame()
     NewFrame()
 
@@ -103,7 +102,7 @@ def render_icon_frame(name : string; capture_to : string) {
     glViewport(0, 0, w, h)
     glClearColor(BG.x, BG.y, BG.z, BG.w)
     glClear(GL_COLOR_BUFFER_BIT)
-    ImGui_ImplOpenGL3_RenderDrawData(GetDrawData())
+    live_imgui_render()
     // Read back BEFORE the swap: the just-rendered icon is in the back buffer.
     if (!empty(capture_to)) {
         capture_png(capture_to)

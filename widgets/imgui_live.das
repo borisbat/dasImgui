@@ -21,10 +21,15 @@ require strings
 require imgui/imgui_boost_runtime
 require imgui/imgui_live_core public
 require imgui/imgui_theme_daslang
+require opengl/opengl_imgui_driver public
 
 let private STORE_KEY = "__imgui_ctx"
 
 var public live_imgui_ctx : ImGuiContext?
+
+//! The pure-das GL renderer backend (replaces the C++ imgui_impl_opengl3). Held here so the windowed
+//! harness can drive it, and serialized across daslang-live reload alongside the context.
+var public live_imgui_gl : ImguiGlRenderer
 
 //! HDPI scale picked up from ``glfwGetWindowContentScale`` at init: 1.0 on a
 //! plain display, 2.0 on macOS retina, 1.25/1.5/2.0 on Windows DPI scaling.
@@ -52,7 +57,7 @@ def private ensure_scale_parsed() {
     g_scale_override = to_float(raw |> unwrap_or("0"))
 }
 
-def public live_imgui_init(window : GLFWwindow?; glsl_version : string = "#version 330") : ImGuiContext? {
+def public live_imgui_init(window : GLFWwindow?) : ImGuiContext? {
     //! Idempotent ImGui context create + backend init; safe across reload (reuses preserved ctx).
     //! Picks content scale: ``--imgui-content-scale=<float>`` override wins;
     //! otherwise queries ``glfwGetWindowContentScale``. Loads JetBrains Mono at
@@ -109,10 +114,12 @@ def public live_imgui_init(window : GLFWwindow?; glsl_version : string = "#versi
     load_daslang_font(14.0f * live_imgui_content_scale)
     apply_daslang_theme()
     ScaleAllSizes(GetStyle(), layout_scale)
-    var io & = unsafe(GetIO())
-    unsafe(GetStyle()).FontScaleMain = font_global
+    let io & = unsafe(GetIO())
+    GetStyle().FontScaleMain = font_global
     ImGui_ImplGlfw_InitForOpenGL(window, true)
-    ImGui_ImplOpenGL3_Init(glsl_version)
+    // pure-das GL renderer instead of the C++ ImGui_ImplOpenGL3_Init(glsl_version)
+    imgui_gl_set_backend_flags()
+    live_imgui_gl <- imgui_gl_create()
     // Give the window a defined cursor from the instant it appears — the backend's
     // per-frame UpdateMouseCursor only takes over from frame 1, and macOS won't
     // refresh an inherited cursor until the mouse moves. Per-widget SetMouseCursor
@@ -121,10 +128,17 @@ def public live_imgui_init(window : GLFWwindow?; glsl_version : string = "#versi
     return live_imgui_ctx
 }
 
+def public live_imgui_render() {
+    //! Drain the dynamic-texture queue and replay this frame's ImDrawData with the pure-das GL renderer
+    //! (opengl_imgui_driver). Call after ``Render()``, in place of the old C++ backend's draw step.
+    imgui_gl_update_textures(live_imgui_gl)
+    imgui_gl_render(live_imgui_gl)
+}
+
 def public live_imgui_shutdown() {
     //! Reload-aware ImGui shutdown — skips during reload so the ctx is reused, runs only on process exit. Call from your script's ``shutdown()``.
     if (live_imgui_ctx != null && !is_reload()) {
-        ImGui_ImplOpenGL3_Shutdown()
+        finalize(live_imgui_gl)
         ImGui_ImplGlfw_Shutdown()
         DestroyContext(live_imgui_ctx)
         live_imgui_ctx = null
@@ -138,6 +152,13 @@ def private save_imgui_ctx() {
     var arch = Archive(reading = false, stream = ser)
     var ptr_val = unsafe(reinterpret<uint64>(live_imgui_ctx))
     arch |> serialize(ptr_val)
+    // the GL renderer's handles are valid across reload (the GL context persists); preserve them so the
+    // post-reload frames keep using the same program/buffers/textures instead of leaking + re-creating.
+    arch |> serialize(live_imgui_gl.program)
+    arch |> serialize(live_imgui_gl.vao)
+    arch |> serialize(live_imgui_gl.vbo)
+    arch |> serialize(live_imgui_gl.ebo)
+    arch |> serialize(live_imgui_gl.textures)
     let data <- ser->extractData()
     live_store_bytes(STORE_KEY, data)
     unsafe { delete ser; }
@@ -151,6 +172,11 @@ def private restore_imgui_ctx() {
         var arch = Archive(reading = true, stream = ser)
         var ptr_val : uint64
         arch |> serialize(ptr_val)
+        arch |> serialize(live_imgui_gl.program)
+        arch |> serialize(live_imgui_gl.vao)
+        arch |> serialize(live_imgui_gl.vbo)
+        arch |> serialize(live_imgui_gl.ebo)
+        arch |> serialize(live_imgui_gl.textures)
         unsafe {
             live_imgui_ctx = reinterpret<ImGuiContext?>(ptr_val)
             delete ser
