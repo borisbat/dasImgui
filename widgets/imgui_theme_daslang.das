@@ -160,6 +160,13 @@ def public daslang_font_ttf_path() : string {
     //! so daspkg-release standalone bundles pick up the relocated path.
     //! Read directly if you want to feed your own ``AddFontFromFileTTF``
     //! call (custom size / config / glyph ranges).
+    // On web the TTF is not on a real filesystem: `daspkg release wasm` embeds it into
+    // MEMFS at the fixed path declared by this module's .das_package release_embed_file.
+    // get_running_platform_name() (not get_platform_name, which const-folds to the
+    // compile host) so a cross-compiled in-browser exe resolves it too.
+    if (get_running_platform_name() == "emscripten") {
+        return "/modules/dasImgui/font/JetBrainsMono-Regular.ttf"
+    }
     return path_join(dir_name(get_this_module_dir()), "font/JetBrainsMono-Regular.ttf")
 }
 
