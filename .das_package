@@ -27,8 +27,10 @@ def release() {
     release_wasm_archive("_wasm/liblibImguiApp.a")
     release_wasm_archive("_wasm/liblibImguiAppHeadless.a")
     // Embed the bundled font into MEMFS so load_daslang_font's AddFontFromFileTTF finds
-    // it at run time (mirrors dasStbImage's HUD-font embed).
-    release_embed_file("modules/dasImgui/font/JetBrainsMono-Regular.ttf", "/modules/dasImgui/font/JetBrainsMono-Regular.ttf")
+    // it at run time (mirrors dasStbImage's HUD-font embed). src is module-relative
+    // (resolved against this .das_package's dir), so it works for an external module
+    // installed under <project>/modules/dasImgui too.
+    release_embed_file("font/JetBrainsMono-Regular.ttf", "/modules/dasImgui/font/JetBrainsMono-Regular.ttf")
     // typeFactory<GLFWwindow>::make is emitted by both imguiApp and dasGLFW; statically
     // linking both into one wasm collides without this.
     release_emcc_arg("-Wl,--allow-multiple-definition")
