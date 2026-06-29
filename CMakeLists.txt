@@ -111,8 +111,11 @@ IF(EMSCRIPTEN)
     # from -sFULL_ES3 at the app link -- the pure-das opengl_imgui_driver does the GL.
     MESSAGE(STATUS "dasImgui: emscripten/web build (3 static wasm archives)")
 
+    # -pthread: daspkg's wasm build is threaded (matches the daslang runtime built with
+    # DAS_WASM_PTHREADS=ON), so the imgui archives must be -pthread too or they won't link
+    # (TLS model / shared memory / +atomics ABI must match).
     SET(IMGUI_WASM_FLAGS
-        -fno-rtti -sMEMORY64=1
+        -fno-rtti -sMEMORY64=1 -pthread
         -msimd128 -msse2 -mnontrapping-fptoint
         -fwasm-exceptions -sWASM_LEGACY_EXCEPTIONS=0)
     SET(IMGUI_WASM_DEFS
