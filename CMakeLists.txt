@@ -109,15 +109,39 @@ IF(EMSCRIPTEN)
     #
     # gl3w is excluded: its desktop GL/glx.h is fatal under emscripten, and GL comes
     # from -sFULL_ES3 at the app link -- the pure-das opengl_imgui_driver does the GL.
-    MESSAGE(STATUS "dasImgui: emscripten/web build (3 static wasm archives)")
+    # Two ABI flavors, selected by cache vars (both default ON = the historical behavior):
+    #   memory64 + pthread  -> the cross-compiled examples-card apps (daspkg release wasm,
+    #                          which links the threaded daslang runtime). Archives in _wasm.
+    #   wasm32 + single-thread -> linked into daslang_static (the interpreter-in-wasm
+    #                          playground, a wasm32 single-thread monolith). Archives in _wasm32.
+    # The flavors must not share an output dir (different ABI, same archive names), so the
+    # output dir is suffixed by flavor. ABI knobs (memory64, atomics/shared memory) must match
+    # whatever links the archive or the final wasm link fails.
+    OPTION(DAS_IMGUI_WASM_MEMORY64 "Build the wasm archives for memory64 (wasm64)" ON)
+    OPTION(DAS_IMGUI_WASM_PTHREADS "Build the wasm archives threaded (-pthread)" ON)
+    MESSAGE(STATUS "dasImgui: emscripten/web build (3 static wasm archives; memory64=${DAS_IMGUI_WASM_MEMORY64} pthreads=${DAS_IMGUI_WASM_PTHREADS})")
 
-    # -pthread: daspkg's wasm build is threaded (matches the daslang runtime built with
-    # DAS_WASM_PTHREADS=ON), so the imgui archives must be -pthread too or they won't link
-    # (TLS model / shared memory / +atomics ABI must match).
     SET(IMGUI_WASM_FLAGS
-        -fno-rtti -sMEMORY64=1 -pthread
+        -fno-rtti
         -msimd128 -msse2 -mnontrapping-fptoint
         -fwasm-exceptions -sWASM_LEGACY_EXCEPTIONS=0)
+    IF(DAS_IMGUI_WASM_MEMORY64)
+        LIST(APPEND IMGUI_WASM_FLAGS -sMEMORY64=1)
+    ENDIF()
+    IF(DAS_IMGUI_WASM_PTHREADS)
+        LIST(APPEND IMGUI_WASM_FLAGS -pthread)
+    ENDIF()
+    # Output dir per ABI flavor (different ABI, same archive names — must not collide):
+    #   _wasm     = memory64 (+pthread) : the cross-compiled examples-card apps
+    #   _wasm32   = wasm32 single-thread : (unused now the interpreter is threaded)
+    #   _wasm32mt = wasm32 + pthread     : linked into the threaded daslang_static interpreter
+    IF(DAS_IMGUI_WASM_MEMORY64)
+        SET(IMGUI_WASM_OUTDIR "${DAS_IMGUI_DIR}/_wasm")
+    ELSEIF(DAS_IMGUI_WASM_PTHREADS)
+        SET(IMGUI_WASM_OUTDIR "${DAS_IMGUI_DIR}/_wasm32mt")
+    ELSE()
+        SET(IMGUI_WASM_OUTDIR "${DAS_IMGUI_DIR}/_wasm32")
+    ENDIF()
     SET(IMGUI_WASM_DEFS
         IMGUI_DISABLE_OBSOLETE_FUNCTIONS=1
         DAS_NO_ASSERTIONS DAS_ENABLE_EXCEPTIONS _EMSCRIPTEN_VER)
@@ -129,7 +153,7 @@ IF(EMSCRIPTEN)
         ${GLFW_INCLUDE_DIR}
         ${DASLANG_DIR}/modules/dasGlfw/src)
 
-    # Stage archives at <module>/_wasm, named liblib<CppModule>.a to match daspkg's
+    # Stage archives at <module>/_wasm[32], named liblib<CppModule>.a to match daspkg's
     # wasm_archive_name() convention (the name the in-tree web build emits), so
     # release_wasm_archive() declarations resolve at the link step.
     MACRO(ADD_IMGUI_WASM_ARCHIVE tgt out)
@@ -139,7 +163,7 @@ IF(EMSCRIPTEN)
         target_include_directories(${tgt} PRIVATE ${IMGUI_WASM_INC})
         set_target_properties(${tgt} PROPERTIES
             PREFIX "" OUTPUT_NAME "${out}" SUFFIX ".a"
-            ARCHIVE_OUTPUT_DIRECTORY "${DAS_IMGUI_DIR}/_wasm")
+            ARCHIVE_OUTPUT_DIRECTORY "${IMGUI_WASM_OUTDIR}")
     ENDMACRO()
 
     add_library(dasModuleImgui STATIC ${DAS_IMGUI_BIND_SRC} ${DAS_IMGUI_SRC})
