@@ -44,7 +44,11 @@ require live/glfw_live
 require live/opengl_live // nolint:STYLE030 — loads the APNG recorder (record_* live commands + the [before_update] record_tick) by side effect; no direct symbol use
 
 // Live-host + boost-runtime stack — re-exported public.
-require live/live_api public
+// ?dashv: live_api is the HTTP live-reload server (pulls dashv/libhv, which is not
+// emscripten-portable). Guard it so the harness cross-compiles to wasm — the web
+// build has no dashv, so live_api is skipped (no hot-reload server, which a shipped
+// web demo doesn't need); native builds with dashv present are unchanged.
+require ?dashv live/live_api public
 require live/live_commands public
 require live/live_vars public
 require live_host public
@@ -140,7 +144,14 @@ def public harness_init(title : string; width : int = 800; height : int = 600) {
     // requested size by the monitor scale (no-op on macOS/Linux, where
     // the windowing system already handles it). live_imgui_init then
     // reads glfwGetWindowContentScale and applies it to fonts + theme.
-    glfwWindowHint(int(GLFW_SCALE_TO_MONITOR), 1)
+    // Skip on web: this is a desktop-only DPI hint, and emscripten's GLFW.hints
+    // is null until glfwInit (which live_create_window does), so setting a
+    // pre-init hint there crashes -- and there is nothing to scale to anyway.
+    // get_running_platform_name() (not get_platform_name(), which const-folds to the
+    // compile HOST) so a cross-compiled in-browser exe also skips it.
+    if (get_running_platform_name() != "emscripten") {
+        glfwWindowHint(int(GLFW_SCALE_TO_MONITOR), 1)
+    }
     live_create_window(title, width, height)
     live_imgui_init(live_window)
     // --no-imgui-ini (with_imgui_app passes it for every test spawn): null the

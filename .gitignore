@@ -13,6 +13,11 @@ libhv.*.log
 example/**/_*.png
 example/_aot_generated/
 build_msvc/
+# wasm build artifacts (daspkg release wasm / emscripten CMake branch)
+_wasm/
+_wasm_build/
+_wasm_obj/
+_*.log
 # Visual-aids ad-hoc smoke screenshots dropped at repo root by the screenshot live_command
 screenshot.png
 tour_*.png

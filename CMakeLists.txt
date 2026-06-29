@@ -31,8 +31,12 @@ ENDIF()
 
 SET(imgui_INCLUDE_DIR ${DAS_IMGUI_DIR}/imgui)
 
-# GLFW (from main repo or sibling module)
-if(EXISTS ${DASLANG_DIR}/modules/dasGlfw/glfw)
+# GLFW headers. Desktop: the built GLFW 3.4 include from the sibling dasGlfw module.
+# Web (emscripten): the vendored 3.4 headers in dasGlfw/web_include (no GLFW source
+# build; emcc's -sUSE_GLFW=3 supplies the symbols at the final app link).
+if(EMSCRIPTEN)
+    SET(GLFW_INCLUDE_DIR ${DASLANG_DIR}/modules/dasGlfw/web_include)
+elseif(EXISTS ${DASLANG_DIR}/modules/dasGlfw/glfw)
     SET(GLFW_INCLUDE_DIR ${DASLANG_DIR}/modules/dasGlfw/glfw/$<CONFIG>/include)
 else()
     message(FATAL_ERROR "GLFW not found at ${DASLANG_DIR}/modules/dasGlfw/glfw")
@@ -93,6 +97,59 @@ SET(DAS_IMGUI_APP_SRC
     ${imgui_INCLUDE_DIR}/backends/imgui_impl_glfw.cpp
     ${DAS_IMGUI_DIR}/gl3w/GL/gl3w.cpp
 )
+
+IF(EMSCRIPTEN)
+    # ===== Web (emscripten) =====
+    # dasImgui is an EXTERNAL module: built standalone here, not inside daslang's web
+    # CMake, so the ADD_DAS_STATIC_MODULE_LIB helper is unavailable. Build the same
+    # sources as plain STATIC archives -- the generated dasIMGUI.cpp's REGISTER_MODULE
+    # provides register_Module_dasIMGUI, which a cross-compiled app's ensure_module
+    # links. `daspkg release wasm` drives this through the .das_package
+    # release_wasm_build hook and stages the liblib*.a into the wasm lib dir.
+    #
+    # gl3w is excluded: its desktop GL/glx.h is fatal under emscripten, and GL comes
+    # from -sFULL_ES3 at the app link -- the pure-das opengl_imgui_driver does the GL.
+    MESSAGE(STATUS "dasImgui: emscripten/web build (3 static wasm archives)")
+
+    SET(IMGUI_WASM_FLAGS
+        -fno-rtti -sMEMORY64=1
+        -msimd128 -msse2 -mnontrapping-fptoint
+        -fwasm-exceptions -sWASM_LEGACY_EXCEPTIONS=0)
+    SET(IMGUI_WASM_DEFS
+        IMGUI_DISABLE_OBSOLETE_FUNCTIONS=1
+        DAS_NO_ASSERTIONS DAS_ENABLE_EXCEPTIONS _EMSCRIPTEN_VER)
+    SET(IMGUI_WASM_INC
+        ${DASLANG_DIR}/include
+        ${imgui_INCLUDE_DIR}
+        ${DAS_IMGUI_DIR}/src
+        ${DAS_IMGUI_DIR}/gl3w
+        ${GLFW_INCLUDE_DIR}
+        ${DASLANG_DIR}/modules/dasGlfw/src)
+
+    # Stage archives at <module>/_wasm, named liblib<CppModule>.a to match daspkg's
+    # wasm_archive_name() convention (the name the in-tree web build emits), so
+    # release_wasm_archive() declarations resolve at the link step.
+    MACRO(ADD_IMGUI_WASM_ARCHIVE tgt out)
+        target_compile_features(${tgt} PRIVATE cxx_std_17)
+        target_compile_options(${tgt} PRIVATE ${IMGUI_WASM_FLAGS})
+        target_compile_definitions(${tgt} PRIVATE ${IMGUI_WASM_DEFS})
+        target_include_directories(${tgt} PRIVATE ${IMGUI_WASM_INC})
+        set_target_properties(${tgt} PROPERTIES
+            PREFIX "" OUTPUT_NAME "${out}" SUFFIX ".a"
+            ARCHIVE_OUTPUT_DIRECTORY "${DAS_IMGUI_DIR}/_wasm")
+    ENDMACRO()
+
+    add_library(dasModuleImgui STATIC ${DAS_IMGUI_BIND_SRC} ${DAS_IMGUI_SRC})
+    ADD_IMGUI_WASM_ARCHIVE(dasModuleImgui liblibDasModuleImgui)
+
+    add_library(imguiApp STATIC
+        ${DAS_IMGUI_DIR}/src/module_imgui_app.cpp
+        ${imgui_INCLUDE_DIR}/backends/imgui_impl_glfw.cpp)
+    ADD_IMGUI_WASM_ARCHIVE(imguiApp liblibImguiApp)
+
+    add_library(imguiAppHeadless STATIC ${DAS_IMGUI_DIR}/src/module_imgui_app_headless.cpp)
+    ADD_IMGUI_WASM_ARCHIVE(imguiAppHeadless liblibImguiAppHeadless)
+ELSE() # ===== Desktop =====
 
 IF(WIN32)
     SET(IMGUI_PUBLIC_ATTR "__declspec\(dllexport\)")
@@ -287,3 +344,5 @@ set_target_properties(imguiAppHeadless PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY "${DAS_IMGUI_DIR}"
 )
 target_link_libraries(imguiAppHeadless PRIVATE dasModuleImgui)
+
+ENDIF() # IF(EMSCRIPTEN) ... ELSE() [desktop]
