@@ -234,6 +234,16 @@ def public harness_new_frame() {
     //! ``NewFrame()`` here, the slot synthetic input must drain in. Both modes.
     imgui_synth_tick()
     NewFrame()
+    // F11 -> toggle fullscreen (windowed only; IsKeyPressed needs the post-NewFrame input state). Web:
+    // route through emscripten's own GLFW-aware fullscreen so the canvas grows to screen at native scale +
+    // DPR (not a CSS-magnified iframe). Desktop: native (macOS) fullscreen; no-op elsewhere.
+    if (!harness_is_headless() && IsKeyPressed(ImGuiKey.F11, false)) {
+        if (get_running_platform_name() == "emscripten") {
+            glfw_toggle_fullscreen()
+        } else {
+            glfwToggleNativeFullscreen(live_window)
+        }
+    }
 }
 
 def public harness_end_frame() {
