@@ -140,19 +140,36 @@ def public harness_init(title : string; width : int = 800; height : int = 600) {
         }
         return
     }
-    // Opt into per-monitor DPI on Windows so glfwCreateWindow scales the
-    // requested size by the monitor scale (no-op on macOS/Linux, where
-    // the windowing system already handles it). live_imgui_init then
-    // reads glfwGetWindowContentScale and applies it to fonts + theme.
-    // Skip on web: this is a desktop-only DPI hint, and emscripten's GLFW.hints
-    // is null until glfwInit (which live_create_window does), so setting a
-    // pre-init hint there crashes -- and there is nothing to scale to anyway.
-    // get_running_platform_name() (not get_platform_name(), which const-folds to the
-    // compile HOST) so a cross-compiled in-browser exe also skips it.
-    if (get_running_platform_name() != "emscripten") {
+    // Per-monitor DPI (GLFW_SCALE_TO_MONITOR): on desktop glfwCreateWindow scales the requested size by
+    // the monitor scale, and live_imgui_init reads glfwGetWindowContentScale for fonts + theme. On web
+    // emscripten honors it too -- it then renders the backing store at canvas-size x devicePixelRatio, so
+    // the UI is DPR-crisp + native-sized instead of a small fixed backing magnified by CSS. The hint MUST
+    // be set AFTER glfwInit (emscripten's GLFW.hints is null before glfwInit -> crash if set pre-init), so
+    // init here first; glfwInit is idempotent so live_create_window's own glfwInit is a no-op and its
+    // glfwCreateWindow inherits the hint.
+    if (glfwInit() != 0) {
         glfwWindowHint(int(GLFW_SCALE_TO_MONITOR), 1)
     }
-    live_create_window(title, width, height)
+    var w = width
+    var h = height
+    // On web, create the window at the largest card-aspect box that fits the on-page viewport (the
+    // examples iframe) so the UI fills the card box at native scale. Done ONCE, at creation:
+    // glfwCreateWindow sizes the canvas BEFORE the GL context exists, so there is no mid-run canvas
+    // resize -- a runtime resize recreates/invalidates the WebGL context and aborts the wasm. Desktop:
+    // glfw_canvas_css_* return 0, so the requested size is used unchanged.
+    let vw = glfw_canvas_css_width()
+    let vh = glfw_canvas_css_height()
+    if (vw > 0 && vh > 0 && width > 0 && height > 0) {
+        let aspect = float(width) / float(height)
+        if (float(vw) / float(vh) > aspect) {
+            w = int(float(vh) * aspect + 0.5f)
+            h = vh
+        } else {
+            w = vw
+            h = int(float(vw) / aspect + 0.5f)
+        }
+    }
+    live_create_window(title, w, h)
     live_imgui_init(live_window)
     // --no-imgui-ini (with_imgui_app passes it for every test spawn): null the
     // ini AFTER live_imgui_init creates the context, BEFORE the first NewFrame,
