@@ -121,12 +121,16 @@ SET(DAS_IMGUI_BIND_SRC
     ${DAS_IMGUI_DIR}/src/dasIMGUI.func_34.cpp
 )
 
-# imgui app source files
+# imgui app source files. gl3w is desktop-only: its loader source pulls desktop GL
+# headers that are fatal under emscripten, where GL comes from -sFULL_ES3 at the app
+# link instead (the pure-das opengl_imgui_driver does the GL).
 SET(DAS_IMGUI_APP_SRC
     ${DAS_IMGUI_DIR}/src/module_imgui_app.cpp
     ${imgui_INCLUDE_DIR}/backends/imgui_impl_glfw.cpp
-    ${DAS_IMGUI_DIR}/gl3w/GL/gl3w.cpp
 )
+IF(NOT EMSCRIPTEN)
+    LIST(APPEND DAS_IMGUI_APP_SRC ${DAS_IMGUI_DIR}/gl3w/GL/gl3w.cpp)
+ENDIF()
 
 IF(COMMAND ADD_MODULE_CPP)
     # ===== daslang superbuild: static-embed =====
@@ -250,9 +254,7 @@ ELSEIF(EMSCRIPTEN)
     add_library(dasModuleImgui STATIC ${DAS_IMGUI_BIND_SRC} ${DAS_IMGUI_SRC})
     ADD_IMGUI_WASM_ARCHIVE(dasModuleImgui liblibDasModuleImgui)
 
-    add_library(imguiApp STATIC
-        ${DAS_IMGUI_DIR}/src/module_imgui_app.cpp
-        ${imgui_INCLUDE_DIR}/backends/imgui_impl_glfw.cpp)
+    add_library(imguiApp STATIC ${DAS_IMGUI_APP_SRC})
     ADD_IMGUI_WASM_ARCHIVE(imguiApp liblibImguiApp)
 
     add_library(imguiAppHeadless STATIC ${DAS_IMGUI_DIR}/src/module_imgui_app_headless.cpp)
