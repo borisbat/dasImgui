@@ -68,7 +68,7 @@ The ``[widget]`` annotation
 ===========================
 
 The annotation does two things to the function it decorates
-(``widgets/imgui_boost.das:32``):
+(``widgets/imgui_boost_v2.das:32``):
 
 - **Injects a ``widget_ident : string`` parameter** at position 1, between
   ``state`` and the user-facing args. Inside the body, ``widget_ident`` is

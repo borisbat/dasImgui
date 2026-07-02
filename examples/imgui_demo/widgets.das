@@ -85,7 +85,7 @@ var WIDGETS_IMAGES_PRESSED_COUNT = 0
 // ----- Indexed widget tables -----
 // The `[widget]` indexed form `IDENT[k]` requires a module-scope `table<K; ST>`
 // declared upfront (the macro does not auto-emit indexed tables — see
-// widgets/imgui_boost.das "table global is not declared at module scope").
+// widgets/imgui_boost_v2.das "table global is not declared at module scope").
 var private WIDGETS_BASIC_COLOR_BTN : table<int; ClickState>
 var private WIDGETS_TREE_BASIC : table<int; TreeNodeState>
 var private WIDGETS_TREE_BASIC_BTN : table<int; ClickState>

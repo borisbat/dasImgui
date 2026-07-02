@@ -1,10 +1,34 @@
-cmake_minimum_required(VERSION 3.16)
-project(dasImgui CXX C)
+# dasImgui builds three ways from a single CMakeLists:
+#  - included from a daslang superbuild (the ADD_MODULE_* macros exist): link the
+#    three modules statically into the host app via the convention path -- how a
+#    daScript app that embeds the runtime consumes it, and how the fat-man
+#    static-link example exercises every external module.
+#  - configured directly for desktop (top-level project, DASLANG_DIR set): the
+#    standalone .shared_module build CI, the daspkg index, and -load_module
+#    consumers run on.
+#  - configured directly for emscripten: static wasm archives for daspkg release
+#    wasm and the interpreter-in-wasm playground.
+IF(NOT COMMAND ADD_MODULE_CPP)
+    cmake_minimum_required(VERSION 3.16)
+    project(dasImgui CXX C)
+ENDIF()
 
-# DASLANG_DIR must point to the daslang SDK root
-if(NOT DEFINED DASLANG_DIR)
-    message(FATAL_ERROR "DASLANG_DIR must be set to the daslang SDK root")
-endif()
+IF((NOT DAS_IMGUI_INCLUDED) AND ((NOT ${DAS_IMGUI_DISABLED}) OR (NOT DEFINED DAS_IMGUI_DISABLED)))
+SET(DAS_IMGUI_INCLUDED TRUE)
+MESSAGE(STATUS "dasImgui module included.")
+
+IF(NOT COMMAND ADD_MODULE_CPP)
+    # DASLANG_DIR must point to the daslang SDK root (standalone only -- in a
+    # superbuild this file IS part of the daslang tree)
+    if(NOT DEFINED DASLANG_DIR)
+        message(FATAL_ERROR "DASLANG_DIR must be set to the daslang SDK root")
+    endif()
+    SET(DAS_IMGUI_GLFW_ROOT ${DASLANG_DIR}/modules/dasGlfw)
+ELSE()
+    # sibling module in the superbuild tree (CMAKE_CURRENT_LIST_DIR, not
+    # CMAKE_SOURCE_DIR/modules/...: the web build's top-level source dir is web/)
+    SET(DAS_IMGUI_GLFW_ROOT ${CMAKE_CURRENT_LIST_DIR}/../dasGlfw)
+ENDIF()
 
 SET(DAS_IMGUI_DIR ${CMAKE_CURRENT_LIST_DIR})
 
@@ -31,16 +55,22 @@ ENDIF()
 
 SET(imgui_INCLUDE_DIR ${DAS_IMGUI_DIR}/imgui)
 
-# GLFW headers. Desktop: the built GLFW 3.4 include from the sibling dasGlfw module.
-# Web (emscripten): the vendored 3.4 headers in dasGlfw/web_include (no GLFW source
-# build; emcc's -sUSE_GLFW=3 supplies the symbols at the final app link).
-if(EMSCRIPTEN)
-    SET(GLFW_INCLUDE_DIR ${DASLANG_DIR}/modules/dasGlfw/web_include)
-elseif(EXISTS ${DASLANG_DIR}/modules/dasGlfw/glfw)
-    SET(GLFW_INCLUDE_DIR ${DASLANG_DIR}/modules/dasGlfw/glfw/$<CONFIG>/include)
-else()
-    message(FATAL_ERROR "GLFW not found at ${DASLANG_DIR}/modules/dasGlfw/glfw")
-endif()
+# GLFW headers. Superbuild: dasGlfw's CMakeLists (included earlier -- the modules
+# glob is alphabetical) already set GLFW_INCLUDE_DIR for the ExternalProject it
+# drives. Desktop standalone: the built GLFW 3.4 include from the sibling dasGlfw
+# module. Web standalone: the vendored 3.4 headers in dasGlfw/web_include (no GLFW
+# source build; emcc's -sUSE_GLFW=3 supplies the symbols at the final app link).
+IF(COMMAND ADD_MODULE_CPP)
+    IF(NOT DEFINED GLFW_INCLUDE_DIR)
+        MESSAGE(FATAL_ERROR "dasImgui superbuild: dasGlfw must be included first (GLFW_INCLUDE_DIR unset)")
+    ENDIF()
+ELSEIF(EMSCRIPTEN)
+    SET(GLFW_INCLUDE_DIR ${DAS_IMGUI_GLFW_ROOT}/web_include)
+ELSEIF(EXISTS ${DAS_IMGUI_GLFW_ROOT}/glfw)
+    SET(GLFW_INCLUDE_DIR ${DAS_IMGUI_GLFW_ROOT}/glfw/$<CONFIG>/include)
+ELSE()
+    message(FATAL_ERROR "GLFW not found at ${DAS_IMGUI_GLFW_ROOT}/glfw")
+ENDIF()
 
 # imgui source files
 SET(DAS_IMGUI_SRC
@@ -98,7 +128,63 @@ SET(DAS_IMGUI_APP_SRC
     ${DAS_IMGUI_DIR}/gl3w/GL/gl3w.cpp
 )
 
-IF(EMSCRIPTEN)
+IF(COMMAND ADD_MODULE_CPP)
+    # ===== daslang superbuild: static-embed =====
+    # Static libs link into the app via ${DAS_MODULES_LIBS}; ADD_MODULE_CPP emits
+    # NEED/DECLARE/PULL(Module_*) so the app needs no manual registration, and each
+    # widgets/*.das registers a boost path so `require imgui/<name>` resolves
+    # in-tree. The glob IS the .das_module register_native_path list (file stem ==
+    # module name for every widgets file).
+    ADD_MODULE_CPP(dasIMGUI)
+    ADD_MODULE_CPP(imgui_app)
+    ADD_MODULE_CPP(imgui_app_headless)
+    FILE(GLOB _imgui_widget_files "${DAS_IMGUI_DIR}/widgets/*.das")
+    FOREACH(_f ${_imgui_widget_files})
+        GET_FILENAME_COMPONENT(_n "${_f}" NAME_WE)
+        ADD_MODULE_DAS(imgui widgets ${_n})
+    ENDFOREACH()
+
+    IF(EMSCRIPTEN)
+        ADD_DAS_STATIC_MODULE_LIB(libDasModuleImgui ${DAS_IMGUI_BIND_SRC} ${DAS_IMGUI_SRC})
+        ADD_DAS_STATIC_MODULE_LIB(libImguiApp ${DAS_IMGUI_APP_SRC})
+        ADD_DAS_STATIC_MODULE_LIB(libImguiAppHeadless ${DAS_IMGUI_DIR}/src/module_imgui_app_headless.cpp)
+        SET(_IMGUI_SUPER_TARGETS libDasModuleImgui libImguiApp libImguiAppHeadless)
+    ELSE()
+        ADD_MODULE_LIB(libDasModuleImgui dasModuleImgui ${DAS_IMGUI_BIND_SRC} ${DAS_IMGUI_SRC})
+        ADD_MODULE_LIB(libImguiApp imguiApp ${DAS_IMGUI_APP_SRC})
+        ADD_MODULE_LIB(libImguiAppHeadless imguiAppHeadless ${DAS_IMGUI_DIR}/src/module_imgui_app_headless.cpp)
+        SET(_IMGUI_SUPER_TARGETS libDasModuleImgui dasModuleImgui libImguiApp imguiApp libImguiAppHeadless imguiAppHeadless)
+    ENDIF()
+
+    MACRO(SETUP_IMGUI imgui_mod_lib)
+        TARGET_INCLUDE_DIRECTORIES(${imgui_mod_lib} PRIVATE
+            ${imgui_INCLUDE_DIR}
+            ${DAS_IMGUI_DIR}/src
+            ${DAS_IMGUI_DIR}/gl3w
+            ${GLFW_INCLUDE_DIR}
+            ${DAS_IMGUI_GLFW_ROOT}/src
+        )
+        TARGET_COMPILE_DEFINITIONS(${imgui_mod_lib} PRIVATE
+            IMGUI_DISABLE_OBSOLETE_FUNCTIONS=1
+            IMGUI_IMPL_OPENGL_LOADER_GL3W)
+        SETUP_CPP11(${imgui_mod_lib})
+    ENDMACRO()
+    FOREACH(_t ${_IMGUI_SUPER_TARGETS})
+        SETUP_IMGUI(${_t})
+    ENDFOREACH()
+    # the imgui core symbols live in the dasModuleImgui libs; the app backends use them
+    IF(EMSCRIPTEN)
+        TARGET_LINK_LIBRARIES(libImguiApp PUBLIC libDasModuleImgui)
+        TARGET_LINK_LIBRARIES(libImguiAppHeadless PUBLIC libDasModuleImgui)
+    ELSE()
+        FIND_PACKAGE(OpenGL REQUIRED)
+        TARGET_LINK_LIBRARIES(libImguiApp PUBLIC libDasModuleImgui ${OPENGL_LIBRARIES})
+        TARGET_LINK_LIBRARIES(imguiApp PUBLIC dasModuleImgui ${OPENGL_LIBRARIES})
+        TARGET_LINK_LIBRARIES(libImguiAppHeadless PUBLIC libDasModuleImgui)
+        TARGET_LINK_LIBRARIES(imguiAppHeadless PUBLIC dasModuleImgui)
+    ENDIF()
+
+ELSEIF(EMSCRIPTEN)
     # ===== Web (emscripten) =====
     # dasImgui is an EXTERNAL module: built standalone here, not inside daslang's web
     # CMake, so the ADD_DAS_STATIC_MODULE_LIB helper is unavailable. Build the same
@@ -372,4 +458,6 @@ set_target_properties(imguiAppHeadless PROPERTIES
 )
 target_link_libraries(imguiAppHeadless PRIVATE dasModuleImgui)
 
-ENDIF() # IF(EMSCRIPTEN) ... ELSE() [desktop]
+ENDIF() # superbuild / emscripten / desktop
+
+ENDIF() # DAS_IMGUI_INCLUDED guard

@@ -113,10 +113,9 @@ grep -rn "imgui::" examples/                   # raw imgui calls inside opt-outs
 - `widgets/imgui_layout_builtin.das` — layout helpers (with_indent, group,
   list_clipper, tree_node, etc.)
 - `widgets/imgui_table_builtin.das` — `data_table` + `table_*` helpers
-- `widgets/imgui_boost.das` — the `WidgetCallMacro` that rewrites
-  `widget(IDENT, (named=tuple))` calls
-- `widgets/imgui_boost_v2.das` — macro layer entry point (require this
-  transitively via `imgui_harness` / `imgui_live`)
+- `widgets/imgui_boost_v2.das` — the macro layer entry point: the
+  `WidgetCallMacro` that rewrites `widget(IDENT, (named=tuple))` calls
+  (required transitively via `imgui_harness` / `imgui_live`)
 - `widgets/imgui_harness.das` — the 5-call harness API (`harness_init` /
   `harness_begin_frame` / `harness_apply_synth_io` / `harness_new_frame` /
   `harness_end_frame` / `harness_shutdown`)
