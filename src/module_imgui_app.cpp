@@ -14,7 +14,14 @@ using namespace das;
 
 // NOTE: this module requires GLFW module
 #include "need_dasGLFW.h"
+// In a daslang superbuild dasGlfw's own binding TU already provides the strong
+// typeFactory<GLFWwindow>::make definition — implementing it here too is a duplicate
+// symbol in the static link (the web build papers over the same collision with
+// -Wl,--allow-multiple-definition). The superbuild CMake branch sets the guard; the
+// standalone .shared_module build (no dasGlfw objects in its link) keeps its own copy.
+#ifndef DAS_IMGUI_APP_EXTERN_GLFW_TYPE_FACTORY
 IMPLEMENT_EXTERNAL_TYPE_FACTORY(GLFWwindow,GLFWwindow)
+#endif
 
 MAKE_EXTERNAL_TYPE_FACTORY(ImDrawData,ImDrawData);
 

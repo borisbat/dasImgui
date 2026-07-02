@@ -144,17 +144,14 @@ IF(COMMAND ADD_MODULE_CPP)
         ADD_MODULE_DAS(imgui widgets ${_n})
     ENDFOREACH()
 
-    IF(EMSCRIPTEN)
-        ADD_DAS_STATIC_MODULE_LIB(libDasModuleImgui ${DAS_IMGUI_BIND_SRC} ${DAS_IMGUI_SRC})
-        ADD_DAS_STATIC_MODULE_LIB(libImguiApp ${DAS_IMGUI_APP_SRC})
-        ADD_DAS_STATIC_MODULE_LIB(libImguiAppHeadless ${DAS_IMGUI_DIR}/src/module_imgui_app_headless.cpp)
-        SET(_IMGUI_SUPER_TARGETS libDasModuleImgui libImguiApp libImguiAppHeadless)
-    ELSE()
-        ADD_MODULE_LIB(libDasModuleImgui dasModuleImgui ${DAS_IMGUI_BIND_SRC} ${DAS_IMGUI_SRC})
-        ADD_MODULE_LIB(libImguiApp imguiApp ${DAS_IMGUI_APP_SRC})
-        ADD_MODULE_LIB(libImguiAppHeadless imguiAppHeadless ${DAS_IMGUI_DIR}/src/module_imgui_app_headless.cpp)
-        SET(_IMGUI_SUPER_TARGETS libDasModuleImgui dasModuleImgui libImguiApp imguiApp libImguiAppHeadless imguiAppHeadless)
-    ENDIF()
+    # Static halves only — no ADD_MODULE_LIB shared twins. In a superbuild the DLL
+    # flavor comes from this module's own standalone build (daspkg); the twins would
+    # need the whole dllexport/dllimport matrix (IMGUI_API across the pair, glfw
+    # import libs) for nothing an embedded host ever loads.
+    ADD_DAS_STATIC_MODULE_LIB(libDasModuleImgui ${DAS_IMGUI_BIND_SRC} ${DAS_IMGUI_SRC})
+    ADD_DAS_STATIC_MODULE_LIB(libImguiApp ${DAS_IMGUI_APP_SRC})
+    ADD_DAS_STATIC_MODULE_LIB(libImguiAppHeadless ${DAS_IMGUI_DIR}/src/module_imgui_app_headless.cpp)
+    SET(_IMGUI_SUPER_TARGETS libDasModuleImgui libImguiApp libImguiAppHeadless)
 
     MACRO(SETUP_IMGUI imgui_mod_lib)
         TARGET_INCLUDE_DIRECTORIES(${imgui_mod_lib} PRIVATE
@@ -166,22 +163,20 @@ IF(COMMAND ADD_MODULE_CPP)
         )
         TARGET_COMPILE_DEFINITIONS(${imgui_mod_lib} PRIVATE
             IMGUI_DISABLE_OBSOLETE_FUNCTIONS=1
-            IMGUI_IMPL_OPENGL_LOADER_GL3W)
+            IMGUI_IMPL_OPENGL_LOADER_GL3W
+            # dasGlfw's binding TU owns typeFactory<GLFWwindow> in a superbuild link
+            DAS_IMGUI_APP_EXTERN_GLFW_TYPE_FACTORY=1)
         SETUP_CPP11(${imgui_mod_lib})
     ENDMACRO()
     FOREACH(_t ${_IMGUI_SUPER_TARGETS})
         SETUP_IMGUI(${_t})
     ENDFOREACH()
-    # the imgui core symbols live in the dasModuleImgui libs; the app backends use them
-    IF(EMSCRIPTEN)
-        TARGET_LINK_LIBRARIES(libImguiApp PUBLIC libDasModuleImgui)
-        TARGET_LINK_LIBRARIES(libImguiAppHeadless PUBLIC libDasModuleImgui)
-    ELSE()
+    # the imgui core symbols live in libDasModuleImgui; the app backends use them
+    TARGET_LINK_LIBRARIES(libImguiApp PUBLIC libDasModuleImgui)
+    TARGET_LINK_LIBRARIES(libImguiAppHeadless PUBLIC libDasModuleImgui)
+    IF(NOT EMSCRIPTEN)
         FIND_PACKAGE(OpenGL REQUIRED)
-        TARGET_LINK_LIBRARIES(libImguiApp PUBLIC libDasModuleImgui ${OPENGL_LIBRARIES})
-        TARGET_LINK_LIBRARIES(imguiApp PUBLIC dasModuleImgui ${OPENGL_LIBRARIES})
-        TARGET_LINK_LIBRARIES(libImguiAppHeadless PUBLIC libDasModuleImgui)
-        TARGET_LINK_LIBRARIES(imguiAppHeadless PUBLIC dasModuleImgui)
+        TARGET_LINK_LIBRARIES(libImguiApp PUBLIC ${OPENGL_LIBRARIES})
     ENDIF()
 
 ELSEIF(EMSCRIPTEN)
