@@ -2518,8 +2518,8 @@ def edit_drag_scalar(var ptr : auto(T)? implicit;
     let has_clamp = (v_min != v_max) || (v_min != default<T>)
     var p : T? = ptr
     unsafe {
-        let lo_ptr = has_clamp ? reinterpret<void? const>(addr(lo)) : null
-        let hi_ptr = has_clamp ? reinterpret<void? const>(addr(hi)) : null
+        let lo_ptr = has_clamp ? addr<void? const>(lo) : null
+        let hi_ptr = has_clamp ? addr<void? const>(hi) : null
         let data_ptr = reinterpret<void?>(p)
         let changed = DragScalar(lbl, scalar_data_type(type<T>),
                                  data_ptr, speed, lo_ptr, hi_ptr, fmt, flags)
@@ -2544,8 +2544,8 @@ def edit_slider_scalar(var ptr : auto(T)? implicit;
     var hi = v_max
     var p : T? = ptr
     unsafe {
-        let lo_ptr = reinterpret<void? const>(addr(lo))
-        let hi_ptr = reinterpret<void? const>(addr(hi))
+        let lo_ptr = addr<void? const>(lo)
+        let hi_ptr = addr<void? const>(hi)
         let data_ptr = reinterpret<void?>(p)
         let changed = SliderScalar(lbl, scalar_data_type(type<T>),
                                    data_ptr, lo_ptr, hi_ptr, fmt, flags)
@@ -2570,8 +2570,8 @@ def edit_input_scalar(var ptr : auto(T)? implicit;
     var stp_fast = step_fast
     var p : T? = ptr
     unsafe {
-        let step_ptr = (step != default<T>) ? reinterpret<void? const>(addr(stp)) : null
-        let step_fast_ptr = (step_fast != default<T>) ? reinterpret<void? const>(addr(stp_fast)) : null
+        let step_ptr = (step != default<T>) ? addr<void? const>(stp) : null
+        let step_fast_ptr = (step_fast != default<T>) ? addr<void? const>(stp_fast) : null
         let data_ptr = reinterpret<void?>(p)
         let changed = InputScalar(lbl, scalar_data_type(type<T>),
                                   data_ptr, step_ptr, step_fast_ptr, fmt, flags)
