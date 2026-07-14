@@ -363,9 +363,7 @@ def Combo(name : string; var ent : auto(EnumT)&; max_height_in_items : int = -1)
         for (ef in *ti.enumType) {
             names |> push(ef.name)
         }
-        unsafe {
-            return Combo(name, reinterpret<int?>(addr(ent)), names, max_height_in_items)
-        }
+        return Combo(name, unsafe(addr<int?>(ent)), names, max_height_in_items)
     }
     return false
 }
@@ -378,9 +376,7 @@ def ListBox(name : string; var ent : auto(EnumT)&; max_height_in_items : int = -
         for (ef in *ti.enumType) {
             names |> push(ef.name)
         }
-        unsafe {
-            return ListBox(name, reinterpret<int?>(addr(ent)), names, max_height_in_items)
-        }
+        return ListBox(name, unsafe(addr<int?>(ent)), names, max_height_in_items)
     }
     return false
 }
