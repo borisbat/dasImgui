@@ -133,6 +133,13 @@ struct public MarkdownViewState {
     caret_screen_valid : bool = false
     caret_screen_pos : float2
     caret_screen_height : float = 0.0f
+    navigation_goal_x_valid : bool = false
+    navigation_goal_x : float = 0.0f
+    navigation_needs_scroll : bool = false
+    navigation_scroll_revision : int = 0
+    navigation_scroll_target : float = 0.0f
+    viewport_top : float = 0.0f
+    viewport_bottom : float = 0.0f
 }
 
 let private STYLE_STRONG = 1
@@ -337,23 +344,133 @@ def private adjacent_text_position(var state : MarkdownViewState;
     return from
 }
 
-def private navigate_selection_keyboard(var state : MarkdownViewState) {
+def private position_line_index(entry : MarkdownNodeViewCache const;
+                                position : MdTextPosition const) : int {
+    for (fragment in entry.layout.fragments) {
+        if (position_in_fragment(position, position.inline_node, fragment)) {
+            return fragment.line_index
+        }
+    }
+    return -1
+}
+
+def private line_boundary_position(var state : MarkdownViewState;
+                                   from : MdTextPosition const;
+                                   end_ : bool) : MdTextPosition {
+    if (!from.valid || from.inline_node < 0
+            || from.inline_node >= length(state.nodes)) return from
+    let entry & = unsafe(state.nodes[from.inline_node])
+    let line_index = position_line_index(entry, from)
+    if (line_index < 0 || line_index >= length(entry.layout.lines)) return from
+    let line = entry.layout.lines[line_index]
+    let at = end_ ? line.source.end_byte : line.source.start_byte
+    return md_inline_position(entry.content, from.inline_node, at, end_)
+}
+
+def private line_text_x_range(entry : MarkdownNodeViewCache const;
+                              line_index : int) : float2 {
+    var result = float2(0.0f, 0.0f)
+    var valid = false
+    for (fragment in entry.layout.fragments) {
+        if (fragment.line_index != line_index || fragment.is_control) continue
+        if (!valid) {
+            result = float2(fragment.rect.x, fragment.rect.z)
+            valid = true
+        } else {
+            result.x = min(result.x, fragment.rect.x)
+            result.y = max(result.y, fragment.rect.z)
+        }
+    }
+    return result
+}
+
+def private vertical_text_position(var state : MarkdownViewState;
+                                   var style : MarkdownViewStyle;
+                                   from : MdTextPosition const;
+                                   direction : int) : MdTextPosition {
+    if (!from.valid || from.inline_node < 0
+            || from.inline_node >= length(state.nodes)) return from
+    let current & = unsafe(state.nodes[from.inline_node])
+    let current_line_index = position_line_index(current, from)
+    if (current_line_index < 0) return from
+    let current_line = current.layout.lines[current_line_index]
+    let current_y = (current.screen_origin.y + current_line.y
+        + current_line.height * 0.5f)
+    let goal_x = (state.navigation_goal_x_valid
+        ? state.navigation_goal_x : state.caret_screen_pos.x)
+    var best_node = -1
+    var best_line = -1
+    var best_y = direction < 0 ? -1000000000.0f : 1000000000.0f
+    var best_x_distance = 1000000000.0f
+    for (node_index in range(length(state.nodes))) {
+        let entry & = unsafe(state.nodes[node_index])
+        if (!entry.content_valid || !entry.layout_valid
+                || entry.screen_revision < state.render_revision - 1) continue
+        for (line_index in range(length(entry.layout.lines))) {
+            let line = entry.layout.lines[line_index]
+            let line_y = entry.screen_origin.y + line.y + line.height * 0.5f
+            if ((direction < 0 && line_y >= current_y - 0.5f)
+                    || (direction > 0 && line_y <= current_y + 0.5f)) continue
+            let xr = line_text_x_range(entry, line_index)
+            if (xr.y <= xr.x) continue
+            let screen_x0 = entry.screen_origin.x + xr.x
+            let screen_x1 = entry.screen_origin.x + xr.y
+            let x_distance = (goal_x < screen_x0 ? screen_x0 - goal_x
+                : (goal_x > screen_x1 ? goal_x - screen_x1 : 0.0f))
+            let nearer_y = direction < 0 ? line_y > best_y : line_y < best_y
+            let same_y = abs(line_y - best_y) < 0.5f
+            if (nearer_y || (same_y && x_distance < best_x_distance)) {
+                best_node = node_index
+                best_line = line_index
+                best_y = line_y
+                best_x_distance = x_distance
+            }
+        }
+    }
+    if (best_node < 0) return from
+    let target & = unsafe(state.nodes[best_node])
+    let target_line = target.layout.lines[best_line]
+    let xr = line_text_x_range(target, best_line)
+    let local_x = clamp(goal_x - target.screen_origin.x, xr.x, xr.y)
+    let hit = text_flow_hit_test_ranges(target.content.text, target.layout,
+        float2(local_x, target_line.y + target_line.height * 0.5f)) $(text : string;
+          start_byte, end_byte, style_id : int) : float {
+            var fallback = GetFont()
+            var font = font_for_style(style_id, style.fonts, fallback)
+            return CalcTextSizeForFontRange(font, target.layout_key.font_size,
+                text, length(text), start_byte, end_byte).x
+        }
+    if (!hit.valid || hit.line_index != best_line) return from
+    return md_inline_position(target.content, best_node,
+                              hit.byte_offset, hit.trailing)
+}
+
+def private navigate_selection_keyboard(var state : MarkdownViewState;
+                                        var style : MarkdownViewStyle) {
     if (!state.selection_focus.valid
             || !IsWindowFocused(ImGuiFocusedFlags.RootAndChildWindows)
             || IsAnyItemActive()) return
-    var direction = 0
+    var action = 0
     if (IsKeyPressed(ImGuiKey.LeftArrow, false)) {
-        direction = -1
+        action = 1
     } elif (IsKeyPressed(ImGuiKey.RightArrow, false)) {
-        direction = 1
+        action = 2
+    } elif (IsKeyPressed(ImGuiKey.UpArrow, false)) {
+        action = 3
+    } elif (IsKeyPressed(ImGuiKey.DownArrow, false)) {
+        action = 4
+    } elif (IsKeyPressed(ImGuiKey.Home, false)) {
+        action = 5
+    } elif (IsKeyPressed(ImGuiKey.End, false)) {
+        action = 6
     }
-    if (direction == 0) return
+    if (action == 0) return
     let io & = unsafe(GetIO())
     let selection_range = selected_source(state)
     let has_selection = selection_range.end_byte > selection_range.start_byte
     var next = state.selection_focus
-    if (has_selection && !io.KeyShift) {
-        if (direction < 0) {
+    if (has_selection && !io.KeyShift && (action == 1 || action == 2)) {
+        if (action == 1) {
             next = (state.selection_anchor.source_byte <= state.selection_focus.source_byte
                 ? state.selection_anchor : state.selection_focus)
         } else {
@@ -362,21 +479,59 @@ def private navigate_selection_keyboard(var state : MarkdownViewState) {
         }
         state.selection_anchor = next
     } else {
-        next = adjacent_text_position(state, state.selection_focus, direction)
+        if (action == 1 || action == 2) {
+            next = adjacent_text_position(state, state.selection_focus,
+                                          action == 1 ? -1 : 1)
+        } elif (action == 3 || action == 4) {
+            if (!state.navigation_goal_x_valid) {
+                state.navigation_goal_x = state.caret_screen_pos.x
+                state.navigation_goal_x_valid = true
+            }
+            next = vertical_text_position(state, style, state.selection_focus,
+                                          action == 3 ? -1 : 1)
+        } else {
+            next = line_boundary_position(state, state.selection_focus, action == 6)
+        }
         if (!io.KeyShift) {
             state.selection_anchor = next
         }
+    }
+    if (action != 3 && action != 4) {
+        state.navigation_goal_x_valid = false
     }
     if (!same_text_position(state.selection_focus, next)) {
         state.selection_focus = next
         state.selection_revision++
         state.navigation_revision++
         state.selection_changed = true
+        state.navigation_needs_scroll = true
     } elif (has_selection && !io.KeyShift) {
         state.selection_focus = next
         state.selection_revision++
         state.navigation_revision++
         state.selection_changed = true
+        state.navigation_needs_scroll = true
+    }
+}
+
+def private ensure_keyboard_caret_visible(var state : MarkdownViewState) {
+    if (!state.navigation_needs_scroll) return
+    state.navigation_needs_scroll = false
+    if (!state.caret_screen_valid) return
+    let caret_top = state.caret_screen_pos.y
+    let caret_bottom = caret_top + state.caret_screen_height
+    let old_scroll = GetScrollY()
+    var target = old_scroll
+    if (caret_top < state.viewport_top) {
+        target = old_scroll - (state.viewport_top - caret_top)
+    } elif (caret_bottom > state.viewport_bottom) {
+        target = old_scroll + (caret_bottom - state.viewport_bottom)
+    }
+    target = clamp(target, 0.0f, GetScrollMaxY())
+    if (abs(target - old_scroll) > 0.5f) {
+        SetScrollY(target)
+        state.navigation_scroll_target = target
+        state.navigation_scroll_revision++
     }
 }
 
@@ -942,6 +1097,11 @@ def public markdown_view(id : string; doc : MdDocument const;
     }
     prepare_view_state(doc, state, document_revision)
     state.render_revision++
+    // Stable visible bounds of the scrolling window. Cursor screen Y moves
+    // with ScrollY and therefore cannot serve as the viewport edge.
+    state.viewport_top = GetWindowPos().y + GetFrameHeight()
+    state.viewport_bottom = (GetWindowPos().y + GetWindowSize().y
+        - GetStyle().WindowPadding.y)
     let old_hovered_inline_node = state.hovered_inline_node
     let old_hovered_fragment = state.hovered_fragment
     let old_hovered_display_byte = state.hovered_display_byte
@@ -960,7 +1120,7 @@ def public markdown_view(id : string; doc : MdDocument const;
             && IsMouseDragging(ImGuiMouseButton.Left, 2.0f)) {
         state.selection_dragged = true
     }
-    navigate_selection_keyboard(state)
+    navigate_selection_keyboard(state, style)
     var pushed_font = false
     if (style.fonts.regular != null) {
         let size = (style.fonts.size_px > 0.0f
@@ -971,6 +1131,7 @@ def public markdown_view(id : string; doc : MdDocument const;
     PushID(id)
     render_block(doc, doc.root, state, style, result)
     PopID()
+    ensure_keyboard_caret_visible(state)
     if (IsMouseClicked(ImGuiMouseButton.Left, false)
             && !state.selection_click_claimed) {
         let old_selection = selected_source(state)

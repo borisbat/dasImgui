@@ -405,15 +405,117 @@ def test_markdown_view_event_driven_interactions(t : T?) {
         }
         t |> success(left_released, "Left Arrow release is observed")
 
-        let keyboard_clear = post_command(app, "markdown_probe_clear_selection", null)
-        let keyboard_clear_revision = keyboard_clear?["selection_revision"] ?? -1
-        let keyboard_cleared = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
-            var state = markdown_state(app)
-            return (!(state?["selection"]?["active"] ?? true)
-                && (state?["selection"]?["revision"] ?? -1)
-                    >= keyboard_clear_revision)
+        let home_navigation_before = collapsed_left_state?["selection"]?["navigation_revision"] ?? -1
+        post_command(app, "imgui_key_press", JV((key = int(ImGuiKey.Home))))
+        var home_state : JsonValue?
+        let moved_home = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+            home_state = markdown_state(app)
+            return ((home_state?["input"]?["home_down"] ?? false)
+                && (home_state?["selection"]?["navigation_revision"] ?? -1)
+                    > home_navigation_before
+                && (home_state?["caret"]?["display_byte"] ?? -1)
+                    < (collapsed_left_state?["caret"]?["display_byte"] ?? -1))
         }
-        t |> success(keyboard_cleared, "keyboard selection clear is acknowledged")
+        t |> success(moved_home, "Home moves to the visual-line start")
+        post_command(app, "imgui_key_release", JV((key = int(ImGuiKey.Home))))
+        let home_released = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+            var state = markdown_state(app)
+            return !(state?["input"]?["home_down"] ?? true)
+        }
+        t |> success(home_released, "Home release is observed")
+
+        let end_navigation_before = home_state?["selection"]?["navigation_revision"] ?? -1
+        post_command(app, "imgui_key_press", JV((key = int(ImGuiKey.End))))
+        var end_state : JsonValue?
+        let moved_end = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+            end_state = markdown_state(app)
+            return ((end_state?["input"]?["end_down"] ?? false)
+                && (end_state?["selection"]?["navigation_revision"] ?? -1)
+                    > end_navigation_before
+                && (end_state?["caret"]?["display_byte"] ?? -1)
+                    > (home_state?["caret"]?["display_byte"] ?? -1))
+        }
+        t |> success(moved_end, "End moves to the visual-line end")
+        post_command(app, "imgui_key_release", JV((key = int(ImGuiKey.End))))
+        let end_released = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+            var state = markdown_state(app)
+            return !(state?["input"]?["end_down"] ?? true)
+        }
+        t |> success(end_released, "End release is observed")
+
+        let end_y = end_state?["caret"]?["y"] ?? -1.0f
+        let up_navigation_before = end_state?["selection"]?["navigation_revision"] ?? -1
+        post_command(app, "imgui_key_press", JV((key = int(ImGuiKey.UpArrow))))
+        var up_state : JsonValue?
+        let moved_up = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+            up_state = markdown_state(app)
+            return ((up_state?["input"]?["up_down"] ?? false)
+                && (up_state?["selection"]?["navigation_revision"] ?? -1)
+                    > up_navigation_before
+                && (up_state?["caret"]?["y"] ?? end_y) < end_y)
+        }
+        t |> success(moved_up, "Up Arrow moves to the preceding visual line")
+        post_command(app, "imgui_key_release", JV((key = int(ImGuiKey.UpArrow))))
+        let up_released = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+            var state = markdown_state(app)
+            return !(state?["input"]?["up_down"] ?? true)
+        }
+        t |> success(up_released, "Up Arrow release is observed")
+
+        let up_y = up_state?["caret"]?["y"] ?? 1000000.0f
+        let down_navigation_before = up_state?["selection"]?["navigation_revision"] ?? -1
+        post_command(app, "imgui_key_press", JV((key = int(ImGuiKey.DownArrow))))
+        var down_state : JsonValue?
+        let moved_down = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+            down_state = markdown_state(app)
+            return ((down_state?["input"]?["down_down"] ?? false)
+                && (down_state?["selection"]?["navigation_revision"] ?? -1)
+                    > down_navigation_before
+                && (down_state?["caret"]?["y"] ?? up_y) > up_y)
+        }
+        t |> success(moved_down,
+                     "Down Arrow moves to the following visual line")
+        post_command(app, "imgui_key_release", JV((key = int(ImGuiKey.DownArrow))))
+        let down_released = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+            var state = markdown_state(app)
+            return !(state?["input"]?["down_down"] ?? true)
+        }
+        t |> success(down_released, "Down Arrow release is observed")
+
+        let vertical_anchor_source = down_state?["caret"]?["source_byte"] ?? -1
+        let shift_down_navigation_before = down_state?["selection"]?["navigation_revision"] ?? -1
+        post_command(app, "imgui_key_press", JV((key = int(ImGuiKey.LeftShift))))
+        let vertical_shift_pressed = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+            var state = markdown_state(app)
+            return state?["input"]?["shift_down"] ?? false
+        }
+        t |> success(vertical_shift_pressed, "vertical Shift press is observed")
+        post_command(app, "imgui_key_press", JV((key = int(ImGuiKey.DownArrow))))
+        var shifted_down_state : JsonValue?
+        let shifted_down = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+            shifted_down_state = markdown_state(app)
+            return ((shifted_down_state?["input"]?["down_down"] ?? false)
+                && (shifted_down_state?["selection"]?["navigation_revision"] ?? -1)
+                    > shift_down_navigation_before
+                && (shifted_down_state?["selection"]?["active"] ?? false))
+        }
+        t |> success(shifted_down,
+                     "Shift+Down extends selection to the following visual line")
+        t |> equal(shifted_down_state?["selection"]?["source_start"] ?? -1,
+                   vertical_anchor_source,
+                   "vertical selection retains its original source anchor")
+        post_command(app, "imgui_key_release", JV((key = int(ImGuiKey.DownArrow))))
+        let shifted_down_released = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+            var state = markdown_state(app)
+            return !(state?["input"]?["down_down"] ?? true)
+        }
+        t |> success(shifted_down_released, "shifted Down Arrow release is observed")
+        post_command(app, "imgui_key_release", JV((key = int(ImGuiKey.LeftShift))))
+        let vertical_shift_released = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+            var state = markdown_state(app)
+            return !(state?["input"]?["shift_down"] ?? true)
+        }
+        t |> success(vertical_shift_released, "vertical Shift release is observed")
 
         let zoom_result = post_command(app, "markdown_probe_set_zoom",
                                        JV((percent = 200)))
@@ -441,6 +543,48 @@ def test_markdown_view_event_driven_interactions(t : T?) {
         }
         t |> success(got_scroll, "Markdown window reports scrollable content")
         if (!got_scroll) return
+
+        var auto_state = markdown_state(app)
+        let auto_scroll_before = auto_state?["selection"]?["navigation_scroll_revision"] ?? -1
+        var auto_scrolled = false
+        for (_step in range(48)) {
+            break if (auto_scrolled)
+            let step_navigation_before = auto_state?["selection"]?["navigation_revision"] ?? -1
+            post_command(app, "imgui_key_press", JV((key = int(ImGuiKey.DownArrow))))
+            let step_moved = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+                auto_state = markdown_state(app)
+                return ((auto_state?["input"]?["down_down"] ?? false)
+                    && (auto_state?["selection"]?["navigation_revision"] ?? -1)
+                        > step_navigation_before)
+            }
+            t |> success(step_moved,
+                         "autoscroll navigation step receives a semantic acknowledgement")
+            if (!step_moved) return
+            post_command(app, "imgui_key_release", JV((key = int(ImGuiKey.DownArrow))))
+            let step_released = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+                var state = markdown_state(app)
+                return !(state?["input"]?["down_down"] ?? true)
+            }
+            t |> success(step_released,
+                         "autoscroll navigation key release is observed")
+            auto_state = markdown_state(app)
+            auto_scrolled = ((auto_state?["selection"]?["navigation_scroll_revision"] ?? -1)
+                > auto_scroll_before)
+        }
+        t |> success(auto_scrolled,
+                     "vertical keyboard navigation requests scroll when caret leaves viewport")
+        if (!auto_scrolled) return
+        let auto_scroll_observed = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+            var snap = snapshot(app)
+            var scroll = widget_payload_field(snap, "MARKDOWN_VIEW_WIN", "scroll")
+            return (scroll?["y"] ?? scroll_before) > scroll_before
+        }
+        t |> success(auto_scroll_observed,
+                     "keyboard autoscroll changes the registered window scroll state")
+        var after_auto_snap = snapshot(app)
+        var after_auto_scroll = widget_payload_field(after_auto_snap,
+            "MARKDOWN_VIEW_WIN", "scroll")
+        scroll_before = after_auto_scroll?["y"] ?? scroll_before
         post_command(app, "imgui_mouse_scroll", JV((x = 0.0f, y = -4.0f)))
         let scrolled = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
             var snap = snapshot(app)

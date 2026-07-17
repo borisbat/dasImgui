@@ -153,8 +153,9 @@ results, URI actions, terminal annotations, and editor code lenses.
 - Headings, paragraphs, lists, quotes, tables, inline code, fenced code, links,
   plain-text URIs, and link copy controls.
 - Source-mapped rich selection across inline blocks and fenced code.
-- Visible collapsed carets plus grapheme-safe Left/Right movement and
-  Shift+Left/Right selection.
+- Visible collapsed carets; grapheme-safe Left/Right; visual-line Up/Down with
+  a preserved horizontal goal; Home/End; Shift extension; and caret
+  autoscroll.
 - Selection highlighting, screen anchors, right-click context requests, and
   UTF-8 clipboard copy.
 
@@ -162,7 +163,7 @@ results, URI actions, terminal annotations, and editor code lenses.
 
 ### Markdown viewer completion
 
-- Add vertical/line keyboard movement, Home/End, and keyboard autoscroll.
+- Add PageUp/PageDown and platform word/document navigation shortcuts.
 - Add word/line selection gestures and selection autoscroll.
 - Decide how list markers and table separators participate in display copy.
 - Add shared syntax highlighting to fenced code once the syntax service exists.
