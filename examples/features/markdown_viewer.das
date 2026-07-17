@@ -129,8 +129,8 @@ def markdown_probe_fragment(input : JsonValue?) : JsonValue? {
             let fragment_text = slice(entry.content.text,
                 fragment.source.start_byte, fragment.source.end_byte)
             if (find(fragment_text, args.text) < 0) continue
-            let p0 = entry.screen_origin + float2(fragment.rect.x, fragment.rect.y)
-            let p1 = entry.screen_origin + float2(fragment.rect.z, fragment.rect.w)
+            let screen_rect = markdown_cached_fragment_rect(entry, fragment)
+            let align_x = markdown_line_alignment_offset(entry, fragment.line_index)
             return JV((
                 ok = true,
                 render_revision = g_view.render_revision,
@@ -141,7 +141,10 @@ def markdown_probe_fragment(input : JsonValue?) : JsonValue? {
                 display_end = fragment.source.end_byte,
                 style_id = fragment.style_id,
                 semantic_id = fragment.semantic_id,
-                x0 = p0.x, y0 = p0.y, x1 = p1.x, y1 = p1.y))
+                alignment = int(entry.screen_alignment),
+                alignment_offset = align_x,
+                x0 = screen_rect.x, y0 = screen_rect.y,
+                x1 = screen_rect.z, y1 = screen_rect.w))
         }
     }
     return JV((ok = false, render_revision = g_view.render_revision,

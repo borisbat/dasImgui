@@ -50,6 +50,79 @@ def test_markdown_view_event_driven_interactions(t : T?) {
         t |> success(ready, "Markdown live probe reaches a rendered revision")
         if (!ready) return
 
+        // GFM column alignment is model data, but this verifies that the live
+        // renderer actually converts it into per-line screen offsets.
+        var table_left : JsonValue?
+        var table_center : JsonValue?
+        var table_right : JsonValue?
+        let table_aligned = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+            table_left = markdown_fragment(app, "Script")
+            table_center = markdown_fragment(app, "Sample")
+            table_right = markdown_fragment(app, "State")
+            return ((table_left?["ok"] ?? false)
+                && (table_center?["ok"] ?? false)
+                && (table_right?["ok"] ?? false))
+        }
+        t |> success(table_aligned, "table header fragments are inspectable")
+        if (!table_aligned) return
+        t |> equal(table_left?["alignment"] ?? -1, 1,
+                   "left-aligned Markdown column reaches renderer")
+        t |> equal(table_center?["alignment"] ?? -1, 2,
+                   "center-aligned Markdown column reaches renderer")
+        t |> equal(table_right?["alignment"] ?? -1, 3,
+                   "right-aligned Markdown column reaches renderer")
+        let left_offset = table_left?["alignment_offset"] ?? -1.0f
+        let center_offset = table_center?["alignment_offset"] ?? -1.0f
+        let right_offset = table_right?["alignment_offset"] ?? -1.0f
+        t |> equal(left_offset, 0.0f, "left column has no alignment offset")
+        t |> success(center_offset > 0.0f,
+                     "center column applies a positive alignment offset")
+        t |> success(right_offset > center_offset,
+                     "right column applies the larger trailing-space offset")
+
+        let center_node = table_center?["node"] ?? -1
+        let center_fragment = table_center?["fragment"] ?? -1
+        let center_x = ((table_center?["x0"] ?? 0.0f)
+            + (table_center?["x1"] ?? 0.0f)) * 0.5f
+        let center_y = ((table_center?["y0"] ?? 0.0f)
+            + (table_center?["y1"] ?? 0.0f)) * 0.5f
+        post_command(app, "imgui_mouse_pos", JV((x = center_x, y = center_y)))
+        let center_hovered = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+            var state = markdown_state(app)
+            return ((state?["hovered_inline_node"] ?? -1) == center_node
+                && (state?["hovered_fragment"] ?? -1) == center_fragment)
+        }
+        t |> success(center_hovered,
+                     "center-aligned fragment hit-test uses shifted geometry")
+        var center_before = markdown_state(app)
+        let center_commit_before = center_before?["selection"]?["commit_revision"] ?? -1
+        post_command(app, "imgui_mouse_click", JV((button = 0, action = "press")))
+        let center_pressed = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+            var state = markdown_state(app)
+            return state?["selection"]?["dragging"] ?? false
+        }
+        t |> success(center_pressed, "aligned-cell caret press is observed")
+        post_command(app, "imgui_mouse_click", JV((button = 0, action = "release")))
+        let center_caret = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+            var state = markdown_state(app)
+            return (!(state?["selection"]?["dragging"] ?? true)
+                && (state?["selection"]?["commit_revision"] ?? -1)
+                    > center_commit_before
+                && (state?["caret"]?["valid"] ?? false)
+                && (state?["caret"]?["inline_node"] ?? -1) == center_node)
+        }
+        t |> success(center_caret,
+                     "center-aligned click produces a caret in the intended cell")
+        let table_clear = post_command(app, "markdown_probe_clear_selection", null)
+        let table_clear_revision = table_clear?["selection_revision"] ?? -1
+        let table_cleared = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+            var state = markdown_state(app)
+            return (!(state?["caret"]?["valid"] ?? true)
+                && (state?["selection"]?["revision"] ?? -1)
+                    >= table_clear_revision)
+        }
+        t |> success(table_cleared, "aligned-cell caret clear is acknowledged")
+
         // The copy-URI affordance appears on hover, but its reserved control
         // slot must not resize or move the link text.
         var link_before : JsonValue?

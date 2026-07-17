@@ -94,6 +94,8 @@ struct public MarkdownNodeViewCache {
     //! invalidating or rebuilding the layout.
     screen_origin : float2
     screen_revision : int = -1
+    screen_available_width : float = 0.0f
+    screen_alignment : MdAlignment = MdAlignment.default_
 }
 
 struct public MarkdownViewState {
@@ -279,12 +281,24 @@ def private font_for_style(style_id : int; var roles : FontRoleSet;
     return fallback
 }
 
-def private fragment_min(origin : float2; fragment : TextFlowFragment const) : float2 {
-    return origin + float2(fragment.rect.x, fragment.rect.y)
+def public markdown_line_alignment_offset(entry : MarkdownNodeViewCache const;
+                                          line_index : int) : float {
+    if (entry.screen_alignment == MdAlignment.default_
+            || entry.screen_alignment == MdAlignment.left
+            || line_index < 0 || line_index >= length(entry.layout.lines)) return 0.0f
+    let remaining = max(0.0f,
+        entry.screen_available_width - entry.layout.lines[line_index].width)
+    return entry.screen_alignment == MdAlignment.center ? remaining * 0.5f : remaining
 }
 
-def private fragment_max(origin : float2; fragment : TextFlowFragment const) : float2 {
-    return origin + float2(fragment.rect.z, fragment.rect.w)
+def public markdown_cached_fragment_rect(entry : MarkdownNodeViewCache const;
+                                         fragment : TextFlowFragment const) : float4 {
+    let dx = markdown_line_alignment_offset(entry, fragment.line_index)
+    return float4(
+        entry.screen_origin.x + fragment.rect.x + dx,
+        entry.screen_origin.y + fragment.rect.y,
+        entry.screen_origin.x + fragment.rect.z + dx,
+        entry.screen_origin.y + fragment.rect.w)
 }
 
 def private run_semantic_id(doc : MdDocument const; run : MdInlineRun const;
@@ -413,8 +427,9 @@ def private vertical_text_position(var state : MarkdownViewState;
                     || (direction > 0 && line_y <= current_y + 0.5f)) continue
             let xr = line_text_x_range(entry, line_index)
             if (xr.y <= xr.x) continue
-            let screen_x0 = entry.screen_origin.x + xr.x
-            let screen_x1 = entry.screen_origin.x + xr.y
+            let align_x = markdown_line_alignment_offset(entry, line_index)
+            let screen_x0 = entry.screen_origin.x + xr.x + align_x
+            let screen_x1 = entry.screen_origin.x + xr.y + align_x
             let x_distance = (goal_x < screen_x0 ? screen_x0 - goal_x
                 : (goal_x > screen_x1 ? goal_x - screen_x1 : 0.0f))
             let nearer_y = direction < 0 ? line_y > best_y : line_y < best_y
@@ -431,7 +446,8 @@ def private vertical_text_position(var state : MarkdownViewState;
     let target & = unsafe(state.nodes[best_node])
     let target_line = target.layout.lines[best_line]
     let xr = line_text_x_range(target, best_line)
-    let local_x = clamp(goal_x - target.screen_origin.x, xr.x, xr.y)
+    let align_x = markdown_line_alignment_offset(target, best_line)
+    let local_x = clamp(goal_x - target.screen_origin.x - align_x, xr.x, xr.y)
     let hit = text_flow_hit_test_ranges(target.content.text, target.layout,
         float2(local_x, target_line.y + target_line.height * 0.5f)) $(text : string;
           start_byte, end_byte, style_id : int) : float {
@@ -637,6 +653,7 @@ def private render_inline(doc : MdDocument const; node_index : int;
                           var state : MarkdownViewState; max_width : float;
                           var style : MarkdownViewStyle;
                           font_scale : float; forced_style : int;
+                          alignment : MdAlignment;
                           var result : MarkdownViewResult) {
     let available = max(max_width, 1.0f)
     let base_size = (style.fonts.size_px > 0.0f
@@ -667,26 +684,38 @@ def private render_inline(doc : MdDocument const; node_index : int;
     var cache & = unsafe(state.nodes[node_index])
     cache.screen_origin = origin
     cache.screen_revision = state.render_revision
+    cache.screen_available_width = available
+    cache.screen_alignment = alignment
     Dummy(float2(available, max(layout.size.y, line_height)))
 
     var hovered = -1
-    for (fragment in layout.fragments) {
+    var hovered_fragment_index = -1
+    for (fragment_index in range(length(layout.fragments))) {
+        let fragment = layout.fragments[fragment_index]
+        let rect = markdown_cached_fragment_rect(cache, fragment)
+        if (!fragment.is_control && IsMouseHoveringRect(
+                float2(rect.x, rect.y), float2(rect.z, rect.w), true)) {
+            hovered_fragment_index = fragment_index
+        }
         if (fragment.semantic_id >= 0 && IsMouseHoveringRect(
-                fragment_min(origin, fragment), fragment_max(origin, fragment), true)) {
+                float2(rect.x, rect.y), float2(rect.z, rect.w), true)) {
             hovered = fragment.semantic_id
         }
     }
 
-    let hit = text_flow_hit_test_ranges(content.text, layout,
-        GetMousePos() - origin) $(text : string; start_byte, end_byte, style_id : int) : float {
-            var font = font_for_style(style_id, style.fonts, fallback_font)
-            return CalcTextSizeForFontRange(font, font_size, text, length(text),
-                                            start_byte, end_byte).x
+    var hit = TextFlowHit()
+    if (hovered_fragment_index >= 0) {
+        let hovered_fragment = layout.fragments[hovered_fragment_index]
+        let align_x = markdown_line_alignment_offset(cache, hovered_fragment.line_index)
+        hit = text_flow_hit_test_ranges(content.text, layout,
+            GetMousePos() - origin - float2(align_x, 0.0f)) $(text : string;
+              start_byte, end_byte, style_id : int) : float {
+                var font = font_for_style(style_id, style.fonts, fallback_font)
+                return CalcTextSizeForFontRange(font, font_size, text, length(text),
+                                                start_byte, end_byte).x
+            }
         }
-    let hit_visible = (hit.valid && hit.fragment_index >= 0
-        && IsMouseHoveringRect(
-            fragment_min(origin, layout.fragments[hit.fragment_index]),
-            fragment_max(origin, layout.fragments[hit.fragment_index]), true))
+    let hit_visible = hit.valid && hit.fragment_index >= 0
     if (hit_visible) {
         state.hovered_inline_node = node_index
         state.hovered_fragment = hit.fragment_index
@@ -728,8 +757,9 @@ def private render_inline(doc : MdDocument const; node_index : int;
     var dl = GetWindowDrawList()
     for (fragment in layout.fragments) {
         if (fragment.is_control) continue
-        let p0 = fragment_min(origin, fragment)
-        let p1 = fragment_max(origin, fragment)
+        let screen_rect = markdown_cached_fragment_rect(cache, fragment)
+        let p0 = float2(screen_rect.x, screen_rect.y)
+        let p1 = float2(screen_rect.z, screen_rect.w)
         let hot_link = fragment.semantic_id >= 0 && fragment.semantic_id == hovered
         var color = style.text_color
         if (has_style(fragment.style_id, STYLE_LINK)) {
@@ -828,9 +858,10 @@ def private render_inline(doc : MdDocument const; node_index : int;
     }
     for (fragment in layout.fragments) {
         if (!fragment.is_control) continue
-        let visible = fragment.control_id == hovered
+            let visible = fragment.control_id == hovered
+        let screen_rect = markdown_cached_fragment_rect(cache, fragment)
         if (icon_button_draw_at("##markdown_copy_{fragment.control_id}", "duplicate",
-                                fragment_min(origin, fragment),
+                                float2(screen_rect.x, screen_rect.y),
                                 style.copy_icon_size * zoom, 1.0f, visible)) {
             let control_id = fragment.control_id
             if (control_id >= 0) {
@@ -910,7 +941,7 @@ def private render_table_section(doc : MdDocument const;
         while (cell >= 0) {
             if (TableSetColumnIndex(column)) {
                 render_inline(doc, cell, state, GetContentRegionAvail().x,
-                              style, 1.0f, 0, result)
+                              style, 1.0f, 0, doc.nodes[cell].alignment, result)
             }
             column++
             cell = doc.nodes[cell].next_sibling
@@ -976,7 +1007,7 @@ def private render_code_block(doc : MdDocument const; node_index : int;
         code_style.show_link_copy = false
         let content_width = max(measured.x, GetContentRegionAvail().x - padding)
         render_inline(doc, node_index, state, max(content_width, 1.0f),
-                      code_style, 1.0f, STYLE_CODE, result)
+                      code_style, 1.0f, STYLE_CODE, MdAlignment.default_, result)
     }
     EndChild()
     PopID()
@@ -994,7 +1025,7 @@ def private render_block(doc : MdDocument const; node_index : int;
         render_children(doc, node_index, state, style, result)
     } elif (node.kind == MdNodeKind.paragraph) {
         render_inline(doc, node_index, state, GetContentRegionAvail().x,
-                      style, 1.0f, 0, result)
+                      style, 1.0f, 0, MdAlignment.default_, result)
         block_spacing(style, style.paragraph_spacing)
     } elif (node.kind == MdNodeKind.heading) {
         let scale = node.level == 1 ? 1.55f : (node.level == 2 ? 1.35f
@@ -1002,7 +1033,7 @@ def private render_block(doc : MdDocument const; node_index : int;
         var heading_style := style
         heading_style.text_color = style.heading_color
         render_inline(doc, node_index, state, GetContentRegionAvail().x,
-                      heading_style, scale, STYLE_HEADING, result)
+                      heading_style, scale, STYLE_HEADING, MdAlignment.default_, result)
         block_spacing(style, style.block_spacing)
     } elif (node.kind == MdNodeKind.unordered_list
             || node.kind == MdNodeKind.ordered_list) {

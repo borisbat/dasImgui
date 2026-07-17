@@ -2,6 +2,10 @@
 
 Status: active design note
 
+Markdown parser/model/render/test coverage is tracked separately in
+[`markdown-completeness.md`](markdown-completeness.md). That checklist is the
+gate before shared-layout extraction or full editor work.
+
 This note records the shared foundation for text-heavy dasImgui components. It
 is deliberately broader than the Markdown viewer: Markdown is the first useful
 consumer and test bed, not the owner of the text architecture.
