@@ -4,7 +4,9 @@ options no_unused_block_arguments = false
 options no_unused_function_arguments = false
 
 require dastest/testing_boost public
+require imgui public
 require imgui/imgui_playwright public
+require daslib/clipboard public
 require daslib/json public
 require daslib/json_boost public
 
@@ -12,7 +14,8 @@ require daslib/json_boost public
 //!
 //! The body never waits for elapsed time or a number of frames.  Every input
 //! is followed by a semantic acknowledgement from the running application:
-//! hover identity, selection revision, commit revision, or observed scroll.
+//! hover identity, selection/copy/context revisions, popup state, or observed
+//! scroll.
 //! `wait_cond`'s limit is only a deadlock/crash guard.
 
 let FEATURE = "modules/dasImgui/examples/features/markdown_viewer.das"
@@ -144,6 +147,143 @@ def test_markdown_view_event_driven_interactions(t : T?) {
                      "committed selection maps to a non-empty original source range")
         t |> success(committed_state?["selection"]?["screen_valid"] ?? false,
                      "committed selection exposes its screen anchor geometry")
+
+        // Copy is also a raw key/state handshake.  Preserve the user's
+        // clipboard and run this branch only when the current desktop session
+        // actually provides readable/writable text clipboard access.
+        var original_clipboard = ""
+        let original_clipboard_status = clipboard_get_text(original_clipboard)
+        let clipboard_available = (clipboard_set_text("dasImgui clipboard probe")
+            == ClipboardStatus.ok)
+        if (clipboard_available) {
+            let selected_text = committed_state?["selection"]?["display_text"] ?? ""
+            let copy_before = committed_state?["selection"]?["copy_revision"] ?? -1
+            var input_state = markdown_state(app)
+            let macos = input_state?["input"]?["macos_behaviors"] ?? false
+            // ImGui remaps synthetic LeftCtrl to Super when macOS behaviors
+            // are enabled, matching the viewer's platform shortcut choice.
+            let copy_modifier_key = int(ImGuiKey.LeftCtrl)
+            post_command(app, "imgui_key_press", JV((key = copy_modifier_key)))
+            let modifier_down = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+                var state = markdown_state(app)
+                return state?["input"]?["copy_modifier_down"] ?? false
+            }
+            t |> success(modifier_down,
+                         macos ? "synthetic Cmd modifier is observed"
+                               : "synthetic Ctrl modifier is observed")
+
+            post_command(app, "imgui_key_press", JV((key = int(ImGuiKey.C))))
+            var copied_text = ""
+            let copied = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+                var state = markdown_state(app)
+                let copied_revision = state?["selection"]?["copy_revision"] ?? -1
+                let clipboard_status = clipboard_get_text(copied_text)
+                return (copied_revision > copy_before
+                    && clipboard_status == ClipboardStatus.ok
+                    && copied_text == selected_text)
+            }
+            t |> success(copied,
+                         "Ctrl/Cmd+C revision and system clipboard match selected display text")
+
+            post_command(app, "imgui_key_release", JV((key = int(ImGuiKey.C))))
+            let c_released = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+                var state = markdown_state(app)
+                return !(state?["input"]?["key_c_down"] ?? true)
+            }
+            t |> success(c_released, "C release is observed")
+            post_command(app, "imgui_key_release", JV((key = copy_modifier_key)))
+            let modifier_released = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+                var state = markdown_state(app)
+                return !(state?["input"]?["copy_modifier_down"] ?? true)
+            }
+            t |> success(modifier_released, "copy modifier release is observed")
+
+            if (original_clipboard_status == ClipboardStatus.ok) {
+                let _ = clipboard_set_text(original_clipboard)
+            } else {
+                let _ = clipboard_clear()
+            }
+        } else {
+            t |> success(true,
+                         "system clipboard unavailable in this desktop session; explicit platform result accepted")
+        }
+
+        // Right-click the single-line selection.  Button-down, context event,
+        // popup visibility, and Escape close are each observed before the next
+        // input is sent.
+        let selection_x = ((committed_state?["selection"]?["screen_x0"] ?? 0.0f)
+            + (committed_state?["selection"]?["screen_x1"] ?? 0.0f)) * 0.5f
+        let selection_y = ((committed_state?["selection"]?["screen_y0"] ?? 0.0f)
+            + (committed_state?["selection"]?["screen_y1"] ?? 0.0f)) * 0.5f
+        post_command(app, "imgui_mouse_pos", JV((x = selection_x, y = selection_y)))
+        let selection_hovered = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+            var state = markdown_state(app)
+            return ((state?["hovered_inline_node"] ?? -1) == code_node
+                && (state?["hovered_fragment"] ?? -1) == code_fragment)
+        }
+        t |> success(selection_hovered,
+                     "context target is acknowledged as the selected fragment")
+
+        var context_before_state = markdown_state(app)
+        let context_before = context_before_state?["selection"]?["context_revision"] ?? -1
+        post_command(app, "imgui_mouse_click", JV((button = 1, action = "press")))
+        let right_down = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+            var state = markdown_state(app)
+            return state?["input"]?["right_down"] ?? false
+        }
+        t |> success(right_down, "right press is observed")
+        post_command(app, "imgui_mouse_click", JV((button = 1, action = "release")))
+        var context_state : JsonValue?
+        let context_requested = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+            context_state = markdown_state(app)
+            return (!(context_state?["input"]?["right_down"] ?? true)
+                && (context_state?["selection"]?["context_revision"] ?? -1)
+                    > context_before)
+        }
+        t |> success(context_requested,
+                     "right release advances the selection context revision")
+        t |> equal(context_state?["context_source_start"] ?? -1,
+                   committed_state?["selection"]?["source_start"] ?? -2,
+                   "comment anchor starts at the selected original source byte")
+        t |> equal(context_state?["context_source_end"] ?? -1,
+                   committed_state?["selection"]?["source_end"] ?? -2,
+                   "comment anchor ends at the selected original source byte")
+
+        var popup_snap : JsonValue?
+        let popup_open = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+            popup_snap = snapshot(app)
+            return widget_rendered(popup_snap,
+                                   "MARKDOWN_VIEW_WIN/SELECTION_COMMENT_POPUP/ADD_COMMENT")
+        }
+        t |> success(popup_open, "comment popup visibility is observed")
+        if (!popup_open) return
+        let add_comment = find_widget(popup_snap,
+            "MARKDOWN_VIEW_WIN/SELECTION_COMMENT_POPUP/ADD_COMMENT")
+        let add_x = ((add_comment?["bbox"]?["x"] ?? 0.0f)
+            + (add_comment?["bbox"]?["z"] ?? 0.0f)) * 0.5f
+        let add_y = ((add_comment?["bbox"]?["y"] ?? 0.0f)
+            + (add_comment?["bbox"]?["w"] ?? 0.0f)) * 0.5f
+        post_command(app, "imgui_mouse_pos", JV((x = add_x, y = add_y)))
+        let add_targeted = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+            var state = markdown_state(app)
+            return state?["add_comment_hovered"] ?? false
+        }
+        t |> success(add_targeted, "Add comment button hover is observed")
+        post_command(app, "imgui_mouse_click", JV((button = 0, action = "press")))
+        let add_pressed = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+            var snap = snapshot(app)
+            return snap?["io"]?["mouse_buttons"]?[0] ?? false
+        }
+        t |> success(add_pressed, "Add comment button press is observed")
+        post_command(app, "imgui_mouse_click", JV((button = 0, action = "release")))
+        let popup_closed = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+            var snap = snapshot(app)
+            return (!(snap?["io"]?["mouse_buttons"]?[0] ?? true)
+                && !widget_rendered(snap,
+                    "MARKDOWN_VIEW_WIN/SELECTION_COMMENT_POPUP/ADD_COMMENT"))
+        }
+        t |> success(popup_closed,
+                     "Add comment release and closed popup are observed")
 
         // Clear has its own acknowledgement, then one raw wheel event must be
         // observed as a changed ImGui window scroll value.

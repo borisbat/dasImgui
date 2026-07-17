@@ -182,7 +182,12 @@ an explicit input/acknowledgement handshake:
 4. Move and wait for a newer focus/selection revision and source range.
 5. Release and wait for `selection_dragging == false` plus a newer commit
    revision.
-6. For wheel input, wait for the registered ImGui window's observed scroll
+6. For clipboard shortcuts, wait for modifier/key state, a newer copy
+   revision, and exact UTF-8 clipboard contents when the desktop provides a
+   system clipboard.
+7. For context actions, wait for button state, a newer context revision, the
+   source-mapped anchor, and the popup/action's observed UI state.
+8. For wheel input, wait for the registered ImGui window's observed scroll
    value to change in the requested direction.
 
 This same contract should be reused by the editor and terminal.  Those views

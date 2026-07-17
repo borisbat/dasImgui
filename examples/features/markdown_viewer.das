@@ -34,6 +34,7 @@ var private g_status = "Drag to select text; right-click a selection for its com
 var private g_zoom_percent = 100
 var private g_context_source = TextSourceRange(start_byte = -1, end_byte = -1)
 var private g_last_selection = MarkdownSelection()
+var private g_add_comment_hovered = false
 
 struct MarkdownProbeFragmentArgs {
     text : string
@@ -46,6 +47,8 @@ struct MarkdownProbeZoomArgs {
 [live_command(description = "Inspect Markdown render, hover, selection, and event revisions without a screenshot.")]
 def markdown_probe_state(_input : JsonValue?) : JsonValue? {
     let s = g_last_selection
+    let io & = unsafe(GetIO())
+    let copy_modifier_down = io.ConfigMacOSXBehaviors ? io.KeySuper : io.KeyCtrl
     return JV((
         ok = g_doc.ok,
         render_revision = g_view.render_revision,
@@ -80,6 +83,14 @@ def markdown_probe_state(_input : JsonValue?) : JsonValue? {
             anchor_y = s.screen_anchor.y),
         context_x = g_view.selection_context_pos.x,
         context_y = g_view.selection_context_pos.y,
+        context_source_start = g_context_source.start_byte,
+        context_source_end = g_context_source.end_byte,
+        add_comment_hovered = g_add_comment_hovered,
+        input = (
+            right_down = IsMouseDown(ImGuiMouseButton.Right),
+            copy_modifier_down = copy_modifier_down,
+            key_c_down = IsKeyDown(ImGuiKey.C),
+            macos_behaviors = io.ConfigMacOSXBehaviors),
         layout_hits = g_view.layout_hits,
         layout_misses = g_view.layout_misses,
         zoom_percent = g_zoom_percent))
@@ -261,6 +272,7 @@ def update() {
             } elif (result.selection_changed) {
                 g_status = "Selection cleared."
             }
+            g_add_comment_hovered = false
             popup_window(SELECTION_COMMENT_POPUP,
                          (str_id = "markdown_selection_comment",
                           flags = ImGuiWindowFlags.AlwaysAutoResize)) {
@@ -268,7 +280,9 @@ def update() {
                 separator()
                 text("Source bytes {g_context_source.start_byte}..{g_context_source.end_byte}")
                 text_wrapped((text = md_source_text(g_doc, g_context_source)))
-                if (button(ADD_COMMENT, (text = "Add comment"))) {
+                let add_comment_clicked = button(ADD_COMMENT, (text = "Add comment"))
+                g_add_comment_hovered = IsItemHovered()
+                if (add_comment_clicked) {
                     g_status = "Host accepted comment anchor {g_context_source.start_byte}..{g_context_source.end_byte}"
                     close_current_popup()
                 }
