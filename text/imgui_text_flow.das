@@ -377,18 +377,17 @@ def private should_break_grapheme(prev, cur : uint; regional_run : int) : bool {
     if (prev == 0x000Du && cur == 0x000Au) return false
     if (is_control(prev) || is_control(cur)) return true
 
-    if (is_hangul_l(prev) && (is_hangul_l(cur) || is_hangul_v(cur)
-            || is_hangul_lv(cur) || is_hangul_lvt(cur))) return false
-    if ((is_hangul_lv(prev) || is_hangul_v(prev))
-            && (is_hangul_v(cur) || is_hangul_t(cur))) return false
-    if ((is_hangul_lvt(prev) || is_hangul_t(prev)) && is_hangul_t(cur)) return false
-
-    if (is_prepend(prev)) return false
-    if (is_extend(cur) || is_spacing_mark(cur) || cur == 0x200Du) return false
+    let joins_hangul = (
+        (is_hangul_l(prev) && (is_hangul_l(cur) || is_hangul_v(cur)
+            || is_hangul_lv(cur) || is_hangul_lvt(cur)))
+        || ((is_hangul_lv(prev) || is_hangul_v(prev))
+            && (is_hangul_v(cur) || is_hangul_t(cur)))
+        || ((is_hangul_lvt(prev) || is_hangul_t(prev)) && is_hangul_t(cur)))
     // Joining the character following ZWJ is intentionally broad. It keeps
     // emoji families and profession sequences atomic; a later generated UCD
     // table can narrow this to Extended_Pictographic exactly.
-    if (prev == 0x200Du) return false
+    if (joins_hangul || is_prepend(prev) || is_extend(cur)
+            || is_spacing_mark(cur) || cur == 0x200Du || prev == 0x200Du) return false
 
     if (is_regional_indicator(prev) && is_regional_indicator(cur)) {
         return (regional_run % 2) == 0
@@ -541,6 +540,7 @@ def private make_units(source : string; spans : array<TextFlowSpan> const;
                                         end_byte : int; style_id : int) : float>) : array<TextFlowUnit> {
     var units : array<TextFlowUnit>
     let source_len = length(source)
+    units |> reserve(source_len + length(spans) * 2)
     for (span in spans) {
         let a = clamp(span.source.start_byte, 0, source_len)
         let b = clamp(span.source.end_byte, a, source_len)
@@ -558,7 +558,7 @@ def private make_units(source : string; spans : array<TextFlowSpan> const;
                 control_kind = span.leading_control_kind,
                 is_control = true))
         }
-        var span_text := slice(source, a, b)
+        let span_text = slice(source, a, b)
         var graphemes <- text_graphemes(span_text)
         for (g in graphemes) {
             let ga = a + g.source.start_byte
@@ -773,13 +773,12 @@ def public text_flow_hit_test_ranges(source : string;
     //! controls deliberately do not participate in text selection.
     for (fragment_index in range(length(layout.fragments))) {
         let fragment = layout.fragments[fragment_index]
-        if (fragment.is_control) continue
-        if (point.x < fragment.rect.x || point.x > fragment.rect.z
+        if (fragment.is_control || point.x < fragment.rect.x || point.x > fragment.rect.z
                 || point.y < fragment.rect.y || point.y > fragment.rect.w) continue
 
         let a = clamp(fragment.source.start_byte, 0, length(source))
         let b = clamp(fragment.source.end_byte, a, length(source))
-        var value := slice(source, a, b)
+        let value = slice(source, a, b)
         var graphemes <- text_graphemes(value)
         var x = fragment.rect.x
         var hit = TextFlowHit()
@@ -836,7 +835,7 @@ def public layout_text_flow_styled(source : string; spans : array<TextFlowSpan> 
                                    measure : block<(text : string; style_id : int) : float>) : TextFlowLayout {
     return <- layout_text_flow_styled_ranges(source, spans, max_width, line_height,
         $(text : string; start_byte : int; end_byte : int; style_id : int) : float {
-            var value := slice(text, start_byte, end_byte)
+            let value = slice(text, start_byte, end_byte)
             let width = invoke(measure, value, style_id)
             return width
         })
@@ -847,7 +846,7 @@ def public layout_text_flow(source : string; spans : array<TextFlowSpan> const;
                             measure : block<(text : string) : float>) : TextFlowLayout {
     //! Compatibility overload for consumers whose styles share one font.
     return <- layout_text_flow_styled(source, spans, max_width, line_height,
-        $(text : string; style_id : int) : float {
+        $(text : string; _style_id : int) : float {
             return invoke(measure, text)
         })
 }

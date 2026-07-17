@@ -49,11 +49,11 @@ def test_text_flow_terminal_cell_widths(t : T?) {
 [test]
 def test_text_flow_empty_source_lines_keep_byte_positions(t : T?) {
     let source = "a\n\nb\n"
-    var spans = [TextFlowSpan(
+    let spans = [TextFlowSpan(
         source = TextSourceRange(start_byte = 0, end_byte = length(source)),
         style_id = 0)]
     let layout <- layout_text_flow_styled_ranges(source, spans, 100.0f, 10.0f,
-        $(text : string; start_byte, end_byte, style_id : int) : float {
+        $(_text : string; _start_byte, _end_byte, _style_id : int) : float {
             return 8.0f
         })
     t |> equal(length(layout.lines), 4,
@@ -74,7 +74,7 @@ def test_text_flow_uri_fragments(t : T?) {
     let uri_start = length(prefix)
     let uri_end = uri_start + length(uri)
 
-    var spans = [
+    let spans = [
         TextFlowSpan(
             source = TextSourceRange(start_byte = 0, end_byte = uri_start),
             style_id = 0),
@@ -127,7 +127,7 @@ def test_text_flow_uri_fragments(t : T?) {
 [test]
 def test_text_flow_leading_and_trailing_controls(t : T?) {
     let source = "alt"
-    var spans = [TextFlowSpan(
+    let spans = [TextFlowSpan(
         source = TextSourceRange(start_byte = 0, end_byte = length(source)),
         style_id = 9, semantic_id = 23,
         leading_control_id = 23, leading_control_kind = 2,
@@ -188,7 +188,7 @@ def test_plain_text_uri_detection(t : T?) {
 [test]
 def test_text_flow_style_aware_measurement(t : T?) {
     let source = "regular WIDE"
-    var spans = [
+    let spans = [
         TextFlowSpan(source = TextSourceRange(start_byte = 0, end_byte = 8),
                      style_id = 0),
         TextFlowSpan(source = TextSourceRange(start_byte = 8, end_byte = length(source)),
@@ -219,19 +219,19 @@ def test_text_flow_style_aware_measurement(t : T?) {
 [test]
 def test_text_flow_hit_test_grapheme_boundaries(t : T?) {
     let source = "AéB"
-    var spans = [TextFlowSpan(
+    let spans = [TextFlowSpan(
         source = TextSourceRange(start_byte = 0, end_byte = length(source)),
         style_id = 3)]
     let layout <- layout_text_flow_styled_ranges(source, spans, 100.0f, 18.0f,
-        $(text : string; start_byte, end_byte, style_id : int) : float {
+        $(_text : string; _start_byte, _end_byte, _style_id : int) : float {
             return 10.0f
         })
     let before_cluster = text_flow_hit_test_ranges(source, layout, float2(12.0f, 9.0f),
-        $(text : string; start_byte, end_byte, style_id : int) : float {
+        $(_text : string; _start_byte, _end_byte, _style_id : int) : float {
             return 10.0f
         })
     let after_cluster = text_flow_hit_test_ranges(source, layout, float2(16.0f, 9.0f),
-        $(text : string; start_byte, end_byte, style_id : int) : float {
+        $(_text : string; _start_byte, _end_byte, _style_id : int) : float {
             return 10.0f
         })
 
