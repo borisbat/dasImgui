@@ -31,6 +31,10 @@ ELSE()
 ENDIF()
 
 SET(DAS_IMGUI_DIR ${CMAKE_CURRENT_LIST_DIR})
+SET(DAS_IMGUI_COMMON_DEFS
+    IMGUI_DISABLE_OBSOLETE_FUNCTIONS=1
+    IMGUI_USE_WCHAR32=1
+)
 
 # imgui via FetchContent
 include(FetchContent)
@@ -166,7 +170,7 @@ IF(COMMAND ADD_MODULE_CPP)
             ${DAS_IMGUI_GLFW_ROOT}/src
         )
         TARGET_COMPILE_DEFINITIONS(${imgui_mod_lib} PRIVATE
-            IMGUI_DISABLE_OBSOLETE_FUNCTIONS=1
+            ${DAS_IMGUI_COMMON_DEFS}
             IMGUI_IMPL_OPENGL_LOADER_GL3W
             # dasGlfw's binding TU owns typeFactory<GLFWwindow> in a superbuild link
             DAS_IMGUI_APP_EXTERN_GLFW_TYPE_FACTORY=1)
@@ -228,7 +232,7 @@ ELSEIF(EMSCRIPTEN)
         SET(IMGUI_WASM_OUTDIR "${DAS_IMGUI_DIR}/_wasm32")
     ENDIF()
     SET(IMGUI_WASM_DEFS
-        IMGUI_DISABLE_OBSOLETE_FUNCTIONS=1
+        ${DAS_IMGUI_COMMON_DEFS}
         DAS_NO_ASSERTIONS DAS_ENABLE_EXCEPTIONS _EMSCRIPTEN_VER)
     SET(IMGUI_WASM_INC
         ${DASLANG_DIR}/include
@@ -272,7 +276,7 @@ add_library(dasModuleImgui SHARED ${DAS_IMGUI_BIND_SRC} ${DAS_IMGUI_SRC})
 target_compile_features(dasModuleImgui PRIVATE cxx_std_17)
 target_compile_definitions(dasModuleImgui PRIVATE
     DAS_MOD_EXPORTS DAS_ENABLE_DLL=1
-    IMGUI_DISABLE_OBSOLETE_FUNCTIONS=1
+    ${DAS_IMGUI_COMMON_DEFS}
     IMGUI_API=${IMGUI_PUBLIC_ATTR}
     $<$<CONFIG:Release>:DAS_NO_ASSERTIONS>
     $<$<CONFIG:MinSizeRel>:DAS_NO_ASSERTIONS>
@@ -340,7 +344,7 @@ IF(OPENGL_FOUND)
     target_compile_features(imguiApp PRIVATE cxx_std_17)
     target_compile_definitions(imguiApp PRIVATE
         DAS_MOD_EXPORTS DAS_ENABLE_DLL=1
-        IMGUI_DISABLE_OBSOLETE_FUNCTIONS=1
+        ${DAS_IMGUI_COMMON_DEFS}
         IMGUI_API=${IMGUI_PUBLIC_ATTR}
         IMGUI_IMPL_API=${IMGUI_PUBLIC_ATTR}
         IMGUI_IMPL_OPENGL_LOADER_GL3W
@@ -412,7 +416,7 @@ add_library(imguiAppHeadless SHARED ${DAS_IMGUI_DIR}/src/module_imgui_app_headle
 target_compile_features(imguiAppHeadless PRIVATE cxx_std_17)
 target_compile_definitions(imguiAppHeadless PRIVATE
     DAS_MOD_EXPORTS DAS_ENABLE_DLL=1
-    IMGUI_DISABLE_OBSOLETE_FUNCTIONS=1
+    ${DAS_IMGUI_COMMON_DEFS}
     IMGUI_API=${IMGUI_PUBLIC_ATTR}
     $<$<CONFIG:Release>:DAS_NO_ASSERTIONS>
     $<$<CONFIG:MinSizeRel>:DAS_NO_ASSERTIONS>

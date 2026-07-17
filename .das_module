@@ -35,6 +35,9 @@ def initialize(project_path : string) {
     register_native_path("imgui", "imgui_style_builtin", "{project_path}/widgets/imgui_style_builtin.das")
     // daslang.io drop-in theme — apply_daslang_theme(GetStyle()) on init.
     register_native_path("imgui", "imgui_theme_daslang", "{project_path}/widgets/imgui_theme_daslang.das")
+    // Font loading + explicit merge-mode fallback. Dear ImGui has no platform
+    // fallback resolver, so terminal/editor consumers build a font stack here.
+    register_native_path("imgui", "imgui_fonts", "{project_path}/widgets/imgui_fonts.das")
     // Flag-operator extensions (| / & / ~) for internal imgui enums the binder gave
     // no addEnumFlagOps — currently ImGuiItemFlags. Re-exported by imgui_scope_builtin.
     register_native_path("imgui", "imgui_enums", "{project_path}/widgets/imgui_enums.das")

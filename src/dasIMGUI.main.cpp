@@ -16,6 +16,8 @@
 // No other internal symbols added without re-discussion.
 #include "imgui_internal.h"
 
+static_assert(sizeof(ImWchar) == 4, "dasImgui requires 32-bit ImWchar for full Unicode support");
+
 namespace das {
 
     ImU32 GetActiveID() {
