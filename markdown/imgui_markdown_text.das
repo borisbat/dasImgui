@@ -6,6 +6,7 @@ module imgui_markdown_text shared
 require imgui public
 require imgui/imgui_text_flow public
 require imgui/imgui_icons
+require daslib/clipboard
 require daslib/strings_boost
 require math
 
@@ -120,8 +121,8 @@ def public markdown_uri_paragraph(id : string; prefix, display_text, suffix, tar
         cursor_moved = true
         if (icon_button_draw("##markdown_uri_copy_{id}", "duplicate",
                              style.copy_icon_size, 1.0f)) {
-            SetClipboardText(empty(target) ? display_text : target)
-            result.copied = true
+            result.copied = clipboard_set_text(empty(target) ? display_text : target)
+                == ClipboardStatus.ok
         }
         if (IsItemHovered()) {
             SetTooltip("Copy URI")

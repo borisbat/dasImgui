@@ -133,6 +133,7 @@ def public harness_init(title : string; width : int = 800; height : int = 600) {
     //! no GL context, no TTF (the headless atlas uses ProggyClean).
     if (harness_is_headless()) {
         g_headless_ctx = CreateContext(null)
+        InstallCoreClipboardBackend()
         apply_daslang_theme()
         imgui_headless_init_fonts()
         imgui_headless_set_display_size(float(width), float(height))
@@ -172,6 +173,7 @@ def public harness_init(title : string; width : int = 800; height : int = 600) {
     }
     live_create_window(title, w, h)
     live_imgui_init(live_window)
+    InstallCoreClipboardBackend()
     // --no-imgui-ini (with_imgui_app passes it for every test spawn): null the
     // ini AFTER live_imgui_init creates the context, BEFORE the first NewFrame,
     // so a windowed GL test starts from the app's default layout and never

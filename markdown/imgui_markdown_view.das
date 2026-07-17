@@ -9,6 +9,7 @@ require imgui/imgui_markdown_model public
 require imgui/imgui_text_flow
 require imgui/imgui_fonts public
 require imgui/imgui_icons
+require daslib/clipboard
 require math
 require strings
 
@@ -398,14 +399,15 @@ def private render_inline(doc : MdDocument const; node_index : int;
                                  style.copy_icon_size * zoom, 1.0f)) {
                 let run_index = link_run_index(doc, content, hovered)
                 let target = link_target(doc, content, hovered)
-                SetClipboardText(target)
-                result.copied = true
-                result.copied_node = (run_index >= 0
-                    ? content.runs[run_index].semantic_node : -1)
-                if (run_index >= 0) {
-                    result.source = content.runs[run_index].source
+                if (clipboard_set_text(target) == ClipboardStatus.ok) {
+                    result.copied = true
+                    result.copied_node = (run_index >= 0
+                        ? content.runs[run_index].semantic_node : -1)
+                    if (run_index >= 0) {
+                        result.source = content.runs[run_index].source
+                    }
+                    result.target := target
                 }
-                result.target := target
             }
             if (IsItemHovered()) SetTooltip("Copy URI")
         }

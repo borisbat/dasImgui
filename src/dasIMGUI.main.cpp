@@ -4,6 +4,7 @@
 #include "daScript/ast/ast_handle.h"
 #include "daScript/ast/ast_typefactory_bind.h"
 #include "daScript/simulate/bind_enum.h"
+#include "daScript/simulate/aot_builtin_clipboard.h"
 #include "dasIMGUI.h"
 #include "need_dasIMGUI.h"
 #include "aot_dasIMGUI.h"
@@ -19,6 +20,23 @@
 static_assert(sizeof(ImWchar) == 4, "dasImgui requires 32-bit ImWchar for full Unicode support");
 
 namespace das {
+
+    static const char * CoreClipboardGetText(ImGuiContext *) {
+        int32_t status = int32_t(ClipboardStatus::failed);
+        return builtin_clipboard_get_text_temporary(status);
+    }
+
+    static void CoreClipboardSetText(ImGuiContext *, const char * text) {
+        const char * value = text ? text : "";
+        builtin_clipboard_set_text(value, int32_t(strlen(value)));
+    }
+
+    void InstallCoreClipboardBackend() {
+        ImGuiPlatformIO & platformIO = ImGui::GetPlatformIO();
+        platformIO.Platform_GetClipboardTextFn = CoreClipboardGetText;
+        platformIO.Platform_SetClipboardTextFn = CoreClipboardSetText;
+        platformIO.Platform_ClipboardUserData = nullptr;
+    }
 
     ImU32 GetActiveID() {
         return ImGui::GetActiveID();
@@ -644,6 +662,9 @@ namespace das {
         // imgui draw list
         addExtern<DAS_BIND_FUN(das::AddText), SimNode_ExtFuncCall, imguiTempFn>(*this, lib, "AddText",
             SideEffects::worstDefault, "das::AddText");
+        addExtern<DAS_BIND_FUN(das::InstallCoreClipboardBackend)>(*this, lib,
+            "InstallCoreClipboardBackend", SideEffects::modifyExternal,
+            "das::InstallCoreClipboardBackend");
         addExtern<DAS_BIND_FUN(das::CalcTextSizeForFont)>(*this, lib, "CalcTextSizeForFont",
             SideEffects::none, "das::CalcTextSizeForFont")
                 ->args({"font","font_size","text"});
