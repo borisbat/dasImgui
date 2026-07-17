@@ -4,6 +4,7 @@ options indenting = 4
 require dastest/testing_boost public
 require imgui/imgui_markdown_model public
 require daslib/stringify
+require strings
 
 def private first_kind(doc : MdDocument const; kind : MdNodeKind) : int {
     for (i in range(length(doc.nodes))) {
@@ -39,7 +40,7 @@ def private count_kind(doc : MdDocument const; kind : MdNodeKind) : int {
 def test_markdown_gfm_model(t : T?) {
     let source = %stringify~# Unicode Привет 文档
 
-Text with *emphasis*, **strong**, [named](https://example.com/a?x=1 "Example"), https://dascript.org and &amp;.
+Text with *emphasis*, **strong**, [named](https://example.com/a?x=1&amp;y=2 "Example &copy;"), https://dascript.org and &amp; &copy; &#x1F680;.
 
 - [x] done
 - [ ] todo
@@ -79,11 +80,30 @@ print("hi")
     t |> success(first_kind(doc, MdNodeKind.emphasis) >= 0, "emphasis is typed")
     t |> success(first_kind(doc, MdNodeKind.strong) >= 0, "strong text is typed")
     t |> success(first_kind(doc, MdNodeKind.entity) >= 0, "entity is typed")
+    let entity = first_kind(doc, MdNodeKind.entity)
+    if (entity >= 0) {
+        t |> equal(md_node_text(doc, entity), "&amp;", "entity keeps exact source bytes")
+        t |> equal(md_node_display_text(doc, entity), "&", "entity exposes decoded display text")
+    }
+    let paragraph = first_kind(doc, MdNodeKind.paragraph)
+    let inline <- md_inline_content(doc, paragraph)
+    t |> success(inline.text |> find("and & © 🚀." ) >= 0,
+                 "inline content decodes named and numeric entities")
+    t |> success(length(inline.runs) > 1, "inline content preserves semantic runs")
+    var has_strong_run = false
+    var has_link_run = false
+    for (run in inline.runs) {
+        has_strong_run = has_strong_run || run.is_strong
+        has_link_run = has_link_run || (run.is_link && run.semantic_node >= 0)
+    }
+    t |> success(has_strong_run, "inline runs retain inherited strong style")
+    t |> success(has_link_run, "inline runs retain link semantics")
 
-    let named_link = first_destination(doc, "https://example.com/a?x=1")
+    let named_link = first_destination(doc, "https://example.com/a?x=1&y=2")
     t |> success(named_link >= 0, "named link destination is retained")
     if (named_link >= 0) {
-        t |> equal(doc.nodes[named_link].title, "Example", "link title is retained")
+        t |> equal(doc.nodes[named_link].title, "Example ©",
+                   "link attributes decode entities")
         t |> success(!doc.nodes[named_link].is_autolink, "named link is not autolink")
     }
     let auto_link = first_destination(doc, "https://dascript.org")
@@ -151,4 +171,13 @@ def test_markdown_options(t : T?) {
                "strikethrough extension can be disabled")
     t |> equal(count_kind(plain, MdNodeKind.table_), 0,
                "table extension can be disabled")
+}
+
+[test]
+def test_markdown_rejects_invalid_utf8(t : T?) {
+    let invalid = string([uint8(0xC3), uint8(0x28)])
+    let doc <- md_parse(invalid)
+    t |> success(!doc.ok, "invalid UTF-8 is rejected before native parsing")
+    t |> equal(doc.error, "Markdown source is not valid UTF-8",
+               "invalid UTF-8 reports a stable diagnostic")
 }

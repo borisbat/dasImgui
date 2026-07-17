@@ -5,7 +5,11 @@
 #include "aot_dasIMGUI.h"
 
 #include <md4c.h>
+extern "C" {
+#include <entity.h>
+}
 
+#include <cstdlib>
 #include <cstdint>
 #include <string>
 
@@ -30,8 +34,68 @@ namespace das {
             LineInfoArg * at = nullptr;
         };
 
+        static void appendUtf8(std::string & out, unsigned codepoint) {
+            if (codepoint == 0u || codepoint > 0x10ffffu
+                    || (codepoint >= 0xd800u && codepoint <= 0xdfffu)) {
+                codepoint = 0xfffdu;
+            }
+            if (codepoint < 0x80u) {
+                out.push_back(static_cast<char>(codepoint));
+            } else if (codepoint < 0x800u) {
+                out.push_back(static_cast<char>(0xc0u | (codepoint >> 6u)));
+                out.push_back(static_cast<char>(0x80u | (codepoint & 0x3fu)));
+            } else if (codepoint < 0x10000u) {
+                out.push_back(static_cast<char>(0xe0u | (codepoint >> 12u)));
+                out.push_back(static_cast<char>(0x80u | ((codepoint >> 6u) & 0x3fu)));
+                out.push_back(static_cast<char>(0x80u | (codepoint & 0x3fu)));
+            } else {
+                out.push_back(static_cast<char>(0xf0u | (codepoint >> 18u)));
+                out.push_back(static_cast<char>(0x80u | ((codepoint >> 12u) & 0x3fu)));
+                out.push_back(static_cast<char>(0x80u | ((codepoint >> 6u) & 0x3fu)));
+                out.push_back(static_cast<char>(0x80u | (codepoint & 0x3fu)));
+            }
+        }
+
+        static std::string decodeEntity(const std::string & value) {
+            unsigned codepoints[2] = {};
+            bool found = false;
+            if (value.size() >= 4 && value[0] == '&' && value[1] == '#') {
+                const bool hex = value[2] == 'x' || value[2] == 'X';
+                const size_t begin = hex ? 3u : 2u;
+                char * end = nullptr;
+                const std::string digits = value.substr(begin, value.size() - begin - 1u);
+                const unsigned long parsed = std::strtoul(digits.c_str(), &end, hex ? 16 : 10);
+                if (end && *end == '\0') {
+                    codepoints[0] = static_cast<unsigned>(parsed);
+                    found = true;
+                }
+            } else if (const ENTITY * entity = entity_lookup(value.data(), value.size())) {
+                codepoints[0] = entity->codepoints[0];
+                codepoints[1] = entity->codepoints[1];
+                found = true;
+            }
+            if (!found) return value;
+            std::string decoded;
+            appendUtf8(decoded, codepoints[0]);
+            if (codepoints[1] != 0u) appendUtf8(decoded, codepoints[1]);
+            return decoded;
+        }
+
         static std::string attributeText(const MD_ATTRIBUTE & attr) {
-            return attr.text && attr.size ? std::string(attr.text, attr.size) : std::string();
+            if (!attr.text || !attr.size) return {};
+            std::string out;
+            for (size_t i = 0; attr.substr_offsets[i] < attr.size; ++i) {
+                const size_t begin = attr.substr_offsets[i];
+                const size_t end = attr.substr_offsets[i + 1];
+                if (attr.substr_types[i] == MD_TEXT_ENTITY) {
+                    out += decodeEntity(std::string(attr.text + begin, end - begin));
+                } else if (attr.substr_types[i] == MD_TEXT_NULLCHAR) {
+                    appendUtf8(out, 0u);
+                } else {
+                    out.append(attr.text + begin, end - begin);
+                }
+            }
+            return out;
         }
 
         static int32_t sourceOffset(const MarkdownBridge & bridge, const char * ptr, MD_SIZE size) {
@@ -185,7 +249,12 @@ namespace das {
                              MD_SIZE size, void * userdata) {
             auto & bridge = *static_cast<MarkdownBridge *>(userdata);
             const int32_t offset = sourceOffset(bridge, text, size);
-            const std::string value = text && size ? std::string(text, size) : std::string();
+            std::string value = text && size ? std::string(text, size) : std::string();
+            if (type == MD_TEXT_ENTITY) {
+                value = decodeEntity(value);
+            } else if (type == MD_TEXT_NULLCHAR) {
+                value = "\xef\xbf\xbd"; // U+FFFD
+            }
             emit(bridge, Text, static_cast<int32_t>(type), 0, offset,
                  static_cast<int32_t>(size), 0, 0, value, {});
             return 0;

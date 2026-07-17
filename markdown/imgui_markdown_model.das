@@ -115,6 +115,26 @@ struct public MdDocument {
     error : string
 }
 
+struct public MdInlineRun {
+    //! Byte range in `MdInlineContent.text` and its corresponding Markdown
+    //! source range. Display bytes can differ for entities and soft breaks.
+    display : TextSourceRange
+    source : TextSourceRange
+    source_exact : bool = false
+    node_index : int = -1
+    semantic_node : int = -1
+    is_strong : bool = false
+    is_emphasis : bool = false
+    is_code : bool = false
+    is_strikethrough : bool = false
+    is_link : bool = false
+}
+
+struct public MdInlineContent {
+    text : string
+    runs : array<MdInlineRun>
+}
+
 def private block_kind(kind : int) : MdNodeKind {
     if (kind == 0) return MdNodeKind.document
     if (kind == 1) return MdNodeKind.quote
@@ -272,6 +292,7 @@ def private close_node(var doc : MdDocument; var stack : array<int>) {
 }
 
 def public md_node_text(doc : MdDocument const; node_index : int) : string {
+    //! Return the exact Markdown source bytes represented by a leaf.
     if (node_index < 0 || node_index >= length(doc.nodes)) return ""
     let node = doc.nodes[node_index]
     if (node.source_exact && node.source.start_byte >= 0
@@ -279,6 +300,78 @@ def public md_node_text(doc : MdDocument const; node_index : int) : string {
         return slice(doc.source, node.source.start_byte, node.source.end_byte)
     }
     return node.literal
+}
+
+def public md_node_display_text(doc : MdDocument const; node_index : int) : string {
+    //! Return display-ready text. Entities and null characters retain their
+    //! exact source range while exposing MD4C's decoded/replacement text here.
+    if (node_index < 0 || node_index >= length(doc.nodes)) return ""
+    let node = doc.nodes[node_index]
+    if (!empty(node.literal)) return node.literal
+    return md_node_text(doc, node_index)
+}
+
+def private collect_inline(doc : MdDocument const; node_index : int;
+                           var content : MdInlineContent;
+                           strong, emphasis, code, strike : bool;
+                           semantic_node : int) {
+    if (node_index < 0 || node_index >= length(doc.nodes)) return
+    let node = doc.nodes[node_index]
+    let next_strong = strong || node.kind == MdNodeKind.strong
+    let next_emphasis = emphasis || node.kind == MdNodeKind.emphasis
+    let next_code = code || node.kind == MdNodeKind.inline_code
+    let next_strike = strike || node.kind == MdNodeKind.strikethrough
+    var next_semantic = semantic_node
+    if (node.kind == MdNodeKind.link || node.kind == MdNodeKind.image) {
+        next_semantic = node_index
+    }
+
+    let is_leaf = (node.kind == MdNodeKind.text
+        || node.kind == MdNodeKind.null_character
+        || node.kind == MdNodeKind.hard_break
+        || node.kind == MdNodeKind.soft_break
+        || node.kind == MdNodeKind.entity
+        || node.kind == MdNodeKind.code_text
+        || node.kind == MdNodeKind.html_text
+        || node.kind == MdNodeKind.latex_text)
+    if (is_leaf) {
+        var value = md_node_display_text(doc, node_index)
+        if (node.kind == MdNodeKind.soft_break) {
+            value = " "
+        } elif (node.kind == MdNodeKind.hard_break) {
+            value = "\n"
+        }
+        let start = length(content.text)
+        content.text = content.text + value
+        content.runs |> push(MdInlineRun(
+            display = TextSourceRange(start_byte = start, end_byte = start + length(value)),
+            source = node.source,
+            source_exact = node.source_exact,
+            node_index = node_index,
+            semantic_node = next_semantic,
+            is_strong = next_strong,
+            is_emphasis = next_emphasis,
+            is_code = next_code,
+            is_strikethrough = next_strike,
+            is_link = next_semantic >= 0))
+        return
+    }
+
+    var child = node.first_child
+    while (child >= 0) {
+        collect_inline(doc, child, content, next_strong, next_emphasis,
+                       next_code, next_strike, next_semantic)
+        child = doc.nodes[child].next_sibling
+    }
+}
+
+def public md_inline_content(doc : MdDocument const; node_index : int) : MdInlineContent {
+    //! Flatten one inline-bearing subtree into display text plus semantic/style
+    //! runs. This remains independent of ImGui and is shared by future viewer,
+    //! editor, accessibility, and copy/export paths.
+    var content = MdInlineContent()
+    collect_inline(doc, node_index, content, false, false, false, false, -1)
+    return <- content
 }
 
 def public md_parse(source : string;
@@ -320,6 +413,9 @@ def public md_parse(source : string;
                         start_byte = offset, end_byte = offset + size)
                     node.source_exact = true
                 } else {
+                    node.literal := text
+                }
+                if (node.kind == MdNodeKind.entity || node.kind == MdNodeKind.null_character) {
                     node.literal := text
                 }
                 attach_node(doc, stack, node)

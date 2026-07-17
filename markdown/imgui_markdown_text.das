@@ -114,8 +114,10 @@ def public markdown_uri_paragraph(id : string; prefix, display_text, suffix, tar
         result.activated = IsMouseClicked(ImGuiMouseButton.Left, false)
     }
 
+    var cursor_moved = false
     if (result.hovered && has_control) {
         SetCursorScreenPos(fragment_min(origin, control_fragment))
+        cursor_moved = true
         if (icon_button_draw("##markdown_uri_copy_{id}", "duplicate",
                              style.copy_icon_size, 1.0f)) {
             SetClipboardText(empty(target) ? display_text : target)
@@ -125,6 +127,9 @@ def public markdown_uri_paragraph(id : string; prefix, display_text, suffix, tar
             SetTooltip("Copy URI")
         }
     }
-    SetCursorScreenPos(cursor_after)
+    if (cursor_moved) {
+        SetCursorScreenPos(cursor_after)
+        Dummy(float2(0.0f, 0.0f))
+    }
     return result
 }

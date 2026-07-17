@@ -56,18 +56,18 @@ FetchContent_MakeAvailable(freetype_src)
 SET_TARGET_PROPERTIES(freetype PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 # MD4C is the semantic Markdown parser used by the view-independent model in
-# markdown/. Pull only its one C translation unit instead of importing the
+# markdown/. Pull only its parser/entity C translation units instead of importing the
 # upstream CMake project (which also builds HTML/CLI targets and changes global
 # compiler flags). Keeping it inside dasModuleImgui avoids another runtime DLL.
 FetchContent_Declare(md4c_src
     URL https://github.com/mity/md4c/archive/refs/tags/release-0.5.3.tar.gz
     URL_HASH SHA256=353c346f376b87c954a13f3415ede2d51264cc61dc5abcd38ff1d2aa0d059b9e
     DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+    # Populate without adding MD4C's own CMake project. Its top-level build
+    # changes compiler flags and creates HTML/CLI targets we do not use.
+    SOURCE_SUBDIR __dasimgui_source_only
 )
-FetchContent_GetProperties(md4c_src)
-IF(NOT md4c_src_POPULATED)
-    FetchContent_Populate(md4c_src)
-ENDIF()
+FetchContent_MakeAvailable(md4c_src)
 SET(MD4C_INCLUDE_DIR ${md4c_src_SOURCE_DIR}/src)
 
 # imgui via FetchContent
@@ -113,6 +113,7 @@ ENDIF()
 # imgui source files
 SET(DAS_IMGUI_SRC
     ${md4c_src_SOURCE_DIR}/src/md4c.c
+    ${md4c_src_SOURCE_DIR}/src/entity.c
     ${imgui_INCLUDE_DIR}/imgui.cpp
     ${imgui_INCLUDE_DIR}/imgui_demo.cpp
     ${imgui_INCLUDE_DIR}/imgui_draw.cpp
