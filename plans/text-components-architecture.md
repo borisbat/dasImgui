@@ -162,9 +162,32 @@ results, URI actions, terminal annotations, and editor code lenses.
 
 - Add keyboard caret movement and shift-selection.
 - Add word/line selection gestures and selection autoscroll.
-- Add tests proving inline adornments never change layout on visibility.
 - Decide how list markers and table separators participate in display copy.
 - Add shared syntax highlighting to fenced code once the syntax service exists.
+
+## Deterministic live interaction tests
+
+Interactive text tests are event-driven.  Elapsed time and frame counts never
+define success.  A timeout may exist only as a deadlock/crash guard around a
+semantic wait.
+
+The Markdown viewer exposes live commands for state, fragment geometry,
+selection clearing, and controlled zoom.  Its view state carries monotonic
+render, hover, selection, commit, copy, and context revisions.  A test follows
+an explicit input/acknowledgement handshake:
+
+1. Resolve a current text fragment to screen geometry.
+2. Move the pointer and wait for that exact node/fragment hover identity.
+3. Press and wait for `selection_dragging` plus a newer selection revision.
+4. Move and wait for a newer focus/selection revision and source range.
+5. Release and wait for `selection_dragging == false` plus a newer commit
+   revision.
+6. For wheel input, wait for the registered ImGui window's observed scroll
+   value to change in the requested direction.
+
+This same contract should be reused by the editor and terminal.  Those views
+will add document/edit revisions, caret revisions, visible source ranges, and
+terminal buffer revisions rather than introducing sleeps or frame delays.
 
 ### Shared syntax core
 
@@ -229,3 +252,5 @@ results, URI actions, terminal annotations, and editor code lenses.
 - 2026-07-17: Syntax services and semantic adornments are editor-independent.
 - 2026-07-17: Live shader texture previews are view-resolved semantic inlays,
   not bytes inserted into source text.
+- 2026-07-17: Interactive tests wait for observable event revisions and UI
+  state changes; timeouts are deadlock guards only, never test semantics.

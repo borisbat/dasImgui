@@ -9,7 +9,11 @@ require imgui/imgui_theme_daslang
 require imgui/imgui_style_builtin
 require daslib/safe_addr
 require daslib/stringify
+require daslib/json
+require daslib/json_boost
+require live/live_commands
 require math
+require strings
 
 // =============================================================================
 // FEATURE: markdown_viewer — typed MD4C model + source-mapped ImGui rendering.
@@ -29,6 +33,104 @@ var private g_view = MarkdownViewState()
 var private g_status = "Drag to select text; right-click a selection for its comment anchor."
 var private g_zoom_percent = 100
 var private g_context_source = TextSourceRange(start_byte = -1, end_byte = -1)
+var private g_last_selection = MarkdownSelection()
+
+struct MarkdownProbeFragmentArgs {
+    text : string
+}
+
+struct MarkdownProbeZoomArgs {
+    percent : int
+}
+
+[live_command(description = "Inspect Markdown render, hover, selection, and event revisions without a screenshot.")]
+def markdown_probe_state(_input : JsonValue?) : JsonValue? {
+    let s = g_last_selection
+    return JV((
+        ok = g_doc.ok,
+        render_revision = g_view.render_revision,
+        hover_revision = g_view.hover_revision,
+        hovered_inline_node = g_view.hovered_inline_node,
+        hovered_fragment = g_view.hovered_fragment,
+        hovered_display_byte = g_view.hovered_display_byte,
+        selection = (
+            active = s.active,
+            dragging = g_view.selection_dragging,
+            revision = g_view.selection_revision,
+            commit_revision = g_view.selection_commit_revision,
+            copy_revision = g_view.selection_copy_revision,
+            context_revision = g_view.selection_context_revision,
+            source_start = s.source.start_byte,
+            source_end = s.source.end_byte,
+            display_text = markdown_selection_text(g_view),
+            source_text = s.active ? md_source_text(g_doc, s.source) : "",
+            all_regular = s.styles.all_regular,
+            has_strong = s.styles.has_strong,
+            has_emphasis = s.styles.has_emphasis,
+            has_code = s.styles.has_code,
+            has_strikethrough = s.styles.has_strikethrough,
+            has_links = s.styles.has_links,
+            has_mixed_styles = s.styles.has_mixed_styles,
+            screen_valid = s.screen_valid,
+            screen_x0 = s.screen_bounds.x,
+            screen_y0 = s.screen_bounds.y,
+            screen_x1 = s.screen_bounds.z,
+            screen_y1 = s.screen_bounds.w,
+            anchor_x = s.screen_anchor.x,
+            anchor_y = s.screen_anchor.y),
+        context_x = g_view.selection_context_pos.x,
+        context_y = g_view.selection_context_pos.y,
+        layout_hits = g_view.layout_hits,
+        layout_misses = g_view.layout_misses,
+        zoom_percent = g_zoom_percent))
+}
+
+[live_command(description = "Find a currently rendered Markdown text fragment and return its exact screen rectangle.")]
+def markdown_probe_fragment(input : JsonValue?) : JsonValue? {
+    let args = from_JV(input, type<MarkdownProbeFragmentArgs>)
+    for (node_index in range(length(g_view.nodes))) {
+        let entry & = unsafe(g_view.nodes[node_index])
+        if (!entry.content_valid || !entry.layout_valid
+                || entry.screen_revision != g_view.render_revision) continue
+        for (fragment_index in range(length(entry.layout.fragments))) {
+            let fragment = entry.layout.fragments[fragment_index]
+            if (fragment.is_control) continue
+            let fragment_text = slice(entry.content.text,
+                fragment.source.start_byte, fragment.source.end_byte)
+            if (find(fragment_text, args.text) < 0) continue
+            let p0 = entry.screen_origin + float2(fragment.rect.x, fragment.rect.y)
+            let p1 = entry.screen_origin + float2(fragment.rect.z, fragment.rect.w)
+            return JV((
+                ok = true,
+                render_revision = g_view.render_revision,
+                node = node_index,
+                fragment = fragment_index,
+                text = fragment_text,
+                display_start = fragment.source.start_byte,
+                display_end = fragment.source.end_byte,
+                style_id = fragment.style_id,
+                semantic_id = fragment.semantic_id,
+                x0 = p0.x, y0 = p0.y, x1 = p1.x, y1 = p1.y))
+        }
+    }
+    return JV((ok = false, render_revision = g_view.render_revision,
+               error = "rendered fragment not found", text = args.text))
+}
+
+[live_command(description = "Clear the Markdown selection and return its acknowledgement revision.")]
+def markdown_probe_clear_selection(_input : JsonValue?) : JsonValue? {
+    markdown_view_clear_selection(g_view)
+    g_last_selection = MarkdownSelection()
+    return JV((ok = true, selection_revision = g_view.selection_revision))
+}
+
+[live_command(description = "Set Markdown zoom for deterministic inspection and return the prior render revision.")]
+def markdown_probe_set_zoom(input : JsonValue?) : JsonValue? {
+    let args = from_JV(input, type<MarkdownProbeZoomArgs>)
+    g_zoom_percent = clamp(args.percent, 50, 300)
+    return JV((ok = true, zoom_percent = g_zoom_percent,
+               prior_render_revision = g_view.render_revision))
+}
 
 def private selection_style_summary(styles : MdSelectionStyles) : string {
     if (styles.all_regular) return "regular"
@@ -141,6 +243,7 @@ def update() {
                 fonts = g_fonts,
                 zoom = float(g_zoom_percent) / 100.0f)
             let result = markdown_view("probe", g_doc, g_view, markdown_style)
+            g_last_selection = result.selection
             if (result.copied) {
                 g_status = "Copied: {result.target}"
             } elif (result.selection_copied) {

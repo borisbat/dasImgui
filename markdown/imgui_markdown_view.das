@@ -89,6 +89,11 @@ struct public MarkdownNodeViewCache {
     layout_valid : bool = false
     layout_key : MarkdownLayoutKey = MarkdownLayoutKey()
     layout : TextFlowLayout
+    //! Last screen-space placement of this cached layout.  This is telemetry,
+    //! not part of the layout key: scrolling moves the placement without
+    //! invalidating or rebuilding the layout.
+    screen_origin : float2
+    screen_revision : int = -1
 }
 
 struct public MarkdownViewState {
@@ -111,6 +116,19 @@ struct public MarkdownViewState {
     selection_screen_valid : bool = false
     selection_screen_bounds : float4
     selection_screen_anchor : float2
+    //! Monotonic event acknowledgements used by live inspection and tests.
+    //! They describe observed UI state; callers never need to wait a number
+    //! of frames before issuing the next input event.
+    render_revision : int = 0
+    hover_revision : int = 0
+    hovered_inline_node : int = -1
+    hovered_fragment : int = -1
+    hovered_display_byte : int = -1
+    selection_revision : int = 0
+    selection_commit_revision : int = 0
+    selection_copy_revision : int = 0
+    selection_context_revision : int = 0
+    selection_context_pos : float2
 }
 
 let private STYLE_STRONG = 1
@@ -134,6 +152,18 @@ def private clear_selection(var state : MarkdownViewState) {
     state.selection_dragged = false
     state.selection_pressed_semantic = -1
     state.selection_screen_valid = false
+}
+
+def public markdown_view_clear_selection(var state : MarkdownViewState) {
+    //! Clear selection explicitly and acknowledge the state transition.  Live
+    //! tooling uses the revision rather than a frame delay to observe it.
+    let had_state = (state.selection_anchor.valid
+        || state.selection_focus.valid || state.selection_dragging)
+    clear_selection(state)
+    if (had_state) {
+        state.selection_revision++
+        state.selection_changed = true
+    }
 }
 
 def public markdown_view_invalidate(var state : MarkdownViewState) {
@@ -400,6 +430,9 @@ def private render_inline(doc : MdDocument const; node_index : int;
     PushID(node_index)
 
     let origin = GetCursorScreenPos()
+    var cache & = unsafe(state.nodes[node_index])
+    cache.screen_origin = origin
+    cache.screen_revision = state.render_revision
     Dummy(float2(available, max(layout.size.y, line_height)))
 
     var hovered = -1
@@ -421,6 +454,9 @@ def private render_inline(doc : MdDocument const; node_index : int;
             fragment_min(origin, layout.fragments[hit.fragment_index]),
             fragment_max(origin, layout.fragments[hit.fragment_index]), true))
     if (hit_visible) {
+        state.hovered_inline_node = node_index
+        state.hovered_fragment = hit.fragment_index
+        state.hovered_display_byte = hit.byte_offset
         let position = md_inline_position(content, node_index, hit.byte_offset, hit.trailing)
         if (position.valid && IsMouseClicked(ImGuiMouseButton.Left, false)) {
             state.selection_anchor = position
@@ -430,6 +466,7 @@ def private render_inline(doc : MdDocument const; node_index : int;
             state.selection_pressed_semantic = hovered
             state.selection_click_claimed = true
             state.selection_changed = true
+            state.selection_revision++
         } elif (position.valid && state.selection_dragging
                 && IsMouseDown(ImGuiMouseButton.Left)) {
             if (state.selection_focus.source_byte != position.source_byte
@@ -437,6 +474,7 @@ def private render_inline(doc : MdDocument const; node_index : int;
                     || state.selection_focus.display_byte != position.display_byte) {
                 state.selection_focus = position
                 state.selection_changed = true
+                state.selection_revision++
             }
             state.selection_dragged = (state.selection_anchor.source_byte
                 != state.selection_focus.source_byte)
@@ -503,6 +541,8 @@ def private render_inline(doc : MdDocument const; node_index : int;
                             float2(selection_rect.z, selection_rect.w), true)) {
                     result.selection_context_requested = true
                     result.selection_context_pos = GetMousePos()
+                    state.selection_context_pos = result.selection_context_pos
+                    state.selection_context_revision++
                 }
             }
             if (position_in_fragment(state.selection_focus, node_index, fragment)) {
@@ -813,6 +853,13 @@ def public markdown_view(id : string; doc : MdDocument const;
         return <- result
     }
     prepare_view_state(doc, state, document_revision)
+    state.render_revision++
+    let old_hovered_inline_node = state.hovered_inline_node
+    let old_hovered_fragment = state.hovered_fragment
+    let old_hovered_display_byte = state.hovered_display_byte
+    state.hovered_inline_node = -1
+    state.hovered_fragment = -1
+    state.hovered_display_byte = -1
     state.selection_changed = false
     state.selection_click_claimed = false
     state.selection_screen_valid = false
@@ -837,10 +884,13 @@ def public markdown_view(id : string; doc : MdDocument const;
             && !state.selection_click_claimed) {
         let old_selection = selected_source(state)
         let had_selection = old_selection.end_byte > old_selection.start_byte
-        clear_selection(state)
+        markdown_view_clear_selection(state)
         state.selection_changed = had_selection
     }
     if (IsMouseReleased(ImGuiMouseButton.Left)) {
+        if (state.selection_dragging) {
+            state.selection_commit_revision++
+        }
         state.selection_dragging = false
     }
     finish_selection(doc, state, result)
@@ -852,6 +902,14 @@ def public markdown_view(id : string; doc : MdDocument const;
             && !IsAnyItemActive()) {
         let copy_status = clipboard_set_text(markdown_selection_text(state))
         result.selection_copied = copy_status == ClipboardStatus.ok
+        if (result.selection_copied) {
+            state.selection_copy_revision++
+        }
+    }
+    if (old_hovered_inline_node != state.hovered_inline_node
+            || old_hovered_fragment != state.hovered_fragment
+            || old_hovered_display_byte != state.hovered_display_byte) {
+        state.hover_revision++
     }
     if (pushed_font) {
         PopFont()

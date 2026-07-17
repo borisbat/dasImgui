@@ -164,6 +164,11 @@ gotchas, and visual aid recipes live in
 
 - Tests are dastest-discovered by `test_*.das` filename. Files starting
   with `_` are skipped (see `feedback_dastest_underscore_skip`).
+- Interactive tests must wait for observable state: a widget value, exact
+  hover target, event revision, committed selection, scroll position, or
+  another domain acknowledgement. Do not use sleeps, elapsed time, timeline
+  duration, or frame counts as success criteria. A wall-clock limit around a
+  semantic poll is permitted only as a deadlock/crash guard.
 - The harness is `require imgui/imgui_playwright public`, declared in
   `widgets/imgui_playwright.das` and registered via `.das_module`.
 - `harness_begin_frame()` pumps `advance_coroutines()` automatically — feature
