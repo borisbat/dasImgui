@@ -291,3 +291,30 @@ def test_markdown_selection_source_and_styles(t : T?) {
     t |> success(all_flags.has_mixed_styles,
                  "cross-style selection reports mixed combinations")
 }
+
+[test]
+def test_markdown_selection_rich_export(t : T?) {
+    let source = "**bold** and [link](editor://item) plus ![alt](img://preview \"T\") &amp;"
+    let doc <- md_parse(source)
+    t |> success(doc.ok, "rich-selection fixture parses")
+    if (!doc.ok) return
+    let paragraph = first_kind(doc, MdNodeKind.paragraph)
+    let inline <- md_inline_content(doc, paragraph)
+    var exported = MdSelectionExport()
+    md_selection_export_include(exported, inline,
+        TextSourceRange(start_byte = 0, end_byte = length(source)))
+
+    t |> equal(exported.plain_text, "bold and link plus alt &",
+               "plain export follows transformed display text")
+    t |> equal(exported.markdown,
+               "**bold** and [link](editor://item) plus ![alt](img://preview \"T\") &",
+               "Markdown export reconstructs standalone styled syntax")
+    t |> equal(exported.html,
+               "<strong>bold</strong> and <a href=\"editor://item\">link</a> plus "
+               + "<img src=\"img://preview\" alt=\"alt\" title=\"T\"> &amp;",
+               "HTML export preserves styles, links, images, and escaping")
+    let visible_uri_list = exported.uri_list |> replace("\r", "<CR>") |> replace("\n", "<LF>")
+    t |> equal(visible_uri_list,
+               "editor://item<CR><LF>img://preview<CR><LF>",
+               "URI-list export includes link and image destinations once")
+}

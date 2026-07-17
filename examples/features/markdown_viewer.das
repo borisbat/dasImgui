@@ -91,6 +91,10 @@ def markdown_probe_state(_input : JsonValue?) : JsonValue? {
             revision = g_view.selection_revision,
             commit_revision = g_view.selection_commit_revision,
             copy_revision = g_view.selection_copy_revision,
+            copy_text = g_view.selection_copy_text,
+            copy_markdown = g_view.selection_copy_markdown,
+            copy_html = g_view.selection_copy_html,
+            copy_uri_list = g_view.selection_copy_uri_list,
             context_revision = g_view.selection_context_revision,
             navigation_revision = g_view.navigation_revision,
             navigation_scroll_revision = g_view.navigation_scroll_revision,
@@ -424,7 +428,8 @@ def update() {
         with_font(g_fonts.regular, 18.0f) {
             var markdown_style = MarkdownViewStyle(
                 fonts = g_fonts,
-                zoom = float(g_zoom_percent) / 100.0f)
+                zoom = float(g_zoom_percent) / 100.0f,
+                write_system_clipboard = !harness_is_headless())
             let result = markdown_view("probe", g_doc, g_view, markdown_style)
             g_last_selection = result.selection
             g_last_hovered_node = result.hovered_node

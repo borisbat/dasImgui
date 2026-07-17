@@ -6,10 +6,10 @@ options no_unused_function_arguments = false
 require dastest/testing_boost public
 require imgui public
 require imgui/imgui_playwright public
-require daslib/clipboard public
 require daslib/json public
 require daslib/json_boost public
 require math
+require strings
 
 //! Deterministic interaction coverage for the Markdown viewer.
 //!
@@ -386,65 +386,52 @@ def test_markdown_view_event_driven_interactions(t : T?) {
         t |> success(committed_state?["selection"]?["screen_valid"] ?? false,
                      "committed selection exposes its screen anchor geometry")
 
-        // Copy is also a raw key/state handshake.  Preserve the user's
-        // clipboard and run this branch only when the current desktop session
-        // actually provides readable/writable text clipboard access.
-        var original_clipboard = ""
-        let original_clipboard_status = clipboard_get_text(original_clipboard)
-        let clipboard_available = (clipboard_set_text("dasImgui clipboard probe")
-            == ClipboardStatus.ok)
-        if (clipboard_available) {
-            let selected_text = committed_state?["selection"]?["display_text"] ?? ""
-            let copy_before = committed_state?["selection"]?["copy_revision"] ?? -1
-            var input_state = markdown_state(app)
-            let macos = input_state?["input"]?["macos_behaviors"] ?? false
-            // ImGui remaps synthetic LeftCtrl to Super when macOS behaviors
-            // are enabled, matching the viewer's platform shortcut choice.
-            let copy_modifier_key = int(ImGuiKey.LeftCtrl)
-            post_command(app, "imgui_key_press", JV((key = copy_modifier_key)))
-            let modifier_down = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
-                var state = markdown_state(app)
-                return state?["input"]?["copy_modifier_down"] ?? false
-            }
-            t |> success(modifier_down,
-                         macos ? "synthetic Cmd modifier is observed"
-                               : "synthetic Ctrl modifier is observed")
-
-            post_command(app, "imgui_key_press", JV((key = int(ImGuiKey.C))))
-            var copied_text = ""
-            let copied = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
-                var state = markdown_state(app)
-                let copied_revision = state?["selection"]?["copy_revision"] ?? -1
-                let clipboard_status = clipboard_get_text(copied_text)
-                return (copied_revision > copy_before
-                    && clipboard_status == ClipboardStatus.ok
-                    && copied_text == selected_text)
-            }
-            t |> success(copied,
-                         "Ctrl/Cmd+C revision and system clipboard match selected display text")
-
-            post_command(app, "imgui_key_release", JV((key = int(ImGuiKey.C))))
-            let c_released = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
-                var state = markdown_state(app)
-                return !(state?["input"]?["key_c_down"] ?? true)
-            }
-            t |> success(c_released, "C release is observed")
-            post_command(app, "imgui_key_release", JV((key = copy_modifier_key)))
-            let modifier_released = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
-                var state = markdown_state(app)
-                return !(state?["input"]?["copy_modifier_down"] ?? true)
-            }
-            t |> success(modifier_released, "copy modifier release is observed")
-
-            if (original_clipboard_status == ClipboardStatus.ok) {
-                let _ = clipboard_set_text(original_clipboard)
-            } else {
-                let _ = clipboard_clear()
-            }
-        } else {
-            t |> success(true,
-                         "system clipboard unavailable in this desktop session; explicit platform result accepted")
+        // Copy is a raw key/request handshake. The headless fixture disables
+        // system writes, so regular dastest never mutates the desktop clipboard.
+        let selected_text = committed_state?["selection"]?["display_text"] ?? ""
+        let copy_before = committed_state?["selection"]?["copy_revision"] ?? -1
+        var input_state = markdown_state(app)
+        let macos = input_state?["input"]?["macos_behaviors"] ?? false
+        // ImGui remaps synthetic LeftCtrl to Super when macOS behaviors are
+        // enabled, matching the viewer's platform shortcut choice.
+        let copy_modifier_key = int(ImGuiKey.LeftCtrl)
+        post_command(app, "imgui_key_press", JV((key = copy_modifier_key)))
+        let modifier_down = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+            var state = markdown_state(app)
+            return state?["input"]?["copy_modifier_down"] ?? false
         }
+        t |> success(modifier_down,
+                     macos ? "synthetic Cmd modifier is observed"
+                           : "synthetic Ctrl modifier is observed")
+
+        post_command(app, "imgui_key_press", JV((key = int(ImGuiKey.C))))
+        let copied = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+            var state = markdown_state(app)
+            return ((state?["selection"]?["copy_revision"] ?? -1) > copy_before
+                && (state?["selection"]?["copy_text"] ?? "") == selected_text)
+        }
+        t |> success(copied,
+                     "Ctrl/Cmd+C request carries exact selected display text")
+        let rich_copy_state = markdown_state(app)
+        t |> success(!empty(rich_copy_state?["selection"]?["copy_markdown"] ?? ""),
+                     "code selection copy exposes reconstructed Markdown")
+        t |> success(find(rich_copy_state?["selection"]?["copy_html"] ?? "", "<code>") >= 0,
+                     "code selection copy exposes escaped HTML")
+        t |> equal(rich_copy_state?["selection"]?["copy_uri_list"] ?? "", "",
+                   "code-only selection has no URI-list offer")
+
+        post_command(app, "imgui_key_release", JV((key = int(ImGuiKey.C))))
+        let c_released = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+            var state = markdown_state(app)
+            return !(state?["input"]?["key_c_down"] ?? true)
+        }
+        t |> success(c_released, "C release is observed")
+        post_command(app, "imgui_key_release", JV((key = copy_modifier_key)))
+        let modifier_released = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+            var state = markdown_state(app)
+            return !(state?["input"]?["copy_modifier_down"] ?? true)
+        }
+        t |> success(modifier_released, "copy modifier release is observed")
 
         // Right-click the single-line selection.  Button-down, context event,
         // popup visibility, and Escape close are each observed before the next

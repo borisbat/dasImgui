@@ -30,6 +30,15 @@ struct public MarkdownUriResult {
     line_count : int
 }
 
+def private markdown_uri_copy(target : string) : ClipboardStatus {
+    var content = ClipboardContent(plain_text = target, uri_list = target + "\r\n")
+    content.formats.plain_text = true
+    content.formats.uri_list = true
+    let status = clipboard_set_content(content)
+    clipboard_dispose_content(content)
+    return status
+}
+
 def private fragment_min(origin : float2; fragment : TextFlowFragment) : float2 {
     return origin + float2(fragment.rect.x, fragment.rect.y)
 }
@@ -118,7 +127,7 @@ def public markdown_uri_paragraph(id : string; prefix, display_text, suffix, tar
         if (icon_button_draw_at("##markdown_uri_copy_{id}", "duplicate",
                                 fragment_min(origin, control_fragment),
                                 style.copy_icon_size, 1.0f, result.hovered)) {
-            let copy_status = clipboard_set_text(empty(target) ? display_text : target)
+            let copy_status = markdown_uri_copy(empty(target) ? display_text : target)
             result.copied = copy_status == ClipboardStatus.ok
         }
         if (result.hovered && IsItemHovered()) {

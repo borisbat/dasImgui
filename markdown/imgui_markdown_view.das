@@ -46,6 +46,10 @@ struct public MarkdownViewStyle {
     copy_icon_size : float = 14.0f
     image_icon_size : float = 18.0f
     show_link_copy : bool = true
+    //! Production viewers write copy actions to the system clipboard by
+    //! default. Headless tests can disable the external side effect while
+    //! still observing the exact copy request and payload.
+    write_system_clipboard : bool = true
 }
 
 struct public MarkdownSelection {
@@ -61,6 +65,8 @@ struct public MarkdownViewResult {
     hovered : bool = false
     activated : bool = false
     copied : bool = false
+    copy_requested : bool = false
+    copy_text : string
     hovered_image : bool = false
     activated_image : bool = false
     hovered_image_resolved : bool = false
@@ -73,6 +79,11 @@ struct public MarkdownViewResult {
     selection : MarkdownSelection = MarkdownSelection()
     selection_changed : bool = false
     selection_copied : bool = false
+    selection_copy_requested : bool = false
+    selection_copy_text : string
+    selection_copy_markdown : string
+    selection_copy_html : string
+    selection_copy_uri_list : string
     selection_context_requested : bool = false
     selection_context_pos : float2
 }
@@ -165,6 +176,10 @@ struct public MarkdownViewState {
     selection_revision : int = 0
     selection_commit_revision : int = 0
     selection_copy_revision : int = 0
+    selection_copy_text : string
+    selection_copy_markdown : string
+    selection_copy_html : string
+    selection_copy_uri_list : string
     selection_context_revision : int = 0
     selection_context_pos : float2
     navigation_revision : int = 0
@@ -189,6 +204,15 @@ let private STYLE_HEADING = 32
 let private STYLE_IMAGE = 64
 let private CONTROL_COPY_URI = 1
 let private CONTROL_IMAGE_PLACEHOLDER = 2
+
+def private markdown_copy_uri_to_clipboard(target : string) : ClipboardStatus {
+    var content = ClipboardContent(plain_text = target, uri_list = target + "\r\n")
+    content.formats.plain_text = true
+    content.formats.uri_list = true
+    let status = clipboard_set_content(content)
+    clipboard_dispose_content(content)
+    return status
+}
 
 def private clear_node_cache(var entry : MarkdownNodeViewCache) {
     delete entry.content.runs
@@ -679,24 +703,6 @@ def private ensure_keyboard_caret_visible(var state : MarkdownViewState) {
     }
 }
 
-def private selected_display(run : MdInlineRun const;
-                             source : TextSourceRange const) : TextSourceRange {
-    let a = max(source.start_byte, run.source.start_byte)
-    let b = min(source.end_byte, run.source.end_byte)
-    if (run.source.start_byte < 0 || b <= a) {
-        return TextSourceRange(start_byte = -1, end_byte = -1)
-    }
-    let display_size = run.display.end_byte - run.display.start_byte
-    let source_size = run.source.end_byte - run.source.start_byte
-    if (run.source_exact && display_size == source_size) {
-        return TextSourceRange(
-            start_byte = run.display.start_byte + a - run.source.start_byte,
-            end_byte = run.display.start_byte + b - run.source.start_byte)
-    }
-    // Entities and other transformed runs are indivisible in source space.
-    return run.display
-}
-
 def private include_selection_screen_rect(var state : MarkdownViewState;
                                           rect : float4) {
     if (!state.selection_screen_valid) {
@@ -969,7 +975,7 @@ def private render_inline(doc : MdDocument const; node_index : int;
         if (selection_source.start_byte >= 0
                 && selection_source.end_byte > selection_source.start_byte) {
             for (run in content.runs) {
-                let display = selected_display(run, selection_source)
+                let display = md_selected_display_range(run, selection_source)
                 let a = max(display.start_byte, fragment.source.start_byte)
                 let b = min(display.end_byte, fragment.source.end_byte)
                 if (display.start_byte < 0 || b <= a) continue
@@ -1104,14 +1110,16 @@ def private render_inline(doc : MdDocument const; node_index : int;
             if (control_id >= 0) {
                 let run_index = link_run_index(doc, content, control_id)
                 let target = link_target(doc, content, control_id)
-                if (clipboard_set_text(target) == ClipboardStatus.ok) {
-                    result.copied = true
-                    result.copied_node = (run_index >= 0
-                        ? content.runs[run_index].semantic_node : -1)
-                    if (run_index >= 0) {
-                        result.source = content.runs[run_index].source
-                    }
-                    result.target := target
+                result.copy_requested = true
+                result.copy_text := target
+                result.copied_node = (run_index >= 0
+                    ? content.runs[run_index].semantic_node : -1)
+                if (run_index >= 0) {
+                    result.source = content.runs[run_index].source
+                }
+                result.target := target
+                if (style.write_system_clipboard) {
+                    result.copied = (markdown_copy_uri_to_clipboard(target) == ClipboardStatus.ok)
                 }
             }
         }
@@ -1381,7 +1389,7 @@ def public markdown_selection_text(state : MarkdownViewState const) : string {
         let content & = unsafe(state.nodes[i].content)
         var block_text = ""
         for (run in content.runs) {
-            let display = selected_display(run, source)
+            let display = md_selected_display_range(run, source)
             if (display.start_byte >= 0 && display.end_byte > display.start_byte) {
                 block_text = block_text + slice(content.text, display.start_byte, display.end_byte)
             }
@@ -1394,6 +1402,20 @@ def public markdown_selection_text(state : MarkdownViewState const) : string {
         }
     }
     return value
+}
+
+def public markdown_selection_export(state : MarkdownViewState const) : MdSelectionExport {
+    //! Build reusable rich representations without touching the OS clipboard.
+    //! Image runs become HTML `<img>` plus URI-list entries; host-owned pixels
+    //! remain a separate client-supplied clipboard concern.
+    var result = MdSelectionExport()
+    let source = selected_source(state)
+    if (source.start_byte < 0 || source.end_byte <= source.start_byte) return <- result
+    for (i in range(length(state.nodes))) {
+        if (!state.nodes[i].content_valid) continue
+        md_selection_export_include(result, state.nodes[i].content, source)
+    }
+    return <- result
 }
 
 def public markdown_view(id : string; doc : MdDocument const;
@@ -1463,10 +1485,29 @@ def public markdown_view(id : string; doc : MdDocument const;
     if (result.selection.active && copy_modifier && IsKeyPressed(ImGuiKey.C, false)
             && IsWindowFocused(ImGuiFocusedFlags.RootAndChildWindows)
             && !IsAnyItemActive()) {
-        let copy_status = clipboard_set_text(markdown_selection_text(state))
-        result.selection_copied = copy_status == ClipboardStatus.ok
-        if (result.selection_copied) {
-            state.selection_copy_revision++
+        var copy <- markdown_selection_export(state)
+        result.selection_copy_requested = true
+        result.selection_copy_text := copy.plain_text
+        result.selection_copy_markdown := copy.markdown
+        result.selection_copy_html := copy.html
+        result.selection_copy_uri_list := copy.uri_list
+        state.selection_copy_text := copy.plain_text
+        state.selection_copy_markdown := copy.markdown
+        state.selection_copy_html := copy.html
+        state.selection_copy_uri_list := copy.uri_list
+        state.selection_copy_revision++
+        if (style.write_system_clipboard) {
+            var content = ClipboardContent(
+                plain_text = copy.plain_text,
+                markdown = copy.markdown,
+                html = copy.html,
+                uri_list = copy.uri_list)
+            content.formats.plain_text = true
+            content.formats.markdown = true
+            content.formats.html = true
+            content.formats.uri_list = !empty(copy.uri_list)
+            result.selection_copied = (clipboard_set_content(content) == ClipboardStatus.ok)
+            clipboard_dispose_content(content)
         }
     }
     if (old_hovered_inline_node != state.hovered_inline_node

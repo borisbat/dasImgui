@@ -176,6 +176,18 @@ struct public MdSelectionStyleAccumulator {
     regular_only : bool = true
 }
 
+struct public MdSelectionExport {
+    //! Platform-neutral representations of one source-mapped selection.
+    //! All representations follow rendered inline runs (entities stay
+    //! transformed). Markdown syntax is reconstructed around partial styled
+    //! selections so copied bold/link text remains valid when pasted alone.
+    plain_text : string
+    markdown : string
+    html : string
+    uri_list : string
+    block_count : int = 0
+}
+
 def private block_kind(kind : int) : MdNodeKind {
     if (kind == 0) return MdNodeKind.document
     if (kind == 1) return MdNodeKind.quote
@@ -628,6 +640,128 @@ def public md_selection_styles(accumulator : MdSelectionStyleAccumulator const) 
     var styles = accumulator.styles
     styles.all_regular = accumulator.matched_runs > 0 && accumulator.regular_only
     return styles
+}
+
+def public md_selected_display_range(run : MdInlineRun const;
+                                     source : TextSourceRange const) : TextSourceRange {
+    //! Map a source selection onto rendered bytes. Transformed entities and
+    //! other inexact runs remain atomic because splitting them would invent a
+    //! source position the parser never supplied.
+    let a = max(source.start_byte, run.source.start_byte)
+    let b = min(source.end_byte, run.source.end_byte)
+    if (run.source.start_byte < 0 || b <= a) {
+        return TextSourceRange(start_byte = -1, end_byte = -1)
+    }
+    let display_size = run.display.end_byte - run.display.start_byte
+    let source_size = run.source.end_byte - run.source.start_byte
+    if (run.source_exact && display_size == source_size) {
+        return TextSourceRange(
+            start_byte = run.display.start_byte + a - run.source.start_byte,
+            end_byte = run.display.start_byte + b - run.source.start_byte)
+    }
+    return run.display
+}
+
+def private md_html_text(value : string) : string {
+    return value |> replace("&", "&amp;") |> replace("<", "&lt;") |> replace(">", "&gt;")
+}
+
+def private md_html_attribute(value : string) : string {
+    return value |> md_html_text() |> replace("\"", "&quot;") |> replace("'", "&#39;")
+}
+
+def private md_markdown_text(value : string) : string {
+    var result = value |> replace("\\", "\\\\")
+    result = result |> replace("`", "\\`")
+    result = result |> replace("*", "\\*")
+    result = result |> replace("_", "\\_")
+    result = result |> replace("[", "\\[")
+    result = result |> replace("]", "\\]")
+    result = result |> replace("~", "\\~")
+    return result
+}
+
+def private md_markdown_destination(value : string) : string {
+    return value |> replace("\\", "\\\\") |> replace(")", "\\)")
+}
+
+def private md_export_uri(var value : string&; uri : string) {
+    if (empty(uri)) return
+    let line = uri + "\r\n"
+    if ((value |> find(line)) < 0) {
+        value = value + line
+    }
+}
+
+def public md_selection_export_include(var result : MdSelectionExport;
+                                       content : MdInlineContent const;
+                                       source : TextSourceRange const) {
+    //! Add one inline block to a rich selection export. Call blocks in document
+    //! order; only blocks overlapping `source` contribute separators.
+    var block_plain = ""
+    var block_markdown = ""
+    var block_html = ""
+    for (run in content.runs) {
+        let display = md_selected_display_range(run, source)
+        if (display.start_byte < 0 || display.end_byte <= display.start_byte) continue
+        let shown = slice(content.text, display.start_byte, display.end_byte)
+        block_plain = block_plain + shown
+        if (run.is_link || run.is_image) {
+            md_export_uri(result.uri_list, run.destination)
+        }
+        if (run.is_image) {
+            var image_html = "<img src=\"{run.destination |> md_html_attribute()}\" alt=\"{shown |> md_html_attribute()}\""
+            if (!empty(run.title)) {
+                image_html = image_html + " title=\"{run.title |> md_html_attribute()}\""
+            }
+            block_html = block_html + image_html + ">"
+            var image_markdown = "![{shown |> md_markdown_text()}]({run.destination |> md_markdown_destination()}"
+            if (!empty(run.title)) {
+                let escaped_title = run.title |> replace("\"", "\\\"")
+                image_markdown = image_markdown + " \"" + escaped_title + "\""
+            }
+            block_markdown = block_markdown + image_markdown + ")"
+            continue
+        }
+        var markdown_text = run.is_code ? shown : (shown |> md_markdown_text())
+        if (run.is_code) {
+            markdown_text = "`" + markdown_text + "`"
+        }
+        if (run.is_strikethrough) {
+            markdown_text = "~~" + markdown_text + "~~"
+        }
+        if (run.is_emphasis) {
+            markdown_text = "*" + markdown_text + "*"
+        }
+        if (run.is_strong) {
+            markdown_text = "**" + markdown_text + "**"
+        }
+        if (run.is_link) {
+            markdown_text = "[" + markdown_text + "](" + (run.destination |> md_markdown_destination()) + ")"
+        }
+        block_markdown = block_markdown + markdown_text
+        var prefix = ""
+        var suffix = ""
+        if (run.is_link) {
+            prefix = prefix + "<a href=\"{run.destination |> md_html_attribute()}\">"
+            suffix = "</a>" + suffix
+        }
+        if (run.is_strong) { prefix = prefix + "<strong>"; suffix = "</strong>" + suffix }
+        if (run.is_emphasis) { prefix = prefix + "<em>"; suffix = "</em>" + suffix }
+        if (run.is_strikethrough) { prefix = prefix + "<del>"; suffix = "</del>" + suffix }
+        if (run.is_code) { prefix = prefix + "<code>"; suffix = "</code>" + suffix }
+        block_html = block_html + prefix + (shown |> md_html_text()) + suffix
+    }
+    if (empty(block_plain) && empty(block_html)) return
+    if (result.block_count > 0) {
+        result.plain_text = result.plain_text + "\n"
+        result.markdown = result.markdown + "\n"
+        result.html = result.html + "<br>\n"
+    }
+    result.plain_text = result.plain_text + block_plain
+    result.markdown = result.markdown + block_markdown
+    result.html = result.html + block_html
+    result.block_count++
 }
 
 def public md_source_text(doc : MdDocument const; source : TextSourceRange const) : string {
