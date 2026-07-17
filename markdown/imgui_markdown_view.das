@@ -29,6 +29,8 @@ struct public MarkdownViewStyle {
     link_hover_color : float4 = float4(0.55f, 0.80f, 1.0f, 1.0f)
     code_color : float4 = float4(0.94f, 0.80f, 0.55f, 1.0f)
     code_background : float4 = float4(0.10f, 0.11f, 0.14f, 1.0f)
+    code_label_color : float4 = float4(0.72f, 0.76f, 0.82f, 1.0f)
+    code_label_background : float4 = float4(0.16f, 0.18f, 0.22f, 1.0f)
     selection_color : float4 = float4(0.24f, 0.48f, 0.78f, 0.55f)
     quote_color : float4 = float4(0.42f, 0.47f, 0.56f, 1.0f)
     marker_color : float4 = float4(0.70f, 0.73f, 0.78f, 1.0f)
@@ -96,6 +98,8 @@ struct public MarkdownNodeViewCache {
     screen_revision : int = -1
     screen_available_width : float = 0.0f
     screen_alignment : MdAlignment = MdAlignment.default_
+    code_label_valid : bool = false
+    code_label_rect : float4
 }
 
 struct public MarkdownViewState {
@@ -986,6 +990,32 @@ def private render_code_block(doc : MdDocument const; node_index : int;
         ? style.fonts.size_px : GetFontSize()) * zoom
     let padding = style.code_padding * zoom
     var mono = style.fonts.monospace != null ? style.fonts.monospace : GetFont()
+    var cache & = unsafe(state.nodes[node_index])
+    cache.code_label_valid = false
+    let badge_text = (!empty(doc.nodes[node_index].language)
+        ? doc.nodes[node_index].language : doc.nodes[node_index].info)
+    if (!empty(badge_text)) {
+        let label_padding = float2(6.0f * zoom, 3.0f * zoom)
+        let label_size = CalcTextSizeForFont(mono, font_size, badge_text)
+        let label_p0 = GetCursorScreenPos()
+        let label_p1 = label_p0 + label_size + label_padding * 2.0f
+        Dummy(label_p1 - label_p0)
+        var label_dl = GetWindowDrawList()
+        *label_dl |> AddRectFilled(label_p0, label_p1,
+            GetColorU32(style.code_label_background), 3.0f * zoom,
+            ImDrawFlags.None)
+        *label_dl |> AddTextRange(mono, font_size, label_p0 + label_padding,
+            GetColorU32(style.code_label_color), badge_text, length(badge_text),
+            0, length(badge_text))
+        cache.code_label_valid = true
+        cache.code_label_rect = float4(label_p0.x, label_p0.y, label_p1.x, label_p1.y)
+        let info = doc.nodes[node_index].info
+        if (!empty(info) && info != badge_text
+                && IsMouseHoveringRect(label_p0, label_p1, true)) {
+            SetTooltip("Fence info: {info}")
+        }
+        Dummy(float2(0.0f, 2.0f * zoom))
+    }
     let measured = CalcTextSizeForFont(mono, font_size, content.text)
     let child_border = GetStyle().ChildBorderSize
     let inner_width = max(1.0f, GetContentRegionAvail().x

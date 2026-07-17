@@ -151,6 +151,26 @@ def markdown_probe_fragment(input : JsonValue?) : JsonValue? {
                error = "rendered fragment not found", text = args.text))
 }
 
+[live_command(description = "Inspect the first fenced Markdown code block and its rendered language label.")]
+def markdown_probe_code_block(_input : JsonValue?) : JsonValue? {
+    for (node_index in range(length(g_doc.nodes))) {
+        let node = g_doc.nodes[node_index]
+        if (node.kind != MdNodeKind.code_block) continue
+        let entry & = unsafe(g_view.nodes[node_index])
+        return JV((
+            ok = true,
+            node = node_index,
+            info = node.info,
+            language = node.language,
+            label_valid = entry.code_label_valid,
+            label_x0 = entry.code_label_rect.x,
+            label_y0 = entry.code_label_rect.y,
+            label_x1 = entry.code_label_rect.z,
+            label_y1 = entry.code_label_rect.w))
+    }
+    return JV((ok = false, error = "code block not found"))
+}
+
 [live_command(description = "Clear the Markdown selection and return its acknowledgement revision.")]
 def markdown_probe_clear_selection(_input : JsonValue?) : JsonValue? {
     markdown_view_clear_selection(g_view)

@@ -123,6 +123,25 @@ def test_markdown_view_event_driven_interactions(t : T?) {
         }
         t |> success(table_cleared, "aligned-cell caret clear is acknowledged")
 
+        var code_block : JsonValue?
+        let code_labeled = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+            code_block = post_command(app, "markdown_probe_code_block", null)
+            return ((code_block?["ok"] ?? false)
+                && (code_block?["label_valid"] ?? false))
+        }
+        t |> success(code_labeled,
+                     "fenced code language label reaches rendered geometry")
+        if (!code_labeled) return
+        t |> equal(code_block?["language"] ?? "", "das",
+                   "rendered code metadata exposes parsed language")
+        t |> equal(code_block?["info"] ?? "", "das",
+                   "rendered code metadata preserves the full info string")
+        t |> success((code_block?["label_x1"] ?? 0.0f)
+                        > (code_block?["label_x0"] ?? 0.0f)
+                     && (code_block?["label_y1"] ?? 0.0f)
+                        > (code_block?["label_y0"] ?? 0.0f),
+                     "code language label has a non-empty screen rectangle")
+
         // The copy-URI affordance appears on hover, but its reserved control
         // slot must not resize or move the link text.
         var link_before : JsonValue?

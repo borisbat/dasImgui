@@ -24,7 +24,7 @@ Status meanings:
 | Block quotes | nested children retained | indented with quote rule | model + smoke | complete |
 | Unordered/ordered lists | tightness, start, task state retained | nested lists and task glyphs | model + smoke | partial: preserve ordered delimiter and marker fidelity |
 | Thematic breaks | typed node | separator | smoke | complete |
-| Fenced/indented code | text, info, and language retained | selectable monospace child | model + live viewer | partial: expose language/info; syntax highlighting later |
+| Fenced/indented code | text, info, and language retained | selectable monospace child plus language/info badge | model + live metadata/geometry | complete; syntax highlighting belongs to the shared syntax layer |
 | GFM tables | sections, rows, columns, and alignment retained | bordered table with per-line cell alignment | model + live geometry/hit test | complete |
 | Raw HTML blocks | opt-in typed nodes | literal text only | parser option test | policy: source-mapped literal; never execute as HTML |
 
@@ -57,9 +57,8 @@ entry point.
 
 ## Completion order
 
-1. Surface fenced-code language/info without coupling it to syntax services.
-2. Define image placeholder and host-provided resource resolution.
-3. Add link-title and hard-break rendering coverage.
-4. Close list marker/delimiter fidelity gaps.
-5. Freeze Markdown behavior, then extract shared layout and read-only text
+1. Define image placeholder and host-provided resource resolution.
+2. Add link-title and hard-break rendering coverage.
+3. Close list marker/delimiter fidelity gaps.
+4. Freeze Markdown behavior, then extract shared layout and read-only text
    interaction machinery before editor mutation work begins.
