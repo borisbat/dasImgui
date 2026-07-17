@@ -24,52 +24,10 @@ var private g_loaded_sources : array<string>
 var private g_sources_text : string
 var private g_has_grinning_face : bool
 
-def private merge_probe_font(path : string; size_px : float; font_loader_flags : uint = 0u) {
-    if (merge_font_from_file(path, size_px, true, font_loader_flags)) {
-        g_loaded_sources |> push(path)
-    }
-}
-
-def private load_probe_font(size_px : float) : ImFont? {
-    // Match this machine's Windows Terminal profile: Consolas is the primary
-    // face; DirectWrite supplies missing glyphs there. Other platforms retain
-    // dasImgui's bundled JetBrains Mono as the portable base.
-    let windows_consolas = "C:/Windows/Fonts/consola.ttf"
-    let base = get_running_platform_name() == "windows" && font_file_exists(windows_consolas) ? windows_consolas : daslang_font_ttf_path()
-    var font = load_font_from_file(base, size_px)
-    if (font != null) {
-        g_loaded_sources |> push(base)
-    }
-
-    // Color emoji first, then symbol outlines and progressively broader language
-    // faces. Dear ImGui keeps the first source for overlapping glyphs, so the
-    // emoji face must precede Segoe UI Symbol to retain its COLR/CPAL layers.
-    // Missing paths are intentionally harmless so the probe stays portable.
-    if (get_running_platform_name() == "windows") {
-        merge_probe_font("C:/Windows/Fonts/seguiemj.ttf", size_px, IMGUI_FREETYPE_LOAD_COLOR)
-        merge_probe_font("C:/Windows/Fonts/seguisym.ttf", size_px)
-        merge_probe_font("C:/Windows/Fonts/NotoSans-Regular.ttf", size_px)
-        merge_probe_font("C:/Windows/Fonts/NotoSansJP-Regular.ttf", size_px)
-        merge_probe_font("C:/Windows/Fonts/msyh.ttc", size_px)
-        merge_probe_font("C:/Windows/Fonts/malgun.ttf", size_px)
-        merge_probe_font("C:/Windows/Fonts/NotoSansHebrew-Regular.ttf", size_px)
-        merge_probe_font("C:/Windows/Fonts/NotoSansArabic-Regular.ttf", size_px)
-    } elif (get_running_platform_name() == "osx") {
-        merge_probe_font("/System/Library/Fonts/Apple Symbols.ttf", size_px)
-        merge_probe_font("/System/Library/Fonts/Apple Color Emoji.ttc", size_px)
-        merge_probe_font("/System/Library/Fonts/ヒラギノ角ゴシック W3.ttc", size_px)
-    } else {
-        merge_probe_font("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", size_px)
-        merge_probe_font("/usr/share/fonts/truetype/noto/NotoSansSymbols2-Regular.ttf", size_px)
-        merge_probe_font("/usr/share/opentype/noto/NotoSansCJK-Regular.ttc", size_px)
-    }
-    return font
-}
-
 [export]
 def init() {
     harness_init("dasImgui Unicode font probe", 1000, 760)
-    g_font = load_probe_font(20.0f)
+    g_font = load_unicode_ui_font(20.0f, g_loaded_sources)
     g_has_grinning_face = font_has_glyph(g_font, 0x1F600u)
     g_sources_text = build_string() $(var writer) {
         for (source in g_loaded_sources) {

@@ -160,9 +160,10 @@ IF(COMMAND ADD_MODULE_CPP)
     # ===== daslang superbuild: static-embed =====
     # Static libs link into the app via ${DAS_MODULES_LIBS}; ADD_MODULE_CPP emits
     # NEED/DECLARE/PULL(Module_*) so the app needs no manual registration, and each
-    # widgets/*.das registers a boost path so `require imgui/<name>` resolves
-    # in-tree. The glob IS the .das_module register_native_path list (file stem ==
-    # module name for every widgets file).
+    # das source sections register boost paths so `require imgui/<name>` resolves
+    # in-tree. File stem == module name in each section. `text` contains the
+    # view-independent layout foundation; `markdown` contains its ImGui-facing
+    # consumers without flattening those subsystems into widgets/.
     ADD_MODULE_CPP(dasIMGUI)
     ADD_MODULE_CPP(imgui_app)
     ADD_MODULE_CPP(imgui_app_headless)
@@ -170,6 +171,16 @@ IF(COMMAND ADD_MODULE_CPP)
     FOREACH(_f ${_imgui_widget_files})
         GET_FILENAME_COMPONENT(_n "${_f}" NAME_WE)
         ADD_MODULE_DAS(imgui widgets ${_n})
+    ENDFOREACH()
+    FILE(GLOB _imgui_text_files "${DAS_IMGUI_DIR}/text/*.das")
+    FOREACH(_f ${_imgui_text_files})
+        GET_FILENAME_COMPONENT(_n "${_f}" NAME_WE)
+        ADD_MODULE_DAS(imgui text ${_n})
+    ENDFOREACH()
+    FILE(GLOB _imgui_markdown_files "${DAS_IMGUI_DIR}/markdown/*.das")
+    FOREACH(_f ${_imgui_markdown_files})
+        GET_FILENAME_COMPONENT(_n "${_f}" NAME_WE)
+        ADD_MODULE_DAS(imgui markdown ${_n})
     ENDFOREACH()
 
     # Static halves only — no ADD_MODULE_LIB shared twins. In a superbuild the DLL

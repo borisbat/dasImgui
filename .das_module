@@ -38,6 +38,13 @@ def initialize(project_path : string) {
     // Font loading + explicit merge-mode fallback. Dear ImGui has no platform
     // fallback resolver, so terminal/editor consumers build a font stack here.
     register_native_path("imgui", "imgui_fonts", "{project_path}/widgets/imgui_fonts.das")
+    // Shared UTF-8 source ranges, grapheme grouping, and view-independent
+    // inline flow. Kept in its own section because Markdown/editor/terminal
+    // renderers all consume it without owning one another.
+    register_native_path("imgui", "imgui_text_flow", "{project_path}/text/imgui_text_flow.das")
+    // Markdown-facing UI adapters. Parsing/model modules will join this section
+    // without coupling the shared text-flow core to immediate-mode rendering.
+    register_native_path("imgui", "imgui_markdown_text", "{project_path}/markdown/imgui_markdown_text.das")
     // Flag-operator extensions (| / & / ~) for internal imgui enums the binder gave
     // no addEnumFlagOps — currently ImGuiItemFlags. Re-exported by imgui_scope_builtin.
     register_native_path("imgui", "imgui_enums", "{project_path}/widgets/imgui_enums.das")
