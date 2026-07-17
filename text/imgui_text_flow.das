@@ -379,7 +379,10 @@ def public text_graphemes(text : string) : array<TextGrapheme> {
     var scalars : array<TextScalar>
     decode_scalars(text, scalars)
     var out : array<TextGrapheme>
-    if (empty(scalars)) return <- out
+    if (empty(scalars)) {
+        delete scalars
+        return <- out
+    }
 
     var cluster_start = 0
     var regional_run = is_regional_indicator(scalars[0].codepoint) ? 1 : 0
@@ -408,6 +411,7 @@ def public text_graphemes(text : string) : array<TextGrapheme> {
             end_byte = scalars[length(scalars) - 1].source.end_byte),
         first_codepoint = scalars[cluster_start].codepoint,
         last_codepoint = scalars[length(scalars) - 1].codepoint))
+    delete scalars
     return <- out
 }
 
@@ -424,28 +428,32 @@ def private uri_break_after(cp : uint) : bool {
 
 def private make_units(source : string; spans : array<TextFlowSpan> const;
                        line_height : float;
-                       measure : block<(text : string) : float>) : array<TextFlowUnit> {
+                       measure : block<(text : string; start_byte : int;
+                                        end_byte : int; style_id : int) : float>) : array<TextFlowUnit> {
     var units : array<TextFlowUnit>
     let source_len = length(source)
     for (span in spans) {
         let a = clamp(span.source.start_byte, 0, source_len)
         let b = clamp(span.source.end_byte, a, source_len)
-        let span_text = slice(source, a, b)
-        let graphemes <- text_graphemes(span_text)
+        var span_text := slice(source, a, b)
+        var graphemes <- text_graphemes(span_text)
         for (g in graphemes) {
             let ga = a + g.source.start_byte
             let gb = a + g.source.end_byte
             let hard = g.first_codepoint == 0x000Au || g.first_codepoint == 0x000Du
+            let measured_width = (hard ? 0.0f
+                : invoke(measure, source, ga, gb, span.style_id))
             units |> push(TextFlowUnit(
                 source = TextSourceRange(start_byte = ga, end_byte = gb),
                 style_id = span.style_id,
                 semantic_id = span.semantic_id,
-                width = hard ? 0.0f : invoke(measure, slice(source, ga, gb)),
+                width = measured_width,
                 height = line_height,
                 break_after = natural_break_after(g.last_codepoint)
                     || (span.uri_wrap && uri_break_after(g.last_codepoint)),
                 hard_break = hard))
         }
+        delete graphemes
         if (span.trailing_control_id >= 0 && span.trailing_control_size.x > 0.0f) {
             units |> push(TextFlowUnit(
                 source = TextSourceRange(start_byte = b, end_byte = b),
@@ -545,14 +553,9 @@ def private emit_line(var layout : TextFlowLayout; units : array<TextFlowUnit> c
     return line_height
 }
 
-def public layout_text_flow(source : string; spans : array<TextFlowSpan> const;
-                            max_width, line_height : float;
-                            measure : block<(text : string) : float>) : TextFlowLayout {
-    //! Greedy inline layout. Text is never split inside a grapheme cluster.
-    //! When no natural/URI opportunity fits, the last resort is a grapheme
-    //! boundary, allowing even an unbroken URI to remain within the viewport.
+def private layout_units(units : array<TextFlowUnit> const;
+                         max_width, line_height : float) : TextFlowLayout {
     var layout : TextFlowLayout
-    let units <- make_units(source, spans, line_height, measure)
     let width_limit = max(max_width, 1.0f)
     var start = 0
     var y = 0.0f
@@ -602,4 +605,40 @@ def public layout_text_flow(source : string; spans : array<TextFlowSpan> const;
 
     layout.size = float2(min(widest, width_limit), y)
     return <- layout
+}
+
+def public layout_text_flow_styled_ranges(source : string;
+                                          spans : array<TextFlowSpan> const;
+                                          max_width, line_height : float;
+                                          measure : block<(text : string;
+                                              start_byte : int; end_byte : int;
+                                              style_id : int) : float>) : TextFlowLayout {
+    //! Greedy inline layout with style-aware measurement. Text is never split
+    //! inside a grapheme cluster; the measured style is carried unchanged into
+    //! each emitted fragment so rendering can use the identical font role.
+    var units <- make_units(source, spans, line_height, measure)
+    var layout <- layout_units(units, max_width, line_height)
+    delete units
+    return <- layout
+}
+
+def public layout_text_flow_styled(source : string; spans : array<TextFlowSpan> const;
+                                   max_width, line_height : float;
+                                   measure : block<(text : string; style_id : int) : float>) : TextFlowLayout {
+    return <- layout_text_flow_styled_ranges(source, spans, max_width, line_height,
+        $(text : string; start_byte : int; end_byte : int; style_id : int) : float {
+            var value := slice(text, start_byte, end_byte)
+            let width = invoke(measure, value, style_id)
+            return width
+        })
+}
+
+def public layout_text_flow(source : string; spans : array<TextFlowSpan> const;
+                            max_width, line_height : float;
+                            measure : block<(text : string) : float>) : TextFlowLayout {
+    //! Compatibility overload for consumers whose styles share one font.
+    return <- layout_text_flow_styled(source, spans, max_width, line_height,
+        $(text : string; style_id : int) : float {
+            return invoke(measure, text)
+        })
 }

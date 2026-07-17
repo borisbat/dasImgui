@@ -1,6 +1,6 @@
 options gen2
 
-module imgui_fonts
+module imgui_fonts shared
 
 require imgui public
 require daslib/fio
@@ -10,6 +10,17 @@ require daslib/module_path
 // of the generated imgui.h binding. Keep these public names aligned with that
 // upstream enum so callers never need magic bit values.
 let public IMGUI_FREETYPE_LOAD_COLOR = 1u << 8
+
+struct public FontRoleSet {
+    //! Reusable typography palette. Rich text selects the four prose roles and
+    //! monospace for code; terminal/editor consumers can use monospace alone.
+    regular : ImFont? = null
+    bold : ImFont? = null
+    italic : ImFont? = null
+    bold_italic : ImFont? = null
+    monospace : ImFont? = null
+    size_px : float = 0.0f
+}
 
 def private bundled_mono_font_path() : string {
     if (get_running_platform_name() == "emscripten") {
@@ -106,4 +117,75 @@ def public load_unicode_ui_font(size_px : float;
         merge_unicode_source("/usr/share/opentype/noto/NotoSansCJK-Regular.ttc", size_px, loaded_sources)
     }
     return font
+}
+
+def private merge_role_fallbacks(size_px : float;
+                                 var loaded_sources : array<string>) {
+    // Each role is a separate ImFont and therefore needs its own explicit
+    // fallback stack. First face wins, so color emoji precedes symbol fonts.
+    if (get_running_platform_name() == "windows") {
+        merge_unicode_source("C:/Windows/Fonts/seguiemj.ttf", size_px,
+                             loaded_sources, IMGUI_FREETYPE_LOAD_COLOR)
+        merge_unicode_source("C:/Windows/Fonts/seguisym.ttf", size_px, loaded_sources)
+        merge_unicode_source("C:/Windows/Fonts/NotoSans-Regular.ttf", size_px, loaded_sources)
+        merge_unicode_source("C:/Windows/Fonts/NotoSansJP-Regular.ttf", size_px, loaded_sources)
+        merge_unicode_source("C:/Windows/Fonts/msyh.ttc", size_px, loaded_sources)
+        merge_unicode_source("C:/Windows/Fonts/malgun.ttf", size_px, loaded_sources)
+        merge_unicode_source("C:/Windows/Fonts/NotoSansHebrew-Regular.ttf", size_px, loaded_sources)
+        merge_unicode_source("C:/Windows/Fonts/NotoSansArabic-Regular.ttf", size_px, loaded_sources)
+    } elif (get_running_platform_name() == "osx") {
+        merge_unicode_source("/System/Library/Fonts/Apple Symbols.ttf", size_px, loaded_sources)
+        merge_unicode_source("/System/Library/Fonts/Apple Color Emoji.ttc", size_px, loaded_sources)
+    } else {
+        merge_unicode_source("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", size_px, loaded_sources)
+        merge_unicode_source("/usr/share/fonts/truetype/noto/NotoSansSymbols2-Regular.ttf", size_px, loaded_sources)
+        merge_unicode_source("/usr/share/opentype/noto/NotoSansCJK-Regular.ttc", size_px, loaded_sources)
+    }
+}
+
+def private load_unicode_role(primary, fallback_primary : string; size_px : float;
+                              var loaded_sources : array<string>) : ImFont? {
+    let selected = font_file_exists(primary) ? primary : fallback_primary
+    var font = load_font_from_file(selected, size_px)
+    if (font != null) {
+        loaded_sources |> push(selected)
+        merge_role_fallbacks(size_px, loaded_sources)
+    }
+    return font
+}
+
+def public load_unicode_font_roles(size_px : float;
+                                   var loaded_sources : array<string>) : FontRoleSet {
+    //! Build prose regular/bold/italic/bold-italic roles and a monospace role.
+    //! Windows uses Segoe UI for prose and Consolas for code; other platforms
+    //! use common system faces when present and degrade to bundled JetBrains
+    //! Mono without changing the consuming API.
+    let bundled = bundled_mono_font_path()
+    var regular_path = bundled
+    var bold_path = bundled
+    var italic_path = bundled
+    var bold_italic_path = bundled
+    var mono_path = bundled
+    if (get_running_platform_name() == "windows") {
+        regular_path = "C:/Windows/Fonts/segoeui.ttf"
+        bold_path = "C:/Windows/Fonts/segoeuib.ttf"
+        italic_path = "C:/Windows/Fonts/segoeuii.ttf"
+        bold_italic_path = "C:/Windows/Fonts/segoeuiz.ttf"
+        mono_path = "C:/Windows/Fonts/consola.ttf"
+    } elif (get_running_platform_name() != "osx") {
+        regular_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+        bold_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+        italic_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Oblique.ttf"
+        bold_italic_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans-BoldOblique.ttf"
+        mono_path = "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf"
+    }
+
+    var roles = FontRoleSet(size_px = size_px)
+    roles.regular = load_unicode_role(regular_path, bundled, size_px, loaded_sources)
+    roles.bold = load_unicode_role(bold_path, regular_path, size_px, loaded_sources)
+    roles.italic = load_unicode_role(italic_path, regular_path, size_px, loaded_sources)
+    roles.bold_italic = load_unicode_role(
+        bold_italic_path, bold_path, size_px, loaded_sources)
+    roles.monospace = load_unicode_role(mono_path, bundled, size_px, loaded_sources)
+    return roles
 }

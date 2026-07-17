@@ -100,3 +100,34 @@ def test_plain_text_uri_detection(t : T?) {
                "WWW.Example.org/path", "www URI is case-insensitive")
     t |> equal(uris[2].kind, TextUriKind.www, "www target requests scheme prefix")
 }
+
+[test]
+def test_text_flow_style_aware_measurement(t : T?) {
+    let source = "regular WIDE"
+    var spans = [
+        TextFlowSpan(source = TextSourceRange(start_byte = 0, end_byte = 8),
+                     style_id = 0),
+        TextFlowSpan(source = TextSourceRange(start_byte = 8, end_byte = length(source)),
+                     style_id = 7)
+    ]
+    var saw_regular = false
+    var saw_wide = false
+    let layout <- layout_text_flow_styled(source, spans, 80.0f, 18.0f,
+        $(value : string; style_id : int) : float {
+            if (style_id == 0) {
+                saw_regular = true
+            }
+            if (style_id == 7) {
+                saw_wide = true
+            }
+            return float(length(text_graphemes(value))) * (style_id == 7 ? 20.0f : 6.0f)
+        })
+    t |> success(saw_regular && saw_wide, "measurement receives each run's style id")
+    var preserved_wide_style = false
+    for (fragment in layout.fragments) {
+        preserved_wide_style = preserved_wide_style || fragment.style_id == 7
+    }
+    t |> success(preserved_wide_style, "layout fragments retain measured style")
+    t |> success(length(layout.lines) > 1,
+                 "wider role metrics change wrapping rather than only rendering")
+}

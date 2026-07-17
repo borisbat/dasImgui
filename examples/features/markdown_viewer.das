@@ -1,11 +1,15 @@
 options gen2
+options gc
+options persistent_heap
 
 require imgui/imgui_harness
 require imgui/imgui_fonts
 require imgui/imgui_markdown_view
 require imgui/imgui_theme_daslang
 require imgui/imgui_style_builtin
+require daslib/safe_addr
 require daslib/stringify
+require math
 
 // =============================================================================
 // FEATURE: markdown_viewer — typed MD4C model + source-mapped ImGui rendering.
@@ -17,15 +21,17 @@ require daslib/stringify
 // HEADLESS:   daslang.exe modules/dasImgui/examples/features/markdown_viewer.das -- --headless --headless-frames=60
 // =============================================================================
 
-var private g_font : ImFont?
+var private g_fonts = FontRoleSet()
 var private g_font_sources : array<string>
 var private g_doc = MdDocument()
+var private g_view = MarkdownViewState()
 var private g_status = "Hover, activate, or copy a link."
+var private g_zoom_percent = 100
 
 [export]
 def init() {
     harness_init("dasImgui Markdown viewer", 1040, 820)
-    g_font = load_unicode_ui_font(18.0f, g_font_sources)
+    g_fonts = load_unicode_font_roles(18.0f, g_font_sources)
     apply_daslang_theme(GetStyle())
     let source = %stringify~# Markdown + Unicode 🎨
 
@@ -73,8 +79,34 @@ def update() {
     SetNextWindowSize(ImVec2(1000.0f, 780.0f), ImGuiCond.Always)
     window(MARKDOWN_VIEW_WIN, (text = "Markdown viewer", closable = false,
                                flags = ImGuiWindowFlags.None)) {
-        with_font(g_font, 18.0f) {
-            let result = markdown_view("probe", g_doc)
+        let io & = unsafe(GetIO())
+        if (IsWindowHovered(ImGuiHoveredFlags.RootAndChildWindows) && io.KeyCtrl) {
+            if (io.MouseWheel > 0.0f) {
+                g_zoom_percent = min(g_zoom_percent + 10, 300)
+            } elif (io.MouseWheel < 0.0f) {
+                g_zoom_percent = max(g_zoom_percent - 10, 50)
+            }
+        }
+        text("Zoom")
+        same_line()
+        SetNextItemWidth(180.0f)
+        if (edit_slider_int(safe_addr(g_zoom_percent),
+                (id = "MARKDOWN_ZOOM", text = "##zoom", v_min = 50,
+                 v_max = 300, format = "%d%%"))) {
+            g_zoom_percent = clamp(((g_zoom_percent + 5) / 10) * 10, 50, 300)
+        }
+        same_line()
+        if (small_button(ZOOM_RESET, (text = "100%"))) {
+            g_zoom_percent = 100
+        }
+        same_line()
+        text_disabled("Ctrl+wheel")
+        separator()
+        with_font(g_fonts.regular, 18.0f) {
+            var markdown_style = MarkdownViewStyle(
+                fonts = g_fonts,
+                zoom = float(g_zoom_percent) / 100.0f)
+            let result = markdown_view("probe", g_doc, g_view, markdown_style)
             if (result.copied) {
                 g_status = "Copied: {result.target}"
             } elif (result.activated) {
@@ -90,6 +122,7 @@ def update() {
 
 [export]
 def shutdown() {
+    markdown_view_dispose(g_view)
     harness_shutdown()
 }
 
@@ -98,6 +131,7 @@ def main() {
     init()
     while (!exit_requested()) {
         update()
+        harness_maybe_collect_gc()
     }
     shutdown()
 }

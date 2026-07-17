@@ -316,6 +316,40 @@ namespace das {
         drawList.AddText(pos, col, text);
     }
 
+    ImVec2 CalcTextSizeForFont(ImFont * font, float font_size, const char * text) {
+        return font ? font->CalcTextSizeA(font_size, FLT_MAX, 0.0f, text ? text : "")
+                    : ImVec2();
+    }
+
+    static void ClampTextRange(const char * text, int32_t text_size,
+                               int32_t & start_byte, int32_t & end_byte,
+                               const char *& begin, const char *& end) {
+        const char * value = text ? text : "";
+        const int32_t size = text ? (text_size < 0 ? 0 : text_size) : 0;
+        start_byte = start_byte < 0 ? 0 : (start_byte > size ? size : start_byte);
+        end_byte = end_byte < start_byte ? start_byte : (end_byte > size ? size : end_byte);
+        begin = value + start_byte;
+        end = value + end_byte;
+    }
+
+    ImVec2 CalcTextSizeForFontRange(ImFont * font, float font_size, const char * text,
+                                     int32_t text_size, int32_t start_byte, int32_t end_byte) {
+        if (!font) return ImVec2();
+        const char * begin = nullptr;
+        const char * end = nullptr;
+        ClampTextRange(text, text_size, start_byte, end_byte, begin, end);
+        return font->CalcTextSizeA(font_size, FLT_MAX, 0.0f, begin, end);
+    }
+
+    void AddTextRange(ImDrawList & drawList, ImFont* font, float font_size,
+                      const ImVec2& pos, ImU32 col, const char* text,
+                      int32_t text_size, int32_t start_byte, int32_t end_byte) {
+        const char * begin = nullptr;
+        const char * end = nullptr;
+        ClampTextRange(text, text_size, start_byte, end_byte, begin, end);
+        drawList.AddText(font, font_size, pos, col, begin, end);
+    }
+
     void AddText2( ImDrawList & drawList, ImFont* font, float font_size, const ImVec2& pos, ImU32 col,
         const char* text_begin, float wrap_width, const ImVec4* cpu_fine_clip_rect) {
         drawList.AddText(font,font_size,pos,col,text_begin,nullptr,wrap_width,cpu_fine_clip_rect);
@@ -610,6 +644,15 @@ namespace das {
         // imgui draw list
         addExtern<DAS_BIND_FUN(das::AddText), SimNode_ExtFuncCall, imguiTempFn>(*this, lib, "AddText",
             SideEffects::worstDefault, "das::AddText");
+        addExtern<DAS_BIND_FUN(das::CalcTextSizeForFont)>(*this, lib, "CalcTextSizeForFont",
+            SideEffects::none, "das::CalcTextSizeForFont")
+                ->args({"font","font_size","text"});
+        addExtern<DAS_BIND_FUN(das::CalcTextSizeForFontRange)>(*this, lib, "CalcTextSizeForFontRange",
+            SideEffects::none, "das::CalcTextSizeForFontRange")
+                ->args({"font","font_size","text","text_size","start_byte","end_byte"});
+        addExtern<DAS_BIND_FUN(das::AddTextRange), SimNode_ExtFuncCall, imguiTempFn>(*this, lib, "AddTextRange",
+            SideEffects::worstDefault, "das::AddTextRange")
+                ->args({"drawList","font","font_size","pos","col","text","text_size","start_byte","end_byte"});
         addExtern<DAS_BIND_FUN(das::AddText2), SimNode_ExtFuncCall, imguiTempFn>(*this, lib, "AddText",
             SideEffects::worstDefault, "das::AddText2")
                 ->args({"drawList","font","font_size","pos","col","text","wrap_width","cpu_fine_clip_rect"})

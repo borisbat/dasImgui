@@ -42,6 +42,12 @@ namespace das {
         int32_t flags, const MarkdownEventBlock & block, Context * context, LineInfoArg * at);
     DAS_MOD_API char* text_range_string(ImGuiTextFilter::ImGuiTextRange &r, das::Context *context, das::LineInfoArg *at);
     DAS_MOD_API void AddText( ImDrawList & drawList, const ImVec2& pos, ImU32 col, const char* text );
+    DAS_MOD_API ImVec2 CalcTextSizeForFont(ImFont * font, float font_size, const char * text);
+    DAS_MOD_API ImVec2 CalcTextSizeForFontRange(ImFont * font, float font_size, const char * text,
+        int32_t text_size, int32_t start_byte, int32_t end_byte);
+    DAS_MOD_API void AddTextRange(ImDrawList & drawList, ImFont* font, float font_size,
+        const ImVec2& pos, ImU32 col, const char* text, int32_t text_size,
+        int32_t start_byte, int32_t end_byte);
     DAS_MOD_API void AddText2( ImDrawList & drawList, ImFont* font, float font_size, const ImVec2& pos, ImU32 col,
         const char* text_begin, float wrap_width = 0.0f, const ImVec4* cpu_fine_clip_rect = nullptr);
     // image API — const ImTextureRef& wrappers (const-arg binding).
