@@ -84,3 +84,19 @@ def test_text_flow_uri_fragments(t : T?) {
                  "one semantic URI produces multiple visual fragments")
     t |> equal(control_count, 1, "copy control reserves exactly one inline slot")
 }
+
+[test]
+def test_plain_text_uri_detection(t : T?) {
+    let source = "See https://example.com/文档/naïve/é?q=👩‍💻, editor://workspace/文档 and WWW.Example.org/path. Note: ordinary text."
+    let uris <- text_uris(source)
+    t |> equal(length(uris), 3, "scheme, custom scheme, and www URI detection")
+    if (length(uris) != 3) return
+    t |> equal(slice(source, uris[0].source.start_byte, uris[0].source.end_byte),
+               "https://example.com/文档/naïve/é?q=👩‍💻",
+               "Unicode URI body and grapheme bytes are retained")
+    t |> equal(slice(source, uris[1].source.start_byte, uris[1].source.end_byte),
+               "editor://workspace/文档", "custom slash-form URI")
+    t |> equal(slice(source, uris[2].source.start_byte, uris[2].source.end_byte),
+               "WWW.Example.org/path", "www URI is case-insensitive")
+    t |> equal(uris[2].kind, TextUriKind.www, "www target requests scheme prefix")
+}

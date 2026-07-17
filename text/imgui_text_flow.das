@@ -70,6 +70,16 @@ struct public TextFlowLayout {
     size : float2
 }
 
+enum public TextUriKind {
+    absolute
+    www
+}
+
+struct public TextUri {
+    source : TextSourceRange
+    kind : TextUriKind = TextUriKind.absolute
+}
+
 struct private TextScalar {
     source : TextSourceRange
     codepoint : uint
@@ -89,6 +99,130 @@ struct private TextFlowUnit {
 
 def private continuation_byte(b : uint) : bool {
     return (b & 0xC0u) == 0x80u
+}
+
+def private ascii_alpha(b : uint) : bool {
+    return ((b >= uint('A') && b <= uint('Z'))
+        || (b >= uint('a') && b <= uint('z')))
+}
+
+def private ascii_digit(b : uint) : bool {
+    return b >= uint('0') && b <= uint('9')
+}
+
+def private uri_boundary_before(bytes : array<uint8> const#; at : int) : bool {
+    if (at <= 0) return true
+    let b = uint(bytes[at - 1])
+    return b < 0x80u && !ascii_alpha(b) && !ascii_digit(b) && b != uint('_')
+}
+
+def private starts_ascii_ci(bytes : array<uint8> const#; at : int; value : string) : bool {
+    if (at < 0 || at + length(value) > length(bytes)) return false
+    var matches = true
+    peek_data(value) $(expected) {
+        for (i in range(length(expected))) {
+            var a = uint(bytes[at + i])
+            var b = uint(expected[i])
+            if (a >= uint('A') && a <= uint('Z')) {
+                a += 32u
+            }
+            if (b >= uint('A') && b <= uint('Z')) {
+                b += 32u
+            }
+            if (a != b) {
+                matches = false
+            }
+        }
+    }
+    return matches
+}
+
+def private known_uri_scheme(value : string) : bool {
+    let lower = to_lower(value)
+    return (lower == "http" || lower == "https" || lower == "ftp"
+        || lower == "file" || lower == "mailto" || lower == "tel"
+        || lower == "urn" || lower == "ssh" || lower == "git"
+        || lower == "vscode")
+}
+
+def private uri_end(bytes : array<uint8> const#; start : int) : int {
+    var at = start
+    var parens = 0
+    while (at < length(bytes)) {
+        let b = uint(bytes[at])
+        if (b <= 0x20u || b == uint('"') || b == uint('\'')
+                || b == uint('<') || b == uint('>') || b == uint('`')
+                || b == uint('[') || b == uint(']')
+                || b == uint('{') || b == uint('}')) break
+        if (b == uint('(')) {
+            parens++
+        } elif (b == uint(')')) {
+            if (parens == 0) break
+            parens--
+        }
+        at++
+    }
+    while (at > start) {
+        let b = uint(bytes[at - 1])
+        if (b == uint('.') || b == uint(',') || b == uint(';')
+                || b == uint('!') || b == uint('?') || b == uint(':')) {
+            at--
+        } else {
+            break
+        }
+    }
+    return at
+}
+
+def public text_uris(text : string) : array<TextUri> {
+    //! Find URI-shaped spans in arbitrary UTF-8 text. This intentionally lives
+    //! below Markdown: terminals, editors, logs, and Markdown text leaves all
+    //! need identical recognition. Unicode bytes are accepted in the URI body;
+    //! surrounding punctuation is excluded conservatively.
+    var out : array<TextUri>
+    peek_data(text) $(bytes) {
+        var at = 0
+        while (at < length(bytes)) {
+            if (!uri_boundary_before(bytes, at)) {
+                at++
+                continue
+            }
+            var body = -1
+            var kind = TextUriKind.absolute
+            if (starts_ascii_ci(bytes, at, "www.")) {
+                body = at + 4
+                kind = TextUriKind.www
+            } elif (ascii_alpha(uint(bytes[at]))) {
+                var colon = at + 1
+                while (colon < length(bytes)) {
+                    let b = uint(bytes[colon])
+                    if (!ascii_alpha(b) && !ascii_digit(b)
+                            && b != uint('+') && b != uint('-') && b != uint('.')) break
+                    colon++
+                }
+                if (colon < length(bytes) && uint(bytes[colon]) == uint(':')) {
+                    let slash_form = (colon + 2 < length(bytes)
+                        && uint(bytes[colon + 1]) == uint('/')
+                        && uint(bytes[colon + 2]) == uint('/'))
+                    if (slash_form || known_uri_scheme(slice(text, at, colon))) {
+                        body = slash_form ? colon + 3 : colon + 1
+                    }
+                }
+            }
+            if (body >= 0) {
+                let end_ = uri_end(bytes, body)
+                if (end_ > body) {
+                    out |> push(TextUri(
+                        source = TextSourceRange(start_byte = at, end_byte = end_),
+                        kind = kind))
+                    at = end_
+                    continue
+                }
+            }
+            at++
+        }
+    }
+    return <- out
 }
 
 def private decode_scalars(text : string; var out : array<TextScalar>) {

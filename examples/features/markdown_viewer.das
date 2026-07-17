@@ -31,6 +31,8 @@ def init() {
 
 This is a source-mapped **Markdown viewer** with *emphasis*, `inline code`, ~~deleted text~~, named [documentation](../docs/editor.md "Editor docs"), and a long autolink https://example.com/文档/naïve/é/terminal-and-editor?mode=full&emoji=👩‍💻#résumé.
 
+The shared plain-text pass also recognizes custom editor://workspace/文档 and WWW.Example.org/Unicode/文档 outside Markdown link syntax.
+
 > Font fallback, grapheme-safe wrapping, semantic links, and the Markdown model are separate layers.
 
 ## Work list
@@ -73,9 +75,9 @@ def update() {
                                flags = ImGuiWindowFlags.None)) {
         with_font(g_font, 18.0f) {
             let result = markdown_view("probe", g_doc)
-            if (result.copied_node >= 0) {
+            if (result.copied) {
                 g_status = "Copied: {result.target}"
-            } elif (result.activated_node >= 0) {
+            } elif (result.activated) {
                 g_status = "Open requested: {result.target}"
             }
             separator()

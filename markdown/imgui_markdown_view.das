@@ -37,9 +37,13 @@ struct public MarkdownViewStyle {
 }
 
 struct public MarkdownViewResult {
+    hovered : bool = false
+    activated : bool = false
+    copied : bool = false
     hovered_node : int = -1
     activated_node : int = -1
     copied_node : int = -1
+    source : TextSourceRange = TextSourceRange(start_byte = -1, end_byte = -1)
     target : string
 }
 
@@ -81,9 +85,25 @@ def private fragment_max(origin : float2; fragment : TextFlowFragment const) : f
     return origin + float2(fragment.rect.z, fragment.rect.w)
 }
 
-def private link_target(doc : MdDocument const; node_index : int) : string {
-    if (node_index < 0 || node_index >= length(doc.nodes)) return ""
-    return doc.nodes[node_index].destination
+def private run_semantic_id(doc : MdDocument const; run : MdInlineRun const;
+                            run_index : int) : int {
+    if (!run.is_link) return -1
+    return run.semantic_node >= 0 ? run.semantic_node : length(doc.nodes) + run_index
+}
+
+def private link_run_index(doc : MdDocument const; content : MdInlineContent const;
+                           semantic_id : int) : int {
+    for (i in range(length(content.runs))) {
+        if (run_semantic_id(doc, content.runs[i], i) == semantic_id) return i
+    }
+    return -1
+}
+
+def private link_target(doc : MdDocument const; content : MdInlineContent const;
+                        semantic_id : int) : string {
+    let index = link_run_index(doc, content, semantic_id)
+    if (index < 0) return ""
+    return content.runs[index].destination
 }
 
 def private render_inline(id : string; doc : MdDocument const;
@@ -97,16 +117,17 @@ def private render_inline(id : string; doc : MdDocument const;
     var spans : array<TextFlowSpan>
     for (i in range(length(content.runs))) {
         let run = content.runs[i]
-        let has_semantic = run.semantic_node >= 0
+        let semantic_id = run_semantic_id(doc, run, i)
+        let has_semantic = semantic_id >= 0
         let is_last_semantic = has_semantic && (i + 1 >= length(content.runs)
-            || content.runs[i + 1].semantic_node != run.semantic_node)
+            || run_semantic_id(doc, content.runs[i + 1], i + 1) != semantic_id)
         spans |> push(TextFlowSpan(
             source = run.display,
             style_id = run_style(run),
-            semantic_id = run.semantic_node,
+            semantic_id = semantic_id,
             uri_wrap = run.is_link,
             trailing_control_id = style.show_link_copy && is_last_semantic
-                ? run.semantic_node : -1,
+                ? semantic_id : -1,
             trailing_control_size = style.show_link_copy && is_last_semantic
                 ? icon_full : float2(0.0f, 0.0f)))
     }
@@ -128,8 +149,14 @@ def private render_inline(id : string; doc : MdDocument const;
     }
     var cursor_moved = false
     if (hovered >= 0) {
+        result.hovered = true
         result.hovered_node = hovered
-        result.target := link_target(doc, hovered)
+        let run_index = link_run_index(doc, content, hovered)
+        if (run_index >= 0) {
+            result.hovered_node = content.runs[run_index].semantic_node
+            result.source = content.runs[run_index].source
+        }
+        result.target := link_target(doc, content, hovered)
     }
 
     var dl = GetWindowDrawList()
@@ -172,8 +199,14 @@ def private render_inline(id : string; doc : MdDocument const;
     if (hovered >= 0) {
         SetMouseCursor(ImGuiMouseCursor.Hand)
         if (IsMouseClicked(ImGuiMouseButton.Left, false)) {
-            result.activated_node = hovered
-            result.target := link_target(doc, hovered)
+            let run_index = link_run_index(doc, content, hovered)
+            result.activated = true
+            result.activated_node = (run_index >= 0
+                ? content.runs[run_index].semantic_node : -1)
+            if (run_index >= 0) {
+                result.source = content.runs[run_index].source
+            }
+            result.target := link_target(doc, content, hovered)
         }
         for (fragment in layout.fragments) {
             if (!fragment.is_control || fragment.control_id != hovered) continue
@@ -181,9 +214,15 @@ def private render_inline(id : string; doc : MdDocument const;
             cursor_moved = true
             if (icon_button_draw("##markdown_copy_{id}_{hovered}", "duplicate",
                                  style.copy_icon_size, 1.0f)) {
-                let target = link_target(doc, hovered)
+                let run_index = link_run_index(doc, content, hovered)
+                let target = link_target(doc, content, hovered)
                 SetClipboardText(target)
-                result.copied_node = hovered
+                result.copied = true
+                result.copied_node = (run_index >= 0
+                    ? content.runs[run_index].semantic_node : -1)
+                if (run_index >= 0) {
+                    result.source = content.runs[run_index].source
+                }
                 result.target := target
             }
             if (IsItemHovered()) SetTooltip("Copy URI")

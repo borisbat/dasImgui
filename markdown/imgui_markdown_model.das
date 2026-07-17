@@ -128,6 +128,8 @@ struct public MdInlineRun {
     is_code : bool = false
     is_strikethrough : bool = false
     is_link : bool = false
+    is_automatic_uri : bool = false
+    destination : string
 }
 
 struct public MdInlineContent {
@@ -343,7 +345,7 @@ def private collect_inline(doc : MdDocument const; node_index : int;
         }
         let start = length(content.text)
         content.text = content.text + value
-        content.runs |> push(MdInlineRun(
+        var run = MdInlineRun(
             display = TextSourceRange(start_byte = start, end_byte = start + length(value)),
             source = node.source,
             source_exact = node.source_exact,
@@ -353,7 +355,11 @@ def private collect_inline(doc : MdDocument const; node_index : int;
             is_emphasis = next_emphasis,
             is_code = next_code,
             is_strikethrough = next_strike,
-            is_link = next_semantic >= 0))
+            is_link = next_semantic >= 0)
+        if (next_semantic >= 0) {
+            run.destination := doc.nodes[next_semantic].destination
+        }
+        content.runs |> push(<- run)
         return
     }
 
@@ -365,12 +371,72 @@ def private collect_inline(doc : MdDocument const; node_index : int;
     }
 }
 
+def private split_plain_uris(doc : MdDocument const; var content : MdInlineContent) {
+    var split_runs : array<MdInlineRun>
+    for (i in range(length(content.runs))) {
+        var base <- content.runs[i]
+        let can_detect = (!base.is_link && base.source_exact
+            && base.node_index >= 0
+            && doc.nodes[base.node_index].kind == MdNodeKind.text)
+        if (!can_detect) {
+            split_runs |> push(<- base)
+            continue
+        }
+        let value = slice(content.text, base.display.start_byte, base.display.end_byte)
+        let uris <- text_uris(value)
+        if (empty(uris)) {
+            split_runs |> push(<- base)
+            continue
+        }
+        var cursor = 0
+        for (uri in uris) {
+            if (uri.source.start_byte > cursor) {
+                var before := base
+                before.display = TextSourceRange(
+                    start_byte = base.display.start_byte + cursor,
+                    end_byte = base.display.start_byte + uri.source.start_byte)
+                before.source = TextSourceRange(
+                    start_byte = base.source.start_byte + cursor,
+                    end_byte = base.source.start_byte + uri.source.start_byte)
+                split_runs |> push(<- before)
+            }
+            var linked := base
+            linked.display = TextSourceRange(
+                start_byte = base.display.start_byte + uri.source.start_byte,
+                end_byte = base.display.start_byte + uri.source.end_byte)
+            linked.source = TextSourceRange(
+                start_byte = base.source.start_byte + uri.source.start_byte,
+                end_byte = base.source.start_byte + uri.source.end_byte)
+            linked.is_link = true
+            linked.is_automatic_uri = true
+            linked.semantic_node = -1
+            let display_uri = slice(value, uri.source.start_byte, uri.source.end_byte)
+            linked.destination := (uri.kind == TextUriKind.www
+                ? "https://" + display_uri : display_uri)
+            split_runs |> push(<- linked)
+            cursor = uri.source.end_byte
+        }
+        if (cursor < length(value)) {
+            var after := base
+            after.display = TextSourceRange(
+                start_byte = base.display.start_byte + cursor,
+                end_byte = base.display.end_byte)
+            after.source = TextSourceRange(
+                start_byte = base.source.start_byte + cursor,
+                end_byte = base.source.end_byte)
+            split_runs |> push(<- after)
+        }
+    }
+    content.runs <- split_runs
+}
+
 def public md_inline_content(doc : MdDocument const; node_index : int) : MdInlineContent {
     //! Flatten one inline-bearing subtree into display text plus semantic/style
     //! runs. This remains independent of ImGui and is shared by future viewer,
     //! editor, accessibility, and copy/export paths.
     var content = MdInlineContent()
     collect_inline(doc, node_index, content, false, false, false, false, -1)
+    split_plain_uris(doc, content)
     return <- content
 }
 

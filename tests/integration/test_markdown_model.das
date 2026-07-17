@@ -181,3 +181,24 @@ def test_markdown_rejects_invalid_utf8(t : T?) {
     t |> equal(doc.error, "Markdown source is not valid UTF-8",
                "invalid UTF-8 reports a stable diagnostic")
 }
+
+[test]
+def test_markdown_plain_unicode_uris(t : T?) {
+    let source = "Plain https://example.com/文档/naïve/é?q=👩‍💻 and editor://workspace/文档."
+    let doc <- md_parse(source)
+    t |> success(doc.ok, "plain Unicode URI document parses")
+    let paragraph = first_kind(doc, MdNodeKind.paragraph)
+    let inline <- md_inline_content(doc, paragraph)
+    var automatic = 0
+    for (run in inline.runs) {
+        if (run.is_automatic_uri) {
+            automatic++
+            t |> success(run.semantic_node < 0,
+                         "plain URI is semantic without fabricating Markdown node")
+            t |> equal(slice(doc.source, run.source.start_byte, run.source.end_byte),
+                       run.destination, "plain URI target maps to exact source")
+        }
+    }
+    t |> equal(automatic, 2,
+               "shared detector supplements Markdown parser for plain Unicode/custom URIs")
+}
