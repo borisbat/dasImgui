@@ -35,6 +35,11 @@ namespace das {
     DAS_MOD_API bool InputText(vec4f vdiit, const char * label, ImGuiInputTextFlags_ flags, LineInfoArg * at, Context * context );
     DAS_MOD_API bool InputTextWithHint(vec4f vdiit, const char * label, const char * hint, ImGuiInputTextFlags_ flags, LineInfoArg * at, Context * context );
     DAS_MOD_API bool PassFilter ( ImGuiTextFilter & filter, const char* text );
+    using MarkdownEventBlock = TBlock<void,
+        int32_t, int32_t, int32_t, int32_t, int32_t, int32_t, int32_t,
+        const char *, const char *>;
+    DAS_MOD_API int32_t MarkdownParseEvents(const char * source, int32_t source_size,
+        int32_t flags, const MarkdownEventBlock & block, Context * context, LineInfoArg * at);
     DAS_MOD_API char* text_range_string(ImGuiTextFilter::ImGuiTextRange &r, das::Context *context, das::LineInfoArg *at);
     DAS_MOD_API void AddText( ImDrawList & drawList, const ImVec2& pos, ImU32 col, const char* text );
     DAS_MOD_API void AddText2( ImDrawList & drawList, ImFont* font, float font_size, const ImVec2& pos, ImU32 col,

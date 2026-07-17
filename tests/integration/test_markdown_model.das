@@ -1,0 +1,154 @@
+options gen2
+options indenting = 4
+
+require dastest/testing_boost public
+require imgui/imgui_markdown_model public
+require daslib/stringify
+
+def private first_kind(doc : MdDocument const; kind : MdNodeKind) : int {
+    for (i in range(length(doc.nodes))) {
+        if (doc.nodes[i].kind == kind) return i
+    }
+    return -1
+}
+
+def private first_text(doc : MdDocument const; value : string) : int {
+    for (i in range(length(doc.nodes))) {
+        let node = doc.nodes[i]
+        if (node.source_exact && md_node_text(doc, i) == value) return i
+    }
+    return -1
+}
+
+def private first_destination(doc : MdDocument const; value : string) : int {
+    for (i in range(length(doc.nodes))) {
+        if (doc.nodes[i].destination == value) return i
+    }
+    return -1
+}
+
+def private count_kind(doc : MdDocument const; kind : MdNodeKind) : int {
+    var count = 0
+    for (node in doc.nodes) {
+        if (node.kind == kind) count++
+    }
+    return count
+}
+
+[test]
+def test_markdown_gfm_model(t : T?) {
+    let source = %stringify~# Unicode Привет 文档
+
+Text with *emphasis*, **strong**, [named](https://example.com/a?x=1 "Example"), https://dascript.org and &amp;.
+
+- [x] done
+- [ ] todo
+
+| Left | Center | Right |
+| :--- | :----: | ----: |
+| α | β | γ |
+
+```das
+print("hi")
+```
+
+<div>raw</div>
+%%
+
+    let doc <- md_parse(source)
+    t |> success(doc.ok, "GFM document parses: {doc.error}")
+    if (!doc.ok) return
+
+    t |> success(doc.root >= 0, "document has a root")
+    t |> equal(doc.nodes[doc.root].kind, MdNodeKind.document,
+               "root is the Markdown document")
+    t |> success(doc.nodes[doc.root].first_child >= 0,
+                 "document root owns block children")
+    t |> success(!doc.nodes[doc.root].source_exact,
+                 "container ranges are explicitly derived, not exact")
+
+    let unicode_text = first_text(doc, "Unicode Привет 文档")
+    t |> success(unicode_text >= 0, "Unicode heading text survives unchanged")
+    if (unicode_text >= 0) {
+        let node = doc.nodes[unicode_text]
+        t |> success(node.source_exact, "Unicode leaf has exact UTF-8 byte range")
+        t |> equal(md_node_text(doc, unicode_text), "Unicode Привет 文档",
+                   "exact range slices the original UTF-8 source")
+    }
+
+    t |> success(first_kind(doc, MdNodeKind.emphasis) >= 0, "emphasis is typed")
+    t |> success(first_kind(doc, MdNodeKind.strong) >= 0, "strong text is typed")
+    t |> success(first_kind(doc, MdNodeKind.entity) >= 0, "entity is typed")
+
+    let named_link = first_destination(doc, "https://example.com/a?x=1")
+    t |> success(named_link >= 0, "named link destination is retained")
+    if (named_link >= 0) {
+        t |> equal(doc.nodes[named_link].title, "Example", "link title is retained")
+        t |> success(!doc.nodes[named_link].is_autolink, "named link is not autolink")
+    }
+    let auto_link = first_destination(doc, "https://dascript.org")
+    t |> success(auto_link >= 0, "bare URL becomes a link")
+    if (auto_link >= 0) {
+        t |> success(doc.nodes[auto_link].is_autolink, "bare URL is marked autolink")
+    }
+
+    var checked = 0
+    var unchecked = 0
+    for (node in doc.nodes) {
+        if (node.kind == MdNodeKind.list_item && node.is_task) {
+            if (node.is_checked) checked++
+            else unchecked++
+            t |> success(node.source.start_byte >= 0,
+                         "task item retains its checkbox marker offset")
+        }
+    }
+    t |> equal(checked, 1, "checked task metadata")
+    t |> equal(unchecked, 1, "unchecked task metadata")
+
+    let table_index = first_kind(doc, MdNodeKind.table_)
+    t |> success(table_index >= 0, "GFM table is typed")
+    if (table_index >= 0) {
+        t |> equal(doc.nodes[table_index].column_count, 3, "table column count")
+        t |> equal(doc.nodes[table_index].head_row_count, 1, "table head row count")
+        t |> equal(doc.nodes[table_index].body_row_count, 1, "table body row count")
+    }
+    var left_cells = 0
+    var center_cells = 0
+    var right_cells = 0
+    for (node in doc.nodes) {
+        if (node.kind == MdNodeKind.table_header_cell || node.kind == MdNodeKind.table_cell) {
+            if (node.alignment == MdAlignment.left) left_cells++
+            elif (node.alignment == MdAlignment.center) center_cells++
+            elif (node.alignment == MdAlignment.right) right_cells++
+        }
+    }
+    t |> success(left_cells > 0 && center_cells > 0 && right_cells > 0,
+                 "table cell alignment metadata")
+
+    let code = first_kind(doc, MdNodeKind.code_block)
+    t |> success(code >= 0, "fenced code block is typed")
+    if (code >= 0) {
+        t |> equal(doc.nodes[code].info, "das", "code info string")
+        t |> equal(doc.nodes[code].language, "das", "code language")
+    }
+
+    t |> equal(count_kind(doc, MdNodeKind.raw_html), 0,
+               "raw HTML blocks are disabled by default")
+    t |> equal(count_kind(doc, MdNodeKind.html_text), 0,
+               "raw inline HTML is disabled by default")
+}
+
+[test]
+def test_markdown_options(t : T?) {
+    let source = "~~old~~\n\n| A |\n|---|\n| B |\n"
+    let plain <- md_parse(source, MdParseOptions(
+        tables = false,
+        task_lists = false,
+        strikethrough = false,
+        permissive_autolinks = false))
+    t |> success(plain.ok, "restricted Markdown options still parse")
+    t |> equal(count_kind(plain, MdNodeKind.strikethrough), 0,
+               "strikethrough extension can be disabled")
+    t |> equal(count_kind(plain, MdNodeKind.table_), 0,
+               "table extension can be disabled")
+}

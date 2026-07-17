@@ -591,6 +591,12 @@ namespace das {
 
 	void Module_dasIMGUI::initMain () {
         addConstant(*this,"IMGUI_VERSION", IMGUI_VERSION);
+        // MD4C SAX bridge. The typed document arena lives in markdown/
+        // daScript code; native code only forwards parser events and exact
+        // source offsets for text callbacks.
+        addExtern<DAS_BIND_FUN(das::MarkdownParseEvents)>(*this, lib, "_markdown_parse_events",
+            SideEffects::invoke, "das::MarkdownParseEvents")
+                ->args({"source","source_size","flags","block","context","at"});
         // imgui text filter
         addExtern<DAS_BIND_FUN(das::PassFilter)>(*this, lib, "PassFilter",
             SideEffects::worstDefault, "das::PassFilter");
