@@ -13,9 +13,10 @@ module imgui_harness shared public
 
 //! Canonical wrapper for dasImgui examples and tests.
 //!
-//! Hides the GLFW/OpenGL backend boilerplate behind five helpers
+//! Hides the GLFW/OpenGL backend boilerplate behind six helpers
 //! (``harness_init`` / ``harness_begin_frame`` / ``harness_new_frame`` /
-//! ``harness_end_frame`` / ``harness_shutdown``). ``harness_new_frame`` runs the
+//! ``harness_end_frame`` / ``harness_maybe_collect_gc`` /
+//! ``harness_shutdown``). ``harness_new_frame`` runs the
 //! boost synth tick automatically, so synthetic input works with no opt-in.
 //! Examples ``require imgui_harness`` and never touch GLFW/GL symbols directly.
 //!
@@ -225,6 +226,17 @@ def public harness_begin_frame() : bool {
     }
     advance_coroutines()
     return true
+}
+
+def public harness_maybe_collect_gc() {
+    //! Standalone application GC boundary. Call from ``main`` immediately after
+    //! ``update()`` returns, never from inside a frame. JIT collection cannot
+    //! trace collectable values held in ordinary stack locals, so the caller's
+    //! ``main`` frame must not keep any across this call. The entry program must
+    //! declare both ``options persistent_heap`` and ``options gc``. Under
+    //! daslang-live this is a no-op because the host already collects between
+    //! update calls.
+    maybe_collect_gc()
 }
 
 def public harness_new_frame() {
