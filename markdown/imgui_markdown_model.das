@@ -137,6 +137,38 @@ struct public MdInlineContent {
     runs : array<MdInlineRun>
 }
 
+bitfield public MdSelectionStyles {
+    //! Semantic styles present in the selected display text. `all_regular`
+    //! means every contributing run is unstyled; `has_mixed_styles` means at
+    //! least two distinct combinations of the other style bits occur.
+    all_regular
+    has_strong
+    has_emphasis
+    has_code
+    has_strikethrough
+    has_links
+    has_mixed_styles
+}
+
+struct public MdTextPosition {
+    //! One caret in flattened inline display text and its corresponding byte
+    //! position in the original Markdown source.
+    valid : bool = false
+    inline_node : int = -1
+    display_byte : int = -1
+    source_byte : int = -1
+    trailing : bool = false
+}
+
+struct public MdSelectionStyleAccumulator {
+    //! View-independent accumulator: callers can include one or many inline
+    //! contents, which is how a viewer aggregates a cross-block selection.
+    styles : MdSelectionStyles
+    first_mask : int = -1
+    matched_runs : int = 0
+    regular_only : bool = true
+}
+
 def private block_kind(kind : int) : MdNodeKind {
     if (kind == 0) return MdNodeKind.document
     if (kind == 1) return MdNodeKind.quote
@@ -321,7 +353,8 @@ def private collect_inline(doc : MdDocument const; node_index : int;
     let node = doc.nodes[node_index]
     let next_strong = strong || node.kind == MdNodeKind.strong
     let next_emphasis = emphasis || node.kind == MdNodeKind.emphasis
-    let next_code = code || node.kind == MdNodeKind.inline_code
+    let next_code = (code || node.kind == MdNodeKind.inline_code
+        || node.kind == MdNodeKind.code_block)
     let next_strike = strike || node.kind == MdNodeKind.strikethrough
     var next_semantic = semantic_node
     if (node.kind == MdNodeKind.link || node.kind == MdNodeKind.image) {
@@ -438,6 +471,124 @@ def public md_inline_content(doc : MdDocument const; node_index : int) : MdInlin
     collect_inline(doc, node_index, content, false, false, false, false, -1)
     split_plain_uris(doc, content)
     return <- content
+}
+
+def private md_run_style_mask(run : MdInlineRun const) : int {
+    var mask = 0
+    if (run.is_strong) {
+        mask = mask | 1
+    }
+    if (run.is_emphasis) {
+        mask = mask | 2
+    }
+    if (run.is_code) {
+        mask = mask | 4
+    }
+    if (run.is_strikethrough) {
+        mask = mask | 8
+    }
+    if (run.is_link) {
+        mask = mask | 16
+    }
+    return mask
+}
+
+def public md_inline_position(content : MdInlineContent const;
+                              inline_node, display_byte : int;
+                              trailing : bool = false) : MdTextPosition {
+    //! Convert a grapheme-boundary display caret to original Markdown bytes.
+    //! At a style boundary `trailing` selects the run on the left; otherwise
+    //! the run on the right is preferred. Transformed runs (for example an
+    //! entity displayed as one glyph) snap to the whole source token.
+    if (empty(content.runs)) return MdTextPosition()
+    let at = clamp(display_byte, 0, length(content.text))
+    var chosen = -1
+    if (trailing) {
+        for (i in range(length(content.runs))) {
+            let run = content.runs[i]
+            if (run.display.start_byte < at && at <= run.display.end_byte) {
+                chosen = i
+                break
+            }
+        }
+    } else {
+        for (i in range(length(content.runs))) {
+            let run = content.runs[i]
+            if (run.display.start_byte <= at && at < run.display.end_byte) {
+                chosen = i
+                break
+            }
+        }
+    }
+    if (chosen < 0) {
+        chosen = trailing ? length(content.runs) - 1 : 0
+    }
+
+    let run = content.runs[chosen]
+    let display_size = run.display.end_byte - run.display.start_byte
+    let source_size = run.source.end_byte - run.source.start_byte
+    var source_byte = run.source.start_byte
+    if (run.source_exact && display_size == source_size) {
+        source_byte += clamp(at - run.display.start_byte, 0, display_size)
+    } elif (at >= run.display.end_byte) {
+        source_byte = run.source.end_byte
+    } elif (at > run.display.start_byte && trailing) {
+        source_byte = run.source.end_byte
+    }
+    return MdTextPosition(
+        valid = source_byte >= 0,
+        inline_node = inline_node,
+        display_byte = at,
+        source_byte = source_byte,
+        trailing = trailing)
+}
+
+def public md_text_selection_range(anchor, focus : MdTextPosition const) : TextSourceRange {
+    if (!anchor.valid || !focus.valid) {
+        return TextSourceRange(start_byte = -1, end_byte = -1)
+    }
+    return TextSourceRange(
+        start_byte = min(anchor.source_byte, focus.source_byte),
+        end_byte = max(anchor.source_byte, focus.source_byte))
+}
+
+def public md_selection_include(var accumulator : MdSelectionStyleAccumulator;
+                                content : MdInlineContent const;
+                                source : TextSourceRange const) {
+    //! Include semantic runs overlapping an original-source selection.
+    if (source.start_byte < 0 || source.end_byte <= source.start_byte) return
+    for (run in content.runs) {
+        if (run.source.start_byte < 0 || run.source.end_byte <= source.start_byte
+                || run.source.start_byte >= source.end_byte) continue
+        let mask = md_run_style_mask(run)
+        if (accumulator.first_mask < 0) {
+            accumulator.first_mask = mask
+        } elif (accumulator.first_mask != mask) {
+            accumulator.styles.has_mixed_styles = true
+        }
+        accumulator.matched_runs++
+        accumulator.regular_only = accumulator.regular_only && mask == 0
+        accumulator.styles.has_strong = accumulator.styles.has_strong || run.is_strong
+        accumulator.styles.has_emphasis = accumulator.styles.has_emphasis || run.is_emphasis
+        accumulator.styles.has_code = accumulator.styles.has_code || run.is_code
+        accumulator.styles.has_strikethrough = (accumulator.styles.has_strikethrough
+            || run.is_strikethrough)
+        accumulator.styles.has_links = accumulator.styles.has_links || run.is_link
+    }
+}
+
+def public md_selection_styles(accumulator : MdSelectionStyleAccumulator const) : MdSelectionStyles {
+    var styles = accumulator.styles
+    styles.all_regular = accumulator.matched_runs > 0 && accumulator.regular_only
+    return styles
+}
+
+def public md_source_text(doc : MdDocument const; source : TextSourceRange const) : string {
+    //! Slice a validated original-source range, useful for comment anchors and
+    //! persistence. This returns Markdown bytes, not flattened display text.
+    if (source.start_byte < 0 || source.end_byte < source.start_byte
+            || source.end_byte > length(doc.source)) return ""
+    return slice(doc.source, source.start_byte, source.end_byte)
 }
 
 def public md_parse(source : string;

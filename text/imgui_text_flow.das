@@ -70,6 +70,17 @@ struct public TextFlowLayout {
     size : float2
 }
 
+struct public TextFlowHit {
+    //! A grapheme-boundary caret produced by hit-testing local layout space.
+    valid : bool = false
+    byte_offset : int = -1
+    line_index : int = -1
+    fragment_index : int = -1
+    caret : float2
+    height : float = 0.0f
+    trailing : bool = false
+}
+
 enum public TextUriKind {
     absolute
     www
@@ -605,6 +616,60 @@ def private layout_units(units : array<TextFlowUnit> const;
 
     layout.size = float2(min(widest, width_limit), y)
     return <- layout
+}
+
+def public text_flow_hit_test_ranges(source : string;
+                                     layout : TextFlowLayout const;
+                                     point : float2;
+                                     measure : block<(text : string;
+                                         start_byte : int; end_byte : int;
+                                         style_id : int) : float>) : TextFlowHit {
+    //! Map a local screen point to the nearest caret within the text fragment
+    //! under it. Carets are emitted only at grapheme boundaries. Inline
+    //! controls deliberately do not participate in text selection.
+    for (fragment_index in range(length(layout.fragments))) {
+        let fragment = layout.fragments[fragment_index]
+        if (fragment.is_control) continue
+        if (point.x < fragment.rect.x || point.x > fragment.rect.z
+                || point.y < fragment.rect.y || point.y > fragment.rect.w) continue
+
+        let a = clamp(fragment.source.start_byte, 0, length(source))
+        let b = clamp(fragment.source.end_byte, a, length(source))
+        var value := slice(source, a, b)
+        var graphemes <- text_graphemes(value)
+        var x = fragment.rect.x
+        var hit = TextFlowHit()
+        for (g in graphemes) {
+            let ga = a + g.source.start_byte
+            let gb = a + g.source.end_byte
+            let width = invoke(measure, source, ga, gb, fragment.style_id)
+            if (point.x < x + width * 0.5f) {
+                hit = TextFlowHit(
+                    valid = true,
+                    byte_offset = ga,
+                    line_index = fragment.line_index,
+                    fragment_index = fragment_index,
+                    caret = float2(x, fragment.rect.y),
+                    height = fragment.rect.w - fragment.rect.y,
+                    trailing = false)
+                break
+            }
+            x += width
+        }
+        if (!hit.valid) {
+            hit = TextFlowHit(
+                valid = true,
+                byte_offset = b,
+                line_index = fragment.line_index,
+                fragment_index = fragment_index,
+                caret = float2(x, fragment.rect.y),
+                height = fragment.rect.w - fragment.rect.y,
+                trailing = true)
+        }
+        delete graphemes
+        return hit
+    }
+    return TextFlowHit()
 }
 
 def public layout_text_flow_styled_ranges(source : string;

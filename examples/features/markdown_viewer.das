@@ -15,7 +15,8 @@ require math
 // FEATURE: markdown_viewer — typed MD4C model + source-mapped ImGui rendering.
 //
 // Link activation is reported to the host status line; this probe deliberately
-// does not launch a browser. Hover a link to reveal its pre-reserved copy icon.
+// does not launch a browser. Drag-select any rendered inline text, then
+// right-click the highlight to exercise source/style/screen comment anchors.
 //
 // STANDALONE: daslang.exe modules/dasImgui/examples/features/markdown_viewer.das
 // HEADLESS:   daslang.exe modules/dasImgui/examples/features/markdown_viewer.das -- --headless --headless-frames=60
@@ -25,8 +26,33 @@ var private g_fonts = FontRoleSet()
 var private g_font_sources : array<string>
 var private g_doc = MdDocument()
 var private g_view = MarkdownViewState()
-var private g_status = "Hover, activate, or copy a link."
+var private g_status = "Drag to select text; right-click a selection for its comment anchor."
 var private g_zoom_percent = 100
+var private g_context_source = TextSourceRange(start_byte = -1, end_byte = -1)
+
+def private selection_style_summary(styles : MdSelectionStyles) : string {
+    if (styles.all_regular) return "regular"
+    var value = ""
+    if (styles.has_strong) {
+        value = value + (empty(value) ? "strong" : ", strong")
+    }
+    if (styles.has_emphasis) {
+        value = value + (empty(value) ? "emphasis" : ", emphasis")
+    }
+    if (styles.has_code) {
+        value = value + (empty(value) ? "code" : ", code")
+    }
+    if (styles.has_strikethrough) {
+        value = value + (empty(value) ? "strike" : ", strike")
+    }
+    if (styles.has_links) {
+        value = value + (empty(value) ? "links" : ", links")
+    }
+    if (styles.has_mixed_styles) {
+        value = value + (empty(value) ? "mixed" : ", mixed")
+    }
+    return empty(value) ? "none" : value
+}
 
 [export]
 def init() {
@@ -45,7 +71,15 @@ The shared plain-text pass also recognizes custom editor://workspace/文档 and 
 
 - [x] Parse CommonMark and GFM
 - [x] Preserve UTF-8 byte ranges
-- [ ] Add selection and keyboard navigation later
+- [x] Source-mapped rich text selection and comment anchors
+- [ ] Add keyboard navigation later
+
+## Follow-up: shared text infrastructure
+
+- [ ] Syntax token model independent of Markdown, ImGui, and the future editor
+- [ ] Language-aware syntax highlighting for fenced code blocks
+- [ ] Reuse the same tokenizer/theme pipeline in the text editor
+- [ ] Incremental tokenization for large editable documents
 
 ## Table test
 
@@ -109,8 +143,32 @@ def update() {
             let result = markdown_view("probe", g_doc, g_view, markdown_style)
             if (result.copied) {
                 g_status = "Copied: {result.target}"
+            } elif (result.selection_copied) {
+                g_status = "Copied selected display text."
             } elif (result.activated) {
                 g_status = "Open requested: {result.target}"
+            } elif (result.selection_context_requested) {
+                g_context_source = result.selection.source
+                g_status = "Comment requested at ({int(result.selection_context_pos.x)}, {int(result.selection_context_pos.y)})"
+                SetNextWindowPos(result.selection_context_pos, ImGuiCond.Appearing)
+                open_popup("markdown_selection_comment")
+            } elif (result.selection_changed && result.selection.active) {
+                let s = result.selection
+                g_status = "Selected source bytes {s.source.start_byte}..{s.source.end_byte}; {selection_style_summary(s.styles)}; anchor ({int(s.screen_anchor.x)}, {int(s.screen_anchor.y)})"
+            } elif (result.selection_changed) {
+                g_status = "Selection cleared."
+            }
+            popup_window(SELECTION_COMMENT_POPUP,
+                         (str_id = "markdown_selection_comment",
+                          flags = ImGuiWindowFlags.AlwaysAutoResize)) {
+                text("Comment anchor")
+                separator()
+                text("Source bytes {g_context_source.start_byte}..{g_context_source.end_byte}")
+                text_wrapped((text = md_source_text(g_doc, g_context_source)))
+                if (button(ADD_COMMENT, (text = "Add comment"))) {
+                    g_status = "Host accepted comment anchor {g_context_source.start_byte}..{g_context_source.end_byte}"
+                    close_current_popup()
+                }
             }
             separator()
             text_colored((color = float4(0.95f, 0.72f, 0.30f, 1.0f), text = g_status))

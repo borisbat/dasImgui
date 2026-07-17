@@ -131,3 +131,32 @@ def test_text_flow_style_aware_measurement(t : T?) {
     t |> success(length(layout.lines) > 1,
                  "wider role metrics change wrapping rather than only rendering")
 }
+
+[test]
+def test_text_flow_hit_test_grapheme_boundaries(t : T?) {
+    let source = "AéB"
+    var spans = [TextFlowSpan(
+        source = TextSourceRange(start_byte = 0, end_byte = length(source)),
+        style_id = 3)]
+    let layout <- layout_text_flow_styled_ranges(source, spans, 100.0f, 18.0f,
+        $(text : string; start_byte, end_byte, style_id : int) : float {
+            return 10.0f
+        })
+    let before_cluster = text_flow_hit_test_ranges(source, layout, float2(12.0f, 9.0f),
+        $(text : string; start_byte, end_byte, style_id : int) : float {
+            return 10.0f
+        })
+    let after_cluster = text_flow_hit_test_ranges(source, layout, float2(16.0f, 9.0f),
+        $(text : string; start_byte, end_byte, style_id : int) : float {
+            return 10.0f
+        })
+
+    t |> success(before_cluster.valid && after_cluster.valid,
+                 "points inside text produce carets")
+    t |> equal(before_cluster.byte_offset, 1,
+               "left half snaps before the combining grapheme")
+    t |> equal(after_cluster.byte_offset, 4,
+               "right half snaps after the complete combining grapheme")
+    t |> success(!before_cluster.trailing && !after_cluster.trailing,
+                 "interior boundary reports leading affinity for the next grapheme")
+}

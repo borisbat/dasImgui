@@ -29,6 +29,7 @@ struct public MarkdownViewStyle {
     link_hover_color : float4 = float4(0.55f, 0.80f, 1.0f, 1.0f)
     code_color : float4 = float4(0.94f, 0.80f, 0.55f, 1.0f)
     code_background : float4 = float4(0.10f, 0.11f, 0.14f, 1.0f)
+    selection_color : float4 = float4(0.24f, 0.48f, 0.78f, 0.55f)
     quote_color : float4 = float4(0.42f, 0.47f, 0.56f, 1.0f)
     marker_color : float4 = float4(0.70f, 0.73f, 0.78f, 1.0f)
     heading_color : float4 = float4(0.96f, 0.96f, 0.97f, 1.0f)
@@ -40,6 +41,15 @@ struct public MarkdownViewStyle {
     show_link_copy : bool = true
 }
 
+struct public MarkdownSelection {
+    active : bool = false
+    source : TextSourceRange = TextSourceRange(start_byte = -1, end_byte = -1)
+    styles : MdSelectionStyles
+    screen_valid : bool = false
+    screen_bounds : float4
+    screen_anchor : float2
+}
+
 struct public MarkdownViewResult {
     hovered : bool = false
     activated : bool = false
@@ -49,6 +59,11 @@ struct public MarkdownViewResult {
     copied_node : int = -1
     source : TextSourceRange = TextSourceRange(start_byte = -1, end_byte = -1)
     target : string
+    selection : MarkdownSelection = MarkdownSelection()
+    selection_changed : bool = false
+    selection_copied : bool = false
+    selection_context_requested : bool = false
+    selection_context_pos : float2
 }
 
 struct public MarkdownLayoutKey {
@@ -86,6 +101,16 @@ struct public MarkdownViewState {
     content_misses : int = 0
     layout_hits : int = 0
     layout_misses : int = 0
+    selection_anchor : MdTextPosition = MdTextPosition()
+    selection_focus : MdTextPosition = MdTextPosition()
+    selection_dragging : bool = false
+    selection_dragged : bool = false
+    selection_pressed_semantic : int = -1
+    selection_changed : bool = false
+    selection_click_claimed : bool = false
+    selection_screen_valid : bool = false
+    selection_screen_bounds : float4
+    selection_screen_anchor : float2
 }
 
 let private STYLE_STRONG = 1
@@ -102,6 +127,15 @@ def private clear_node_cache(var entry : MarkdownNodeViewCache) {
     entry = MarkdownNodeViewCache()
 }
 
+def private clear_selection(var state : MarkdownViewState) {
+    state.selection_anchor = MdTextPosition()
+    state.selection_focus = MdTextPosition()
+    state.selection_dragging = false
+    state.selection_dragged = false
+    state.selection_pressed_semantic = -1
+    state.selection_screen_valid = false
+}
+
 def public markdown_view_invalidate(var state : MarkdownViewState) {
     //! Deterministically release all retained strings and arrays. The outer
     //! cache capacity is retained for a same-sized replacement document.
@@ -111,6 +145,7 @@ def public markdown_view_invalidate(var state : MarkdownViewState) {
     }
     state.document_revision = -1
     state.node_count = 0
+    clear_selection(state)
 }
 
 def public markdown_view_dispose(var state : MarkdownViewState) {
@@ -232,6 +267,52 @@ def private link_target(doc : MdDocument const; content : MdInlineContent const;
     return content.runs[index].destination
 }
 
+def private selected_source(state : MarkdownViewState const) : TextSourceRange {
+    return md_text_selection_range(state.selection_anchor, state.selection_focus)
+}
+
+def private selected_display(run : MdInlineRun const;
+                             source : TextSourceRange const) : TextSourceRange {
+    let a = max(source.start_byte, run.source.start_byte)
+    let b = min(source.end_byte, run.source.end_byte)
+    if (run.source.start_byte < 0 || b <= a) {
+        return TextSourceRange(start_byte = -1, end_byte = -1)
+    }
+    let display_size = run.display.end_byte - run.display.start_byte
+    let source_size = run.source.end_byte - run.source.start_byte
+    if (run.source_exact && display_size == source_size) {
+        return TextSourceRange(
+            start_byte = run.display.start_byte + a - run.source.start_byte,
+            end_byte = run.display.start_byte + b - run.source.start_byte)
+    }
+    // Entities and other transformed runs are indivisible in source space.
+    return run.display
+}
+
+def private include_selection_screen_rect(var state : MarkdownViewState;
+                                          rect : float4) {
+    if (!state.selection_screen_valid) {
+        state.selection_screen_bounds = rect
+        state.selection_screen_valid = true
+    } else {
+        state.selection_screen_bounds.x = min(state.selection_screen_bounds.x, rect.x)
+        state.selection_screen_bounds.y = min(state.selection_screen_bounds.y, rect.y)
+        state.selection_screen_bounds.z = max(state.selection_screen_bounds.z, rect.z)
+        state.selection_screen_bounds.w = max(state.selection_screen_bounds.w, rect.w)
+    }
+}
+
+def private position_in_fragment(position : MdTextPosition const; node_index : int;
+                                 fragment : TextFlowFragment const) : bool {
+    if (!position.valid || position.inline_node != node_index || fragment.is_control) return false
+    if (position.trailing) {
+        return (fragment.source.start_byte < position.display_byte
+            && position.display_byte <= fragment.source.end_byte)
+    }
+    return (fragment.source.start_byte <= position.display_byte
+        && position.display_byte < fragment.source.end_byte)
+}
+
 def private same_layout_key(a, b : MarkdownLayoutKey) : bool {
     return (a.max_width == b.max_width && a.line_height == b.line_height
         && a.font_size == b.font_size
@@ -320,7 +401,6 @@ def private render_inline(doc : MdDocument const; node_index : int;
 
     let origin = GetCursorScreenPos()
     Dummy(float2(available, max(layout.size.y, line_height)))
-    let cursor_after = GetCursorScreenPos()
 
     var hovered = -1
     for (fragment in layout.fragments) {
@@ -329,7 +409,39 @@ def private render_inline(doc : MdDocument const; node_index : int;
             hovered = fragment.semantic_id
         }
     }
-    var cursor_moved = false
+
+    let hit = text_flow_hit_test_ranges(content.text, layout,
+        GetMousePos() - origin) $(text : string; start_byte, end_byte, style_id : int) : float {
+            var font = font_for_style(style_id, style.fonts, fallback_font)
+            return CalcTextSizeForFontRange(font, font_size, text, length(text),
+                                            start_byte, end_byte).x
+        }
+    let hit_visible = (hit.valid && hit.fragment_index >= 0
+        && IsMouseHoveringRect(
+            fragment_min(origin, layout.fragments[hit.fragment_index]),
+            fragment_max(origin, layout.fragments[hit.fragment_index]), true))
+    if (hit_visible) {
+        let position = md_inline_position(content, node_index, hit.byte_offset, hit.trailing)
+        if (position.valid && IsMouseClicked(ImGuiMouseButton.Left, false)) {
+            state.selection_anchor = position
+            state.selection_focus = position
+            state.selection_dragging = true
+            state.selection_dragged = false
+            state.selection_pressed_semantic = hovered
+            state.selection_click_claimed = true
+            state.selection_changed = true
+        } elif (position.valid && state.selection_dragging
+                && IsMouseDown(ImGuiMouseButton.Left)) {
+            if (state.selection_focus.source_byte != position.source_byte
+                    || state.selection_focus.inline_node != position.inline_node
+                    || state.selection_focus.display_byte != position.display_byte) {
+                state.selection_focus = position
+                state.selection_changed = true
+            }
+            state.selection_dragged = (state.selection_anchor.source_byte
+                != state.selection_focus.source_byte)
+        }
+    }
     if (hovered >= 0) {
         result.hovered = true
         result.hovered_node = hovered
@@ -357,13 +469,50 @@ def private render_inline(doc : MdDocument const; node_index : int;
         } elif (has_style(fragment.style_id, STYLE_EMPHASIS)) {
             color = style.emphasis_color
         }
+        var font = font_for_style(fragment.style_id, style.fonts, fallback_font)
         if (has_style(fragment.style_id, STYLE_CODE)) {
             *dl |> AddRectFilled(p0 - float2(2.0f * zoom, 0.0f),
                                  p1 + float2(2.0f * zoom, 0.0f),
                                  GetColorU32(style.code_background), 2.0f * zoom,
                                  ImDrawFlags.None)
         }
-        var font = font_for_style(fragment.style_id, style.fonts, fallback_font)
+
+        let selection_source = selected_source(state)
+        if (selection_source.start_byte >= 0
+                && selection_source.end_byte > selection_source.start_byte) {
+            for (run in content.runs) {
+                let display = selected_display(run, selection_source)
+                let a = max(display.start_byte, fragment.source.start_byte)
+                let b = min(display.end_byte, fragment.source.end_byte)
+                if (display.start_byte < 0 || b <= a) continue
+                let prefix = CalcTextSizeForFontRange(font, font_size, content.text,
+                    length(content.text), fragment.source.start_byte, a).x
+                let width = CalcTextSizeForFontRange(font, font_size, content.text,
+                    length(content.text), a, b).x
+                let selection_rect = float4(
+                    p0.x + prefix, p0.y, p0.x + prefix + width, p1.y)
+                *dl |> AddRectFilled(
+                    float2(selection_rect.x, selection_rect.y),
+                    float2(selection_rect.z, selection_rect.w),
+                    GetColorU32(style.selection_color), 1.5f * zoom,
+                    ImDrawFlags.None)
+                include_selection_screen_rect(state, selection_rect)
+                if (IsMouseReleased(ImGuiMouseButton.Right)
+                        && IsMouseHoveringRect(
+                            float2(selection_rect.x, selection_rect.y),
+                            float2(selection_rect.z, selection_rect.w), true)) {
+                    result.selection_context_requested = true
+                    result.selection_context_pos = GetMousePos()
+                }
+            }
+            if (position_in_fragment(state.selection_focus, node_index, fragment)) {
+                let caret_byte = clamp(state.selection_focus.display_byte,
+                    fragment.source.start_byte, fragment.source.end_byte)
+                let caret_x = CalcTextSizeForFontRange(font, font_size, content.text,
+                    length(content.text), fragment.source.start_byte, caret_byte).x
+                state.selection_screen_anchor = float2(p0.x + caret_x, p1.y)
+            }
+        }
         *dl |> AddTextRange(font, font_size, p0, GetColorU32(color),
                            content.text, length(content.text), fragment.source.start_byte,
                            fragment.source.end_byte)
@@ -381,7 +530,9 @@ def private render_inline(doc : MdDocument const; node_index : int;
 
     if (hovered >= 0) {
         SetMouseCursor(ImGuiMouseCursor.Hand)
-        if (IsMouseClicked(ImGuiMouseButton.Left, false)) {
+        if (IsMouseReleased(ImGuiMouseButton.Left)
+                && state.selection_pressed_semantic == hovered
+                && !state.selection_dragged) {
             let run_index = link_run_index(doc, content, hovered)
             result.activated = true
             result.activated_node = (run_index >= 0
@@ -391,14 +542,17 @@ def private render_inline(doc : MdDocument const; node_index : int;
             }
             result.target := link_target(doc, content, hovered)
         }
-        for (fragment in layout.fragments) {
-            if (!fragment.is_control || fragment.control_id != hovered) continue
-            SetCursorScreenPos(fragment_min(origin, fragment))
-            cursor_moved = true
-            if (icon_button_draw("##markdown_copy", "duplicate",
-                                 style.copy_icon_size * zoom, 1.0f)) {
-                let run_index = link_run_index(doc, content, hovered)
-                let target = link_target(doc, content, hovered)
+    }
+    for (fragment in layout.fragments) {
+        if (!fragment.is_control) continue
+        let visible = fragment.control_id == hovered
+        if (icon_button_draw_at("##markdown_copy_{fragment.control_id}", "duplicate",
+                                fragment_min(origin, fragment),
+                                style.copy_icon_size * zoom, 1.0f, visible)) {
+            let control_id = fragment.control_id
+            if (control_id >= 0) {
+                let run_index = link_run_index(doc, content, control_id)
+                let target = link_target(doc, content, control_id)
                 if (clipboard_set_text(target) == ClipboardStatus.ok) {
                     result.copied = true
                     result.copied_node = (run_index >= 0
@@ -409,12 +563,8 @@ def private render_inline(doc : MdDocument const; node_index : int;
                     result.target := target
                 }
             }
-            if (IsItemHovered()) SetTooltip("Copy URI")
         }
-    }
-    if (cursor_moved) {
-        SetCursorScreenPos(cursor_after)
-        Dummy(float2(0.0f, 0.0f))
+        if (visible && IsItemHovered()) SetTooltip("Copy URI")
     }
     PopID()
 }
@@ -513,7 +663,8 @@ def private render_table(doc : MdDocument const; node_index : int;
 
 def private render_code_block(doc : MdDocument const; node_index : int;
                               var state : MarkdownViewState;
-                              var style : MarkdownViewStyle) {
+                              var style : MarkdownViewStyle;
+                              var result : MarkdownViewResult) {
     ensure_inline(doc, node_index, state)
     let content & = unsafe(state.nodes[node_index].content)
     let zoom = view_zoom(style)
@@ -522,8 +673,14 @@ def private render_code_block(doc : MdDocument const; node_index : int;
     let padding = style.code_padding * zoom
     var mono = style.fonts.monospace != null ? style.fonts.monospace : GetFont()
     let measured = CalcTextSizeForFont(mono, font_size, content.text)
+    let child_border = GetStyle().ChildBorderSize
+    let inner_width = max(1.0f, GetContentRegionAvail().x
+        - padding * 2.0f - child_border * 2.0f)
+    let needs_horizontal_scroll = measured.x > inner_width
+    let scrollbar_height = needs_horizontal_scroll ? GetStyle().ScrollbarSize : 0.0f
     let height = max(font_size * 2.0f,
-                     measured.y + padding * 2.0f)
+        measured.y + padding * 2.0f + child_border * 2.0f
+        + GetStyle().ItemSpacing.y + scrollbar_height + 2.0f * zoom)
     PushStyleColor(ImGuiCol.ChildBg, style.code_background)
     PushID(node_index)
     let open = BeginChild("##markdown_code",
@@ -531,9 +688,12 @@ def private render_code_block(doc : MdDocument const; node_index : int;
         ImGuiWindowFlags.HorizontalScrollbar)
     if (open) {
         SetCursorPos(GetCursorPos() + float2(padding, padding))
-        PushFont(mono, font_size)
-        TextColored(style.code_color, content.text)
-        PopFont()
+        var code_style := style
+        code_style.text_color = style.code_color
+        code_style.show_link_copy = false
+        let content_width = max(measured.x, GetContentRegionAvail().x - padding)
+        render_inline(doc, node_index, state, max(content_width, 1.0f),
+                      code_style, 1.0f, STYLE_CODE, result)
     }
     EndChild()
     PopID()
@@ -580,7 +740,7 @@ def private render_block(doc : MdDocument const; node_index : int;
         Separator()
         block_spacing(style, style.block_spacing)
     } elif (node.kind == MdNodeKind.code_block) {
-        render_code_block(doc, node_index, state, style)
+        render_code_block(doc, node_index, state, style, result)
     } elif (node.kind == MdNodeKind.table_) {
         render_table(doc, node_index, state, style, result)
     } elif (node.kind == MdNodeKind.raw_html) {
@@ -591,6 +751,55 @@ def private render_block(doc : MdDocument const; node_index : int;
     } else {
         render_children(doc, node_index, state, style, result)
     }
+}
+
+def private finish_selection(doc : MdDocument const;
+                             var state : MarkdownViewState;
+                             var result : MarkdownViewResult) {
+    let source = selected_source(state)
+    if (source.start_byte < 0 || source.end_byte <= source.start_byte) return
+    var accumulator = MdSelectionStyleAccumulator()
+    for (i in range(length(state.nodes))) {
+        if (state.nodes[i].content_valid) {
+            let content & = unsafe(state.nodes[i].content)
+            md_selection_include(accumulator, content, source)
+        }
+    }
+    result.selection = MarkdownSelection(
+        active = true,
+        source = source,
+        styles = md_selection_styles(accumulator),
+        screen_valid = state.selection_screen_valid,
+        screen_bounds = state.selection_screen_bounds,
+        screen_anchor = state.selection_screen_anchor)
+}
+
+def public markdown_selection_text(state : MarkdownViewState const) : string {
+    //! Flatten the selected display text on demand. This intentionally differs
+    //! from `md_source_text`: Markdown delimiters are omitted and transformed
+    //! entities retain the glyphs shown by the viewer. Separate inline blocks
+    //! are joined with a newline.
+    let source = selected_source(state)
+    if (source.start_byte < 0 || source.end_byte <= source.start_byte) return ""
+    var value = ""
+    for (i in range(length(state.nodes))) {
+        if (!state.nodes[i].content_valid) continue
+        let content & = unsafe(state.nodes[i].content)
+        var block_text = ""
+        for (run in content.runs) {
+            let display = selected_display(run, source)
+            if (display.start_byte >= 0 && display.end_byte > display.start_byte) {
+                block_text = block_text + slice(content.text, display.start_byte, display.end_byte)
+            }
+        }
+        if (!empty(block_text)) {
+            if (!empty(value)) {
+                value = value + "\n"
+            }
+            value = value + block_text
+        }
+    }
+    return value
 }
 
 def public markdown_view(id : string; doc : MdDocument const;
@@ -604,6 +813,16 @@ def public markdown_view(id : string; doc : MdDocument const;
         return <- result
     }
     prepare_view_state(doc, state, document_revision)
+    state.selection_changed = false
+    state.selection_click_claimed = false
+    state.selection_screen_valid = false
+    if (IsMouseClicked(ImGuiMouseButton.Left, false)) {
+        state.selection_pressed_semantic = -1
+    }
+    if (state.selection_dragging
+            && IsMouseDragging(ImGuiMouseButton.Left, 2.0f)) {
+        state.selection_dragged = true
+    }
     var pushed_font = false
     if (style.fonts.regular != null) {
         let size = (style.fonts.size_px > 0.0f
@@ -614,6 +833,26 @@ def public markdown_view(id : string; doc : MdDocument const;
     PushID(id)
     render_block(doc, doc.root, state, style, result)
     PopID()
+    if (IsMouseClicked(ImGuiMouseButton.Left, false)
+            && !state.selection_click_claimed) {
+        let old_selection = selected_source(state)
+        let had_selection = old_selection.end_byte > old_selection.start_byte
+        clear_selection(state)
+        state.selection_changed = had_selection
+    }
+    if (IsMouseReleased(ImGuiMouseButton.Left)) {
+        state.selection_dragging = false
+    }
+    finish_selection(doc, state, result)
+    result.selection_changed = state.selection_changed
+    let io & = unsafe(GetIO())
+    let copy_modifier = io.ConfigMacOSXBehaviors ? io.KeySuper : io.KeyCtrl
+    if (result.selection.active && copy_modifier && IsKeyPressed(ImGuiKey.C, false)
+            && IsWindowFocused(ImGuiFocusedFlags.RootAndChildWindows)
+            && !IsAnyItemActive()) {
+        let copy_status = clipboard_set_text(markdown_selection_text(state))
+        result.selection_copied = copy_status == ClipboardStatus.ok
+    }
     if (pushed_font) {
         PopFont()
     }

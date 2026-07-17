@@ -72,7 +72,6 @@ def public markdown_uri_paragraph(id : string; prefix, display_text, suffix, tar
 
     let origin = GetCursorScreenPos()
     Dummy(float2(available, max(layout.size.y, GetTextLineHeight())))
-    let cursor_after = GetCursorScreenPos()
 
     var result = MarkdownUriResult(line_count = length(layout.lines))
     var uri_text_hovered = false
@@ -115,22 +114,16 @@ def public markdown_uri_paragraph(id : string; prefix, display_text, suffix, tar
         result.activated = IsMouseClicked(ImGuiMouseButton.Left, false)
     }
 
-    var cursor_moved = false
-    if (result.hovered && has_control) {
-        SetCursorScreenPos(fragment_min(origin, control_fragment))
-        cursor_moved = true
-        if (icon_button_draw("##markdown_uri_copy_{id}", "duplicate",
-                             style.copy_icon_size, 1.0f)) {
-            result.copied = clipboard_set_text(empty(target) ? display_text : target)
-                == ClipboardStatus.ok
+    if (has_control) {
+        if (icon_button_draw_at("##markdown_uri_copy_{id}", "duplicate",
+                                fragment_min(origin, control_fragment),
+                                style.copy_icon_size, 1.0f, result.hovered)) {
+            let copy_status = clipboard_set_text(empty(target) ? display_text : target)
+            result.copied = copy_status == ClipboardStatus.ok
         }
-        if (IsItemHovered()) {
+        if (result.hovered && IsItemHovered()) {
             SetTooltip("Copy URI")
         }
-    }
-    if (cursor_moved) {
-        SetCursorScreenPos(cursor_after)
-        Dummy(float2(0.0f, 0.0f))
     }
     return result
 }

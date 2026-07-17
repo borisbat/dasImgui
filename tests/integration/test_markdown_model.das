@@ -202,3 +202,50 @@ def test_markdown_plain_unicode_uris(t : T?) {
     t |> equal(automatic, 2,
                "shared detector supplements Markdown parser for plain Unicode/custom URIs")
 }
+
+[test]
+def test_markdown_selection_source_and_styles(t : T?) {
+    let source = "plain **bold** and *italic*, `code`, ~~gone~~, with [link](editor://item)."
+    let doc <- md_parse(source)
+    t |> success(doc.ok, "selection fixture parses")
+    if (!doc.ok) return
+    let paragraph = first_kind(doc, MdNodeKind.paragraph)
+    let inline <- md_inline_content(doc, paragraph)
+
+    let bold_display = inline.text |> find("bold")
+    let bold_anchor = md_inline_position(inline, paragraph, bold_display, false)
+    let bold_focus = md_inline_position(inline, paragraph, bold_display + 4, true)
+    let bold_source = md_text_selection_range(bold_anchor, bold_focus)
+    t |> equal(md_source_text(doc, bold_source), "bold",
+               "display selection maps to original Markdown content bytes")
+
+    var bold_styles = MdSelectionStyleAccumulator()
+    md_selection_include(bold_styles, inline, bold_source)
+    let bold_flags = md_selection_styles(bold_styles)
+    t |> success(bold_flags.has_strong && !bold_flags.all_regular,
+                 "strong-only selection reports semantic style")
+    t |> success(!bold_flags.has_mixed_styles,
+                 "one style combination is not mixed")
+
+    let regular_start = inline.text |> find("plain")
+    let regular_anchor = md_inline_position(inline, paragraph, regular_start, false)
+    let regular_focus = md_inline_position(inline, paragraph, regular_start + 5, true)
+    var regular_styles = MdSelectionStyleAccumulator()
+    md_selection_include(regular_styles, inline,
+        md_text_selection_range(regular_anchor, regular_focus))
+    t |> success(md_selection_styles(regular_styles).all_regular,
+                 "unstyled selection reports all_regular")
+
+    let all_anchor = md_inline_position(inline, paragraph, 0, false)
+    let all_focus = md_inline_position(inline, paragraph, length(inline.text), true)
+    var all_styles = MdSelectionStyleAccumulator()
+    md_selection_include(all_styles, inline,
+        md_text_selection_range(all_anchor, all_focus))
+    let all_flags = md_selection_styles(all_styles)
+    t |> success(all_flags.has_strong && all_flags.has_emphasis
+              && all_flags.has_code && all_flags.has_strikethrough
+              && all_flags.has_links,
+                 "cross-style selection reports every semantic style")
+    t |> success(all_flags.has_mixed_styles,
+                 "cross-style selection reports mixed combinations")
+}
