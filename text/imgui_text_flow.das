@@ -426,6 +426,34 @@ def public text_graphemes(text : string) : array<TextGrapheme> {
     return <- out
 }
 
+def public text_previous_grapheme_boundary(text : string; at : int) : int {
+    //! Move one caret stop left without entering a UTF-8 grapheme cluster.
+    let caret = clamp(at, 0, length(text))
+    var result = 0
+    var graphemes <- text_graphemes(text)
+    for (g in graphemes) {
+        if (g.source.start_byte >= caret) break
+        result = g.source.start_byte
+    }
+    delete graphemes
+    return result
+}
+
+def public text_next_grapheme_boundary(text : string; at : int) : int {
+    //! Move one caret stop right without entering a UTF-8 grapheme cluster.
+    let caret = clamp(at, 0, length(text))
+    var result = length(text)
+    var graphemes <- text_graphemes(text)
+    for (g in graphemes) {
+        if (g.source.end_byte > caret) {
+            result = g.source.end_byte
+            break
+        }
+    }
+    delete graphemes
+    return result
+}
+
 def private natural_break_after(cp : uint) : bool {
     return cp == 0x0020u || cp == 0x0009u || cp == 0x200Bu
 }

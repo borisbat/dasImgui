@@ -296,6 +296,125 @@ def test_markdown_view_event_driven_interactions(t : T?) {
         }
         t |> success(cleared, "selection clear is acknowledged")
 
+        // A plain click leaves a collapsed, screen-visible caret.  Horizontal
+        // arrows move it by grapheme; Shift+Right extends the same anchor into
+        // a source-mapped selection. Every key press and release is observed.
+        let caret_x = (code_x0 + code_x1) * 0.5f
+        post_command(app, "imgui_mouse_pos", JV((x = caret_x, y = code_y)))
+        let caret_targeted = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+            var state = markdown_state(app)
+            return ((state?["hovered_inline_node"] ?? -1) == code_node
+                && (state?["hovered_fragment"] ?? -1) == code_fragment)
+        }
+        t |> success(caret_targeted, "caret click target is acknowledged")
+        var caret_before_click = markdown_state(app)
+        let caret_commit_before = caret_before_click?["selection"]?["commit_revision"] ?? -1
+        post_command(app, "imgui_mouse_click", JV((button = 0, action = "press")))
+        let caret_pressed = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+            var state = markdown_state(app)
+            return state?["selection"]?["dragging"] ?? false
+        }
+        t |> success(caret_pressed, "collapsed caret press is observed")
+        post_command(app, "imgui_mouse_click", JV((button = 0, action = "release")))
+        var caret_state : JsonValue?
+        let caret_placed = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+            caret_state = markdown_state(app)
+            return (!(caret_state?["selection"]?["dragging"] ?? true)
+                && (caret_state?["selection"]?["commit_revision"] ?? -1)
+                    > caret_commit_before
+                && (caret_state?["caret"]?["valid"] ?? false)
+                && !(caret_state?["selection"]?["active"] ?? true))
+        }
+        t |> success(caret_placed, "plain click commits a visible collapsed caret")
+        if (!caret_placed) return
+
+        let caret_display_before = caret_state?["caret"]?["display_byte"] ?? -1
+        let navigation_before = caret_state?["selection"]?["navigation_revision"] ?? -1
+        post_command(app, "imgui_key_press", JV((key = int(ImGuiKey.RightArrow))))
+        var moved_caret_state : JsonValue?
+        let moved_right = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+            moved_caret_state = markdown_state(app)
+            return ((moved_caret_state?["input"]?["right_arrow_down"] ?? false)
+                && (moved_caret_state?["selection"]?["navigation_revision"] ?? -1)
+                    > navigation_before
+                && (moved_caret_state?["caret"]?["display_byte"] ?? -1)
+                    > caret_display_before)
+        }
+        t |> success(moved_right, "Right Arrow advances the caret by one grapheme")
+        post_command(app, "imgui_key_release", JV((key = int(ImGuiKey.RightArrow))))
+        let right_released = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+            var state = markdown_state(app)
+            return !(state?["input"]?["right_arrow_down"] ?? true)
+        }
+        t |> success(right_released, "Right Arrow release is observed")
+
+        let shifted_anchor_source = moved_caret_state?["caret"]?["source_byte"] ?? -1
+        let shift_navigation_before = moved_caret_state?["selection"]?["navigation_revision"] ?? -1
+        post_command(app, "imgui_key_press", JV((key = int(ImGuiKey.LeftShift))))
+        let shift_pressed = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+            var state = markdown_state(app)
+            return state?["input"]?["shift_down"] ?? false
+        }
+        t |> success(shift_pressed, "Shift press is observed")
+        post_command(app, "imgui_key_press", JV((key = int(ImGuiKey.RightArrow))))
+        var shifted_state : JsonValue?
+        let shifted_right = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+            shifted_state = markdown_state(app)
+            return ((shifted_state?["input"]?["right_arrow_down"] ?? false)
+                && (shifted_state?["selection"]?["navigation_revision"] ?? -1)
+                    > shift_navigation_before
+                && (shifted_state?["selection"]?["active"] ?? false))
+        }
+        t |> success(shifted_right, "Shift+Right extends a source-mapped selection")
+        t |> equal(shifted_state?["selection"]?["source_start"] ?? -1,
+                   shifted_anchor_source,
+                   "Shift selection starts at the original caret source byte")
+        t |> success(shifted_state?["selection"]?["has_code"] ?? false,
+                     "keyboard-extended selection retains code style")
+        post_command(app, "imgui_key_release", JV((key = int(ImGuiKey.RightArrow))))
+        let shifted_right_released = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+            var state = markdown_state(app)
+            return !(state?["input"]?["right_arrow_down"] ?? true)
+        }
+        t |> success(shifted_right_released, "shifted Right Arrow release is observed")
+        post_command(app, "imgui_key_release", JV((key = int(ImGuiKey.LeftShift))))
+        let shift_released = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+            var state = markdown_state(app)
+            return !(state?["input"]?["shift_down"] ?? true)
+        }
+        t |> success(shift_released, "Shift release is observed")
+
+        let left_navigation_before = shifted_state?["selection"]?["navigation_revision"] ?? -1
+        post_command(app, "imgui_key_press", JV((key = int(ImGuiKey.LeftArrow))))
+        var collapsed_left_state : JsonValue?
+        let collapsed_left = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+            collapsed_left_state = markdown_state(app)
+            return ((collapsed_left_state?["input"]?["left_down"] ?? false)
+                && (collapsed_left_state?["selection"]?["navigation_revision"] ?? -1)
+                    > left_navigation_before
+                && !(collapsed_left_state?["selection"]?["active"] ?? true)
+                && (collapsed_left_state?["caret"]?["source_byte"] ?? -1)
+                    == shifted_anchor_source)
+        }
+        t |> success(collapsed_left,
+                     "Left Arrow collapses selection to its leading caret")
+        post_command(app, "imgui_key_release", JV((key = int(ImGuiKey.LeftArrow))))
+        let left_released = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+            var state = markdown_state(app)
+            return !(state?["input"]?["left_down"] ?? true)
+        }
+        t |> success(left_released, "Left Arrow release is observed")
+
+        let keyboard_clear = post_command(app, "markdown_probe_clear_selection", null)
+        let keyboard_clear_revision = keyboard_clear?["selection_revision"] ?? -1
+        let keyboard_cleared = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+            var state = markdown_state(app)
+            return (!(state?["selection"]?["active"] ?? true)
+                && (state?["selection"]?["revision"] ?? -1)
+                    >= keyboard_clear_revision)
+        }
+        t |> success(keyboard_cleared, "keyboard selection clear is acknowledged")
+
         let zoom_result = post_command(app, "markdown_probe_set_zoom",
                                        JV((percent = 200)))
         let zoom_prior_render = zoom_result?["prior_render_revision"] ?? -1

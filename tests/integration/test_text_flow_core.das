@@ -16,6 +16,12 @@ def test_text_flow_graphemes(t : T?) {
     let source = "Aé👩‍💻🇺🇸B"
     let g <- text_graphemes(source)
     t |> equal(length(g), 5, "extended UI grapheme grouping")
+    t |> equal(text_next_grapheme_boundary(source, g[1].source.start_byte),
+               g[1].source.end_byte,
+               "right movement crosses the complete grapheme")
+    t |> equal(text_previous_grapheme_boundary(source, g[1].source.end_byte),
+               g[1].source.start_byte,
+               "left movement crosses the complete grapheme")
     if (length(g) != 5) return
 
     t |> equal(g[1].source.start_byte, 1, "combining cluster starts at e")

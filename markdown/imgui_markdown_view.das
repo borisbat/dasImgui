@@ -129,6 +129,10 @@ struct public MarkdownViewState {
     selection_copy_revision : int = 0
     selection_context_revision : int = 0
     selection_context_pos : float2
+    navigation_revision : int = 0
+    caret_screen_valid : bool = false
+    caret_screen_pos : float2
+    caret_screen_height : float = 0.0f
 }
 
 let private STYLE_STRONG = 1
@@ -299,6 +303,81 @@ def private link_target(doc : MdDocument const; content : MdInlineContent const;
 
 def private selected_source(state : MarkdownViewState const) : TextSourceRange {
     return md_text_selection_range(state.selection_anchor, state.selection_focus)
+}
+
+def private same_text_position(a, b : MdTextPosition const) : bool {
+    return (a.valid == b.valid && a.inline_node == b.inline_node
+        && a.display_byte == b.display_byte && a.source_byte == b.source_byte
+        && a.trailing == b.trailing)
+}
+
+def private adjacent_text_position(var state : MarkdownViewState;
+                                   from : MdTextPosition const;
+                                   direction : int) : MdTextPosition {
+    if (!from.valid || from.inline_node < 0
+            || from.inline_node >= length(state.nodes)) return MdTextPosition()
+    let content & = unsafe(state.nodes[from.inline_node].content)
+    if (direction < 0 && from.display_byte > 0) {
+        let at = text_previous_grapheme_boundary(content.text, from.display_byte)
+        return md_inline_position(content, from.inline_node, at, false)
+    }
+    if (direction > 0 && from.display_byte < length(content.text)) {
+        let at = text_next_grapheme_boundary(content.text, from.display_byte)
+        return md_inline_position(content, from.inline_node, at, true)
+    }
+    var node = from.inline_node + direction
+    while (node >= 0 && node < length(state.nodes)) {
+        let entry & = unsafe(state.nodes[node])
+        if (entry.content_valid && entry.layout_valid && !empty(entry.content.text)) {
+            let at = direction < 0 ? length(entry.content.text) : 0
+            return md_inline_position(entry.content, node, at, direction < 0)
+        }
+        node += direction
+    }
+    return from
+}
+
+def private navigate_selection_keyboard(var state : MarkdownViewState) {
+    if (!state.selection_focus.valid
+            || !IsWindowFocused(ImGuiFocusedFlags.RootAndChildWindows)
+            || IsAnyItemActive()) return
+    var direction = 0
+    if (IsKeyPressed(ImGuiKey.LeftArrow, false)) {
+        direction = -1
+    } elif (IsKeyPressed(ImGuiKey.RightArrow, false)) {
+        direction = 1
+    }
+    if (direction == 0) return
+    let io & = unsafe(GetIO())
+    let selection_range = selected_source(state)
+    let has_selection = selection_range.end_byte > selection_range.start_byte
+    var next = state.selection_focus
+    if (has_selection && !io.KeyShift) {
+        if (direction < 0) {
+            next = (state.selection_anchor.source_byte <= state.selection_focus.source_byte
+                ? state.selection_anchor : state.selection_focus)
+        } else {
+            next = (state.selection_anchor.source_byte >= state.selection_focus.source_byte
+                ? state.selection_anchor : state.selection_focus)
+        }
+        state.selection_anchor = next
+    } else {
+        next = adjacent_text_position(state, state.selection_focus, direction)
+        if (!io.KeyShift) {
+            state.selection_anchor = next
+        }
+    }
+    if (!same_text_position(state.selection_focus, next)) {
+        state.selection_focus = next
+        state.selection_revision++
+        state.navigation_revision++
+        state.selection_changed = true
+    } elif (has_selection && !io.KeyShift) {
+        state.selection_focus = next
+        state.selection_revision++
+        state.navigation_revision++
+        state.selection_changed = true
+    }
 }
 
 def private selected_display(run : MdInlineRun const;
@@ -545,12 +624,21 @@ def private render_inline(doc : MdDocument const; node_index : int;
                     state.selection_context_revision++
                 }
             }
-            if (position_in_fragment(state.selection_focus, node_index, fragment)) {
-                let caret_byte = clamp(state.selection_focus.display_byte,
-                    fragment.source.start_byte, fragment.source.end_byte)
-                let caret_x = CalcTextSizeForFontRange(font, font_size, content.text,
-                    length(content.text), fragment.source.start_byte, caret_byte).x
-                state.selection_screen_anchor = float2(p0.x + caret_x, p1.y)
+        }
+        if (position_in_fragment(state.selection_focus, node_index, fragment)) {
+            let caret_byte = clamp(state.selection_focus.display_byte,
+                fragment.source.start_byte, fragment.source.end_byte)
+            let caret_x = CalcTextSizeForFontRange(font, font_size, content.text,
+                length(content.text), fragment.source.start_byte, caret_byte).x
+            let caret_top = float2(p0.x + caret_x, p0.y)
+            state.selection_screen_anchor = float2(caret_top.x, p1.y)
+            state.caret_screen_valid = true
+            state.caret_screen_pos = caret_top
+            state.caret_screen_height = p1.y - p0.y
+            if (selection_source.start_byte == selection_source.end_byte
+                    && IsWindowFocused(ImGuiFocusedFlags.RootAndChildWindows)) {
+                *dl |> AddLine(caret_top, float2(caret_top.x, p1.y),
+                               GetColorU32(style.text_color), max(1.0f, zoom))
             }
         }
         *dl |> AddTextRange(font, font_size, p0, GetColorU32(color),
@@ -860,6 +948,8 @@ def public markdown_view(id : string; doc : MdDocument const;
     state.hovered_inline_node = -1
     state.hovered_fragment = -1
     state.hovered_display_byte = -1
+    state.caret_screen_valid = false
+    state.caret_screen_height = 0.0f
     state.selection_changed = false
     state.selection_click_claimed = false
     state.selection_screen_valid = false
@@ -870,6 +960,7 @@ def public markdown_view(id : string; doc : MdDocument const;
             && IsMouseDragging(ImGuiMouseButton.Left, 2.0f)) {
         state.selection_dragged = true
     }
+    navigate_selection_keyboard(state)
     var pushed_font = false
     if (style.fonts.regular != null) {
         let size = (style.fonts.size_px > 0.0f
