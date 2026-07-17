@@ -27,6 +27,10 @@ struct public MarkdownViewStyle {
     emphasis_color : float4 = float4(0.77f, 0.84f, 0.94f, 1.0f)
     link_color : float4 = float4(0.36f, 0.68f, 1.0f, 1.0f)
     link_hover_color : float4 = float4(0.55f, 0.80f, 1.0f, 1.0f)
+    image_color : float4 = float4(0.58f, 0.82f, 0.68f, 1.0f)
+    image_hover_color : float4 = float4(0.72f, 0.94f, 0.80f, 1.0f)
+    image_background : float4 = float4(0.10f, 0.16f, 0.14f, 1.0f)
+    image_border : float4 = float4(0.31f, 0.55f, 0.40f, 1.0f)
     code_color : float4 = float4(0.94f, 0.80f, 0.55f, 1.0f)
     code_background : float4 = float4(0.10f, 0.11f, 0.14f, 1.0f)
     code_label_color : float4 = float4(0.72f, 0.76f, 0.82f, 1.0f)
@@ -40,6 +44,7 @@ struct public MarkdownViewStyle {
     quote_indent : float = 16.0f
     code_padding : float = 8.0f
     copy_icon_size : float = 14.0f
+    image_icon_size : float = 18.0f
     show_link_copy : bool = true
 }
 
@@ -56,6 +61,8 @@ struct public MarkdownViewResult {
     hovered : bool = false
     activated : bool = false
     copied : bool = false
+    hovered_image : bool = false
+    activated_image : bool = false
     hovered_node : int = -1
     activated_node : int = -1
     copied_node : int = -1
@@ -73,6 +80,7 @@ struct public MarkdownLayoutKey {
     line_height : float
     font_size : float
     icon_size : float2
+    image_icon_size : float2
     forced_style : int
     show_link_copy : bool
     regular_id : uint64 = 0uL
@@ -154,6 +162,9 @@ let private STYLE_CODE = 4
 let private STYLE_STRIKE = 8
 let private STYLE_LINK = 16
 let private STYLE_HEADING = 32
+let private STYLE_IMAGE = 64
+let private CONTROL_COPY_URI = 1
+let private CONTROL_IMAGE_PLACEHOLDER = 2
 
 def private clear_node_cache(var entry : MarkdownNodeViewCache) {
     delete entry.content.runs
@@ -255,6 +266,9 @@ def private run_style(run : MdInlineRun const) : int {
     }
     if (run.is_link) {
         value += STYLE_LINK
+    }
+    if (run.is_image) {
+        value += STYLE_IMAGE
     }
     return value
 }
@@ -601,6 +615,8 @@ def private same_layout_key(a, b : MarkdownLayoutKey) : bool {
     return (a.max_width == b.max_width && a.line_height == b.line_height
         && a.font_size == b.font_size
         && a.icon_size.x == b.icon_size.x && a.icon_size.y == b.icon_size.y
+        && a.image_icon_size.x == b.image_icon_size.x
+        && a.image_icon_size.y == b.image_icon_size.y
         && a.forced_style == b.forced_style
         && a.show_link_copy == b.show_link_copy
         && a.regular_id == b.regular_id && a.bold_id == b.bold_id
@@ -635,8 +651,14 @@ def private ensure_layout(doc : MdDocument const; node_index : int;
             style_id = run_style(run) | key.forced_style,
             semantic_id = semantic_id,
             uri_wrap = run.is_link,
+            leading_control_id = run.is_image ? semantic_id : -1,
+            leading_control_kind = run.is_image ? CONTROL_IMAGE_PLACEHOLDER : 0,
+            leading_control_size = run.is_image
+                ? key.image_icon_size : float2(0.0f, 0.0f),
             trailing_control_id = key.show_link_copy && is_last_semantic
                 ? semantic_id : -1,
+            trailing_control_kind = key.show_link_copy && is_last_semantic
+                ? CONTROL_COPY_URI : 0,
             trailing_control_size = key.show_link_copy && is_last_semantic
                 ? key.icon_size : float2(0.0f, 0.0f)))
     }
@@ -669,9 +691,13 @@ def private render_inline(doc : MdDocument const; node_index : int;
     let icon_full = float2(
         style.copy_icon_size * zoom + GetStyle().FramePadding.x * 2.0f,
         style.copy_icon_size * zoom + GetStyle().FramePadding.y * 2.0f)
+    let image_icon_full = float2(
+        style.image_icon_size * zoom + GetStyle().ItemInnerSpacing.x,
+        style.image_icon_size * zoom)
     var key = MarkdownLayoutKey(
         max_width = available, line_height = line_height, font_size = font_size,
-        icon_size = icon_full, forced_style = forced_style,
+        icon_size = icon_full, image_icon_size = image_icon_full,
+        forced_style = forced_style,
         show_link_copy = style.show_link_copy,
         regular_id = unsafe(reinterpret<uint64>(style.fonts.regular)),
         bold_id = unsafe(reinterpret<uint64>(style.fonts.bold)),
@@ -694,6 +720,7 @@ def private render_inline(doc : MdDocument const; node_index : int;
 
     var hovered = -1
     var hovered_fragment_index = -1
+    var hovered_image_control = false
     for (fragment_index in range(length(layout.fragments))) {
         let fragment = layout.fragments[fragment_index]
         let rect = markdown_cached_fragment_rect(cache, fragment)
@@ -704,7 +731,15 @@ def private render_inline(doc : MdDocument const; node_index : int;
         if (fragment.semantic_id >= 0 && IsMouseHoveringRect(
                 float2(rect.x, rect.y), float2(rect.z, rect.w), true)) {
             hovered = fragment.semantic_id
+            hovered_image_control = (fragment.is_control
+                && fragment.control_kind == CONTROL_IMAGE_PLACEHOLDER)
         }
+    }
+
+    if (hovered_image_control && IsMouseClicked(ImGuiMouseButton.Left, false)) {
+        state.selection_pressed_semantic = hovered
+        state.selection_dragged = false
+        state.selection_click_claimed = true
     }
 
     var hit = TextFlowHit()
@@ -754,11 +789,13 @@ def private render_inline(doc : MdDocument const; node_index : int;
         if (run_index >= 0) {
             result.hovered_node = content.runs[run_index].semantic_node
             result.source = content.runs[run_index].source
+            result.hovered_image = content.runs[run_index].is_image
         }
         result.target := link_target(doc, content, hovered)
     }
 
     var dl = GetWindowDrawList()
+    var copy_control_hovered = false
     for (fragment in layout.fragments) {
         if (fragment.is_control) continue
         let screen_rect = markdown_cached_fragment_rect(cache, fragment)
@@ -776,6 +813,13 @@ def private render_inline(doc : MdDocument const; node_index : int;
             color = style.emphasis_color
         }
         var font = font_for_style(fragment.style_id, style.fonts, fallback_font)
+        if (has_style(fragment.style_id, STYLE_IMAGE)) {
+            color = hot_link ? style.image_hover_color : style.image_color
+            *dl |> AddRectFilled(p0 - float2(1.0f * zoom, 0.0f),
+                                 p1 + float2(3.0f * zoom, 0.0f),
+                                 GetColorU32(style.image_background), 2.0f * zoom,
+                                 ImDrawFlags.None)
+        }
         if (has_style(fragment.style_id, STYLE_CODE)) {
             *dl |> AddRectFilled(p0 - float2(2.0f * zoom, 0.0f),
                                  p1 + float2(2.0f * zoom, 0.0f),
@@ -856,14 +900,44 @@ def private render_inline(doc : MdDocument const; node_index : int;
                 ? content.runs[run_index].semantic_node : -1)
             if (run_index >= 0) {
                 result.source = content.runs[run_index].source
+                result.activated_image = content.runs[run_index].is_image
             }
             result.target := link_target(doc, content, hovered)
         }
     }
     for (fragment in layout.fragments) {
         if (!fragment.is_control) continue
-            let visible = fragment.control_id == hovered
         let screen_rect = markdown_cached_fragment_rect(cache, fragment)
+        if (fragment.control_kind == CONTROL_IMAGE_PLACEHOLDER) {
+            let p0 = float2(screen_rect.x, screen_rect.y)
+            let p1 = float2(screen_rect.z, screen_rect.w)
+            let hot = fragment.control_id == hovered
+            let border = hot ? style.image_hover_color : style.image_border
+            let pad = 2.0f * zoom
+            *dl |> AddRectFilled(p0, p1, GetColorU32(style.image_background),
+                                 2.0f * zoom, ImDrawFlags.None)
+            *dl |> AddRect(p0 + float2(pad, pad), p1 - float2(pad, pad),
+                           GetColorU32(border), 1.5f * zoom,
+                           ImDrawFlags.None, max(1.0f, zoom))
+            let inner0 = p0 + float2(pad * 1.7f, pad * 1.7f)
+            let inner1 = p1 - float2(pad * 1.7f, pad * 1.7f)
+            let sun = float2(inner1.x - (inner1.x - inner0.x) * 0.22f,
+                             inner0.y + (inner1.y - inner0.y) * 0.24f)
+            *dl |> AddCircleFilled(sun, max(1.0f, 1.5f * zoom),
+                                   GetColorU32(style.image_color), 8)
+            let ridge_y = inner1.y - (inner1.y - inner0.y) * 0.24f
+            *dl |> AddLine(float2(inner0.x, ridge_y),
+                           float2(inner0.x + (inner1.x - inner0.x) * 0.38f,
+                                  inner0.y + (inner1.y - inner0.y) * 0.48f),
+                           GetColorU32(border), max(1.0f, zoom))
+            *dl |> AddLine(float2(inner0.x + (inner1.x - inner0.x) * 0.38f,
+                                  inner0.y + (inner1.y - inner0.y) * 0.48f),
+                           float2(inner1.x, ridge_y),
+                           GetColorU32(border), max(1.0f, zoom))
+            continue
+        }
+        if (fragment.control_kind != CONTROL_COPY_URI) continue
+        let visible = fragment.control_id == hovered
         if (icon_button_draw_at("##markdown_copy_{fragment.control_id}", "duplicate",
                                 float2(screen_rect.x, screen_rect.y),
                                 style.copy_icon_size * zoom, 1.0f, visible)) {
@@ -882,7 +956,24 @@ def private render_inline(doc : MdDocument const; node_index : int;
                 }
             }
         }
-        if (visible && IsItemHovered()) SetTooltip("Copy URI")
+        if (visible && IsItemHovered()) {
+            copy_control_hovered = true
+            SetTooltip("Copy URI")
+        }
+    }
+    if (hovered >= 0 && !copy_control_hovered) {
+        let run_index = link_run_index(doc, content, hovered)
+        if (run_index >= 0) {
+            let run = content.runs[run_index]
+            if (run.is_image) {
+                let alt = empty(run.image_alt) ? "Image" : run.image_alt
+                let detail = (empty(run.title) ? run.destination
+                    : "{run.title}\n{run.destination}")
+                if (!empty(detail)) SetTooltip("{alt}\n{detail}")
+            } elif (!empty(run.title)) {
+                SetTooltip(run.title)
+            }
+        }
     }
     PopID()
 }

@@ -204,6 +204,48 @@ def test_markdown_plain_unicode_uris(t : T?) {
 }
 
 [test]
+def test_markdown_image_is_atomic_with_plain_text_fallback(t : T?) {
+    let source = "Before ![Unicode terminal preview](editor://assets/terminal.png \"Terminal preview\") after."
+    let doc <- md_parse(source)
+    t |> success(doc.ok, "image fixture parses")
+    if (!doc.ok) return
+    let image = first_kind(doc, MdNodeKind.image)
+    t |> success(image >= 0, "image is a typed Markdown node")
+    if (image < 0) return
+    t |> equal(doc.nodes[image].destination, "editor://assets/terminal.png",
+               "image destination is retained")
+    t |> equal(doc.nodes[image].title, "Terminal preview",
+               "image title is retained")
+
+    let paragraph = first_kind(doc, MdNodeKind.paragraph)
+    let inline <- md_inline_content(doc, paragraph)
+    var image_runs = 0
+    var image_run = MdInlineRun()
+    for (run in inline.runs) {
+        if (run.is_image) {
+            image_runs++
+            image_run = run
+        }
+    }
+    t |> equal(image_runs, 1, "image alt subtree becomes one atomic inline run")
+    if (image_runs != 1) return
+    t |> equal(slice(inline.text, image_run.display.start_byte, image_run.display.end_byte),
+               "Unicode terminal preview", "image displays its alt fallback")
+    t |> equal(image_run.image_alt, "Unicode terminal preview",
+               "accessible image alt is retained separately")
+    t |> success(image_run.is_link && image_run.semantic_node == image,
+                 "image retains URI activation semantics")
+    t |> success(!image_run.source_exact,
+                 "image never claims an unavailable full Markdown syntax range")
+
+    var styles = MdSelectionStyleAccumulator()
+    md_selection_include(styles, inline, image_run.source)
+    let flags = md_selection_styles(styles)
+    t |> success(flags.has_images && flags.has_links,
+                 "image selection reports both image and link semantics")
+}
+
+[test]
 def test_markdown_selection_source_and_styles(t : T?) {
     let source = "plain **bold** and *italic*, `code`, ~~gone~~, with [link](editor://item)."
     let doc <- md_parse(source)

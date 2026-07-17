@@ -129,7 +129,13 @@ struct public MdInlineRun {
     is_strikethrough : bool = false
     is_link : bool = false
     is_automatic_uri : bool = false
+    //! Images are one atomic inline run. `display` and `image_alt` provide the
+    //! plain-text fallback; `source` is the conservative alt subtree because
+    //! MD4C does not expose the complete image-syntax span.
+    is_image : bool = false
+    image_alt : string
     destination : string
+    title : string
 }
 
 struct public MdInlineContent {
@@ -147,6 +153,7 @@ bitfield public MdSelectionStyles {
     has_code
     has_strikethrough
     has_links
+    has_images
     has_mixed_styles
 }
 
@@ -356,8 +363,43 @@ def private collect_inline(doc : MdDocument const; node_index : int;
     let next_code = (code || node.kind == MdNodeKind.inline_code
         || node.kind == MdNodeKind.code_block)
     let next_strike = strike || node.kind == MdNodeKind.strikethrough
+
+    if (node.kind == MdNodeKind.image) {
+        // Keep replaced content atomic in the public model. The image's child
+        // subtree is flattened only to obtain its accessible/plain-text alt.
+        var alt_content = MdInlineContent()
+        var child = node.first_child
+        while (child >= 0) {
+            collect_inline(doc, child, alt_content, false, false,
+                           false, false, -1)
+            child = doc.nodes[child].next_sibling
+        }
+        var alt := alt_content.text
+        delete alt_content.runs
+        let display_alt = empty(alt) ? "Image" : alt
+        let start = length(content.text)
+        content.text = content.text + display_alt
+        content.runs |> push(MdInlineRun(
+            display = TextSourceRange(
+                start_byte = start, end_byte = start + length(display_alt)),
+            source = node.source,
+            source_exact = false,
+            node_index = node_index,
+            semantic_node = node_index,
+            is_strong = next_strong,
+            is_emphasis = next_emphasis,
+            is_code = next_code,
+            is_strikethrough = next_strike,
+            is_link = true,
+            is_image = true,
+            image_alt = alt,
+            destination = node.destination,
+            title = node.title))
+        return
+    }
+
     var next_semantic = semantic_node
-    if (node.kind == MdNodeKind.link || node.kind == MdNodeKind.image) {
+    if (node.kind == MdNodeKind.link) {
         next_semantic = node_index
     }
 
@@ -391,6 +433,7 @@ def private collect_inline(doc : MdDocument const; node_index : int;
             is_link = next_semantic >= 0)
         if (next_semantic >= 0) {
             run.destination := doc.nodes[next_semantic].destination
+            run.title := doc.nodes[next_semantic].title
         }
         content.runs |> push(<- run)
         return
@@ -490,6 +533,9 @@ def private md_run_style_mask(run : MdInlineRun const) : int {
     if (run.is_link) {
         mask = mask | 16
     }
+    if (run.is_image) {
+        mask = mask | 32
+    }
     return mask
 }
 
@@ -574,6 +620,7 @@ def public md_selection_include(var accumulator : MdSelectionStyleAccumulator;
         accumulator.styles.has_strikethrough = (accumulator.styles.has_strikethrough
             || run.is_strikethrough)
         accumulator.styles.has_links = accumulator.styles.has_links || run.is_link
+        accumulator.styles.has_images = accumulator.styles.has_images || run.is_image
     }
 }
 

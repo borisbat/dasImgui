@@ -29,6 +29,10 @@ def private markdown_fragment(app : ImguiApp; text : string) : JsonValue? {
     return post_command(app, "markdown_probe_fragment", JV((text = text)))
 }
 
+def private markdown_image(app : ImguiApp) : JsonValue? {
+    return post_command(app, "markdown_probe_image", null)
+}
+
 def private same_rect(var a : JsonValue?; var b : JsonValue?) : bool {
     return ((a?["x0"] ?? -1.0f) == (b?["x0"] ?? -2.0f)
         && (a?["y0"] ?? -1.0f) == (b?["y0"] ?? -2.0f)
@@ -141,6 +145,42 @@ def test_markdown_view_event_driven_interactions(t : T?) {
                      && (code_block?["label_y1"] ?? 0.0f)
                         > (code_block?["label_y0"] ?? 0.0f),
                      "code language label has a non-empty screen rectangle")
+
+        var image_probe : JsonValue?
+        let image_rendered = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+            image_probe = markdown_image(app)
+            return ((image_probe?["ok"] ?? false)
+                && (image_probe?["placeholder_valid"] ?? false))
+        }
+        t |> success(image_rendered,
+                     "Markdown image exposes deterministic placeholder geometry")
+        if (!image_rendered) return
+        t |> equal(image_probe?["alt"] ?? "", "Unicode terminal preview",
+                   "image probe exposes plain-text alt fallback")
+        t |> equal(image_probe?["display"] ?? "", "Unicode terminal preview",
+                   "atomic image display is its alt text")
+        t |> equal(image_probe?["destination"] ?? "",
+                   "editor://assets/terminal-preview.png",
+                   "image probe exposes host-resolvable destination")
+        t |> equal(image_probe?["title"] ?? "", "Terminal preview",
+                   "image probe exposes optional title")
+        t |> success(!(image_probe?["source_exact"] ?? true),
+                     "image source range honestly reports conservative mapping")
+        let image_node = image_probe?["node"] ?? -1
+        let image_x = ((image_probe?["x0"] ?? 0.0f)
+            + (image_probe?["x1"] ?? 0.0f)) * 0.5f
+        let image_y = ((image_probe?["y0"] ?? 0.0f)
+            + (image_probe?["y1"] ?? 0.0f)) * 0.5f
+        post_command(app, "imgui_mouse_pos", JV((x = image_x, y = image_y)))
+        let image_hovered = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+            var state = markdown_state(app)
+            return ((state?["semantic_hover"]?["node"] ?? -1) == image_node
+                && (state?["semantic_hover"]?["image"] ?? false)
+                && (state?["semantic_hover"]?["target"] ?? "")
+                    == "editor://assets/terminal-preview.png")
+        }
+        t |> success(image_hovered,
+                     "placeholder hover acknowledges image identity and host URI")
 
         // The copy-URI affordance appears on hover, but its reserved control
         // slot must not resize or move the link text.

@@ -39,9 +39,16 @@ struct public TextFlowSpan {
     //! '_', '.', ':', and '%'. Natural whitespace wrapping remains enabled.
     uri_wrap : bool = false
 
+    //! Optional inline control placed immediately before this span. Control
+    //! kinds are consumer-defined; the flow core only preserves the value.
+    leading_control_id : int = -1
+    leading_control_kind : int = 0
+    leading_control_size : float2
+
     //! Optional inline control placed immediately after this span. Its space is
     //! always part of layout even when the renderer chooses not to draw it.
     trailing_control_id : int = -1
+    trailing_control_kind : int = 0
     trailing_control_size : float2
 }
 
@@ -52,6 +59,7 @@ struct public TextFlowFragment {
     line_index : int
     rect : float4                 //!< local (x0, y0, x1, y1)
     control_id : int = -1
+    control_kind : int = 0
     is_control : bool = false
 }
 
@@ -104,7 +112,9 @@ struct private TextFlowUnit {
     height : float
     break_after : bool
     hard_break : bool
+    keep_with_next : bool = false
     control_id : int = -1
+    control_kind : int = 0
     is_control : bool = false
 }
 
@@ -474,6 +484,20 @@ def private make_units(source : string; spans : array<TextFlowSpan> const;
     for (span in spans) {
         let a = clamp(span.source.start_byte, 0, source_len)
         let b = clamp(span.source.end_byte, a, source_len)
+        if (span.leading_control_id >= 0 && span.leading_control_size.x > 0.0f) {
+            units |> push(TextFlowUnit(
+                source = TextSourceRange(start_byte = a, end_byte = a),
+                style_id = span.style_id,
+                semantic_id = span.semantic_id,
+                width = span.leading_control_size.x,
+                height = max(line_height, span.leading_control_size.y),
+                break_after = false,
+                hard_break = false,
+                keep_with_next = true,
+                control_id = span.leading_control_id,
+                control_kind = span.leading_control_kind,
+                is_control = true))
+        }
         var span_text := slice(source, a, b)
         var graphemes <- text_graphemes(span_text)
         for (g in graphemes) {
@@ -503,6 +527,7 @@ def private make_units(source : string; spans : array<TextFlowSpan> const;
                 break_after = true,
                 hard_break = false,
                 control_id = span.trailing_control_id,
+                control_kind = span.trailing_control_kind,
                 is_control = true))
         }
     }
@@ -532,6 +557,7 @@ def private push_fragment(var layout : TextFlowLayout; units : array<TextFlowUni
         line_index = line_index,
         rect = float4(x, rect_y, x + width, rect_y + rect_h),
         control_id = u0.control_id,
+        control_kind = u0.control_kind,
         is_control = u0.is_control))
     return width
 }
@@ -621,8 +647,22 @@ def private layout_units(units : array<TextFlowUnit> const;
             }
             let next_width = width + units[i].width
             if (next_width > width_limit && i > start) {
-                end_ = last_break > start ? last_break : i
-                break
+                if (units[i - 1].keep_with_next) {
+                    if (i - 1 > start) {
+                        end_ = i - 1
+                        break
+                    }
+                    // A leading adornment and the first grapheme are the
+                    // smallest legal unit, even if together they exceed the
+                    // available width.
+                    width = next_width
+                    i++
+                    end_ = i
+                    break
+                } else {
+                    end_ = last_break > start ? last_break : i
+                    break
+                }
             }
             width = next_width
             if (units[i].break_after) {

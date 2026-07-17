@@ -35,6 +35,9 @@ var private g_zoom_percent = 100
 var private g_context_source = TextSourceRange(start_byte = -1, end_byte = -1)
 var private g_last_selection = MarkdownSelection()
 var private g_add_comment_hovered = false
+var private g_last_hovered_node = -1
+var private g_last_hovered_image = false
+var private g_last_hovered_target = ""
 
 struct MarkdownProbeFragmentArgs {
     text : string
@@ -76,6 +79,7 @@ def markdown_probe_state(_input : JsonValue?) : JsonValue? {
             has_code = s.styles.has_code,
             has_strikethrough = s.styles.has_strikethrough,
             has_links = s.styles.has_links,
+            has_images = s.styles.has_images,
             has_mixed_styles = s.styles.has_mixed_styles,
             screen_valid = s.screen_valid,
             screen_x0 = s.screen_bounds.x,
@@ -113,6 +117,10 @@ def markdown_probe_state(_input : JsonValue?) : JsonValue? {
             macos_behaviors = io.ConfigMacOSXBehaviors),
         layout_hits = g_view.layout_hits,
         layout_misses = g_view.layout_misses,
+        semantic_hover = (
+            node = g_last_hovered_node,
+            image = g_last_hovered_image,
+            target = g_last_hovered_target),
         zoom_percent = g_zoom_percent))
 }
 
@@ -171,6 +179,41 @@ def markdown_probe_code_block(_input : JsonValue?) : JsonValue? {
     return JV((ok = false, error = "code block not found"))
 }
 
+[live_command(description = "Inspect the first Markdown image's atomic model and placeholder geometry.")]
+def markdown_probe_image(_input : JsonValue?) : JsonValue? {
+    for (node_index in range(length(g_view.nodes))) {
+        let entry & = unsafe(g_view.nodes[node_index])
+        if (!entry.content_valid || !entry.layout_valid
+                || entry.screen_revision != g_view.render_revision) continue
+        for (run in entry.content.runs) {
+            if (!run.is_image) continue
+            var placeholder_valid = false
+            var placeholder_rect = float4()
+            for (fragment in entry.layout.fragments) {
+                if (!fragment.is_control || fragment.control_id != run.semantic_node
+                        || fragment.source.start_byte != run.display.start_byte) continue
+                placeholder_rect = markdown_cached_fragment_rect(entry, fragment)
+                placeholder_valid = true
+                break
+            }
+            return JV((
+                ok = true,
+                node = run.semantic_node,
+                alt = run.image_alt,
+                display = slice(entry.content.text,
+                    run.display.start_byte, run.display.end_byte),
+                destination = run.destination,
+                title = run.title,
+                source_exact = run.source_exact,
+                source_text = md_source_text(g_doc, run.source),
+                placeholder_valid = placeholder_valid,
+                x0 = placeholder_rect.x, y0 = placeholder_rect.y,
+                x1 = placeholder_rect.z, y1 = placeholder_rect.w))
+        }
+    }
+    return JV((ok = false, error = "rendered image not found"))
+}
+
 [live_command(description = "Clear the Markdown selection and return its acknowledgement revision.")]
 def markdown_probe_clear_selection(_input : JsonValue?) : JsonValue? {
     markdown_view_clear_selection(g_view)
@@ -204,6 +247,9 @@ def private selection_style_summary(styles : MdSelectionStyles) : string {
     if (styles.has_links) {
         value = value + (empty(value) ? "links" : ", links")
     }
+    if (styles.has_images) {
+        value = value + (empty(value) ? "images" : ", images")
+    }
     if (styles.has_mixed_styles) {
         value = value + (empty(value) ? "mixed" : ", mixed")
     }
@@ -220,6 +266,8 @@ def init() {
 This is a source-mapped **Markdown viewer** with *emphasis*, `inline code`, ~~deleted text~~, named [documentation](../docs/editor.md "Editor docs"), and a long autolink https://example.com/文档/naïve/é/terminal-and-editor?mode=full&emoji=👩‍💻#résumé.
 
 The shared plain-text pass also recognizes custom editor://workspace/文档 and WWW.Example.org/Unicode/文档 outside Markdown link syntax.
+
+Image fallback and host URI semantics: ![Unicode terminal preview](editor://assets/terminal-preview.png "Terminal preview").
 
 > Font fallback, grapheme-safe wrapping, semantic links, and the Markdown model are separate layers.
 
@@ -298,6 +346,9 @@ def update() {
                 zoom = float(g_zoom_percent) / 100.0f)
             let result = markdown_view("probe", g_doc, g_view, markdown_style)
             g_last_selection = result.selection
+            g_last_hovered_node = result.hovered_node
+            g_last_hovered_image = result.hovered_image
+            g_last_hovered_target = result.target
             if (result.copied) {
                 g_status = "Copied: {result.target}"
             } elif (result.selection_copied) {

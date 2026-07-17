@@ -92,6 +92,51 @@ def test_text_flow_uri_fragments(t : T?) {
 }
 
 [test]
+def test_text_flow_leading_and_trailing_controls(t : T?) {
+    let source = "alt"
+    var spans = [TextFlowSpan(
+        source = TextSourceRange(start_byte = 0, end_byte = length(source)),
+        style_id = 9, semantic_id = 23,
+        leading_control_id = 23, leading_control_kind = 2,
+        leading_control_size = float2(12.0f, 16.0f),
+        trailing_control_id = 23, trailing_control_kind = 1,
+        trailing_control_size = float2(10.0f, 16.0f))]
+    let layout <- layout_text_flow(source, spans, 100.0f, 18.0f,
+        $(s : string) : float {
+            return float(length(text_graphemes(s))) * 8.0f
+        })
+    t |> equal(length(layout.fragments), 3,
+               "leading control, text, and trailing control are distinct fragments")
+    if (length(layout.fragments) != 3) return
+    let leading = layout.fragments[0]
+    let text_fragment = layout.fragments[1]
+    let trailing = layout.fragments[2]
+    t |> success(leading.is_control && leading.control_kind == 2,
+                 "leading consumer-defined control kind is preserved")
+    t |> equal(leading.source.start_byte, 0, "leading control anchors before text")
+    t |> equal(leading.source.end_byte, 0, "leading control consumes no source bytes")
+    t |> success(!text_fragment.is_control && text_fragment.source.end_byte == length(source),
+                 "text remains source mapped between controls")
+    t |> success(trailing.is_control && trailing.control_kind == 1,
+                 "trailing consumer-defined control kind is preserved")
+    t |> equal(trailing.source.start_byte, length(source),
+               "trailing control anchors after text")
+
+    let narrow <- layout_text_flow(source, spans, 16.0f, 18.0f,
+        $(s : string) : float {
+            return float(length(text_graphemes(s))) * 8.0f
+        })
+    t |> success(length(narrow.lines) > 1,
+                 "narrow image fallback wraps remaining alt text")
+    if (!empty(narrow.fragments)) {
+        t |> success(narrow.fragments[0].is_control
+                   && length(narrow.fragments) > 1
+                   && narrow.fragments[1].line_index == narrow.fragments[0].line_index,
+                     "leading placeholder never orphans from the first grapheme")
+    }
+}
+
+[test]
 def test_plain_text_uri_detection(t : T?) {
     let source = "See https://example.com/文档/naïve/é?q=👩‍💻, editor://workspace/文档 and WWW.Example.org/path. Note: ordinary text."
     let uris <- text_uris(source)
