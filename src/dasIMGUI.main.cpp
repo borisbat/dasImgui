@@ -4,7 +4,7 @@
 #include "daScript/ast/ast_handle.h"
 #include "daScript/ast/ast_typefactory_bind.h"
 #include "daScript/simulate/bind_enum.h"
-#include "daScript/simulate/aot_builtin_clipboard.h"
+#include "aot_builtin_clipboard.h"
 #include "dasIMGUI.h"
 #include "need_dasIMGUI.h"
 #include "aot_dasIMGUI.h"

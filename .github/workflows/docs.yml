@@ -79,7 +79,7 @@ jobs:
             -DDAS_LLVM_DISABLED=ON \
             -DDAS_GLFW_DISABLED=OFF \
             -G Ninja
-          cmake --build ./build --parallel --target daslang
+          cmake --build ./build --parallel --target daslang dasModuleClipboard
 
       - name: "Lint changed .das files"
         # Mirrors daslang's extended_checks.yml lint step. Runs against the

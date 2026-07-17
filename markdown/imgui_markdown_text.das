@@ -6,7 +6,7 @@ module imgui_markdown_text shared
 require imgui public
 require imgui/imgui_text_flow public
 require imgui/imgui_icons
-require daslib/clipboard
+require clipboard/clipboard
 require daslib/strings_boost
 require math
 

@@ -24,10 +24,40 @@ IF(NOT COMMAND ADD_MODULE_CPP)
         message(FATAL_ERROR "DASLANG_DIR must be set to the daslang SDK root")
     endif()
     SET(DAS_IMGUI_GLFW_ROOT ${DASLANG_DIR}/modules/dasGlfw)
+    SET(DAS_IMGUI_CLIPBOARD_ROOT ${DASLANG_DIR}/modules/dasClipboard)
 ELSE()
     # sibling module in the superbuild tree (CMAKE_CURRENT_LIST_DIR, not
     # CMAKE_SOURCE_DIR/modules/...: the web build's top-level source dir is web/)
     SET(DAS_IMGUI_GLFW_ROOT ${CMAKE_CURRENT_LIST_DIR}/../dasGlfw)
+    SET(DAS_IMGUI_CLIPBOARD_ROOT ${CMAKE_CURRENT_LIST_DIR}/../dasClipboard)
+ENDIF()
+
+IF(NOT EXISTS ${DAS_IMGUI_CLIPBOARD_ROOT}/src/aot_builtin_clipboard.h)
+    MESSAGE(FATAL_ERROR "dasImgui requires the dasClipboard module")
+ENDIF()
+
+IF(NOT COMMAND ADD_MODULE_CPP AND NOT EMSCRIPTEN)
+    ADD_LIBRARY(dasClipboardNative SHARED IMPORTED)
+    IF(WIN32)
+        FIND_LIBRARY(DAS_IMGUI_CLIPBOARD_IMPORT_LIBRARY
+            NAMES dasModuleClipboard
+            PATHS
+                ${DASLANG_DIR}/lib/Release
+                ${DASLANG_DIR}/lib
+                ${DASLANG_DIR}/build/modules/dasClipboard
+                ${DASLANG_DIR}/build/modules/dasClipboard/Release
+                ${DAS_IMGUI_CLIPBOARD_ROOT}
+            NO_DEFAULT_PATH)
+        IF(NOT DAS_IMGUI_CLIPBOARD_IMPORT_LIBRARY)
+            MESSAGE(FATAL_ERROR "dasImgui requires a built dasModuleClipboard import library")
+        ENDIF()
+        SET_TARGET_PROPERTIES(dasClipboardNative PROPERTIES
+            IMPORTED_IMPLIB ${DAS_IMGUI_CLIPBOARD_IMPORT_LIBRARY}
+            IMPORTED_LOCATION ${DAS_IMGUI_CLIPBOARD_ROOT}/dasModuleClipboard.shared_module)
+    ELSE()
+        SET_TARGET_PROPERTIES(dasClipboardNative PROPERTIES
+            IMPORTED_LOCATION ${DAS_IMGUI_CLIPBOARD_ROOT}/dasModuleClipboard.shared_module)
+    ENDIF()
 ENDIF()
 
 SET(DAS_IMGUI_DIR ${CMAKE_CURRENT_LIST_DIR})
@@ -218,6 +248,7 @@ IF(COMMAND ADD_MODULE_CPP)
             ${DAS_IMGUI_DIR}/gl3w
             ${GLFW_INCLUDE_DIR}
             ${DAS_IMGUI_GLFW_ROOT}/src
+            ${DAS_IMGUI_CLIPBOARD_ROOT}/src
         )
         TARGET_COMPILE_DEFINITIONS(${imgui_mod_lib} PRIVATE
             ${DAS_IMGUI_COMMON_DEFS}
@@ -233,6 +264,7 @@ IF(COMMAND ADD_MODULE_CPP)
     TARGET_LINK_LIBRARIES(libImguiApp PUBLIC libDasModuleImgui)
     TARGET_LINK_LIBRARIES(libImguiAppHeadless PUBLIC libDasModuleImgui)
     TARGET_LINK_LIBRARIES(libDasModuleImgui PRIVATE freetype)
+    TARGET_LINK_LIBRARIES(libDasModuleImgui PRIVATE libDasModuleClipboard)
     IF(NOT EMSCRIPTEN)
         FIND_PACKAGE(OpenGL REQUIRED)
         TARGET_LINK_LIBRARIES(libImguiApp PUBLIC ${OPENGL_LIBRARIES})
@@ -290,6 +322,7 @@ ELSEIF(EMSCRIPTEN)
         ${imgui_INCLUDE_DIR}
         ${MD4C_INCLUDE_DIR}
         ${DAS_IMGUI_DIR}/src
+        ${DAS_IMGUI_CLIPBOARD_ROOT}/src
         ${DAS_IMGUI_DIR}/gl3w
         ${GLFW_INCLUDE_DIR}
         ${DASLANG_DIR}/modules/dasGlfw/src)
@@ -326,10 +359,10 @@ ENDIF()
 
 # dasModuleImgui.shared_module — core imgui bindings
 add_library(dasModuleImgui SHARED ${DAS_IMGUI_BIND_SRC} ${DAS_IMGUI_SRC})
-target_link_libraries(dasModuleImgui PRIVATE freetype)
+target_link_libraries(dasModuleImgui PRIVATE freetype dasClipboardNative)
 target_compile_features(dasModuleImgui PRIVATE cxx_std_17)
 target_compile_definitions(dasModuleImgui PRIVATE
-    DAS_MOD_EXPORTS DAS_ENABLE_DLL=1
+    DAS_MOD_EXPORTS DAS_ENABLE_DLL=1 DAS_CLIPBOARD_IMPORTS=1
     ${DAS_IMGUI_COMMON_DEFS}
     IMGUI_API=${IMGUI_PUBLIC_ATTR}
     $<$<CONFIG:Release>:DAS_NO_ASSERTIONS>
@@ -341,6 +374,7 @@ target_include_directories(dasModuleImgui PRIVATE
     ${imgui_INCLUDE_DIR}
     ${MD4C_INCLUDE_DIR}
     ${DAS_IMGUI_DIR}/src
+    ${DAS_IMGUI_CLIPBOARD_ROOT}/src
 )
 if(WIN32)
     if(EXISTS "${DASLANG_DIR}/lib/Release/libDaScriptDyn.lib")

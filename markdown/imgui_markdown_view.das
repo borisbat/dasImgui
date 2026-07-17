@@ -9,7 +9,7 @@ require imgui/imgui_markdown_model public
 require imgui/imgui_text_flow
 require imgui/imgui_fonts public
 require imgui/imgui_icons
-require daslib/clipboard
+require clipboard/clipboard
 require math
 require strings
 

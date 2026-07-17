@@ -93,7 +93,7 @@ rule. It is not a special-case architecture for URIs.
 
 ### Clipboard
 
-Clipboard access comes from the platform-neutral `daslib/clipboard` API. Text
+Clipboard access comes from the platform-neutral `clipboard/clipboard` API. Text
 crossing the OS boundary is UTF-8. Components do not call backend-specific
 ImGui clipboard functions directly.
 

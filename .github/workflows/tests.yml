@@ -186,7 +186,7 @@ jobs:
           # + dasModuleStbImage (rendering deps).
           cmake --build ./build --parallel --target \
             daslang daslang-live \
-            dasModuleLiveHost dasModuleGlfw dasModuleHV \
+            dasModuleLiveHost dasModuleGlfw dasModuleHV dasModuleClipboard \
             dasModulePUGIXML dasModuleStbImage
           sccache --show-stats
           echo "BIN_DIR=bin" >> "$GITHUB_ENV"

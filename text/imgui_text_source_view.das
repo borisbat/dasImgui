@@ -7,7 +7,7 @@ module imgui_text_source_view shared
 require imgui public
 require imgui/imgui_text_source_model public
 require imgui/imgui_fonts public
-require daslib/clipboard
+require clipboard/clipboard
 require math
 require strings
 
