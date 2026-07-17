@@ -152,6 +152,10 @@ results, URI actions, terminal annotations, and editor code lenses.
 - Unicode font roles, fallback, zoom, and colored emoji overlays.
 - View-independent grapheme grouping, URI recognition, wrapping, styled
   measurement, layout fragments, and grapheme-safe hit testing.
+- View-independent Markdown-source delimiter spans over unchanged UTF-8 bytes.
+- A selectable read-only source view with cached cell layout, exact byte-range
+  selection, fixed-width marker emphasis, and 0/1/2-cell grapheme metrics for
+  combining text, CJK, flags, and color emoji.
 - Typed MD4C Markdown model with display-to-source mapping.
 - Cached Markdown layout and explicit lifecycle/disposal.
 - Headings, paragraphs, lists, quotes, tables, inline code, fenced code, links,
@@ -237,6 +241,11 @@ terminal buffer revisions rather than introducing sleeps or frame delays.
 - Explicit deletion releases retained arrays and strings during shutdown or
   revision replacement so GC remains an infrequent safety net.
 - Texture contents and hover state do not invalidate text layout.
+- Source markers retain the monospace face and gain weight by overdraw; changing
+  to a proportional bold face is forbidden because it would move columns.
+- Source cells use Unicode grapheme cell width rather than font fallback
+  advance. Wide color glyphs are centered and clipped inside their reserved
+  cells, so fallback-face metrics cannot move following source columns.
 - Fast tests use deterministic fake font metrics; headless ImGui tests cover
   interaction and geometry; visual probes cover fonts, emoji, tables, and live
   adornments.
@@ -266,3 +275,8 @@ terminal buffer revisions rather than introducing sleeps or frame delays.
   not bytes inserted into source text.
 - 2026-07-17: Interactive tests wait for observable event revisions and UI
   state changes; timeouts are deadlock guards only, never test semantics.
+- 2026-07-17: Plain/source presentation no longer uses `InputTextMultiline`;
+  the reusable source view owns layout, drawing, selection, and byte mapping.
+- 2026-07-17: Monospace source layout assigns display cells per grapheme
+  (including two-cell emoji/CJK) and treats actual fallback glyph advance as a
+  drawing concern inside the allocated cells.

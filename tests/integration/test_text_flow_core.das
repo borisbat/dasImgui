@@ -33,6 +33,39 @@ def test_text_flow_graphemes(t : T?) {
 }
 
 [test]
+def test_text_flow_terminal_cell_widths(t : T?) {
+    t |> equal(text_cell_width("A"), 1, "ASCII occupies one source cell")
+    t |> equal(text_cell_width("é"), 1,
+               "combining grapheme occupies one source cell")
+    t |> equal(text_cell_width("中文"), 4, "CJK graphemes occupy two cells")
+    t |> equal(text_cell_width("👩‍💻"), 2,
+               "ZWJ color emoji occupies two cells as one grapheme")
+    t |> equal(text_cell_width("🇺🇸"), 2,
+               "regional-indicator flag occupies two cells")
+    t |> equal(text_cell_width("©️"), 2,
+               "variation-selector emoji presentation occupies two cells")
+}
+
+[test]
+def test_text_flow_empty_source_lines_keep_byte_positions(t : T?) {
+    let source = "a\n\nb\n"
+    var spans = [TextFlowSpan(
+        source = TextSourceRange(start_byte = 0, end_byte = length(source)),
+        style_id = 0)]
+    let layout <- layout_text_flow_styled_ranges(source, spans, 100.0f, 10.0f,
+        $(text : string; start_byte, end_byte, style_id : int) : float {
+            return 8.0f
+        })
+    t |> equal(length(layout.lines), 4,
+               "two hard breaks plus terminal newline produce four source lines")
+    if (length(layout.lines) != 4) return
+    t |> equal(layout.lines[1].source.start_byte, 2,
+               "middle empty line maps to its newline byte")
+    t |> equal(layout.lines[3].source.start_byte, length(source),
+               "final empty caret line maps to source end")
+}
+
+[test]
 def test_text_flow_uri_fragments(t : T?) {
     let prefix = "Open "
     let uri = "https://example.com/文档/a-long-name?q=é&mode=full"

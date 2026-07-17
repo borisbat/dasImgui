@@ -436,6 +436,66 @@ def public text_graphemes(text : string) : array<TextGrapheme> {
     return <- out
 }
 
+def private is_wide_text_codepoint(cp : uint) : bool {
+    // Compact East-Asian-wide + emoji subset used by terminal/editor cells.
+    // The API is deliberately isolated so generated Unicode width tables can
+    // replace these ranges without changing source-view consumers.
+    return (in_range(cp, 0x1100u, 0x115Fu)
+        || in_range(cp, 0x231Au, 0x231Bu)
+        || in_range(cp, 0x2329u, 0x232Au)
+        || in_range(cp, 0x23E9u, 0x23ECu) || cp == 0x23F0u || cp == 0x23F3u
+        || in_range(cp, 0x25FDu, 0x25FEu)
+        || in_range(cp, 0x2614u, 0x2615u)
+        || in_range(cp, 0x2648u, 0x2653u)
+        || cp == 0x267Fu || cp == 0x2693u || cp == 0x26A1u
+        || in_range(cp, 0x26AAu, 0x26ABu)
+        || in_range(cp, 0x26BDu, 0x26BEu)
+        || in_range(cp, 0x26C4u, 0x26C5u) || cp == 0x26CEu
+        || cp == 0x26D4u || cp == 0x26EAu
+        || in_range(cp, 0x26F2u, 0x26F3u) || cp == 0x26F5u
+        || cp == 0x26FAu || cp == 0x26FDu
+        || cp == 0x2705u || in_range(cp, 0x270Au, 0x270Bu)
+        || cp == 0x2728u || cp == 0x274Cu || cp == 0x274Eu
+        || in_range(cp, 0x2753u, 0x2755u) || cp == 0x2757u
+        || in_range(cp, 0x2795u, 0x2797u) || cp == 0x27B0u || cp == 0x27BFu
+        || in_range(cp, 0x2B1Bu, 0x2B1Cu) || cp == 0x2B50u || cp == 0x2B55u
+        || in_range(cp, 0x2E80u, 0xA4CFu)
+        || in_range(cp, 0xAC00u, 0xD7A3u)
+        || in_range(cp, 0xF900u, 0xFAFFu)
+        || in_range(cp, 0xFE10u, 0xFE19u)
+        || in_range(cp, 0xFE30u, 0xFE6Fu)
+        || in_range(cp, 0xFF01u, 0xFF60u)
+        || in_range(cp, 0xFFE0u, 0xFFE6u)
+        || in_range(cp, 0x1F1E6u, 0x1F1FFu)
+        || in_range(cp, 0x1F300u, 0x1FAFFu)
+        || in_range(cp, 0x20000u, 0x3FFFDu))
+}
+
+def public text_grapheme_cell_width(grapheme : TextGrapheme const) : int {
+    //! Terminal/editor display cells for one already-grouped grapheme. Newline
+    //! controls occupy no cell; CJK, emoji, flags, keycaps, and emoji-presentation
+    //! sequences occupy two. Combining/ZWJ bytes never add cells independently.
+    let cp = grapheme.first_codepoint
+    if (cp == 0x000Au || cp == 0x000Du) return 0
+    if (cp == 0x0009u) return 4
+    if (is_wide_text_codepoint(cp)
+            || grapheme.last_codepoint == 0xFE0Fu
+            || grapheme.last_codepoint == 0x20E3u) return 2
+    return 1
+}
+
+def public text_cell_width(text : string) : int {
+    //! Sum display cells across UTF-8 graphemes. Intended for source/editor
+    //! layout and tests; line breaking remains the caller's responsibility.
+    var width = 0
+    var graphemes <- text_graphemes(text)
+    for (grapheme in graphemes) {
+        width += text_grapheme_cell_width(grapheme)
+    }
+    delete graphemes
+    return width
+}
+
 def public text_previous_grapheme_boundary(text : string; at : int) : int {
     //! Move one caret stop left without entering a UTF-8 grapheme cluster.
     let caret = clamp(at, 0, length(text))
@@ -606,8 +666,15 @@ def private emit_line(var layout : TextFlowLayout; units : array<TextFlowUnit> c
                       line_index, x, y, line_height)
     }
 
-    var source_start = first < end_ ? units[first].source.start_byte : 0
-    var source_end = first < end_ ? units[end_ - 1].source.end_byte : source_start
+    var source_start = 0
+    if (first < end_) {
+        source_start = units[first].source.start_byte
+    } elif (first < length(units)) {
+        source_start = units[first].source.start_byte
+    } elif (!empty(units)) {
+        source_start = units[length(units) - 1].source.end_byte
+    }
+    let source_end = first < end_ ? units[end_ - 1].source.end_byte : source_start
     layout.lines |> push(TextFlowLine(
         first_fragment = first_fragment,
         fragment_count = length(layout.fragments) - first_fragment,
@@ -680,6 +747,15 @@ def private layout_units(units : array<TextFlowUnit> const;
         if (consumed_hard_break && start < length(units) && units[start].hard_break) {
             start++
         }
+    }
+
+    // Editors and source viewers need the caret line after a terminal newline.
+    // The consumed hard-break unit contributes no glyph, but it does create
+    // one final empty visual line mapped to the source-end byte.
+    if (!empty(units) && units[length(units) - 1].hard_break) {
+        let h = emit_line(layout, units, length(units), length(units),
+                          y, line_height)
+        y += h
     }
 
     layout.size = float2(min(widest, width_limit), y)
