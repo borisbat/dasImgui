@@ -31,17 +31,36 @@ ELSE()
 ENDIF()
 
 SET(DAS_IMGUI_DIR ${CMAKE_CURRENT_LIST_DIR})
+include(FetchContent)
 SET(DAS_IMGUI_COMMON_DEFS
     IMGUI_DISABLE_OBSOLETE_FUNCTIONS=1
+    IMGUI_ENABLE_FREETYPE=1
     IMGUI_USE_WCHAR32=1
 )
 
+# FreeType is the Dear ImGui-supported path for color-layered glyphs. Pin and
+# build it with a minimal, deterministic dependency set: Segoe UI Emoji's
+# COLR/CPAL outlines need none of the optional compressed-font/image libraries.
+SET(FT_DISABLE_ZLIB ON CACHE BOOL "Use FreeType's internal zlib" FORCE)
+SET(FT_DISABLE_BZIP2 ON CACHE BOOL "Disable FreeType bzip2 support" FORCE)
+SET(FT_DISABLE_PNG ON CACHE BOOL "Disable FreeType PNG bitmap support" FORCE)
+SET(FT_DISABLE_HARFBUZZ ON CACHE BOOL "Disable FreeType HarfBuzz auto-hinting" FORCE)
+SET(FT_DISABLE_BROTLI ON CACHE BOOL "Disable FreeType WOFF2 support" FORCE)
+SET(FT_ENABLE_ERROR_STRINGS OFF CACHE BOOL "Disable FreeType error strings" FORCE)
+FetchContent_Declare(freetype_src
+    URL https://download.savannah.gnu.org/releases/freetype/freetype-2.14.3.tar.xz
+    URL_HASH SHA256=36bc4f1cc413335368ee656c42afca65c5a3987e8768cc28cf11ba775e785a5f
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+)
+FetchContent_MakeAvailable(freetype_src)
+SET_TARGET_PROPERTIES(freetype PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
 # imgui via FetchContent
-include(FetchContent)
 SET(IMGUI_VERSION "1.92.6-docking")
 FetchContent_Declare(imgui_src
     URL https://github.com/ocornut/imgui/archive/refs/tags/v${IMGUI_VERSION}.tar.gz
     URL_HASH SHA256=5e84cdaa6a6041586a0d11a3071b749734a0439d66fdbdad37ae5b27e37d396c
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
     SOURCE_DIR ${DAS_IMGUI_DIR}/imgui
 )
 FetchContent_MakeAvailable(imgui_src)
@@ -83,6 +102,7 @@ SET(DAS_IMGUI_SRC
     ${imgui_INCLUDE_DIR}/imgui_draw.cpp
     ${imgui_INCLUDE_DIR}/imgui_tables.cpp
     ${imgui_INCLUDE_DIR}/imgui_widgets.cpp
+    ${imgui_INCLUDE_DIR}/misc/freetype/imgui_freetype.cpp
 )
 
 # binding source files
@@ -182,6 +202,7 @@ IF(COMMAND ADD_MODULE_CPP)
     # the imgui core symbols live in libDasModuleImgui; the app backends use them
     TARGET_LINK_LIBRARIES(libImguiApp PUBLIC libDasModuleImgui)
     TARGET_LINK_LIBRARIES(libImguiAppHeadless PUBLIC libDasModuleImgui)
+    TARGET_LINK_LIBRARIES(libDasModuleImgui PRIVATE freetype)
     IF(NOT EMSCRIPTEN)
         FIND_PACKAGE(OpenGL REQUIRED)
         TARGET_LINK_LIBRARIES(libImguiApp PUBLIC ${OPENGL_LIBRARIES})
@@ -208,7 +229,7 @@ ELSEIF(EMSCRIPTEN)
     # whatever links the archive or the final wasm link fails.
     OPTION(DAS_IMGUI_WASM_MEMORY64 "Build the wasm archives for memory64 (wasm64)" ON)
     OPTION(DAS_IMGUI_WASM_PTHREADS "Build the wasm archives threaded (-pthread)" ON)
-    MESSAGE(STATUS "dasImgui: emscripten/web build (3 static wasm archives; memory64=${DAS_IMGUI_WASM_MEMORY64} pthreads=${DAS_IMGUI_WASM_PTHREADS})")
+    MESSAGE(STATUS "dasImgui: emscripten/web build (3 module archives + FreeType; memory64=${DAS_IMGUI_WASM_MEMORY64} pthreads=${DAS_IMGUI_WASM_PTHREADS})")
 
     SET(IMGUI_WASM_FLAGS
         -fno-rtti
@@ -257,6 +278,7 @@ ELSEIF(EMSCRIPTEN)
 
     add_library(dasModuleImgui STATIC ${DAS_IMGUI_BIND_SRC} ${DAS_IMGUI_SRC})
     ADD_IMGUI_WASM_ARCHIVE(dasModuleImgui liblibDasModuleImgui)
+    target_link_libraries(dasModuleImgui PRIVATE freetype)
 
     add_library(imguiApp STATIC ${DAS_IMGUI_APP_SRC})
     ADD_IMGUI_WASM_ARCHIVE(imguiApp liblibImguiApp)
@@ -273,6 +295,7 @@ ENDIF()
 
 # dasModuleImgui.shared_module — core imgui bindings
 add_library(dasModuleImgui SHARED ${DAS_IMGUI_BIND_SRC} ${DAS_IMGUI_SRC})
+target_link_libraries(dasModuleImgui PRIVATE freetype)
 target_compile_features(dasModuleImgui PRIVATE cxx_std_17)
 target_compile_definitions(dasModuleImgui PRIVATE
     DAS_MOD_EXPORTS DAS_ENABLE_DLL=1

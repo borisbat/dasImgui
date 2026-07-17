@@ -5,6 +5,11 @@ module imgui_fonts
 require imgui public
 require daslib/fio
 
+// ImGuiFreeTypeLoaderFlags_ lives in optional imgui_freetype.h and is not part
+// of the generated imgui.h binding. Keep these public names aligned with that
+// upstream enum so callers never need magic bit values.
+let public IMGUI_FREETYPE_LOAD_COLOR = 1u << 8
+
 def public font_file_exists(path : string) : bool {
     //! True when ``path`` names a readable font candidate. Kept here so
     //! platform fallback discovery does not need raw ImGui access.
@@ -31,7 +36,8 @@ def public font_has_glyph(var font : ImFont?; codepoint : uint) : bool {
     return *font |> IsGlyphInFont(codepoint)
 }
 
-def public merge_font_from_file(path : string; size_px : float; pixel_snap_h : bool = true) : bool {
+def public merge_font_from_file(path : string; size_px : float; pixel_snap_h : bool = true;
+                                font_loader_flags : uint = 0u) : bool {
     //! Merge a TTF/OTF face into the most recently added font. Dear ImGui has
     //! no platform font fallback: adding multiple sources in merge mode is
     //! how one font gains symbols and language ranges from fallback faces.
@@ -43,6 +49,7 @@ def public merge_font_from_file(path : string; size_px : float; pixel_snap_h : b
         var cfg = ImFontConfig()
         cfg.MergeMode = true
         cfg.PixelSnapH = pixel_snap_h
+        cfg.FontLoaderFlags = font_loader_flags
         return (atlas |> AddFontFromFileTTF(path, size_px, addr(cfg), null)) != null
     }
 }
