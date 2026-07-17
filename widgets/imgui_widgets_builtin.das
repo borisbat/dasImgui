@@ -1899,6 +1899,13 @@ def image(var state : ImageState; user_texture_id : ImTextureRef; size : float2;
     image_finalize(widget_ident, "image", state)
 }
 
+def public image_texture_id(texture : ImTextureRef const) : uint64 {
+    //! Extract the backend handle for APIs that retain an image reference
+    //! across frames. `ImTextureRef` itself is a non-local handled type and
+    //! therefore must not be stored in ordinary daScript state structs.
+    return texture.GetTexID()
+}
+
 // ===== Display: tooltip (flat form) =====
 //
 // Stateless one-liner tooltips. `set_tooltip` always shows the tooltip

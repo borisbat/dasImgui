@@ -9,6 +9,7 @@ require imgui/imgui_playwright public
 require daslib/clipboard public
 require daslib/json public
 require daslib/json_boost public
+require math
 
 //! Deterministic interaction coverage for the Markdown viewer.
 //!
@@ -181,6 +182,111 @@ def test_markdown_view_event_driven_interactions(t : T?) {
         }
         t |> success(image_hovered,
                      "placeholder hover acknowledges image identity and host URI")
+
+        let fallback_height = ((image_probe?["y1"] ?? 0.0f)
+            - (image_probe?["y0"] ?? 0.0f))
+        let requested_resolved_height = fallback_height + 24.0f
+        let bind_result = post_command(app, "markdown_probe_bind_image",
+            JV((width = 48.0f, height = requested_resolved_height,
+                resource_revision = 17)))
+        let bind_revision = bind_result?["image_bindings_revision"] ?? -1
+        let bind_prior_render = bind_result?["prior_render_revision"] ?? -1
+        var resolved_probe : JsonValue?
+        let image_resolved = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+            resolved_probe = markdown_image(app)
+            return ((resolved_probe?["ok"] ?? false)
+                && (resolved_probe?["resolved"] ?? false)
+                && (resolved_probe?["image_bindings_revision"] ?? -1)
+                    >= bind_revision
+                && (resolved_probe?["render_revision"] ?? bind_prior_render + 1)
+                    > bind_prior_render)
+        }
+        t |> success(image_resolved,
+                     "host texture binding is acknowledged by rendered image state")
+        if (!image_resolved) return
+        let resolved_height = ((resolved_probe?["y1"] ?? 0.0f)
+            - (resolved_probe?["y0"] ?? 0.0f))
+        let fallback_y0 = image_probe?["y0"] ?? -1.0f
+        let fallback_y1 = image_probe?["y1"] ?? -1.0f
+        let resolved_y0 = resolved_probe?["y0"] ?? -1.0f
+        let resolved_y1 = resolved_probe?["y1"] ?? -1.0f
+        let bound_height = resolved_probe?["binding_height"] ?? -1.0f
+        let binding_view_revision = resolved_probe?["binding_view_revision"] ?? -1
+        let layout_image_revision = resolved_probe?["layout_image_revision"] ?? -1
+        t |> success(resolved_height >= requested_resolved_height
+                   && resolved_height > fallback_height,
+                     "resolved display size participates in inline layout "
+                     + "(fallback={fallback_height}, requested={requested_resolved_height}, "
+                     + "actual={resolved_height}, fallback_y={fallback_y0}..{fallback_y1}, "
+                     + "resolved_y={resolved_y0}..{resolved_y1}, binding="
+                     + "{bound_height}, view_rev={binding_view_revision}, "
+                     + "layout_rev={layout_image_revision})")
+        t |> equal(resolved_probe?["alt"] ?? "", image_probe?["alt"] ?? "",
+                   "resolution does not change image alt semantics")
+        t |> equal(resolved_probe?["destination"] ?? "",
+                   image_probe?["destination"] ?? "",
+                   "resolution does not change image URI semantics")
+
+        let image_zoom_result = post_command(app, "markdown_probe_set_zoom",
+                                              JV((percent = 150)))
+        let image_zoom_prior = image_zoom_result?["prior_render_revision"] ?? -1
+        var scaled_image_probe : JsonValue?
+        let image_zoomed = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+            var state = markdown_state(app)
+            scaled_image_probe = markdown_image(app)
+            return ((state?["zoom_percent"] ?? 0) == 150
+                && (scaled_image_probe?["ok"] ?? false)
+                && (scaled_image_probe?["resolved"] ?? false)
+                && (scaled_image_probe?["render_revision"] ?? -1)
+                    > image_zoom_prior)
+        }
+        t |> success(image_zoomed,
+                     "resolved image observes the acknowledged Markdown zoom")
+        if (!image_zoomed) return
+        let scaled_image_height = ((scaled_image_probe?["y1"] ?? 0.0f)
+            - (scaled_image_probe?["y0"] ?? 0.0f))
+        t |> success(scaled_image_height >= resolved_height * 1.49f,
+                     "150% document zoom scales resolved image geometry")
+
+        let image_zoom_reset = post_command(app, "markdown_probe_set_zoom",
+                                             JV((percent = 100)))
+        let image_reset_prior = image_zoom_reset?["prior_render_revision"] ?? -1
+        var reset_image_probe : JsonValue?
+        let image_zoom_restored = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+            var state = markdown_state(app)
+            reset_image_probe = markdown_image(app)
+            let reset_height = ((reset_image_probe?["y1"] ?? 0.0f)
+                - (reset_image_probe?["y0"] ?? 0.0f))
+            return ((state?["zoom_percent"] ?? 0) == 100
+                && (reset_image_probe?["ok"] ?? false)
+                && (reset_image_probe?["render_revision"] ?? -1)
+                    > image_reset_prior
+                && abs(reset_height - resolved_height) < 0.01f)
+        }
+        t |> success(image_zoom_restored,
+                     "returning to 100% restores resolved image geometry")
+        if (!image_zoom_restored) return
+
+        let unbind_result = post_command(app, "markdown_probe_unbind_image", null)
+        let unbind_revision = unbind_result?["image_bindings_revision"] ?? -1
+        let unbind_prior_render = unbind_result?["prior_render_revision"] ?? -1
+        var fallback_again : JsonValue?
+        let image_unbound = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+            fallback_again = markdown_image(app)
+            return ((fallback_again?["ok"] ?? false)
+                && !(fallback_again?["resolved"] ?? true)
+                && (fallback_again?["image_bindings_revision"] ?? -1)
+                    >= unbind_revision
+                && (fallback_again?["render_revision"] ?? unbind_prior_render + 1)
+                    > unbind_prior_render)
+        }
+        t |> success(image_unbound,
+                     "unbinding deterministically restores fallback image state")
+        if (!image_unbound) return
+        let fallback_again_height = ((fallback_again?["y1"] ?? 0.0f)
+            - (fallback_again?["y0"] ?? 0.0f))
+        t |> equal(fallback_again_height, fallback_height,
+                   "unresolved placeholder recovers its original layout size")
 
         // The copy-URI affordance appears on hover, but its reserved control
         // slot must not resize or move the link text.

@@ -63,6 +63,8 @@ struct public MarkdownViewResult {
     copied : bool = false
     hovered_image : bool = false
     activated_image : bool = false
+    hovered_image_resolved : bool = false
+    activated_image_resolved : bool = false
     hovered_node : int = -1
     activated_node : int = -1
     copied_node : int = -1
@@ -75,6 +77,25 @@ struct public MarkdownViewResult {
     selection_context_pos : float2
 }
 
+struct public MarkdownImageBinding {
+    //! Host-owned resolution result. The Markdown viewer performs no I/O;
+    //! callers bind a texture after applying their own URI/security policy.
+    document_revision : int = -1
+    node_index : int = -1
+    resource_revision : int = 0
+    //! Assigned by the viewer when this binding changes; hosts leave it zero.
+    view_revision : int = 0
+    //! Backend texture handle (`ImTextureRef.GetTexID()`). The non-local
+    //! `ImTextureRef` wrapper is reconstructed transiently during drawing.
+    texture_id : uint64 = 0uL
+    //! Display size at 100% Markdown zoom. The viewer scales it with `zoom`;
+    //! texture pixels and UVs remain unchanged.
+    display_size : float2
+    uv0 : float2 = float2(0.0f, 0.0f)
+    uv1 : float2 = float2(1.0f, 1.0f)
+    tint_color : float4 = float4(1.0f, 1.0f, 1.0f, 1.0f)
+}
+
 struct public MarkdownLayoutKey {
     max_width : float
     line_height : float
@@ -83,6 +104,7 @@ struct public MarkdownLayoutKey {
     image_icon_size : float2
     forced_style : int
     show_link_copy : bool
+    image_layout_revision : int = 0
     regular_id : uint64 = 0uL
     bold_id : uint64 = 0uL
     italic_id : uint64 = 0uL
@@ -116,6 +138,8 @@ struct public MarkdownViewState {
     document_revision : int = -1
     node_count : int = 0
     nodes : array<MarkdownNodeViewCache>
+    image_bindings : array<MarkdownImageBinding>
+    image_bindings_revision : int = 0
     content_hits : int = 0
     content_misses : int = 0
     layout_hits : int = 0
@@ -206,11 +230,96 @@ def public markdown_view_invalidate(var state : MarkdownViewState) {
     clear_selection(state)
 }
 
+def private image_binding_index(state : MarkdownViewState const;
+                                document_revision, node_index : int) : int {
+    for (i in range(length(state.image_bindings))) {
+        let binding = state.image_bindings[i]
+        if (binding.document_revision == document_revision
+                && binding.node_index == node_index) return i
+    }
+    return -1
+}
+
+def public markdown_view_image_bound(state : MarkdownViewState const;
+                                     document_revision, node_index : int) : bool {
+    return image_binding_index(state, document_revision, node_index) >= 0
+}
+
+def public markdown_view_bind_image(var state : MarkdownViewState;
+                                    binding : MarkdownImageBinding const) : bool {
+    //! Add or replace one host-resolved texture. `resource_revision` is the
+    //! host's content identity; unchanged calls are layout-cache no-ops.
+    if (binding.document_revision < 0 || binding.node_index < 0
+            || binding.texture_id == 0uL
+            || binding.display_size.x <= 0.0f
+            || binding.display_size.y <= 0.0f) return false
+    let index = image_binding_index(state, binding.document_revision,
+                                    binding.node_index)
+    if (index >= 0) {
+        let old = state.image_bindings[index]
+        let unchanged = (old.resource_revision == binding.resource_revision
+            && old.texture_id == binding.texture_id
+            && old.display_size.x == binding.display_size.x
+            && old.display_size.y == binding.display_size.y
+            && old.uv0.x == binding.uv0.x && old.uv0.y == binding.uv0.y
+            && old.uv1.x == binding.uv1.x && old.uv1.y == binding.uv1.y
+            && old.tint_color.x == binding.tint_color.x
+            && old.tint_color.y == binding.tint_color.y
+            && old.tint_color.z == binding.tint_color.z
+            && old.tint_color.w == binding.tint_color.w)
+        state.image_bindings[index] = binding
+        if (unchanged) {
+            state.image_bindings[index].view_revision = old.view_revision
+            return false
+        }
+    } else {
+        state.image_bindings |> push(binding)
+    }
+    state.image_bindings_revision++
+    let changed_index = image_binding_index(
+        state, binding.document_revision, binding.node_index)
+    state.image_bindings[changed_index].view_revision = state.image_bindings_revision
+    return true
+}
+
+def public markdown_view_unbind_image(var state : MarkdownViewState;
+                                      document_revision, node_index : int) : bool {
+    let index = image_binding_index(state, document_revision, node_index)
+    if (index < 0) return false
+    state.image_bindings |> erase(index)
+    state.image_bindings_revision++
+    return true
+}
+
+def public markdown_view_clear_images(var state : MarkdownViewState) {
+    if (empty(state.image_bindings)) return
+    delete state.image_bindings
+    state.image_bindings_revision++
+}
+
 def public markdown_view_dispose(var state : MarkdownViewState) {
     //! Release a caller-owned view state during application shutdown.
     markdown_view_invalidate(state)
     unsafe { delete state.nodes }
+    delete state.image_bindings
     state = MarkdownViewState()
+}
+
+def private retain_image_bindings(var state : MarkdownViewState;
+                                  document_revision : int) {
+    var retained : array<MarkdownImageBinding>
+    for (binding in state.image_bindings) {
+        if (binding.document_revision == document_revision) {
+            retained |> push(binding)
+        }
+    }
+    if (length(retained) != length(state.image_bindings)) {
+        delete state.image_bindings
+        state.image_bindings <- retained
+        state.image_bindings_revision++
+    } else {
+        delete retained
+    }
 }
 
 def private prepare_view_state(doc : MdDocument const;
@@ -219,6 +328,7 @@ def private prepare_view_state(doc : MdDocument const;
     let count = length(doc.nodes)
     if (state.document_revision == document_revision
             && state.node_count == count && length(state.nodes) == count) return
+    retain_image_bindings(state, document_revision)
     markdown_view_invalidate(state)
     if (length(state.nodes) != count) {
         unsafe {
@@ -619,6 +729,7 @@ def private same_layout_key(a, b : MarkdownLayoutKey) : bool {
         && a.image_icon_size.y == b.image_icon_size.y
         && a.forced_style == b.forced_style
         && a.show_link_copy == b.show_link_copy
+        && a.image_layout_revision == b.image_layout_revision
         && a.regular_id == b.regular_id && a.bold_id == b.bold_id
         && a.italic_id == b.italic_id && a.bold_italic_id == b.bold_italic_id
         && a.monospace_id == b.monospace_id && a.fallback_id == b.fallback_id)
@@ -629,7 +740,6 @@ def private ensure_layout(doc : MdDocument const; node_index : int;
                           key : MarkdownLayoutKey;
                           var style : MarkdownViewStyle;
                           var fallback : ImFont?) {
-    ensure_inline(doc, node_index, state)
     var entry & = unsafe(state.nodes[node_index])
     if (entry.layout_valid && same_layout_key(entry.layout_key, key)) {
         state.layout_hits++
@@ -646,6 +756,18 @@ def private ensure_layout(doc : MdDocument const; node_index : int;
             && (i + 1 >= length(entry.content.runs)
                 || run_semantic_id(doc, entry.content.runs[i + 1], i + 1)
                     != semantic_id))
+        var image_size = key.image_icon_size
+        if (run.is_image) {
+            let binding_index = image_binding_index(
+                state, state.document_revision, run.semantic_node)
+            if (binding_index >= 0) {
+                let binding = state.image_bindings[binding_index]
+                let zoom = view_zoom(style)
+                image_size = float2(
+                    binding.display_size.x * zoom + GetStyle().ItemInnerSpacing.x,
+                    binding.display_size.y * zoom)
+            }
+        }
         spans |> push(TextFlowSpan(
             source = run.display,
             style_id = run_style(run) | key.forced_style,
@@ -654,7 +776,7 @@ def private ensure_layout(doc : MdDocument const; node_index : int;
             leading_control_id = run.is_image ? semantic_id : -1,
             leading_control_kind = run.is_image ? CONTROL_IMAGE_PLACEHOLDER : 0,
             leading_control_size = run.is_image
-                ? key.image_icon_size : float2(0.0f, 0.0f),
+                ? image_size : float2(0.0f, 0.0f),
             trailing_control_id = key.show_link_copy && is_last_semantic
                 ? semantic_id : -1,
             trailing_control_kind = key.show_link_copy && is_last_semantic
@@ -682,6 +804,7 @@ def private render_inline(doc : MdDocument const; node_index : int;
                           alignment : MdAlignment;
                           var result : MarkdownViewResult) {
     let available = max(max_width, 1.0f)
+    ensure_inline(doc, node_index, state)
     let base_size = (style.fonts.size_px > 0.0f
         ? style.fonts.size_px : GetFontSize())
     let zoom = view_zoom(style)
@@ -694,11 +817,23 @@ def private render_inline(doc : MdDocument const; node_index : int;
     let image_icon_full = float2(
         style.image_icon_size * zoom + GetStyle().ItemInnerSpacing.x,
         style.image_icon_size * zoom)
+    var image_layout_revision = 0
+    let cached_content & = unsafe(state.nodes[node_index].content)
+    for (run in cached_content.runs) {
+        if (!run.is_image) continue
+        let binding_index = image_binding_index(
+            state, state.document_revision, run.semantic_node)
+        if (binding_index >= 0) {
+            image_layout_revision = (image_layout_revision * 16777619
+                + state.image_bindings[binding_index].view_revision)
+        }
+    }
     var key = MarkdownLayoutKey(
         max_width = available, line_height = line_height, font_size = font_size,
         icon_size = icon_full, image_icon_size = image_icon_full,
         forced_style = forced_style,
         show_link_copy = style.show_link_copy,
+        image_layout_revision = image_layout_revision,
         regular_id = unsafe(reinterpret<uint64>(style.fonts.regular)),
         bold_id = unsafe(reinterpret<uint64>(style.fonts.bold)),
         italic_id = unsafe(reinterpret<uint64>(style.fonts.italic)),
@@ -790,6 +925,9 @@ def private render_inline(doc : MdDocument const; node_index : int;
             result.hovered_node = content.runs[run_index].semantic_node
             result.source = content.runs[run_index].source
             result.hovered_image = content.runs[run_index].is_image
+            result.hovered_image_resolved = (result.hovered_image
+                && markdown_view_image_bound(state, state.document_revision,
+                                             result.hovered_node))
         }
         result.target := link_target(doc, content, hovered)
     }
@@ -901,6 +1039,9 @@ def private render_inline(doc : MdDocument const; node_index : int;
             if (run_index >= 0) {
                 result.source = content.runs[run_index].source
                 result.activated_image = content.runs[run_index].is_image
+                result.activated_image_resolved = (result.activated_image
+                    && markdown_view_image_bound(state, state.document_revision,
+                                                 result.activated_node))
             }
             result.target := link_target(doc, content, hovered)
         }
@@ -913,6 +1054,24 @@ def private render_inline(doc : MdDocument const; node_index : int;
             let p1 = float2(screen_rect.z, screen_rect.w)
             let hot = fragment.control_id == hovered
             let border = hot ? style.image_hover_color : style.image_border
+            let binding_index = image_binding_index(
+                state, state.document_revision, fragment.control_id)
+            if (binding_index >= 0) {
+                let binding = state.image_bindings[binding_index]
+                let scaled_size = binding.display_size * zoom
+                let image_p0 = float2(p0.x,
+                    p0.y + max(0.0f, (p1.y - p0.y - scaled_size.y) * 0.5f))
+                let image_p1 = image_p0 + scaled_size
+                unsafe {
+                    var texture = ImTextureRef(binding.texture_id)
+                    *dl |> AddImage(texture, image_p0, image_p1,
+                                    binding.uv0, binding.uv1,
+                                    GetColorU32(binding.tint_color))
+                }
+                *dl |> AddRect(image_p0, image_p1, GetColorU32(border),
+                               2.0f * zoom, ImDrawFlags.None, max(1.0f, zoom))
+                continue
+            }
             let pad = 2.0f * zoom
             *dl |> AddRectFilled(p0, p1, GetColorU32(style.image_background),
                                  2.0f * zoom, ImDrawFlags.None)

@@ -38,7 +38,7 @@ Status meanings:
 | GFM strikethrough | semantic run flag | strike rule | model + selection | complete |
 | Links | destination/title/autolink retained | hover, activate, URI copy | model + live interaction | partial: expose link title as optional tooltip |
 | Plain-text URIs | shared detector and synthetic semantic run | same link behavior | core + model + live interaction | complete |
-| Images | destination/title retained; alt flattened to one atomic run | stable colored placeholder, alt fallback, hover/activate/URI copy | model + live geometry/hover | partial: host texture binding and image clipboard formats remain |
+| Images | destination/title retained; alt flattened to one atomic run | stable placeholder or host-bound texture, alt fallback, hover/activate/URI copy | model + binding lifecycle + live resolve/unresolve | partial: image/rich clipboard formats remain |
 | Entities/nulls | source token plus transformed display | displayed glyph remains source-mapped | model | complete |
 | Soft breaks | typed leaf | normalized to a wrapping space | model | complete |
 | Hard breaks | typed leaf | forced flow line break | model/core | add direct rendering regression |
@@ -62,12 +62,17 @@ request is identified by its document revision and image node index and carries
 the parsed destination, optional title, and plain-text alt. The host resolves
 that request under its own URI, network, cache, and security policy.
 
-A future resolved response supplies an `ImTextureRef`, intrinsic pixel size,
-chosen display size, and a resource revision. Unresolved, loading, rejected,
-and failed responses all keep the same atomic alt/URI semantics and render the
-stable placeholder; resolution must never change source mapping or clipboard
-fallback. The display cache keys resolved size and resource revision so a
-texture becoming available invalidates only affected image layout.
+`MarkdownImageBinding` is that response: it supplies a backend texture ID,
+display size at 100% document zoom, UVs, tint, and host resource revision. The
+viewer scales display geometry with Markdown zoom while texture pixels and UVs
+remain unchanged. Hosts can obtain
+the retained ID from an `ImTextureRef` through `image_texture_id`, then bind,
+replace, or unbind by document revision and image node. Repeating an identical
+binding is a cache no-op. Unresolved, loading, rejected, and failed responses
+all keep the same atomic alt/URI semantics and render the stable placeholder;
+resolution never changes source mapping or clipboard fallback. Each affected
+inline layout keys its binding revision and resolved size; unrelated blocks
+remain cached.
 
 Plain-text copy of an image is its alt text. Clipboard v2 can additionally
 offer `image/png`, `text/markdown`, `text/html`, and `text/uri-list`; those
@@ -75,8 +80,8 @@ formats are host/export concerns and do not belong in the text-flow core.
 
 ## Completion order
 
-1. Add host texture binding and rich/image clipboard offers to the completed
-   atomic placeholder contract.
+1. Add rich/image clipboard offers to the completed placeholder/texture
+   binding contract.
 2. Add hard-break rendering coverage.
 3. Close list marker/delimiter fidelity gaps.
 4. Freeze Markdown behavior, then extract shared layout and read-only text

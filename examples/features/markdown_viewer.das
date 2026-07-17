@@ -47,6 +47,32 @@ struct MarkdownProbeZoomArgs {
     percent : int
 }
 
+struct MarkdownProbeBindImageArgs {
+    width : float = 48.0f
+    height : float = 36.0f
+    resource_revision : int = 1
+}
+
+def private first_image_node() : int {
+    for (node_index in range(length(g_doc.nodes))) {
+        if (g_doc.nodes[node_index].kind == MdNodeKind.image) return node_index
+    }
+    return -1
+}
+
+def private bind_demo_image(width, height : float;
+                            resource_revision : int) : bool {
+    let node_index = first_image_node()
+    if (node_index < 0) return false
+    let atlas_id = image_texture_id(unsafe(GetIO()).Fonts.TexRef)
+    return markdown_view_bind_image(g_view, MarkdownImageBinding(
+        document_revision = 0,
+        node_index = node_index,
+        resource_revision = resource_revision,
+        texture_id = atlas_id == 0uL ? 1uL : atlas_id,
+        display_size = float2(max(width, 1.0f), max(height, 1.0f))))
+}
+
 [live_command(description = "Inspect Markdown render, hover, selection, and event revisions without a screenshot.")]
 def markdown_probe_state(_input : JsonValue?) : JsonValue? {
     let s = g_last_selection
@@ -117,6 +143,7 @@ def markdown_probe_state(_input : JsonValue?) : JsonValue? {
             macos_behaviors = io.ConfigMacOSXBehaviors),
         layout_hits = g_view.layout_hits,
         layout_misses = g_view.layout_misses,
+        image_bindings_revision = g_view.image_bindings_revision,
         semantic_hover = (
             node = g_last_hovered_node,
             image = g_last_hovered_image,
@@ -187,6 +214,16 @@ def markdown_probe_image(_input : JsonValue?) : JsonValue? {
                 || entry.screen_revision != g_view.render_revision) continue
         for (run in entry.content.runs) {
             if (!run.is_image) continue
+            var binding_size = float2()
+            var binding_view_revision = 0
+            for (binding in g_view.image_bindings) {
+                if (binding.document_revision == g_view.document_revision
+                        && binding.node_index == run.semantic_node) {
+                    binding_size = binding.display_size
+                    binding_view_revision = binding.view_revision
+                    break
+                }
+            }
             var placeholder_valid = false
             var placeholder_rect = float4()
             for (fragment in entry.layout.fragments) {
@@ -198,6 +235,7 @@ def markdown_probe_image(_input : JsonValue?) : JsonValue? {
             }
             return JV((
                 ok = true,
+                render_revision = g_view.render_revision,
                 node = run.semantic_node,
                 alt = run.image_alt,
                 display = slice(entry.content.text,
@@ -206,12 +244,41 @@ def markdown_probe_image(_input : JsonValue?) : JsonValue? {
                 title = run.title,
                 source_exact = run.source_exact,
                 source_text = md_source_text(g_doc, run.source),
+                resolved = markdown_view_image_bound(
+                    g_view, g_view.document_revision, run.semantic_node),
+                image_bindings_revision = g_view.image_bindings_revision,
+                binding_width = binding_size.x,
+                binding_height = binding_size.y,
+                binding_view_revision = binding_view_revision,
+                layout_image_revision = entry.layout_key.image_layout_revision,
                 placeholder_valid = placeholder_valid,
                 x0 = placeholder_rect.x, y0 = placeholder_rect.y,
                 x1 = placeholder_rect.z, y1 = placeholder_rect.w))
         }
     }
     return JV((ok = false, error = "rendered image not found"))
+}
+
+[live_command(description = "Bind the font atlas as a deterministic stand-in for a host-resolved Markdown texture.")]
+def markdown_probe_bind_image(input : JsonValue?) : JsonValue? {
+    let args = from_JV(input, type<MarkdownProbeBindImageArgs>)
+    let node_index = first_image_node()
+    if (node_index < 0) return JV((ok = false, error = "image node not found"))
+    let changed = bind_demo_image(args.width, args.height,
+                                  args.resource_revision)
+    return JV((ok = true, changed = changed, node = node_index,
+               image_bindings_revision = g_view.image_bindings_revision,
+               prior_render_revision = g_view.render_revision))
+}
+
+[live_command(description = "Remove the deterministic Markdown image binding and restore its fallback placeholder.")]
+def markdown_probe_unbind_image(_input : JsonValue?) : JsonValue? {
+    let node_index = first_image_node()
+    if (node_index < 0) return JV((ok = false, error = "image node not found"))
+    let changed = markdown_view_unbind_image(g_view, 0, node_index)
+    return JV((ok = true, changed = changed, node = node_index,
+               image_bindings_revision = g_view.image_bindings_revision,
+               prior_render_revision = g_view.render_revision))
 }
 
 [live_command(description = "Clear the Markdown selection and return its acknowledgement revision.")]
@@ -336,6 +403,20 @@ def update() {
         same_line()
         if (small_button(ZOOM_RESET, (text = "100%"))) {
             g_zoom_percent = 100
+        }
+        same_line()
+        let image_node = first_image_node()
+        let image_bound = (image_node >= 0
+            && markdown_view_image_bound(g_view, 0, image_node))
+        if (small_button(IMAGE_RESOLVE,
+                (text = image_bound ? "Use placeholder" : "Resolve demo image"))) {
+            if (image_bound) {
+                let _ = markdown_view_unbind_image(g_view, 0, image_node)
+                g_status = "Host image binding removed; alt placeholder restored."
+            } else {
+                let _ = bind_demo_image(160.0f, 96.0f, 1)
+                g_status = "Host bound a 160x96 texture; Markdown performed no I/O."
+            }
         }
         same_line()
         text_disabled("Ctrl+wheel")
