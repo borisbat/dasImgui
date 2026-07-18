@@ -3,6 +3,7 @@ options gc
 options persistent_heap
 
 require imgui/imgui_harness
+require imgui/imgui_commands
 require imgui/imgui_fonts
 require imgui/imgui_markdown_view
 require imgui/imgui_theme_daslang
@@ -38,6 +39,7 @@ var private g_add_comment_hovered = false
 var private g_last_hovered_node = -1
 var private g_last_hovered_image = false
 var private g_last_hovered_target = ""
+var private g_commands = CommandRegistry()
 
 struct MarkdownProbeFragmentArgs {
     text : string
@@ -330,6 +332,11 @@ def init() {
     harness_init("dasImgui Markdown viewer", 1040, 820)
     g_fonts = load_unicode_font_roles(18.0f, g_font_sources)
     apply_daslang_theme(GetStyle())
+    command_define(g_commands, CommandDefinition(
+        id = "edit.copy", title = "Copy", category = "Edit",
+        scope = CommandScope.component),
+        command_binding("edit.copy", ImGuiKey.C, primary = true,
+                        scope = CommandScope.component))
     let source = %stringify~# Markdown + Unicode 🎨
 
 This is a source-mapped **Markdown viewer** with *emphasis*, `inline code`, ~~deleted text~~, named [documentation](../docs/editor.md "Editor docs"), and a long autolink https://example.com/文档/naïve/é/terminal-and-editor?mode=full&emoji=👩‍💻#résumé.
@@ -381,11 +388,20 @@ Entities decode for display while retaining source bytes: &amp; &copy; &#x1f680;
 def update() {
     if (!harness_begin_frame()) return
     harness_new_frame()
+    command_begin_frame(g_commands)
 
     SetNextWindowPos(ImVec2(20.0f, 20.0f), ImGuiCond.Always)
     SetNextWindowSize(ImVec2(1000.0f, 780.0f), ImGuiCond.Always)
     window(MARKDOWN_VIEW_WIN, (text = "Markdown viewer", closable = false,
                                flags = ImGuiWindowFlags.None)) {
+        command_set_enabled(g_commands, "edit.copy", g_last_selection.active)
+        command_poll_scope(g_commands, CommandScope.component, "markdown")
+        var invocation = CommandInvocation()
+        while (command_take(g_commands, invocation)) {
+            if (invocation.command_id == "edit.copy") {
+                markdown_view_request_copy(g_view)
+            }
+        }
         let io & = unsafe(GetIO())
         if (IsWindowHovered(ImGuiHoveredFlags.RootAndChildWindows) && io.KeyCtrl) {
             if (io.MouseWheel > 0.0f) {
@@ -476,6 +492,7 @@ def update() {
 [export]
 def shutdown() {
     markdown_view_dispose(g_view)
+    command_registry_dispose(g_commands)
     harness_shutdown()
 }
 

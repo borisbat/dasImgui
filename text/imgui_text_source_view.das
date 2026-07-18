@@ -96,6 +96,7 @@ struct public TextSourceViewState {
     selection_revision : int = 0
     selection_commit_revision : int = 0
     selection_copy_revision : int = 0
+    selection_copy_pending : bool = false
     selection_copy_text : string
     selection_context_revision : int = 0
     selection_context_pos : float2
@@ -144,6 +145,20 @@ def public text_source_view_clear_selection(var state : TextSourceViewState) {
         state.selection_changed = true
         state.selection_revision++
     }
+}
+
+def public text_source_view_request_copy(var state : TextSourceViewState) {
+    //! Request semantic copy; the host decides which input invokes it.
+    state.selection_copy_pending = true
+}
+
+def public text_source_view_select_all(document : TextSourceDocument const;
+                                       var state : TextSourceViewState) {
+    state.anchor_byte = 0
+    state.focus_byte = length(document.source)
+    state.selection_changed = true
+    state.selection_revision++
+    state.selection_commit_revision++
 }
 
 def public text_source_view_invalidate(var state : TextSourceViewState) {
@@ -529,10 +544,9 @@ def public text_source_view(id : string; document : TextSourceDocument const;
         }
     }
 
-    let io & = unsafe(GetIO())
-    let copy_modifier = io.ConfigMacOSXBehaviors ? io.KeySuper : io.KeyCtrl
-    if (has_selection && copy_modifier && IsKeyPressed(ImGuiKey.C, false)
-            && IsWindowFocused(ImGuiFocusedFlags.RootAndChildWindows)) {
+    let copy_requested = state.selection_copy_pending
+    state.selection_copy_pending = false
+    if (has_selection && copy_requested) {
         result.selection_copy_requested = true
         result.selection_copy_text := slice(document.source,
             selection.start_byte, selection.end_byte)

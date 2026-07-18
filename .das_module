@@ -46,6 +46,8 @@ def initialize(project_path : string) {
     register_native_path("imgui", "imgui_document_model", "{project_path}/text/imgui_document_model.das")
     register_native_path("imgui", "imgui_text_source_model", "{project_path}/text/imgui_text_source_model.das")
     register_native_path("imgui", "imgui_text_source_view", "{project_path}/text/imgui_text_source_view.das")
+    // Semantic commands, scoped shortcuts and editable per-user bindings.
+    register_native_path("imgui", "imgui_commands", "{project_path}/commands/imgui_commands.das")
     // Markdown-facing UI adapters. Parsing/model modules will join this section
     // without coupling the shared text-flow core to immediate-mode rendering.
     register_native_path("imgui", "imgui_markdown_model", "{project_path}/markdown/imgui_markdown_model.das")

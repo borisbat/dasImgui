@@ -177,6 +177,7 @@ struct public MarkdownViewState {
     selection_revision : int = 0
     selection_commit_revision : int = 0
     selection_copy_revision : int = 0
+    selection_copy_pending : bool = false
     selection_copy_text : string
     selection_copy_markdown : string
     selection_copy_html : string
@@ -243,6 +244,35 @@ def public markdown_view_clear_selection(var state : MarkdownViewState) {
         state.selection_revision++
         state.selection_changed = true
     }
+}
+
+def public markdown_view_request_copy(var state : MarkdownViewState) {
+    //! Request a semantic copy action. Keyboard/menu/toolbar binding belongs
+    //! to the host application; the view only owns rich selection export.
+    state.selection_copy_pending = true
+}
+
+def public markdown_view_select_all(var state : MarkdownViewState) : bool {
+    var first = -1
+    var last = -1
+    for (index in range(length(state.nodes))) {
+        if (state.nodes[index].content_valid
+                && !empty(state.nodes[index].content.text)) {
+            if (first < 0) {
+                first = index
+            }
+            last = index
+        }
+    }
+    if (first < 0 || last < 0) return false
+    state.selection_anchor = md_inline_position(state.nodes[first].content,
+                                                first, 0, false)
+    state.selection_focus = md_inline_position(state.nodes[last].content,
+        last, length(state.nodes[last].content.text), true)
+    state.selection_changed = true
+    state.selection_revision++
+    state.selection_commit_revision++
+    return state.selection_anchor.valid && state.selection_focus.valid
 }
 
 def public markdown_view_invalidate(var state : MarkdownViewState) {
@@ -1576,11 +1606,9 @@ def public markdown_view(id : string; doc : RichDocument const;
     }
     finish_selection(doc, state, result)
     result.selection_changed = state.selection_changed
-    let io & = unsafe(GetIO())
-    let copy_modifier = io.ConfigMacOSXBehaviors ? io.KeySuper : io.KeyCtrl
-    if (result.selection.active && copy_modifier && IsKeyPressed(ImGuiKey.C, false)
-            && IsWindowFocused(ImGuiFocusedFlags.RootAndChildWindows)
-            && !IsAnyItemActive()) {
+    let copy_requested = state.selection_copy_pending
+    state.selection_copy_pending = false
+    if (result.selection.active && copy_requested) {
         var copy <- markdown_selection_export(state)
         result.selection_copy_requested = true
         result.selection_copy_text := copy.plain_text

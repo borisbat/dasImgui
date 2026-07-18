@@ -231,6 +231,19 @@ terminal buffer revisions rather than introducing sleeps or frame delays.
 - Exercise with URI actions, color swatches, and a shader texture-preview
   prototype.
 
+### Commands and bindings
+
+- Stable semantic command IDs sit between input sources and component actions.
+- Keyboard chords use ImGui shortcut routing with application, document, and
+  focused-component scopes; menus, toolbars, live APIs, and future palettes
+  enqueue the same invocation type.
+- Text selection exposes Copy, Select All, and Clear Selection operations and
+  never owns a fixed Ctrl/Command chord.
+- Bindings are conflict-detectable, introspectable, resettable, and persisted
+  only through an explicit versioned JSON save/load operation.
+- The reusable Edit Bindings window captures platform-primary chords and shows
+  the current config path and conflicts.
+
 ### Editor
 
 - Choose the editable text store and line index.
@@ -297,3 +310,6 @@ terminal buffer revisions rather than introducing sleeps or frame delays.
   Markdown parser names remain only on adapter-specific parse/export helpers.
 - 2026-07-18: Checkbox activation emits a revision-scoped semantic event and
   replaces only the exact task-marker byte before reparsing.
+- 2026-07-18: Commands are semantic application events; keyboard bindings are
+  one editable input source and selection views expose operations instead of
+  hard-coded shortcuts.
