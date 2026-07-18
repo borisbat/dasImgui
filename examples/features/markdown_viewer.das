@@ -116,6 +116,7 @@ def markdown_probe_state(_input : JsonValue?) : JsonValue? {
             screen_y0 = s.screen_bounds.y,
             screen_x1 = s.screen_bounds.z,
             screen_y1 = s.screen_bounds.w,
+            paint_rect_count = g_view.selection_paint_rect_count,
             anchor_x = s.screen_anchor.x,
             anchor_y = s.screen_anchor.y),
         caret = (

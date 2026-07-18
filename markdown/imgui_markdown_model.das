@@ -528,6 +528,46 @@ def public md_inline_content(doc : MdDocument const; node_index : int) : MdInlin
     return <- content
 }
 
+def public md_node_kind_is_inline(kind : MdNodeKind) : bool {
+    //! True for span/text nodes that participate in one inline layout.
+    return (kind == MdNodeKind.emphasis
+        || kind == MdNodeKind.strong
+        || kind == MdNodeKind.link
+        || kind == MdNodeKind.image
+        || kind == MdNodeKind.inline_code
+        || kind == MdNodeKind.strikethrough
+        || kind == MdNodeKind.latex_math
+        || kind == MdNodeKind.latex_math_display
+        || kind == MdNodeKind.wiki_link
+        || kind == MdNodeKind.underline
+        || kind == MdNodeKind.text
+        || kind == MdNodeKind.null_character
+        || kind == MdNodeKind.hard_break
+        || kind == MdNodeKind.soft_break
+        || kind == MdNodeKind.entity
+        || kind == MdNodeKind.code_text
+        || kind == MdNodeKind.html_text
+        || kind == MdNodeKind.latex_text
+        || kind == MdNodeKind.unknown)
+}
+
+def public md_inline_content_direct_children(
+                                             doc : MdDocument const; node_index : int) : MdInlineContent {
+    //! Flatten only direct inline children of a block container. MD4C emits
+    //! tight-list inline nodes directly under list_item, without a paragraph.
+    var content = MdInlineContent()
+    if (node_index < 0 || node_index >= length(doc.nodes)) return <- content
+    var child = doc.nodes[node_index].first_child
+    while (child >= 0) {
+        if (md_node_kind_is_inline(doc.nodes[child].kind)) {
+            collect_inline(doc, child, content, false, false, false, false, -1)
+        }
+        child = doc.nodes[child].next_sibling
+    }
+    split_plain_uris(doc, content)
+    return <- content
+}
+
 def private md_run_style_mask(run : MdInlineRun const) : int {
     var mask = 0
     if (run.is_strong) {
@@ -785,7 +825,7 @@ def public md_parse(source : string;
     var callback_error = false
     var status : int = _markdown_parse_events(doc.source, length(doc.source),
         parser_flags(parse_options)) $(var event, kind, flags, offset, size,
-                                aux0, aux1 : int; text, text2 : string) {
+                                       aux0, aux1 : int; text, text2 : string) {
             if (event == 0) { // enter block
                 var node = MdNode(kind = block_kind(kind))
                 apply_block_detail(node, kind, flags, offset, size,

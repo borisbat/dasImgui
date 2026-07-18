@@ -37,6 +37,27 @@ def private count_kind(doc : MdDocument const; kind : MdNodeKind) : int {
 }
 
 [test]
+def test_tight_list_direct_inline_content(t : T?) {
+    let source = "- **Parent** item\n  - nested item\n- second item\n"
+    let doc <- md_parse(source)
+    t |> success(doc.ok, "tight nested list parses")
+    if (!doc.ok) return
+
+    let list = first_kind(doc, MdNodeKind.unordered_list)
+    t |> success(list >= 0, "tight list is present")
+    if (list < 0) return
+    let item = doc.nodes[list].first_child
+    t |> success(item >= 0, "tight list has a first item")
+    if (item < 0) return
+
+    let content <- md_inline_content_direct_children(doc, item)
+    t |> equal(content.text, "Parent item",
+               "direct inline content retains text and excludes the nested list")
+    t |> success(length(content.runs) > 1,
+                 "direct inline content retains strong and regular runs")
+}
+
+[test]
 def test_markdown_gfm_model(t : T?) {
     let source = %stringify~# Unicode Привет 文档
 
@@ -87,7 +108,7 @@ print("hi")
     }
     let paragraph = first_kind(doc, MdNodeKind.paragraph)
     let inline <- md_inline_content(doc, paragraph)
-    t |> success(inline.text |> find("and & © 🚀." ) >= 0,
+    t |> success(inline.text |> find("and & © 🚀.") >= 0,
                  "inline content decodes named and numeric entities")
     t |> success(length(inline.runs) > 1, "inline content preserves semantic runs")
     var has_strong_run = false

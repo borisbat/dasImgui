@@ -55,6 +55,15 @@ def test_markdown_view_event_driven_interactions(t : T?) {
         t |> success(ready, "Markdown live probe reaches a rendered revision")
         if (!ready) return
 
+        var tight_list_item : JsonValue?
+        let tight_list_rendered = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+            tight_list_item = markdown_fragment(app, "Parse CommonMark and GFM")
+            return tight_list_item?["ok"] ?? false
+        }
+        t |> success(tight_list_rendered,
+                     "tight-list inline content reaches rendered geometry")
+        if (!tight_list_rendered) return
+
         // GFM column alignment is model data, but this verifies that the live
         // renderer actually converts it into per-line screen offsets.
         var table_left : JsonValue?
@@ -127,20 +136,6 @@ def test_markdown_view_event_driven_interactions(t : T?) {
                     >= table_clear_revision)
         }
         t |> success(table_cleared, "aligned-cell caret clear is acknowledged")
-
-        var code_block : JsonValue?
-        let code_rendered = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
-            code_block = post_command(app, "markdown_probe_code_block", null)
-            return ((code_block?["ok"] ?? false)
-                && (code_block?["rendered"] ?? false))
-        }
-        t |> success(code_rendered,
-                     "fenced code block reaches rendered geometry")
-        if (!code_rendered) return
-        t |> equal(code_block?["language"] ?? "", "das",
-                   "rendered code metadata exposes parsed language")
-        t |> equal(code_block?["info"] ?? "", "das",
-                   "rendered code metadata preserves the full info string")
 
         var image_probe : JsonValue?
         let image_rendered = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
@@ -380,6 +375,8 @@ def test_markdown_view_event_driven_interactions(t : T?) {
                      "committed selection maps to a non-empty original source range")
         t |> success(committed_state?["selection"]?["screen_valid"] ?? false,
                      "committed selection exposes its screen anchor geometry")
+        t |> equal(committed_state?["selection"]?["paint_rect_count"] ?? 0, 1,
+                   "single-line selection paints one continuous rectangle")
 
         // Copy is a raw key/request handshake. The headless fixture disables
         // system writes, so regular dastest never mutates the desktop clipboard.
@@ -812,5 +809,22 @@ def test_markdown_view_event_driven_interactions(t : T?) {
             return (scroll?["y"] ?? scroll_before) > scroll_before
         }
         t |> success(scrolled, "wheel event is acknowledged by changed scroll state")
+
+        // Tight-list bodies consume their real vertical space, so inspect the
+        // later code block after the test has finished its top-of-page input.
+        post_command(app, "imgui_mouse_scroll", JV((x = 0.0f, y = -100.0f)))
+        var code_block : JsonValue?
+        let code_rendered = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+            code_block = post_command(app, "markdown_probe_code_block", null)
+            return ((code_block?["ok"] ?? false)
+                && (code_block?["rendered"] ?? false))
+        }
+        t |> success(code_rendered,
+                     "fenced code block reaches rendered geometry")
+        if (!code_rendered) return
+        t |> equal(code_block?["language"] ?? "", "das",
+                   "rendered code metadata exposes parsed language")
+        t |> equal(code_block?["info"] ?? "", "das",
+                   "rendered code metadata preserves the full info string")
     }
 }

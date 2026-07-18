@@ -161,6 +161,8 @@ struct public MarkdownViewState {
     selection_screen_valid : bool = false
     selection_screen_bounds : float4
     selection_screen_anchor : float2
+    //! Number of continuous per-line highlight rectangles painted this frame.
+    selection_paint_rect_count : int = 0
     //! Monotonic event acknowledgements used by live inspection and tests.
     //! They describe observed UI state; callers never need to wait a number
     //! of frames before issuing the next input event.
@@ -361,10 +363,13 @@ def private prepare_view_state(doc : MdDocument const;
 }
 
 def private ensure_inline(doc : MdDocument const; node_index : int;
-                          var state : MarkdownViewState) {
+                          var state : MarkdownViewState;
+                          direct_children_only : bool = false) {
     var entry & = unsafe(state.nodes[node_index])
     if (!entry.content_valid) {
-        entry.content <- md_inline_content(doc, node_index)
+        entry.content <- (direct_children_only
+            ? md_inline_content_direct_children(doc, node_index)
+            : md_inline_content(doc, node_index))
         entry.content_valid = true
         state.content_misses++
     } else {
@@ -598,7 +603,7 @@ def private vertical_text_position(var state : MarkdownViewState;
     let local_x = clamp(goal_x - target.screen_origin.x - align_x, xr.x, xr.y)
     let hit = text_flow_hit_test_ranges(target.content.text, target.layout,
         float2(local_x, target_line.y + target_line.height * 0.5f)) $(text : string;
-          start_byte, end_byte, style_id : int) : float {
+                                                                      start_byte, end_byte, style_id : int) : float {
             var fallback = GetFont()
             var font = font_for_style(style_id, style.fonts, fallback)
             return CalcTextSizeForFontRange(font, target.layout_key.font_size,
@@ -788,7 +793,7 @@ def private ensure_layout(doc : MdDocument const; node_index : int;
     }
     entry.layout <- layout_text_flow_styled_ranges(entry.content.text, spans,
         key.max_width, key.line_height) $(text : string; start_byte : int; end_byte : int;
-          style_id : int) : float {
+                                          style_id : int) : float {
             var font = font_for_style(style_id, style.fonts, fallback)
             return CalcTextSizeForFontRange(font, key.font_size, text,
                                             length(text), start_byte, end_byte).x
@@ -804,9 +809,10 @@ def private render_inline(doc : MdDocument const; node_index : int;
                           var style : MarkdownViewStyle;
                           font_scale : float; forced_style : int;
                           alignment : MdAlignment;
-                          var result : MarkdownViewResult) {
+                          var result : MarkdownViewResult;
+                          direct_children_only : bool = false) {
     let available = max(max_width, 1.0f)
-    ensure_inline(doc, node_index, state)
+    ensure_inline(doc, node_index, state, direct_children_only)
     let base_size = (style.fonts.size_px > 0.0f
         ? style.fonts.size_px : GetFontSize())
     let zoom = view_zoom(style)
@@ -885,7 +891,7 @@ def private render_inline(doc : MdDocument const; node_index : int;
         let align_x = markdown_line_alignment_offset(cache, hovered_fragment.line_index)
         hit = text_flow_hit_test_ranges(content.text, layout,
             GetMousePos() - origin - float2(align_x, 0.0f)) $(text : string;
-              start_byte, end_byte, style_id : int) : float {
+                                                              start_byte, end_byte, style_id : int) : float {
                 var font = font_for_style(style_id, style.fonts, fallback_font)
                 return CalcTextSizeForFontRange(font, font_size, text, length(text),
                                                 start_byte, end_byte).x
@@ -935,6 +941,102 @@ def private render_inline(doc : MdDocument const; node_index : int;
     }
 
     var dl = GetWindowDrawList()
+    // Inline-code/image backgrounds sit below selection, which sits below text.
+    for (fragment in layout.fragments) {
+        if (fragment.is_control) continue
+        let screen_rect = markdown_cached_fragment_rect(cache, fragment)
+        let p0 = float2(screen_rect.x, screen_rect.y)
+        let p1 = float2(screen_rect.z, screen_rect.w)
+        let hot_link = fragment.semantic_id >= 0 && fragment.semantic_id == hovered
+        if (has_style(fragment.style_id, STYLE_IMAGE)) {
+            *dl |> AddRectFilled(p0 - float2(1.0f * zoom, 0.0f),
+                                 p1 + float2(3.0f * zoom, 0.0f),
+                                 GetColorU32(style.image_background), 2.0f * zoom,
+                                 ImDrawFlags.None)
+        }
+        if (has_style(fragment.style_id, STYLE_CODE)) {
+            *dl |> AddRectFilled(p0 - float2(2.0f * zoom, 0.0f),
+                                 p1 + float2(2.0f * zoom, 0.0f),
+                                 GetColorU32(style.code_background), 2.0f * zoom,
+                                 ImDrawFlags.None)
+        }
+    }
+
+    // A source selection is visually continuous across Markdown run boundaries
+    // and transformed soft breaks. Paint one union rectangle per visual line
+    // instead of one rectangle per run, which left transparent selected spaces.
+    let selection_source = selected_source(state)
+    if (selection_source.start_byte >= 0
+            && selection_source.end_byte > selection_source.start_byte) {
+        for (line in layout.lines) {
+            var found = false
+            var line_rect = float4()
+            for (fragment_index in range(
+                    line.first_fragment,
+                    line.first_fragment + line.fragment_count)) {
+                let fragment = layout.fragments[fragment_index]
+                if (fragment.is_control) continue
+                let screen_rect = markdown_cached_fragment_rect(cache, fragment)
+                let p0 = float2(screen_rect.x, screen_rect.y)
+                var font = font_for_style(
+                    fragment.style_id, style.fonts, fallback_font)
+                var fragment_selected = false
+                var fragment_rect = float4()
+            for (run in content.runs) {
+                let display = md_selected_display_range(run, selection_source)
+                let a = max(display.start_byte, fragment.source.start_byte)
+                let b = min(display.end_byte, fragment.source.end_byte)
+                if (display.start_byte < 0 || b <= a) continue
+                let prefix = CalcTextSizeForFontRange(font, font_size, content.text,
+                    length(content.text), fragment.source.start_byte, a).x
+                let width = CalcTextSizeForFontRange(font, font_size, content.text,
+                    length(content.text), a, b).x
+                    let selected = float4(
+                        p0.x + prefix, screen_rect.y,
+                        p0.x + prefix + width, screen_rect.w)
+                    if (!fragment_selected) {
+                        fragment_rect = selected
+                        fragment_selected = true
+                    } else {
+                        fragment_rect.x = min(fragment_rect.x, selected.x)
+                        fragment_rect.y = min(fragment_rect.y, selected.y)
+                        fragment_rect.z = max(fragment_rect.z, selected.z)
+                        fragment_rect.w = max(fragment_rect.w, selected.w)
+                    }
+                }
+                if (fragment_selected) {
+                    if (!found) {
+                        line_rect = fragment_rect
+                        found = true
+                    } else {
+                        line_rect.x = min(line_rect.x, fragment_rect.x)
+                        line_rect.y = min(line_rect.y, fragment_rect.y)
+                        line_rect.z = max(line_rect.z, fragment_rect.z)
+                        line_rect.w = max(line_rect.w, fragment_rect.w)
+                    }
+                }
+            }
+            if (found) {
+                *dl |> AddRectFilled(
+                    float2(line_rect.x, line_rect.y),
+                    float2(line_rect.z, line_rect.w),
+                    GetColorU32(style.selection_color), 1.5f * zoom,
+                    ImDrawFlags.None)
+                include_selection_screen_rect(state, line_rect)
+                state.selection_paint_rect_count++
+                if (IsMouseReleased(ImGuiMouseButton.Right)
+                        && IsMouseHoveringRect(
+                            float2(line_rect.x, line_rect.y),
+                            float2(line_rect.z, line_rect.w), true)) {
+                    result.selection_context_requested = true
+                    result.selection_context_pos = GetMousePos()
+                    state.selection_context_pos = result.selection_context_pos
+                    state.selection_context_revision++
+                }
+            }
+        }
+    }
+
     var copy_control_hovered = false
     for (fragment in layout.fragments) {
         if (fragment.is_control) continue
@@ -952,52 +1054,10 @@ def private render_inline(doc : MdDocument const; node_index : int;
         } elif (has_style(fragment.style_id, STYLE_EMPHASIS)) {
             color = style.emphasis_color
         }
-        var font = font_for_style(fragment.style_id, style.fonts, fallback_font)
         if (has_style(fragment.style_id, STYLE_IMAGE)) {
             color = hot_link ? style.image_hover_color : style.image_color
-            *dl |> AddRectFilled(p0 - float2(1.0f * zoom, 0.0f),
-                                 p1 + float2(3.0f * zoom, 0.0f),
-                                 GetColorU32(style.image_background), 2.0f * zoom,
-                                 ImDrawFlags.None)
         }
-        if (has_style(fragment.style_id, STYLE_CODE)) {
-            *dl |> AddRectFilled(p0 - float2(2.0f * zoom, 0.0f),
-                                 p1 + float2(2.0f * zoom, 0.0f),
-                                 GetColorU32(style.code_background), 2.0f * zoom,
-                                 ImDrawFlags.None)
-        }
-
-        let selection_source = selected_source(state)
-        if (selection_source.start_byte >= 0
-                && selection_source.end_byte > selection_source.start_byte) {
-            for (run in content.runs) {
-                let display = md_selected_display_range(run, selection_source)
-                let a = max(display.start_byte, fragment.source.start_byte)
-                let b = min(display.end_byte, fragment.source.end_byte)
-                if (display.start_byte < 0 || b <= a) continue
-                let prefix = CalcTextSizeForFontRange(font, font_size, content.text,
-                    length(content.text), fragment.source.start_byte, a).x
-                let width = CalcTextSizeForFontRange(font, font_size, content.text,
-                    length(content.text), a, b).x
-                let selection_rect = float4(
-                    p0.x + prefix, p0.y, p0.x + prefix + width, p1.y)
-                *dl |> AddRectFilled(
-                    float2(selection_rect.x, selection_rect.y),
-                    float2(selection_rect.z, selection_rect.w),
-                    GetColorU32(style.selection_color), 1.5f * zoom,
-                    ImDrawFlags.None)
-                include_selection_screen_rect(state, selection_rect)
-                if (IsMouseReleased(ImGuiMouseButton.Right)
-                        && IsMouseHoveringRect(
-                            float2(selection_rect.x, selection_rect.y),
-                            float2(selection_rect.z, selection_rect.w), true)) {
-                    result.selection_context_requested = true
-                    result.selection_context_pos = GetMousePos()
-                    state.selection_context_pos = result.selection_context_pos
-                    state.selection_context_revision++
-                }
-            }
-        }
+        var font = font_for_style(fragment.style_id, style.fonts, fallback_font)
         if (position_in_fragment(state.selection_focus, node_index, fragment)) {
             let caret_byte = clamp(state.selection_focus.display_byte,
                 fragment.source.start_byte, fragment.source.end_byte)
@@ -1175,9 +1235,26 @@ def private render_list(doc : MdDocument const; node_index : int;
         }
         TextColored(style.marker_color, cache.marker)
         SameLine(0.0f, GetStyle().ItemInnerSpacing.x)
+        var has_direct_inline = false
+        var direct_child = node.first_child
+        while (direct_child >= 0) {
+            if (md_node_kind_is_inline(doc.nodes[direct_child].kind)) {
+                has_direct_inline = true
+                break
+            }
+            direct_child = doc.nodes[direct_child].next_sibling
+        }
+        if (has_direct_inline) {
+            render_inline(doc, item, state, GetContentRegionAvail().x,
+                          style, 1.0f, 0, MdAlignment.default_, result, true)
+            block_spacing(style, style.paragraph_spacing)
+        }
         var child = node.first_child
         while (child >= 0) {
-            render_block(doc, child, state, style, result)
+            let kind = doc.nodes[child].kind
+            if (!md_node_kind_is_inline(kind)) {
+                render_block(doc, child, state, style, result)
+            }
             child = doc.nodes[child].next_sibling
         }
         item = node.next_sibling
@@ -1246,18 +1323,15 @@ def private render_code_block(doc : MdDocument const; node_index : int;
     var mono = style.fonts.monospace != null ? style.fonts.monospace : GetFont()
     let measured = CalcTextSizeForFont(mono, font_size, content.text)
     let child_border = GetStyle().ChildBorderSize
-    let inner_width = max(1.0f, GetContentRegionAvail().x
-        - padding * 2.0f - child_border * 2.0f)
-    let needs_horizontal_scroll = measured.x > inner_width
-    let scrollbar_height = needs_horizontal_scroll ? GetStyle().ScrollbarSize : 0.0f
+    let window_padding = GetStyle().WindowPadding.y
     let height = max(font_size * 2.0f,
         measured.y + padding * 2.0f + child_border * 2.0f
-        + GetStyle().ItemSpacing.y + scrollbar_height + 2.0f * zoom)
+        + window_padding * 2.0f + GetStyle().ItemSpacing.y + 2.0f * zoom)
     PushStyleColor(ImGuiCol.ChildBg, style.code_background)
     PushID(node_index)
     let open = BeginChild("##markdown_code",
         float2(0.0f, height), ImGuiChildFlags.Borders,
-        ImGuiWindowFlags.HorizontalScrollbar)
+        ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse)
     if (open) {
         SetCursorPos(GetCursorPos() + float2(padding, padding))
         var code_style := style
@@ -1416,6 +1490,7 @@ def public markdown_view(id : string; doc : MdDocument const;
     state.selection_changed = false
     state.selection_click_claimed = false
     state.selection_screen_valid = false
+    state.selection_paint_rect_count = 0
     if (IsMouseClicked(ImGuiMouseButton.Left, false)) {
         state.selection_pressed_semantic = -1
     }
