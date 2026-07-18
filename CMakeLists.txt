@@ -78,7 +78,9 @@ SET(FT_DISABLE_HARFBUZZ ON CACHE BOOL "Disable FreeType HarfBuzz auto-hinting" F
 SET(FT_DISABLE_BROTLI ON CACHE BOOL "Disable FreeType WOFF2 support" FORCE)
 SET(FT_ENABLE_ERROR_STRINGS OFF CACHE BOOL "Disable FreeType error strings" FORCE)
 FetchContent_Declare(freetype_src
-    URL https://download.savannah.gnu.org/releases/freetype/freetype-2.14.3.tar.xz
+    URL
+        https://sourceforge.net/projects/freetype/files/freetype2/2.14.3/freetype-2.14.3.tar.xz/download
+        https://download.savannah.gnu.org/releases/freetype/freetype-2.14.3.tar.xz
     URL_HASH SHA256=36bc4f1cc413335368ee656c42afca65c5a3987e8768cc28cf11ba775e785a5f
     DOWNLOAD_EXTRACT_TIMESTAMP TRUE
 )
