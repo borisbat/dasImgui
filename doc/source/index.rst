@@ -34,6 +34,10 @@ Or add to your project's ``.das_package``:
 
 Then run ``daspkg install``.
 
+Start with :doc:`tutorials/application_lifecycle`: one application structure
+for standalone, live-reload, and headless execution, including the required
+between-frame garbage-collection boundary for long-running processes.
+
 ----
 
 This site documents the **v2.0** surface. The legacy ``daslib/imgui_boost`` (v1)

@@ -43,7 +43,8 @@ class ImguiGen : CppGenBind {
             "-xc++-header",
             "-std=c++1z",
             "-I{get_full_file_name(i_imgui)}",
-            "-DIMGUI_DISABLE_OBSOLETE_FUNCTIONS"
+            "-DIMGUI_DISABLE_OBSOLETE_FUNCTIONS",
+            "-DIMGUI_USE_WCHAR32"
         )
         // CppGenBind constructor runs init_args(...) + setDefaultFiles()
         super(pfn, cfg.input, args)

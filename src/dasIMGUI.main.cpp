@@ -4,6 +4,7 @@
 #include "daScript/ast/ast_handle.h"
 #include "daScript/ast/ast_typefactory_bind.h"
 #include "daScript/simulate/bind_enum.h"
+#include "aot_builtin_clipboard.h"
 #include "dasIMGUI.h"
 #include "need_dasIMGUI.h"
 #include "aot_dasIMGUI.h"
@@ -16,7 +17,26 @@
 // No other internal symbols added without re-discussion.
 #include "imgui_internal.h"
 
+static_assert(sizeof(ImWchar) == 4, "dasImgui requires 32-bit ImWchar for full Unicode support");
+
 namespace das {
+
+    static const char * CoreClipboardGetText(ImGuiContext *) {
+        int32_t status = int32_t(ClipboardStatus::failed);
+        return builtin_clipboard_get_text_temporary(status);
+    }
+
+    static void CoreClipboardSetText(ImGuiContext *, const char * text) {
+        const char * value = text ? text : "";
+        builtin_clipboard_set_text(value, int32_t(strlen(value)));
+    }
+
+    void InstallCoreClipboardBackend() {
+        ImGuiPlatformIO & platformIO = ImGui::GetPlatformIO();
+        platformIO.Platform_GetClipboardTextFn = CoreClipboardGetText;
+        platformIO.Platform_SetClipboardTextFn = CoreClipboardSetText;
+        platformIO.Platform_ClipboardUserData = nullptr;
+    }
 
     ImU32 GetActiveID() {
         return ImGui::GetActiveID();
@@ -314,6 +334,40 @@ namespace das {
         drawList.AddText(pos, col, text);
     }
 
+    ImVec2 CalcTextSizeForFont(ImFont * font, float font_size, const char * text) {
+        return font ? font->CalcTextSizeA(font_size, FLT_MAX, 0.0f, text ? text : "")
+                    : ImVec2();
+    }
+
+    static void ClampTextRange(const char * text, int32_t text_size,
+                               int32_t & start_byte, int32_t & end_byte,
+                               const char *& begin, const char *& end) {
+        const char * value = text ? text : "";
+        const int32_t size = text ? (text_size < 0 ? 0 : text_size) : 0;
+        start_byte = start_byte < 0 ? 0 : (start_byte > size ? size : start_byte);
+        end_byte = end_byte < start_byte ? start_byte : (end_byte > size ? size : end_byte);
+        begin = value + start_byte;
+        end = value + end_byte;
+    }
+
+    ImVec2 CalcTextSizeForFontRange(ImFont * font, float font_size, const char * text,
+                                     int32_t text_size, int32_t start_byte, int32_t end_byte) {
+        if (!font) return ImVec2();
+        const char * begin = nullptr;
+        const char * end = nullptr;
+        ClampTextRange(text, text_size, start_byte, end_byte, begin, end);
+        return font->CalcTextSizeA(font_size, FLT_MAX, 0.0f, begin, end);
+    }
+
+    void AddTextRange(ImDrawList & drawList, ImFont* font, float font_size,
+                      const ImVec2& pos, ImU32 col, const char* text,
+                      int32_t text_size, int32_t start_byte, int32_t end_byte) {
+        const char * begin = nullptr;
+        const char * end = nullptr;
+        ClampTextRange(text, text_size, start_byte, end_byte, begin, end);
+        drawList.AddText(font, font_size, pos, col, begin, end);
+    }
+
     void AddText2( ImDrawList & drawList, ImFont* font, float font_size, const ImVec2& pos, ImU32 col,
         const char* text_begin, float wrap_width, const ImVec4* cpu_fine_clip_rect) {
         drawList.AddText(font,font_size,pos,col,text_begin,nullptr,wrap_width,cpu_fine_clip_rect);
@@ -589,6 +643,12 @@ namespace das {
 
 	void Module_dasIMGUI::initMain () {
         addConstant(*this,"IMGUI_VERSION", IMGUI_VERSION);
+        // MD4C SAX bridge. The typed document arena lives in markdown/
+        // daScript code; native code only forwards parser events and exact
+        // source offsets for text callbacks.
+        addExtern<DAS_BIND_FUN(das::MarkdownParseEvents)>(*this, lib, "_markdown_parse_events",
+            SideEffects::invoke, "das::MarkdownParseEvents")
+                ->args({"source","source_size","flags","block","context","at"});
         // imgui text filter
         addExtern<DAS_BIND_FUN(das::PassFilter)>(*this, lib, "PassFilter",
             SideEffects::worstDefault, "das::PassFilter");
@@ -602,6 +662,18 @@ namespace das {
         // imgui draw list
         addExtern<DAS_BIND_FUN(das::AddText), SimNode_ExtFuncCall, imguiTempFn>(*this, lib, "AddText",
             SideEffects::worstDefault, "das::AddText");
+        addExtern<DAS_BIND_FUN(das::InstallCoreClipboardBackend)>(*this, lib,
+            "InstallCoreClipboardBackend", SideEffects::modifyExternal,
+            "das::InstallCoreClipboardBackend");
+        addExtern<DAS_BIND_FUN(das::CalcTextSizeForFont)>(*this, lib, "CalcTextSizeForFont",
+            SideEffects::none, "das::CalcTextSizeForFont")
+                ->args({"font","font_size","text"});
+        addExtern<DAS_BIND_FUN(das::CalcTextSizeForFontRange)>(*this, lib, "CalcTextSizeForFontRange",
+            SideEffects::none, "das::CalcTextSizeForFontRange")
+                ->args({"font","font_size","text","text_size","start_byte","end_byte"});
+        addExtern<DAS_BIND_FUN(das::AddTextRange), SimNode_ExtFuncCall, imguiTempFn>(*this, lib, "AddTextRange",
+            SideEffects::worstDefault, "das::AddTextRange")
+                ->args({"drawList","font","font_size","pos","col","text","text_size","start_byte","end_byte"});
         addExtern<DAS_BIND_FUN(das::AddText2), SimNode_ExtFuncCall, imguiTempFn>(*this, lib, "AddText",
             SideEffects::worstDefault, "das::AddText2")
                 ->args({"drawList","font","font_size","pos","col","text","wrap_width","cpu_fine_clip_rect"})

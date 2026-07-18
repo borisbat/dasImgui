@@ -24,20 +24,90 @@ IF(NOT COMMAND ADD_MODULE_CPP)
         message(FATAL_ERROR "DASLANG_DIR must be set to the daslang SDK root")
     endif()
     SET(DAS_IMGUI_GLFW_ROOT ${DASLANG_DIR}/modules/dasGlfw)
+    SET(DAS_IMGUI_CLIPBOARD_ROOT ${DASLANG_DIR}/modules/dasClipboard)
 ELSE()
     # sibling module in the superbuild tree (CMAKE_CURRENT_LIST_DIR, not
     # CMAKE_SOURCE_DIR/modules/...: the web build's top-level source dir is web/)
     SET(DAS_IMGUI_GLFW_ROOT ${CMAKE_CURRENT_LIST_DIR}/../dasGlfw)
+    SET(DAS_IMGUI_CLIPBOARD_ROOT ${CMAKE_CURRENT_LIST_DIR}/../dasClipboard)
+ENDIF()
+
+IF(NOT EXISTS ${DAS_IMGUI_CLIPBOARD_ROOT}/src/aot_builtin_clipboard.h)
+    MESSAGE(FATAL_ERROR "dasImgui requires the dasClipboard module")
+ENDIF()
+
+IF(NOT COMMAND ADD_MODULE_CPP AND NOT EMSCRIPTEN)
+    ADD_LIBRARY(dasClipboardNative SHARED IMPORTED)
+    IF(WIN32)
+        FIND_LIBRARY(DAS_IMGUI_CLIPBOARD_IMPORT_LIBRARY
+            NAMES dasModuleClipboard
+            PATHS
+                ${DASLANG_DIR}/lib/Release
+                ${DASLANG_DIR}/lib
+                ${DASLANG_DIR}/build/modules/dasClipboard
+                ${DASLANG_DIR}/build/modules/dasClipboard/Release
+                ${DAS_IMGUI_CLIPBOARD_ROOT}
+            NO_DEFAULT_PATH)
+        IF(NOT DAS_IMGUI_CLIPBOARD_IMPORT_LIBRARY)
+            MESSAGE(FATAL_ERROR "dasImgui requires a built dasModuleClipboard import library")
+        ENDIF()
+        SET_TARGET_PROPERTIES(dasClipboardNative PROPERTIES
+            IMPORTED_IMPLIB ${DAS_IMGUI_CLIPBOARD_IMPORT_LIBRARY}
+            IMPORTED_LOCATION ${DAS_IMGUI_CLIPBOARD_ROOT}/dasModuleClipboard.shared_module)
+    ELSE()
+        SET_TARGET_PROPERTIES(dasClipboardNative PROPERTIES
+            IMPORTED_LOCATION ${DAS_IMGUI_CLIPBOARD_ROOT}/dasModuleClipboard.shared_module)
+    ENDIF()
 ENDIF()
 
 SET(DAS_IMGUI_DIR ${CMAKE_CURRENT_LIST_DIR})
+include(FetchContent)
+SET(DAS_IMGUI_COMMON_DEFS
+    IMGUI_DISABLE_OBSOLETE_FUNCTIONS=1
+    IMGUI_ENABLE_FREETYPE=1
+    IMGUI_USE_WCHAR32=1
+)
+
+# FreeType is the Dear ImGui-supported path for color-layered glyphs. Pin and
+# build it with a minimal, deterministic dependency set: Segoe UI Emoji's
+# COLR/CPAL outlines need none of the optional compressed-font/image libraries.
+SET(FT_DISABLE_ZLIB ON CACHE BOOL "Use FreeType's internal zlib" FORCE)
+SET(FT_DISABLE_BZIP2 ON CACHE BOOL "Disable FreeType bzip2 support" FORCE)
+SET(FT_DISABLE_PNG ON CACHE BOOL "Disable FreeType PNG bitmap support" FORCE)
+SET(FT_DISABLE_HARFBUZZ ON CACHE BOOL "Disable FreeType HarfBuzz auto-hinting" FORCE)
+SET(FT_DISABLE_BROTLI ON CACHE BOOL "Disable FreeType WOFF2 support" FORCE)
+SET(FT_ENABLE_ERROR_STRINGS OFF CACHE BOOL "Disable FreeType error strings" FORCE)
+FetchContent_Declare(freetype_src
+    URL
+        https://sourceforge.net/projects/freetype/files/freetype2/2.14.3/freetype-2.14.3.tar.xz/download
+        https://download.savannah.gnu.org/releases/freetype/freetype-2.14.3.tar.xz
+    URL_HASH SHA256=36bc4f1cc413335368ee656c42afca65c5a3987e8768cc28cf11ba775e785a5f
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+)
+FetchContent_MakeAvailable(freetype_src)
+SET_TARGET_PROPERTIES(freetype PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
+# MD4C is the semantic Markdown parser used by the view-independent model in
+# markdown/. Pull only its parser/entity C translation units instead of importing the
+# upstream CMake project (which also builds HTML/CLI targets and changes global
+# compiler flags). Keeping it inside dasModuleImgui avoids another runtime DLL.
+FetchContent_Declare(md4c_src
+    URL https://github.com/mity/md4c/archive/refs/tags/release-0.5.3.tar.gz
+    URL_HASH SHA256=353c346f376b87c954a13f3415ede2d51264cc61dc5abcd38ff1d2aa0d059b9e
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+    # Populate without adding MD4C's own CMake project. Its top-level build
+    # changes compiler flags and creates HTML/CLI targets we do not use.
+    SOURCE_SUBDIR __dasimgui_source_only
+)
+FetchContent_MakeAvailable(md4c_src)
+SET(MD4C_INCLUDE_DIR ${md4c_src_SOURCE_DIR}/src)
 
 # imgui via FetchContent
-include(FetchContent)
 SET(IMGUI_VERSION "1.92.6-docking")
 FetchContent_Declare(imgui_src
     URL https://github.com/ocornut/imgui/archive/refs/tags/v${IMGUI_VERSION}.tar.gz
     URL_HASH SHA256=5e84cdaa6a6041586a0d11a3071b749734a0439d66fdbdad37ae5b27e37d396c
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
     SOURCE_DIR ${DAS_IMGUI_DIR}/imgui
 )
 FetchContent_MakeAvailable(imgui_src)
@@ -74,17 +144,21 @@ ENDIF()
 
 # imgui source files
 SET(DAS_IMGUI_SRC
+    ${md4c_src_SOURCE_DIR}/src/md4c.c
+    ${md4c_src_SOURCE_DIR}/src/entity.c
     ${imgui_INCLUDE_DIR}/imgui.cpp
     ${imgui_INCLUDE_DIR}/imgui_demo.cpp
     ${imgui_INCLUDE_DIR}/imgui_draw.cpp
     ${imgui_INCLUDE_DIR}/imgui_tables.cpp
     ${imgui_INCLUDE_DIR}/imgui_widgets.cpp
+    ${imgui_INCLUDE_DIR}/misc/freetype/imgui_freetype.cpp
 )
 
 # binding source files
 SET(DAS_IMGUI_BIND_SRC
     ${DAS_IMGUI_DIR}/src/dasIMGUI.cpp
     ${DAS_IMGUI_DIR}/src/dasIMGUI.main.cpp
+    ${DAS_IMGUI_DIR}/src/dasIMGUI.markdown.cpp
     ${DAS_IMGUI_DIR}/src/dasIMGUI.func_1.cpp
     ${DAS_IMGUI_DIR}/src/dasIMGUI.func_2.cpp
     ${DAS_IMGUI_DIR}/src/dasIMGUI.func_3.cpp
@@ -136,9 +210,10 @@ IF(COMMAND ADD_MODULE_CPP)
     # ===== daslang superbuild: static-embed =====
     # Static libs link into the app via ${DAS_MODULES_LIBS}; ADD_MODULE_CPP emits
     # NEED/DECLARE/PULL(Module_*) so the app needs no manual registration, and each
-    # widgets/*.das registers a boost path so `require imgui/<name>` resolves
-    # in-tree. The glob IS the .das_module register_native_path list (file stem ==
-    # module name for every widgets file).
+    # das source sections register boost paths so `require imgui/<name>` resolves
+    # in-tree. File stem == module name in each section. `text` contains the
+    # view-independent layout foundation; `markdown` contains its ImGui-facing
+    # consumers without flattening those subsystems into widgets/.
     ADD_MODULE_CPP(dasIMGUI)
     ADD_MODULE_CPP(imgui_app)
     ADD_MODULE_CPP(imgui_app_headless)
@@ -146,6 +221,16 @@ IF(COMMAND ADD_MODULE_CPP)
     FOREACH(_f ${_imgui_widget_files})
         GET_FILENAME_COMPONENT(_n "${_f}" NAME_WE)
         ADD_MODULE_DAS(imgui widgets ${_n})
+    ENDFOREACH()
+    FILE(GLOB _imgui_text_files "${DAS_IMGUI_DIR}/text/*.das")
+    FOREACH(_f ${_imgui_text_files})
+        GET_FILENAME_COMPONENT(_n "${_f}" NAME_WE)
+        ADD_MODULE_DAS(imgui text ${_n})
+    ENDFOREACH()
+    FILE(GLOB _imgui_markdown_files "${DAS_IMGUI_DIR}/markdown/*.das")
+    FOREACH(_f ${_imgui_markdown_files})
+        GET_FILENAME_COMPONENT(_n "${_f}" NAME_WE)
+        ADD_MODULE_DAS(imgui markdown ${_n})
     ENDFOREACH()
 
     # Static halves only — no ADD_MODULE_LIB shared twins. In a superbuild the DLL
@@ -160,13 +245,15 @@ IF(COMMAND ADD_MODULE_CPP)
     MACRO(SETUP_IMGUI imgui_mod_lib)
         TARGET_INCLUDE_DIRECTORIES(${imgui_mod_lib} PRIVATE
             ${imgui_INCLUDE_DIR}
+            ${MD4C_INCLUDE_DIR}
             ${DAS_IMGUI_DIR}/src
             ${DAS_IMGUI_DIR}/gl3w
             ${GLFW_INCLUDE_DIR}
             ${DAS_IMGUI_GLFW_ROOT}/src
+            ${DAS_IMGUI_CLIPBOARD_ROOT}/src
         )
         TARGET_COMPILE_DEFINITIONS(${imgui_mod_lib} PRIVATE
-            IMGUI_DISABLE_OBSOLETE_FUNCTIONS=1
+            ${DAS_IMGUI_COMMON_DEFS}
             IMGUI_IMPL_OPENGL_LOADER_GL3W
             # dasGlfw's binding TU owns typeFactory<GLFWwindow> in a superbuild link
             DAS_IMGUI_APP_EXTERN_GLFW_TYPE_FACTORY=1)
@@ -178,6 +265,8 @@ IF(COMMAND ADD_MODULE_CPP)
     # the imgui core symbols live in libDasModuleImgui; the app backends use them
     TARGET_LINK_LIBRARIES(libImguiApp PUBLIC libDasModuleImgui)
     TARGET_LINK_LIBRARIES(libImguiAppHeadless PUBLIC libDasModuleImgui)
+    TARGET_LINK_LIBRARIES(libDasModuleImgui PRIVATE freetype)
+    TARGET_LINK_LIBRARIES(libDasModuleImgui PRIVATE libDasModuleClipboard)
     IF(NOT EMSCRIPTEN)
         FIND_PACKAGE(OpenGL REQUIRED)
         TARGET_LINK_LIBRARIES(libImguiApp PUBLIC ${OPENGL_LIBRARIES})
@@ -204,7 +293,7 @@ ELSEIF(EMSCRIPTEN)
     # whatever links the archive or the final wasm link fails.
     OPTION(DAS_IMGUI_WASM_MEMORY64 "Build the wasm archives for memory64 (wasm64)" ON)
     OPTION(DAS_IMGUI_WASM_PTHREADS "Build the wasm archives threaded (-pthread)" ON)
-    MESSAGE(STATUS "dasImgui: emscripten/web build (3 static wasm archives; memory64=${DAS_IMGUI_WASM_MEMORY64} pthreads=${DAS_IMGUI_WASM_PTHREADS})")
+    MESSAGE(STATUS "dasImgui: emscripten/web build (3 module archives + FreeType; memory64=${DAS_IMGUI_WASM_MEMORY64} pthreads=${DAS_IMGUI_WASM_PTHREADS})")
 
     SET(IMGUI_WASM_FLAGS
         -fno-rtti
@@ -228,12 +317,14 @@ ELSEIF(EMSCRIPTEN)
         SET(IMGUI_WASM_OUTDIR "${DAS_IMGUI_DIR}/_wasm32")
     ENDIF()
     SET(IMGUI_WASM_DEFS
-        IMGUI_DISABLE_OBSOLETE_FUNCTIONS=1
+        ${DAS_IMGUI_COMMON_DEFS}
         DAS_NO_ASSERTIONS DAS_ENABLE_EXCEPTIONS _EMSCRIPTEN_VER)
     SET(IMGUI_WASM_INC
         ${DASLANG_DIR}/include
         ${imgui_INCLUDE_DIR}
+        ${MD4C_INCLUDE_DIR}
         ${DAS_IMGUI_DIR}/src
+        ${DAS_IMGUI_CLIPBOARD_ROOT}/src
         ${DAS_IMGUI_DIR}/gl3w
         ${GLFW_INCLUDE_DIR}
         ${DASLANG_DIR}/modules/dasGlfw/src)
@@ -253,6 +344,7 @@ ELSEIF(EMSCRIPTEN)
 
     add_library(dasModuleImgui STATIC ${DAS_IMGUI_BIND_SRC} ${DAS_IMGUI_SRC})
     ADD_IMGUI_WASM_ARCHIVE(dasModuleImgui liblibDasModuleImgui)
+    target_link_libraries(dasModuleImgui PRIVATE freetype)
 
     add_library(imguiApp STATIC ${DAS_IMGUI_APP_SRC})
     ADD_IMGUI_WASM_ARCHIVE(imguiApp liblibImguiApp)
@@ -269,10 +361,11 @@ ENDIF()
 
 # dasModuleImgui.shared_module — core imgui bindings
 add_library(dasModuleImgui SHARED ${DAS_IMGUI_BIND_SRC} ${DAS_IMGUI_SRC})
+target_link_libraries(dasModuleImgui PRIVATE freetype dasClipboardNative)
 target_compile_features(dasModuleImgui PRIVATE cxx_std_17)
 target_compile_definitions(dasModuleImgui PRIVATE
-    DAS_MOD_EXPORTS DAS_ENABLE_DLL=1
-    IMGUI_DISABLE_OBSOLETE_FUNCTIONS=1
+    DAS_MOD_EXPORTS DAS_ENABLE_DLL=1 DAS_CLIPBOARD_IMPORTS=1
+    ${DAS_IMGUI_COMMON_DEFS}
     IMGUI_API=${IMGUI_PUBLIC_ATTR}
     $<$<CONFIG:Release>:DAS_NO_ASSERTIONS>
     $<$<CONFIG:MinSizeRel>:DAS_NO_ASSERTIONS>
@@ -281,7 +374,9 @@ target_compile_definitions(dasModuleImgui PRIVATE
 target_include_directories(dasModuleImgui PRIVATE
     ${DASLANG_DIR}/include
     ${imgui_INCLUDE_DIR}
+    ${MD4C_INCLUDE_DIR}
     ${DAS_IMGUI_DIR}/src
+    ${DAS_IMGUI_CLIPBOARD_ROOT}/src
 )
 if(WIN32)
     if(EXISTS "${DASLANG_DIR}/lib/Release/libDaScriptDyn.lib")
@@ -340,7 +435,7 @@ IF(OPENGL_FOUND)
     target_compile_features(imguiApp PRIVATE cxx_std_17)
     target_compile_definitions(imguiApp PRIVATE
         DAS_MOD_EXPORTS DAS_ENABLE_DLL=1
-        IMGUI_DISABLE_OBSOLETE_FUNCTIONS=1
+        ${DAS_IMGUI_COMMON_DEFS}
         IMGUI_API=${IMGUI_PUBLIC_ATTR}
         IMGUI_IMPL_API=${IMGUI_PUBLIC_ATTR}
         IMGUI_IMPL_OPENGL_LOADER_GL3W
@@ -412,7 +507,7 @@ add_library(imguiAppHeadless SHARED ${DAS_IMGUI_DIR}/src/module_imgui_app_headle
 target_compile_features(imguiAppHeadless PRIVATE cxx_std_17)
 target_compile_definitions(imguiAppHeadless PRIVATE
     DAS_MOD_EXPORTS DAS_ENABLE_DLL=1
-    IMGUI_DISABLE_OBSOLETE_FUNCTIONS=1
+    ${DAS_IMGUI_COMMON_DEFS}
     IMGUI_API=${IMGUI_PUBLIC_ATTR}
     $<$<CONFIG:Release>:DAS_NO_ASSERTIONS>
     $<$<CONFIG:MinSizeRel>:DAS_NO_ASSERTIONS>

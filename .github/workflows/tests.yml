@@ -186,7 +186,7 @@ jobs:
           # + dasModuleStbImage (rendering deps).
           cmake --build ./build --parallel --target \
             daslang daslang-live \
-            dasModuleLiveHost dasModuleGlfw dasModuleHV \
+            dasModuleLiveHost dasModuleGlfw dasModuleHV dasModuleClipboard \
             dasModulePUGIXML dasModuleStbImage
           sccache --show-stats
           echo "BIN_DIR=bin" >> "$GITHUB_ENV"
@@ -273,6 +273,9 @@ jobs:
         #   inputs_text     → test_inputs_text.das     (~13 POSTs — buffer)
         env:
           DASLIVE_HV_LOG: stderr
+          # Surface dlopen failures before they collapse into a misleading
+          # missing-prerequisite cascade in dastest output.
+          DAS_TRACE_MODULE_LOAD: "1"
           DASLIVE_HV_LOG_LEVEL: DEBUG
         run: |
           set -eux

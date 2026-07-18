@@ -18,6 +18,7 @@ _wasm/
 _wasm_build/
 _wasm_obj/
 _*.log
+logs/
 # Visual-aids ad-hoc smoke screenshots dropped at repo root by the screenshot live_command
 screenshot.png
 tour_*.png

@@ -12,9 +12,9 @@
 namespace das {
 #include "dasIMGUI.func.aot.decl.inc"
 void Module_dasIMGUI::initFunctions_29() {
-	using _method_164 = das::das_call_member< void (ImFontGlyphRangesBuilder::*)(ImVector<unsigned short> *),&ImFontGlyphRangesBuilder::BuildRanges >;
+	using _method_164 = das::das_call_member< void (ImFontGlyphRangesBuilder::*)(ImVector<unsigned int> *),&ImFontGlyphRangesBuilder::BuildRanges >;
 // from imgui.h:3735:21
-	makeExtern<DAS_CALL_METHOD(_method_164), SimNode_ExtFuncCall , imguiTempFn>(lib,"BuildRanges","das_call_member< void (ImFontGlyphRangesBuilder::*)(ImVector<unsigned short> *) , &ImFontGlyphRangesBuilder::BuildRanges >::invoke")
+	makeExtern<DAS_CALL_METHOD(_method_164), SimNode_ExtFuncCall , imguiTempFn>(lib,"BuildRanges","das_call_member< void (ImFontGlyphRangesBuilder::*)(ImVector<unsigned int> *) , &ImFontGlyphRangesBuilder::BuildRanges >::invoke")
 		->args({"self","out_ranges"})
 		->addToModule(*this, SideEffects::worstDefault);
 	addCtorAndUsing<ImFontAtlasRect>(*this,lib,"ImFontAtlasRect","ImFontAtlasRect");
@@ -42,33 +42,33 @@ void Module_dasIMGUI::initFunctions_29() {
 		->args({"self","font_cfg"})
 		->arg_init(1,new ExprConstPtr())
 		->addToModule(*this, SideEffects::worstDefault);
-	using _method_169 = das::das_call_member< ImFont * (ImFontAtlas::*)(const char *,float,const ImFontConfig *,const unsigned short *),&ImFontAtlas::AddFontFromFileTTF >;
+	using _method_169 = das::das_call_member< ImFont * (ImFontAtlas::*)(const char *,float,const ImFontConfig *,const unsigned int *),&ImFontAtlas::AddFontFromFileTTF >;
 // from imgui.h:3791:33
-	makeExtern<DAS_CALL_METHOD(_method_169), SimNode_ExtFuncCall , imguiTempFn>(lib,"AddFontFromFileTTF","das_call_member< ImFont * (ImFontAtlas::*)(const char *,float,const ImFontConfig *,const unsigned short *) , &ImFontAtlas::AddFontFromFileTTF >::invoke")
+	makeExtern<DAS_CALL_METHOD(_method_169), SimNode_ExtFuncCall , imguiTempFn>(lib,"AddFontFromFileTTF","das_call_member< ImFont * (ImFontAtlas::*)(const char *,float,const ImFontConfig *,const unsigned int *) , &ImFontAtlas::AddFontFromFileTTF >::invoke")
 		->args({"self","filename","size_pixels","font_cfg","glyph_ranges"})
 		->arg_init(2,new ExprConstFloat(0))
 		->arg_init(3,new ExprConstPtr())
 		->arg_init(4,new ExprConstPtr())
 		->addToModule(*this, SideEffects::worstDefault);
-	using _method_170 = das::das_call_member< ImFont * (ImFontAtlas::*)(void *,int,float,const ImFontConfig *,const unsigned short *),&ImFontAtlas::AddFontFromMemoryTTF >;
+	using _method_170 = das::das_call_member< ImFont * (ImFontAtlas::*)(void *,int,float,const ImFontConfig *,const unsigned int *),&ImFontAtlas::AddFontFromMemoryTTF >;
 // from imgui.h:3792:33
-	makeExtern<DAS_CALL_METHOD(_method_170), SimNode_ExtFuncCall , imguiTempFn>(lib,"AddFontFromMemoryTTF","das_call_member< ImFont * (ImFontAtlas::*)(void *,int,float,const ImFontConfig *,const unsigned short *) , &ImFontAtlas::AddFontFromMemoryTTF >::invoke")
+	makeExtern<DAS_CALL_METHOD(_method_170), SimNode_ExtFuncCall , imguiTempFn>(lib,"AddFontFromMemoryTTF","das_call_member< ImFont * (ImFontAtlas::*)(void *,int,float,const ImFontConfig *,const unsigned int *) , &ImFontAtlas::AddFontFromMemoryTTF >::invoke")
 		->args({"self","font_data","font_data_size","size_pixels","font_cfg","glyph_ranges"})
 		->arg_init(3,new ExprConstFloat(0))
 		->arg_init(4,new ExprConstPtr())
 		->arg_init(5,new ExprConstPtr())
 		->addToModule(*this, SideEffects::worstDefault);
-	using _method_171 = das::das_call_member< ImFont * (ImFontAtlas::*)(const void *,int,float,const ImFontConfig *,const unsigned short *),&ImFontAtlas::AddFontFromMemoryCompressedTTF >;
+	using _method_171 = das::das_call_member< ImFont * (ImFontAtlas::*)(const void *,int,float,const ImFontConfig *,const unsigned int *),&ImFontAtlas::AddFontFromMemoryCompressedTTF >;
 // from imgui.h:3793:33
-	makeExtern<DAS_CALL_METHOD(_method_171), SimNode_ExtFuncCall , imguiTempFn>(lib,"AddFontFromMemoryCompressedTTF","das_call_member< ImFont * (ImFontAtlas::*)(const void *,int,float,const ImFontConfig *,const unsigned short *) , &ImFontAtlas::AddFontFromMemoryCompressedTTF >::invoke")
+	makeExtern<DAS_CALL_METHOD(_method_171), SimNode_ExtFuncCall , imguiTempFn>(lib,"AddFontFromMemoryCompressedTTF","das_call_member< ImFont * (ImFontAtlas::*)(const void *,int,float,const ImFontConfig *,const unsigned int *) , &ImFontAtlas::AddFontFromMemoryCompressedTTF >::invoke")
 		->args({"self","compressed_font_data","compressed_font_data_size","size_pixels","font_cfg","glyph_ranges"})
 		->arg_init(3,new ExprConstFloat(0))
 		->arg_init(4,new ExprConstPtr())
 		->arg_init(5,new ExprConstPtr())
 		->addToModule(*this, SideEffects::worstDefault);
-	using _method_172 = das::das_call_member< ImFont * (ImFontAtlas::*)(const char *,float,const ImFontConfig *,const unsigned short *),&ImFontAtlas::AddFontFromMemoryCompressedBase85TTF >;
+	using _method_172 = das::das_call_member< ImFont * (ImFontAtlas::*)(const char *,float,const ImFontConfig *,const unsigned int *),&ImFontAtlas::AddFontFromMemoryCompressedBase85TTF >;
 // from imgui.h:3794:33
-	makeExtern<DAS_CALL_METHOD(_method_172), SimNode_ExtFuncCall , imguiTempFn>(lib,"AddFontFromMemoryCompressedBase85TTF","das_call_member< ImFont * (ImFontAtlas::*)(const char *,float,const ImFontConfig *,const unsigned short *) , &ImFontAtlas::AddFontFromMemoryCompressedBase85TTF >::invoke")
+	makeExtern<DAS_CALL_METHOD(_method_172), SimNode_ExtFuncCall , imguiTempFn>(lib,"AddFontFromMemoryCompressedBase85TTF","das_call_member< ImFont * (ImFontAtlas::*)(const char *,float,const ImFontConfig *,const unsigned int *) , &ImFontAtlas::AddFontFromMemoryCompressedBase85TTF >::invoke")
 		->args({"self","compressed_font_data_base85","size_pixels","font_cfg","glyph_ranges"})
 		->arg_init(2,new ExprConstFloat(0))
 		->arg_init(3,new ExprConstPtr())
@@ -109,9 +109,9 @@ void Module_dasIMGUI::initFunctions_29() {
 	makeExtern<DAS_CALL_METHOD(_method_179), SimNode_ExtFuncCall , imguiTempFn>(lib,"ClearTexData","das_call_member< void (ImFontAtlas::*)() , &ImFontAtlas::ClearTexData >::invoke")
 		->args({"self"})
 		->addToModule(*this, SideEffects::worstDefault);
-	using _method_180 = das::das_call_member< const unsigned short * (ImFontAtlas::*)(),&ImFontAtlas::GetGlyphRangesDefault >;
+	using _method_180 = das::das_call_member< const unsigned int * (ImFontAtlas::*)(),&ImFontAtlas::GetGlyphRangesDefault >;
 // from imgui.h:3828:33
-	makeExtern<DAS_CALL_METHOD(_method_180), SimNode_ExtFuncCall , imguiTempFn>(lib,"GetGlyphRangesDefault","das_call_member< const unsigned short * (ImFontAtlas::*)() , &ImFontAtlas::GetGlyphRangesDefault >::invoke")
+	makeExtern<DAS_CALL_METHOD(_method_180), SimNode_ExtFuncCall , imguiTempFn>(lib,"GetGlyphRangesDefault","das_call_member< const unsigned int * (ImFontAtlas::*)() , &ImFontAtlas::GetGlyphRangesDefault >::invoke")
 		->args({"self"})
 		->addToModule(*this, SideEffects::worstDefault);
 	using _method_181 = das::das_call_member< int (ImFontAtlas::*)(int,int,ImFontAtlasRect *),&ImFontAtlas::AddCustomRect >;

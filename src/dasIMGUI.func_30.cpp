@@ -28,30 +28,30 @@ void Module_dasIMGUI::initFunctions_30() {
 	makeExtern<DAS_CALL_METHOD(_method_184), SimNode_ExtFuncCall , imguiTempFn>(lib,"ClearOutputData","das_call_member< void (ImFontBaked::*)() , &ImFontBaked::ClearOutputData >::invoke")
 		->args({"self"})
 		->addToModule(*this, SideEffects::worstDefault);
-	using _method_185 = das::das_call_member< ImFontGlyph * (ImFontBaked::*)(unsigned short),&ImFontBaked::FindGlyph >;
+	using _method_185 = das::das_call_member< ImFontGlyph * (ImFontBaked::*)(unsigned int),&ImFontBaked::FindGlyph >;
 // from imgui.h:3961:33
-	makeExtern<DAS_CALL_METHOD(_method_185), SimNode_ExtFuncCall , imguiTempFn>(lib,"FindGlyph","das_call_member< ImFontGlyph * (ImFontBaked::*)(unsigned short) , &ImFontBaked::FindGlyph >::invoke")
+	makeExtern<DAS_CALL_METHOD(_method_185), SimNode_ExtFuncCall , imguiTempFn>(lib,"FindGlyph","das_call_member< ImFontGlyph * (ImFontBaked::*)(unsigned int) , &ImFontBaked::FindGlyph >::invoke")
 		->args({"self","c"})
 		->addToModule(*this, SideEffects::worstDefault);
-	using _method_186 = das::das_call_member< ImFontGlyph * (ImFontBaked::*)(unsigned short),&ImFontBaked::FindGlyphNoFallback >;
+	using _method_186 = das::das_call_member< ImFontGlyph * (ImFontBaked::*)(unsigned int),&ImFontBaked::FindGlyphNoFallback >;
 // from imgui.h:3962:33
-	makeExtern<DAS_CALL_METHOD(_method_186), SimNode_ExtFuncCall , imguiTempFn>(lib,"FindGlyphNoFallback","das_call_member< ImFontGlyph * (ImFontBaked::*)(unsigned short) , &ImFontBaked::FindGlyphNoFallback >::invoke")
+	makeExtern<DAS_CALL_METHOD(_method_186), SimNode_ExtFuncCall , imguiTempFn>(lib,"FindGlyphNoFallback","das_call_member< ImFontGlyph * (ImFontBaked::*)(unsigned int) , &ImFontBaked::FindGlyphNoFallback >::invoke")
 		->args({"self","c"})
 		->addToModule(*this, SideEffects::worstDefault);
-	using _method_187 = das::das_call_member< float (ImFontBaked::*)(unsigned short),&ImFontBaked::GetCharAdvance >;
+	using _method_187 = das::das_call_member< float (ImFontBaked::*)(unsigned int),&ImFontBaked::GetCharAdvance >;
 // from imgui.h:3963:33
-	makeExtern<DAS_CALL_METHOD(_method_187), SimNode_ExtFuncCall , imguiTempFn>(lib,"GetCharAdvance","das_call_member< float (ImFontBaked::*)(unsigned short) , &ImFontBaked::GetCharAdvance >::invoke")
+	makeExtern<DAS_CALL_METHOD(_method_187), SimNode_ExtFuncCall , imguiTempFn>(lib,"GetCharAdvance","das_call_member< float (ImFontBaked::*)(unsigned int) , &ImFontBaked::GetCharAdvance >::invoke")
 		->args({"self","c"})
 		->addToModule(*this, SideEffects::worstDefault);
-	using _method_188 = das::das_call_member< bool (ImFontBaked::*)(unsigned short),&ImFontBaked::IsGlyphLoaded >;
+	using _method_188 = das::das_call_member< bool (ImFontBaked::*)(unsigned int),&ImFontBaked::IsGlyphLoaded >;
 // from imgui.h:3964:33
-	makeExtern<DAS_CALL_METHOD(_method_188), SimNode_ExtFuncCall , imguiTempFn>(lib,"IsGlyphLoaded","das_call_member< bool (ImFontBaked::*)(unsigned short) , &ImFontBaked::IsGlyphLoaded >::invoke")
+	makeExtern<DAS_CALL_METHOD(_method_188), SimNode_ExtFuncCall , imguiTempFn>(lib,"IsGlyphLoaded","das_call_member< bool (ImFontBaked::*)(unsigned int) , &ImFontBaked::IsGlyphLoaded >::invoke")
 		->args({"self","c"})
 		->addToModule(*this, SideEffects::worstDefault);
 	addCtorAndUsing<ImFont>(*this,lib,"ImFont","ImFont");
-	using _method_189 = das::das_call_member< bool (ImFont::*)(unsigned short),&ImFont::IsGlyphInFont >;
+	using _method_189 = das::das_call_member< bool (ImFont::*)(unsigned int),&ImFont::IsGlyphInFont >;
 // from imgui.h:4007:33
-	makeExtern<DAS_CALL_METHOD(_method_189), SimNode_ExtFuncCall , imguiTempFn>(lib,"IsGlyphInFont","das_call_member< bool (ImFont::*)(unsigned short) , &ImFont::IsGlyphInFont >::invoke")
+	makeExtern<DAS_CALL_METHOD(_method_189), SimNode_ExtFuncCall , imguiTempFn>(lib,"IsGlyphInFont","das_call_member< bool (ImFont::*)(unsigned int) , &ImFont::IsGlyphInFont >::invoke")
 		->args({"self","c"})
 		->addToModule(*this, SideEffects::worstDefault);
 	using _method_190 = das::das_call_member< bool (ImFont::*)() const,&ImFont::IsLoaded >;
@@ -82,9 +82,9 @@ void Module_dasIMGUI::initFunctions_30() {
 	makeExtern<DAS_CALL_METHOD(_method_194), SimNode_ExtFuncCall , imguiTempFn>(lib,"CalcWordWrapPosition","das_call_member< const char * (ImFont::*)(float,const char *,const char *,float) , &ImFont::CalcWordWrapPosition >::invoke")
 		->args({"self","size","text","text_end","wrap_width"})
 		->addToModule(*this, SideEffects::worstDefault);
-	using _method_195 = das::das_call_member< void (ImFont::*)(ImDrawList *,float,const ImVec2 &,unsigned int,unsigned short,const ImVec4 *),&ImFont::RenderChar >;
+	using _method_195 = das::das_call_member< void (ImFont::*)(ImDrawList *,float,const ImVec2 &,unsigned int,unsigned int,const ImVec4 *),&ImFont::RenderChar >;
 // from imgui.h:4017:33
-	makeExtern<DAS_CALL_METHOD(_method_195), SimNode_ExtFuncCall , imguiTempFn>(lib,"RenderChar","das_call_member< void (ImFont::*)(ImDrawList *,float,const ImVec2 &,unsigned int,unsigned short,const ImVec4 *) , &ImFont::RenderChar >::invoke")
+	makeExtern<DAS_CALL_METHOD(_method_195), SimNode_ExtFuncCall , imguiTempFn>(lib,"RenderChar","das_call_member< void (ImFont::*)(ImDrawList *,float,const ImVec2 &,unsigned int,unsigned int,const ImVec4 *) , &ImFont::RenderChar >::invoke")
 		->args({"self","draw_list","size","pos","col","c","cpu_fine_clip"})
 		->arg_init(6,new ExprConstPtr())
 		->addToModule(*this, SideEffects::worstDefault);
@@ -100,9 +100,9 @@ void Module_dasIMGUI::initFunctions_30() {
 	makeExtern<DAS_CALL_METHOD(_method_197), SimNode_ExtFuncCall , imguiTempFn>(lib,"ClearOutputData","das_call_member< void (ImFont::*)() , &ImFont::ClearOutputData >::invoke")
 		->args({"self"})
 		->addToModule(*this, SideEffects::worstDefault);
-	using _method_198 = das::das_call_member< void (ImFont::*)(unsigned short,unsigned short),&ImFont::AddRemapChar >;
+	using _method_198 = das::das_call_member< void (ImFont::*)(unsigned int,unsigned int),&ImFont::AddRemapChar >;
 // from imgui.h:4025:33
-	makeExtern<DAS_CALL_METHOD(_method_198), SimNode_ExtFuncCall , imguiTempFn>(lib,"AddRemapChar","das_call_member< void (ImFont::*)(unsigned short,unsigned short) , &ImFont::AddRemapChar >::invoke")
+	makeExtern<DAS_CALL_METHOD(_method_198), SimNode_ExtFuncCall , imguiTempFn>(lib,"AddRemapChar","das_call_member< void (ImFont::*)(unsigned int,unsigned int) , &ImFont::AddRemapChar >::invoke")
 		->args({"self","from_codepoint","to_codepoint"})
 		->addToModule(*this, SideEffects::worstDefault);
 	using _method_199 = das::das_call_member< bool (ImFont::*)(unsigned int,unsigned int),&ImFont::IsGlyphRangeUnused >;

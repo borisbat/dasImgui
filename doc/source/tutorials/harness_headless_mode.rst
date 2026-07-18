@@ -5,7 +5,7 @@ Harness + headless mode
 #############################
 
 ``imgui/imgui_harness`` is the canonical wrapper for dasImgui examples and
-tests. It hides the GLFW/OpenGL backend boilerplate behind five helpers and
+tests. It hides the GLFW/OpenGL backend boilerplate behind six helpers and
 adds a ``--headless`` CLI mode that runs the same script with no window and
 no GL context — for CI, smoke tests, and Playwright drivers without a
 display server.
@@ -62,7 +62,7 @@ counter hits ``N`` (the harness then calls ``request_exit()`` itself).
 What --headless does internally
 ************************************
 
-The harness exports five helpers; each branches on
+The harness exports six helpers; the frame/backend helpers branch on
 ``harness_is_headless()`` at call time:
 
 ``harness_init(title, width, height)``
@@ -77,6 +77,11 @@ The harness exports five helpers; each branches on
      boost ``begin_frame``, advance the headless frame counter. If
      ``--headless-frames=N`` is set and the counter reaches ``N``, call
      ``request_exit()`` and return ``false`` (the script's loop exits).
+
+``harness_maybe_collect_gc()``
+   Standalone-only heap boundary. Call it from ``main`` immediately after
+   ``update()`` returns. It is a no-op under ``daslang-live``. The entry script
+   must declare ``options persistent_heap`` and ``options gc``.
 
 ``harness_apply_synth_io()`` *(optional)*
    Drains the synth IO timeline (``imgui_mouse_play``, ``imgui_key_chord``,

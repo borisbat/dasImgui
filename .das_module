@@ -35,6 +35,23 @@ def initialize(project_path : string) {
     register_native_path("imgui", "imgui_style_builtin", "{project_path}/widgets/imgui_style_builtin.das")
     // daslang.io drop-in theme — apply_daslang_theme(GetStyle()) on init.
     register_native_path("imgui", "imgui_theme_daslang", "{project_path}/widgets/imgui_theme_daslang.das")
+    // Font loading + explicit merge-mode fallback. Dear ImGui has no platform
+    // fallback resolver, so terminal/editor consumers build a font stack here.
+    register_native_path("imgui", "imgui_fonts", "{project_path}/widgets/imgui_fonts.das")
+    // Shared UTF-8 source ranges, grapheme grouping, and view-independent
+    // inline flow. Kept in its own section because Markdown/editor/terminal
+    // renderers all consume it without owning one another.
+    register_native_path("imgui", "imgui_text_flow", "{project_path}/text/imgui_text_flow.das")
+    register_native_path("imgui", "imgui_document_model", "{project_path}/text/imgui_document_model.das")
+    register_native_path("imgui", "imgui_text_source_model", "{project_path}/text/imgui_text_source_model.das")
+    register_native_path("imgui", "imgui_text_source_view", "{project_path}/text/imgui_text_source_view.das")
+    // Semantic commands, scoped shortcuts and editable per-user bindings.
+    register_native_path("imgui", "imgui_commands", "{project_path}/commands/imgui_commands.das")
+    // Markdown-facing UI adapters. Parsing/model modules will join this section
+    // without coupling the shared text-flow core to immediate-mode rendering.
+    register_native_path("imgui", "imgui_markdown_model", "{project_path}/markdown/imgui_markdown_model.das")
+    register_native_path("imgui", "imgui_markdown_text", "{project_path}/markdown/imgui_markdown_text.das")
+    register_native_path("imgui", "imgui_markdown_view", "{project_path}/markdown/imgui_markdown_view.das")
     // Flag-operator extensions (| / & / ~) for internal imgui enums the binder gave
     // no addEnumFlagOps — currently ImGuiItemFlags. Re-exported by imgui_scope_builtin.
     register_native_path("imgui", "imgui_enums", "{project_path}/widgets/imgui_enums.das")

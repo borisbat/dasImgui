@@ -81,9 +81,9 @@ void Module_dasIMGUI::initFunctions_28() {
 	makeExtern<DAS_CALL_METHOD(_method_160), SimNode_ExtFuncCall , imguiTempFn>(lib,"SetBit","das_call_member< void (ImFontGlyphRangesBuilder::*)(size_t) , &ImFontGlyphRangesBuilder::SetBit >::invoke")
 		->args({"self","n"})
 		->addToModule(*this, SideEffects::worstDefault);
-	using _method_161 = das::das_call_member< void (ImFontGlyphRangesBuilder::*)(unsigned short),&ImFontGlyphRangesBuilder::AddChar >;
+	using _method_161 = das::das_call_member< void (ImFontGlyphRangesBuilder::*)(unsigned int),&ImFontGlyphRangesBuilder::AddChar >;
 // from imgui.h:3732:21
-	makeExtern<DAS_CALL_METHOD(_method_161), SimNode_ExtFuncCall , imguiTempFn>(lib,"AddChar","das_call_member< void (ImFontGlyphRangesBuilder::*)(unsigned short) , &ImFontGlyphRangesBuilder::AddChar >::invoke")
+	makeExtern<DAS_CALL_METHOD(_method_161), SimNode_ExtFuncCall , imguiTempFn>(lib,"AddChar","das_call_member< void (ImFontGlyphRangesBuilder::*)(unsigned int) , &ImFontGlyphRangesBuilder::AddChar >::invoke")
 		->args({"self","c"})
 		->addToModule(*this, SideEffects::worstDefault);
 	using _method_162 = das::das_call_member< void (ImFontGlyphRangesBuilder::*)(const char *,const char *),&ImFontGlyphRangesBuilder::AddText >;
@@ -92,9 +92,9 @@ void Module_dasIMGUI::initFunctions_28() {
 		->args({"self","text","text_end"})
 		->arg_init(2,new ExprConstString(""))
 		->addToModule(*this, SideEffects::worstDefault);
-	using _method_163 = das::das_call_member< void (ImFontGlyphRangesBuilder::*)(const unsigned short *),&ImFontGlyphRangesBuilder::AddRanges >;
+	using _method_163 = das::das_call_member< void (ImFontGlyphRangesBuilder::*)(const unsigned int *),&ImFontGlyphRangesBuilder::AddRanges >;
 // from imgui.h:3734:21
-	makeExtern<DAS_CALL_METHOD(_method_163), SimNode_ExtFuncCall , imguiTempFn>(lib,"AddRanges","das_call_member< void (ImFontGlyphRangesBuilder::*)(const unsigned short *) , &ImFontGlyphRangesBuilder::AddRanges >::invoke")
+	makeExtern<DAS_CALL_METHOD(_method_163), SimNode_ExtFuncCall , imguiTempFn>(lib,"AddRanges","das_call_member< void (ImFontGlyphRangesBuilder::*)(const unsigned int *) , &ImFontGlyphRangesBuilder::AddRanges >::invoke")
 		->args({"self","ranges"})
 		->addToModule(*this, SideEffects::worstDefault);
 }

@@ -13,9 +13,10 @@ module imgui_harness shared public
 
 //! Canonical wrapper for dasImgui examples and tests.
 //!
-//! Hides the GLFW/OpenGL backend boilerplate behind five helpers
+//! Hides the GLFW/OpenGL backend boilerplate behind six helpers
 //! (``harness_init`` / ``harness_begin_frame`` / ``harness_new_frame`` /
-//! ``harness_end_frame`` / ``harness_shutdown``). ``harness_new_frame`` runs the
+//! ``harness_end_frame`` / ``harness_maybe_collect_gc`` /
+//! ``harness_shutdown``). ``harness_new_frame`` runs the
 //! boost synth tick automatically, so synthetic input works with no opt-in.
 //! Examples ``require imgui_harness`` and never touch GLFW/GL symbols directly.
 //!
@@ -132,6 +133,7 @@ def public harness_init(title : string; width : int = 800; height : int = 600) {
     //! no GL context, no TTF (the headless atlas uses ProggyClean).
     if (harness_is_headless()) {
         g_headless_ctx = CreateContext(null)
+        InstallCoreClipboardBackend()
         apply_daslang_theme()
         imgui_headless_init_fonts()
         imgui_headless_set_display_size(float(width), float(height))
@@ -171,6 +173,7 @@ def public harness_init(title : string; width : int = 800; height : int = 600) {
     }
     live_create_window(title, w, h)
     live_imgui_init(live_window)
+    InstallCoreClipboardBackend()
     // --no-imgui-ini (with_imgui_app passes it for every test spawn): null the
     // ini AFTER live_imgui_init creates the context, BEFORE the first NewFrame,
     // so a windowed GL test starts from the app's default layout and never
@@ -225,6 +228,17 @@ def public harness_begin_frame() : bool {
     }
     advance_coroutines()
     return true
+}
+
+def public harness_maybe_collect_gc() {
+    //! Standalone application GC boundary. Call from ``main`` immediately after
+    //! ``update()`` returns, never from inside a frame. JIT collection cannot
+    //! trace collectable values held in ordinary stack locals, so the caller's
+    //! ``main`` frame must not keep any across this call. The entry program must
+    //! declare both ``options persistent_heap`` and ``options gc``. Under
+    //! daslang-live this is a no-op because the host already collects between
+    //! update calls.
+    maybe_collect_gc()
 }
 
 def public harness_new_frame() {

@@ -11,6 +11,7 @@ construction.
 .. toctree::
    :maxdepth: 2
 
+   application_lifecycle.rst
    boost_basics.rst
    widgets_tour.rst
    display_widgets.rst

@@ -690,6 +690,39 @@ def public icon_button_draw(id : string; glyph : string; size : float = 20.0f; w
     return pressed
 }
 
+def public icon_button_draw_at(id : string; glyph : string; pos : float2;
+                               size : float = 20.0f; weight : float = 1.0f;
+                               visible : bool = true) : bool {
+    //! Fixed-position counterpart for overlay/inline chrome. It registers a
+    //! real ImGui item through ItemAdd + ButtonBehavior but deliberately does
+    //! not call ItemSize or mutate the layout cursor. `visible=false` keeps the
+    //! reserved hit target invisible until hovered or activated.
+    let style & = GetStyle()
+    let pad = style.FramePadding
+    let full = float2(size + pad.x * 2.0f, size + pad.y * 2.0f)
+    let bb = float4(pos.x, pos.y, pos.x + full.x, pos.y + full.y)
+    let widget_id = GetID(id)
+    if (!ItemAdd(bb, widget_id)) return false
+    var hovered = false
+    var held = false
+    let pressed = ButtonBehavior(bb, widget_id, hovered, held, ImGuiButtonFlags.None)
+    if (!visible && !hovered && !held) return pressed
+
+    var bg = GetColorU32(ImGuiCol.Button)
+    if (held) {
+        bg = GetColorU32(ImGuiCol.ButtonActive)
+    } elif (hovered) {
+        bg = GetColorU32(ImGuiCol.ButtonHovered)
+    }
+    var dl = GetWindowDrawList()
+    *dl |> AddRectFilled(pos, pos + full, bg, style.FrameRounding, ImDrawFlags.None)
+    var ctx = IconCtx(dl = dl, org = pos + pad, s = size,
+        col = held ? GetColorU32(ImGuiCol.Text) : GetColorU32(amber),
+        th = (2.0f / 24.0f) * size * weight)
+    draw_icon(glyph, ctx)
+    return pressed
+}
+
 // ===== Catalog accessors =====
 // Enumerate the set without exposing the draw routines. Used by the doc
 // generator and make_icon_doc; also handy for building an in-app icon picker.

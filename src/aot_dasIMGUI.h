@@ -35,8 +35,20 @@ namespace das {
     DAS_MOD_API bool InputText(vec4f vdiit, const char * label, ImGuiInputTextFlags_ flags, LineInfoArg * at, Context * context );
     DAS_MOD_API bool InputTextWithHint(vec4f vdiit, const char * label, const char * hint, ImGuiInputTextFlags_ flags, LineInfoArg * at, Context * context );
     DAS_MOD_API bool PassFilter ( ImGuiTextFilter & filter, const char* text );
+    using MarkdownEventBlock = TBlock<void,
+        int32_t, int32_t, int32_t, int32_t, int32_t, int32_t, int32_t,
+        const char *, const char *>;
+    DAS_MOD_API int32_t MarkdownParseEvents(const char * source, int32_t source_size,
+        int32_t flags, const MarkdownEventBlock & block, Context * context, LineInfoArg * at);
     DAS_MOD_API char* text_range_string(ImGuiTextFilter::ImGuiTextRange &r, das::Context *context, das::LineInfoArg *at);
     DAS_MOD_API void AddText( ImDrawList & drawList, const ImVec2& pos, ImU32 col, const char* text );
+    DAS_MOD_API void InstallCoreClipboardBackend();
+    DAS_MOD_API ImVec2 CalcTextSizeForFont(ImFont * font, float font_size, const char * text);
+    DAS_MOD_API ImVec2 CalcTextSizeForFontRange(ImFont * font, float font_size, const char * text,
+        int32_t text_size, int32_t start_byte, int32_t end_byte);
+    DAS_MOD_API void AddTextRange(ImDrawList & drawList, ImFont* font, float font_size,
+        const ImVec2& pos, ImU32 col, const char* text, int32_t text_size,
+        int32_t start_byte, int32_t end_byte);
     DAS_MOD_API void AddText2( ImDrawList & drawList, ImFont* font, float font_size, const ImVec2& pos, ImU32 col,
         const char* text_begin, float wrap_width = 0.0f, const ImVec4* cpu_fine_clip_rect = nullptr);
     // image API — const ImTextureRef& wrappers (const-arg binding).
