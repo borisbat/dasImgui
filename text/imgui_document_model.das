@@ -327,19 +327,21 @@ def public rich_plain_document(source : string) : RichDocument {
         return <- document
     }
     let source_range = TextSourceRange(start_byte = 0, end_byte = length(source))
-    document.nodes |> push(RichNode(
-        kind = RichNodeKind.document,
-        first_child = 1, last_child = 1,
-        source = source_range))
-    document.nodes |> push(RichNode(
-        kind = RichNodeKind.paragraph,
-        parent = 0, first_child = 2, last_child = 2,
-        source = source_range))
-    document.nodes |> push(RichNode(
-        kind = RichNodeKind.text,
-        parent = 1,
-        source = source_range,
-        source_exact = true))
+    document.nodes <- [
+        RichNode(
+            kind = RichNodeKind.document,
+            first_child = 1, last_child = 1,
+            source = source_range),
+        RichNode(
+            kind = RichNodeKind.paragraph,
+            parent = 0, first_child = 2, last_child = 2,
+            source = source_range),
+        RichNode(
+            kind = RichNodeKind.text,
+            parent = 1,
+            source = source_range,
+            source_exact = true)
+    ]
     document.root = 0
     document.ok = true
     return <- document
