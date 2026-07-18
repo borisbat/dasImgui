@@ -55,6 +55,22 @@ def test_markdown_view_event_driven_interactions(t : T?) {
         t |> success(ready, "Markdown live probe reaches a rendered revision")
         if (!ready) return
 
+        var inline_code : JsonValue?
+        let inline_code_rendered = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
+            inline_code = markdown_fragment(app, "inline code")
+            return inline_code?["ok"] ?? false
+        }
+        t |> success(inline_code_rendered,
+                     "inline code reaches rendered typography telemetry")
+        if (!inline_code_rendered) return
+        let inline_code_size = inline_code?["font_size"] ?? 0.0f
+        let prose_size = inline_code?["base_font_size"] ?? 0.0f
+        let inline_scale = inline_code?["inline_code_scale"] ?? 0.0f
+        t |> success(inline_code_size > 0.0f
+                   && abs(inline_scale - 0.80f) < 0.001f
+                   && abs(inline_code_size / prose_size - 0.80f) < 0.001f,
+                     "host inline-code scale reaches measurement and paint")
+
         var tight_list_item : JsonValue?
         let tight_list_rendered = wait_cond(app, DEADLOCK_GUARD_SEC) $() : bool {
             tight_list_item = markdown_fragment(app, "Parse CommonMark and GFM")
@@ -826,5 +842,10 @@ def test_markdown_view_event_driven_interactions(t : T?) {
                    "rendered code metadata exposes parsed language")
         t |> equal(code_block?["info"] ?? "", "das",
                    "rendered code metadata preserves the full info string")
+        let code_size = code_block?["font_size"] ?? 0.0f
+        let code_base_size = code_block?["base_font_size"] ?? 0.0f
+        t |> success(code_size > 0.0f
+                   && abs(code_size / code_base_size - 0.88f) < 0.001f,
+                     "host fenced-code scale reaches measurement and paint")
     }
 }

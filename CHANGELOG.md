@@ -6,6 +6,17 @@ All notable changes to dasImgui are documented in this file. Format based on
 ## [Unreleased]
 
 ### Added
+- Shared Unicode text infrastructure: role-based prose/monospace font stacks
+  with color emoji, grapheme-safe flow and source views, source-mapped
+  CommonMark/GFM documents and Markdown rendering, selectable rich/plain text,
+  semantic URI/image controls, clipboard exports, host-resolved images, and
+  deterministic live interaction coverage. `MarkdownTypography` lets hosts
+  override heading and code proportions while keeping measurement, wrapping,
+  hit-testing, selection, and painting synchronized.
+- Editable document projections and semantic command bindings. Canonical UTF-8
+  source preserves BOM and line endings across save/load; GFM checkboxes apply
+  exact source edits; menu, keyboard, toolbar, and live inputs share command IDs
+  with scoped, conflict-detectable, explicitly persisted bindings.
 - **F11 toggles fullscreen** in `imgui_harness` (`widgets/imgui_harness.das`) — in `harness_new_frame` (after `NewFrame`, windowed mode only): web routes through the dasGlfw `glfw_toggle_fullscreen()` extern (real browser fullscreen — the canvas grows to screen at native scale + DPR, not a CSS-magnified iframe), desktop uses the existing `glfwToggleNativeFullscreen(live_window)` (native macOS fullscreen, no-op elsewhere). Headless is skipped. Requires daslang with `glfw_toggle_fullscreen` (`GaijinEntertainment/daScript#3326`).
 - `with_font(font, size)` (`widgets/imgui_scope_builtin.das`) — the scope wrapper now forwards a per-push pixel size to `PushFont` (imgui 1.92 dynamic fonts), so one font renders at several sizes in a single frame. `size` defaults to `0.0f` (keep current size), so existing `with_font(font) { ... }` call sites are unchanged.
 - 1.92-API tutorials + walkthroughs (`examples/tutorial/` + `doc/source/tutorials/`): `dynamic_fonts` (`FontScaleMain` + `with_font(font, size)`), `texture_ref` (`ImTextureRef` / `TexData` null-gate), `item_flags` (`with_item_flag` + `ImGuiItemFlagsPrivate` cross-enum `|`), `log_capture` (`with_log` + renamed `ImGuiLogFlags`). Plus `examples/features/dynamic_font_scale.das` + the `tests/integration/test_dynamic_font_scale.das` size-gate smoke.

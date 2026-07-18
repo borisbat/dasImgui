@@ -19,8 +19,23 @@ require strings
 //! wrapping, colors, hover/click/copy behavior, and block chrome. Link actions
 //! are returned to the host; the viewer never opens a URI on its own.
 
+struct public MarkdownTypography {
+    //! Relative to the prose size supplied by FontRoleSet.  These are view
+    //! policy, not font-atlas settings, so an application can tune Markdown
+    //! proportions without reloading fonts or exposing user preferences.
+    inline_code_scale : float = 0.86f
+    code_block_scale : float = 0.90f
+    heading1_scale : float = 1.55f
+    heading2_scale : float = 1.35f
+    heading3_scale : float = 1.18f
+    heading4_scale : float = 1.05f
+    heading5_scale : float = 1.00f
+    heading6_scale : float = 1.00f
+}
+
 struct public MarkdownViewStyle {
     fonts : FontRoleSet = FontRoleSet()
+    typography : MarkdownTypography = MarkdownTypography()
     zoom : float = 1.0f
     text_color : float4 = float4(0.86f, 0.87f, 0.89f, 1.0f)
     strong_color : float4 = float4(0.97f, 0.89f, 0.68f, 1.0f)
@@ -110,6 +125,7 @@ struct public MarkdownLayoutKey {
     max_width : float
     line_height : float
     font_size : float
+    inline_code_scale : float = 1.0f
     icon_size : float2
     image_icon_size : float2
     forced_style : int
@@ -469,6 +485,22 @@ def private font_for_style(style_id : int; var roles : FontRoleSet;
     return fallback
 }
 
+def private font_size_for_style(base_size, inline_code_scale : float;
+                                style_id : int) : float {
+    return base_size * (has_style(style_id, STYLE_CODE)
+        ? max(inline_code_scale, 0.1f) : 1.0f)
+}
+
+def private heading_scale(typography : MarkdownTypography const;
+                          level : int) : float {
+    if (level == 1) return typography.heading1_scale
+    if (level == 2) return typography.heading2_scale
+    if (level == 3) return typography.heading3_scale
+    if (level == 4) return typography.heading4_scale
+    if (level == 5) return typography.heading5_scale
+    return typography.heading6_scale
+}
+
 def public markdown_line_alignment_offset(entry : MarkdownNodeViewCache const;
                                           line_index : int) : float {
     if (entry.screen_alignment == RichAlignment.default_
@@ -487,6 +519,14 @@ def public markdown_cached_fragment_rect(entry : MarkdownNodeViewCache const;
         entry.screen_origin.y + fragment.rect.y,
         entry.screen_origin.x + fragment.rect.z + dx,
         entry.screen_origin.y + fragment.rect.w)
+}
+
+def public markdown_cached_fragment_font_size(entry : MarkdownNodeViewCache const;
+                                              fragment : TextFlowFragment const) : float {
+    //! Exact point size used to measure and paint a retained fragment.  Live
+    //! tools can inspect typography without reaching into renderer policy.
+    return font_size_for_style(entry.layout_key.font_size,
+        entry.layout_key.inline_code_scale, fragment.style_id)
 }
 
 def private run_semantic_id(doc : RichDocument const; run : RichInlineRun const;
@@ -641,7 +681,10 @@ def private vertical_text_position(var state : MarkdownViewState;
                                                                       start_byte, end_byte, style_id : int) : float {
             var fallback = GetFont()
             var font = font_for_style(style_id, style.fonts, fallback)
-            return CalcTextSizeForFontRange(font, target.layout_key.font_size,
+            let font_size = font_size_for_style(
+                target.layout_key.font_size,
+                target.layout_key.inline_code_scale, style_id)
+            return CalcTextSizeForFontRange(font, font_size,
                 text, length(text), start_byte, end_byte).x
         }
     if (!hit.valid || hit.line_index != best_line) return from
@@ -766,6 +809,7 @@ def private position_in_fragment(position : RichTextPosition const; node_index :
 def private same_layout_key(a, b : MarkdownLayoutKey) : bool {
     return (a.max_width == b.max_width && a.line_height == b.line_height
         && a.font_size == b.font_size
+        && a.inline_code_scale == b.inline_code_scale
         && a.icon_size.x == b.icon_size.x && a.icon_size.y == b.icon_size.y
         && a.image_icon_size.x == b.image_icon_size.x
         && a.image_icon_size.y == b.image_icon_size.y
@@ -830,7 +874,9 @@ def private ensure_layout(doc : RichDocument const; node_index : int;
         key.max_width, key.line_height) $(text : string; start_byte : int; end_byte : int;
                                           style_id : int) : float {
             var font = font_for_style(style_id, style.fonts, fallback)
-            return CalcTextSizeForFontRange(font, key.font_size, text,
+            let font_size = font_size_for_style(
+                key.font_size, key.inline_code_scale, style_id)
+            return CalcTextSizeForFontRange(font, font_size, text,
                                             length(text), start_byte, end_byte).x
         }
     delete spans
@@ -873,6 +919,8 @@ def private render_inline(doc : RichDocument const; node_index : int;
     }
     var key = MarkdownLayoutKey(
         max_width = available, line_height = line_height, font_size = font_size,
+        inline_code_scale = has_style(forced_style, STYLE_CODE)
+            ? 1.0f : max(style.typography.inline_code_scale, 0.1f),
         icon_size = icon_full, image_icon_size = image_icon_full,
         forced_style = forced_style,
         show_link_copy = style.show_link_copy,
@@ -928,7 +976,9 @@ def private render_inline(doc : RichDocument const; node_index : int;
             GetMousePos() - origin - float2(align_x, 0.0f)) $(text : string;
                                                               start_byte, end_byte, style_id : int) : float {
                 var font = font_for_style(style_id, style.fonts, fallback_font)
-                return CalcTextSizeForFontRange(font, font_size, text, length(text),
+                let styled_size = font_size_for_style(
+                    font_size, key.inline_code_scale, style_id)
+                return CalcTextSizeForFontRange(font, styled_size, text, length(text),
                                                 start_byte, end_byte).x
             }
         }
@@ -1015,6 +1065,8 @@ def private render_inline(doc : RichDocument const; node_index : int;
                 let p0 = float2(screen_rect.x, screen_rect.y)
                 var font = font_for_style(
                     fragment.style_id, style.fonts, fallback_font)
+                let styled_size = font_size_for_style(
+                    font_size, key.inline_code_scale, fragment.style_id)
                 var fragment_selected = false
                 var fragment_rect = float4()
             for (run in content.runs) {
@@ -1022,9 +1074,9 @@ def private render_inline(doc : RichDocument const; node_index : int;
                 let a = max(display.start_byte, fragment.source.start_byte)
                 let b = min(display.end_byte, fragment.source.end_byte)
                 if (display.start_byte < 0 || b <= a) continue
-                let prefix = CalcTextSizeForFontRange(font, font_size, content.text,
+                let prefix = CalcTextSizeForFontRange(font, styled_size, content.text,
                     length(content.text), fragment.source.start_byte, a).x
-                let width = CalcTextSizeForFontRange(font, font_size, content.text,
+                let width = CalcTextSizeForFontRange(font, styled_size, content.text,
                     length(content.text), a, b).x
                     let selected = float4(
                         p0.x + prefix, screen_rect.y,
@@ -1093,10 +1145,13 @@ def private render_inline(doc : RichDocument const; node_index : int;
             color = hot_link ? style.image_hover_color : style.image_color
         }
         var font = font_for_style(fragment.style_id, style.fonts, fallback_font)
+        let styled_size = font_size_for_style(
+            font_size, key.inline_code_scale, fragment.style_id)
+        let text_y = p0.y + max(0.0f, (line_height - styled_size) * 0.5f)
         if (position_in_fragment(state.selection_focus, node_index, fragment)) {
             let caret_byte = clamp(state.selection_focus.display_byte,
                 fragment.source.start_byte, fragment.source.end_byte)
-            let caret_x = CalcTextSizeForFontRange(font, font_size, content.text,
+            let caret_x = CalcTextSizeForFontRange(font, styled_size, content.text,
                 length(content.text), fragment.source.start_byte, caret_byte).x
             let caret_top = float2(p0.x + caret_x, p0.y)
             state.selection_screen_anchor = float2(caret_top.x, p1.y)
@@ -1109,16 +1164,16 @@ def private render_inline(doc : RichDocument const; node_index : int;
                                GetColorU32(style.text_color), max(1.0f, zoom))
             }
         }
-        *dl |> AddTextRange(font, font_size, p0, GetColorU32(color),
+        *dl |> AddTextRange(font, styled_size, float2(p0.x, text_y), GetColorU32(color),
                            content.text, length(content.text), fragment.source.start_byte,
                            fragment.source.end_byte)
         if (hot_link) {
-            let y = p0.y + line_height - max(1.0f, zoom)
+            let y = text_y + styled_size - max(1.0f, zoom)
             *dl |> AddLine(float2(p0.x, y), float2(p1.x, y),
                            GetColorU32(color), max(1.0f, zoom))
         }
         if (has_style(fragment.style_id, STYLE_STRIKE)) {
-            let y = p0.y + line_height * 0.52f
+            let y = text_y + styled_size * 0.52f
             *dl |> AddLine(float2(p0.x, y), float2(p1.x, y),
                            GetColorU32(color), max(1.0f, zoom))
         }
@@ -1398,8 +1453,9 @@ def private render_code_block(doc : RichDocument const; node_index : int;
     ensure_inline(doc, node_index, state)
     let content & = unsafe(state.nodes[node_index].content)
     let zoom = view_zoom(style)
+    let code_scale = max(style.typography.code_block_scale, 0.1f)
     let font_size = (style.fonts.size_px > 0.0f
-        ? style.fonts.size_px : GetFontSize()) * zoom
+        ? style.fonts.size_px : GetFontSize()) * zoom * code_scale
     let padding = style.code_padding * zoom
     var mono = style.fonts.monospace != null ? style.fonts.monospace : GetFont()
     let measured = CalcTextSizeForFont(mono, font_size, content.text)
@@ -1420,7 +1476,8 @@ def private render_code_block(doc : RichDocument const; node_index : int;
         code_style.show_link_copy = false
         let content_width = max(measured.x, GetContentRegionAvail().x - padding)
         render_inline(doc, node_index, state, max(content_width, 1.0f),
-                      code_style, 1.0f, STYLE_CODE, RichAlignment.default_, result)
+                      code_style, code_scale, STYLE_CODE,
+                      RichAlignment.default_, result)
     }
     EndChild()
     PopID()
@@ -1441,8 +1498,7 @@ def private render_block(doc : RichDocument const; node_index : int;
                       style, 1.0f, 0, RichAlignment.default_, result)
         block_spacing(style, style.paragraph_spacing)
     } elif (node.kind == RichNodeKind.heading) {
-        let scale = node.level == 1 ? 1.55f : (node.level == 2 ? 1.35f
-                  : (node.level == 3 ? 1.18f : 1.05f))
+        let scale = max(heading_scale(style.typography, node.level), 0.1f)
         var heading_style := style
         heading_style.text_color = style.heading_color
         render_inline(doc, node_index, state, GetContentRegionAvail().x,

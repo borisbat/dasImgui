@@ -173,6 +173,7 @@ def markdown_probe_fragment(input : JsonValue?) : JsonValue? {
             if (find(fragment_text, args.text) < 0) continue
             let screen_rect = markdown_cached_fragment_rect(entry, fragment)
             let align_x = markdown_line_alignment_offset(entry, fragment.line_index)
+            let font_size = markdown_cached_fragment_font_size(entry, fragment)
             return JV((
                 ok = true,
                 render_revision = g_view.render_revision,
@@ -182,6 +183,9 @@ def markdown_probe_fragment(input : JsonValue?) : JsonValue? {
                 display_start = fragment.source.start_byte,
                 display_end = fragment.source.end_byte,
                 style_id = fragment.style_id,
+                font_size = font_size,
+                base_font_size = entry.layout_key.font_size,
+                inline_code_scale = entry.layout_key.inline_code_scale,
                 semantic_id = fragment.semantic_id,
                 alignment = int(entry.screen_alignment),
                 alignment_offset = align_x,
@@ -204,6 +208,8 @@ def markdown_probe_code_block(_input : JsonValue?) : JsonValue? {
             node = node_index,
             info = node.info,
             language = node.language,
+            font_size = entry.layout_key.font_size,
+            base_font_size = g_fonts.size_px * float(g_zoom_percent) / 100.0f,
             rendered = entry.content_valid && entry.layout_valid
                 && entry.screen_revision >= 0))
     }
@@ -442,6 +448,11 @@ def update() {
         with_font(g_fonts.regular, 18.0f) {
             var markdown_style = MarkdownViewStyle(
                 fonts = g_fonts,
+                // Deliberately non-default: the integration probe verifies
+                // that host typography policy reaches measure + paint.
+                typography = MarkdownTypography(
+                    inline_code_scale = 0.80f,
+                    code_block_scale = 0.88f),
                 zoom = float(g_zoom_percent) / 100.0f,
                 write_system_clipboard = !harness_is_headless())
             let result = markdown_view("probe", g_doc, g_view, markdown_style)

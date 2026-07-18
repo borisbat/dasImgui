@@ -24,7 +24,7 @@ Status meanings:
 | Block quotes | nested children retained | indented with quote rule | model + smoke | complete |
 | Unordered/ordered lists | tightness, start, task state retained | nested lists and task glyphs | model + smoke | partial: preserve ordered delimiter and marker fidelity |
 | Thematic breaks | typed node | separator | smoke | complete |
-| Fenced/indented code | text, info, and language retained | selectable monospace child plus language/info badge | model + live metadata/geometry | complete; syntax highlighting belongs to the shared syntax layer |
+| Fenced/indented code | text, info, and language retained | selectable monospace child; language/info retained for future syntax services but not shown as document text | model + live metadata/geometry | complete; syntax highlighting belongs to the shared syntax layer |
 | GFM tables | sections, rows, columns, and alignment retained | bordered table with per-line cell alignment | model + live geometry/hit test | complete |
 | Raw HTML blocks | opt-in typed nodes | literal text only | parser option test | policy: source-mapped literal; never execute as HTML |
 
@@ -54,6 +54,29 @@ HTML-to-dasImgui is a separate future project. It would require an explicit
 safe subset, UI node model, style/layout policy, event model, resource policy,
 and security boundary. Raw HTML inside Markdown must not become its accidental
 entry point.
+
+## View style ownership
+
+The host owns Markdown presentation policy. `FontRoleSet` selects the prose,
+emphasis, and monospace faces plus their base pixel size. `MarkdownTypography`
+contains relative heading, inline-code, and fenced-code scales.
+`MarkdownViewStyle` contains those values along with colors, spacing, padding,
+and the per-view zoom. None of these require a user-facing preferences screen.
+
+```das
+var style = MarkdownViewStyle(
+    fonts = app_fonts,
+    typography = MarkdownTypography(
+        inline_code_scale = 0.84f,
+        code_block_scale = 0.90f,
+        heading1_scale = 1.50f),
+    zoom = document_zoom)
+let result <- markdown_view("document", document, view_state, style)
+```
+
+Typography ratios participate in retained layout keys. A host override changes
+measurement, wrapping, hit-testing, selection geometry, and painting together;
+it is not a draw-only font transform.
 
 ## Image resource contract
 
