@@ -2202,9 +2202,9 @@ def private TextInputFilteredSection() {
             @(var data : ImGuiInputTextCallbackData) : int {
                 let c = int(data.EventChar)
                 if (c >= int(0x61) && c <= int(0x7A)) {       // 'a'..'z' -> upper
-                    data.EventChar = uint16(c - int(0x20))
+                    data.EventChar = uint(c - int(0x20))
                 } elif (c >= int(0x41) && c <= int(0x5A)) {   // 'A'..'Z' -> lower
-                    data.EventChar = uint16(c + int(0x20))
+                    data.EventChar = uint(c + int(0x20))
                 }
                 return 0
             })
