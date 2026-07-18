@@ -6,14 +6,14 @@ require imgui/imgui_markdown_model public
 require daslib/stringify
 require strings
 
-def private first_kind(doc : MdDocument const; kind : MdNodeKind) : int {
+def private first_kind(doc : RichDocument const; kind : RichNodeKind) : int {
     for (i in range(length(doc.nodes))) {
         if (doc.nodes[i].kind == kind) return i
     }
     return -1
 }
 
-def private first_text(doc : MdDocument const; value : string) : int {
+def private first_text(doc : RichDocument const; value : string) : int {
     for (i in range(length(doc.nodes))) {
         let node = doc.nodes[i]
         if (node.source_exact && md_node_text(doc, i) == value) return i
@@ -21,19 +21,39 @@ def private first_text(doc : MdDocument const; value : string) : int {
     return -1
 }
 
-def private first_destination(doc : MdDocument const; value : string) : int {
+def private first_destination(doc : RichDocument const; value : string) : int {
     for (i in range(length(doc.nodes))) {
         if (doc.nodes[i].destination == value) return i
     }
     return -1
 }
 
-def private count_kind(doc : MdDocument const; kind : MdNodeKind) : int {
+def private count_kind(doc : RichDocument const; kind : RichNodeKind) : int {
     var count = 0
     for (node in doc.nodes) {
         if (node.kind == kind) count++
     }
     return count
+}
+
+[test]
+def test_non_markdown_producer_uses_shared_rich_document(t : T?) {
+    let source = "Literal **markers** from another format."
+    var document <- rich_plain_document(source)
+    t |> success(document.ok, "plain producer creates a valid shared rich document")
+    t |> equal(document.nodes[document.root].kind, RichNodeKind.document,
+               "non-Markdown producer feeds the same block tree")
+    let paragraph = document.nodes[document.root].first_child
+    let content <- md_inline_content(document, paragraph)
+    t |> equal(content.text, source,
+               "shared inline/layout input retains producer display text")
+    var styled = false
+    for (run in content.runs) {
+        styled = styled || run.is_strong || run.is_emphasis || run.is_code
+    }
+    t |> success(!styled,
+                 "Markdown-looking bytes gain no semantics without the Markdown adapter")
+    rich_document_dispose(document)
 }
 
 [test]
@@ -43,7 +63,7 @@ def test_tight_list_direct_inline_content(t : T?) {
     t |> success(doc.ok, "tight nested list parses")
     if (!doc.ok) return
 
-    let list = first_kind(doc, MdNodeKind.unordered_list)
+    let list = first_kind(doc, RichNodeKind.unordered_list)
     t |> success(list >= 0, "tight list is present")
     if (list < 0) return
     let item = doc.nodes[list].first_child
@@ -82,7 +102,7 @@ print("hi")
     if (!doc.ok) return
 
     t |> success(doc.root >= 0, "document has a root")
-    t |> equal(doc.nodes[doc.root].kind, MdNodeKind.document,
+    t |> equal(doc.nodes[doc.root].kind, RichNodeKind.document,
                "root is the Markdown document")
     t |> success(doc.nodes[doc.root].first_child >= 0,
                  "document root owns block children")
@@ -98,15 +118,15 @@ print("hi")
                    "exact range slices the original UTF-8 source")
     }
 
-    t |> success(first_kind(doc, MdNodeKind.emphasis) >= 0, "emphasis is typed")
-    t |> success(first_kind(doc, MdNodeKind.strong) >= 0, "strong text is typed")
-    t |> success(first_kind(doc, MdNodeKind.entity) >= 0, "entity is typed")
-    let entity = first_kind(doc, MdNodeKind.entity)
+    t |> success(first_kind(doc, RichNodeKind.emphasis) >= 0, "emphasis is typed")
+    t |> success(first_kind(doc, RichNodeKind.strong) >= 0, "strong text is typed")
+    t |> success(first_kind(doc, RichNodeKind.entity) >= 0, "entity is typed")
+    let entity = first_kind(doc, RichNodeKind.entity)
     if (entity >= 0) {
         t |> equal(md_node_text(doc, entity), "&amp;", "entity keeps exact source bytes")
         t |> equal(md_node_display_text(doc, entity), "&", "entity exposes decoded display text")
     }
-    let paragraph = first_kind(doc, MdNodeKind.paragraph)
+    let paragraph = first_kind(doc, RichNodeKind.paragraph)
     let inline <- md_inline_content(doc, paragraph)
     t |> success(inline.text |> find("and & © 🚀.") >= 0,
                  "inline content decodes named and numeric entities")
@@ -136,17 +156,23 @@ print("hi")
     var checked = 0
     var unchecked = 0
     for (node in doc.nodes) {
-        if (node.kind == MdNodeKind.list_item && node.is_task) {
+        if (node.kind == RichNodeKind.list_item && node.is_task) {
             if (node.is_checked) checked++
             else unchecked++
             t |> success(node.source.start_byte >= 0,
                          "task item retains its checkbox marker offset")
+            t |> equal(node.control_source.end_byte - node.control_source.start_byte, 1,
+                       "task control retains an exact one-byte marker range")
+            let marker = slice(doc.source, node.control_source.start_byte,
+                               node.control_source.end_byte)
+            t |> success(marker == " " || marker == "x",
+                         "task control range is not expanded to list contents")
         }
     }
     t |> equal(checked, 1, "checked task metadata")
     t |> equal(unchecked, 1, "unchecked task metadata")
 
-    let table_index = first_kind(doc, MdNodeKind.table_)
+    let table_index = first_kind(doc, RichNodeKind.table_)
     t |> success(table_index >= 0, "GFM table is typed")
     if (table_index >= 0) {
         t |> equal(doc.nodes[table_index].column_count, 3, "table column count")
@@ -157,26 +183,58 @@ print("hi")
     var center_cells = 0
     var right_cells = 0
     for (node in doc.nodes) {
-        if (node.kind == MdNodeKind.table_header_cell || node.kind == MdNodeKind.table_cell) {
-            if (node.alignment == MdAlignment.left) left_cells++
-            elif (node.alignment == MdAlignment.center) center_cells++
-            elif (node.alignment == MdAlignment.right) right_cells++
+        if (node.kind == RichNodeKind.table_header_cell || node.kind == RichNodeKind.table_cell) {
+            if (node.alignment == RichAlignment.left) left_cells++
+            elif (node.alignment == RichAlignment.center) center_cells++
+            elif (node.alignment == RichAlignment.right) right_cells++
         }
     }
     t |> success(left_cells > 0 && center_cells > 0 && right_cells > 0,
                  "table cell alignment metadata")
 
-    let code = first_kind(doc, MdNodeKind.code_block)
+    let code = first_kind(doc, RichNodeKind.code_block)
     t |> success(code >= 0, "fenced code block is typed")
     if (code >= 0) {
         t |> equal(doc.nodes[code].info, "das", "code info string")
         t |> equal(doc.nodes[code].language, "das", "code language")
     }
 
-    t |> equal(count_kind(doc, MdNodeKind.raw_html), 0,
+    t |> equal(count_kind(doc, RichNodeKind.raw_html), 0,
                "raw HTML blocks are disabled by default")
-    t |> equal(count_kind(doc, MdNodeKind.html_text), 0,
+    t |> equal(count_kind(doc, RichNodeKind.html_text), 0,
                "raw inline HTML is disabled by default")
+}
+
+[test]
+def test_markdown_checkbox_projects_to_revision_checked_source_edit(t : T?) {
+    let source = "- [ ] todo\r\n- [X] done\n"
+    let doc <- md_parse(source)
+    t |> success(doc.ok, "checkbox edit fixture parses")
+    if (!doc.ok) return
+    var projection <- md_rich_projection(doc, 11)
+    t |> equal(length(projection.controls), 2,
+               "Markdown task items become neutral toggle controls")
+    if (length(projection.controls) != 2) return
+    let todo = projection.controls[0]
+    t |> equal(todo.source_mapping, RichSourceMapping.exact,
+               "toggle exposes an exact source mapping")
+    t |> equal(slice(source, todo.source.start_byte, todo.source.end_byte), " ",
+               "unchecked marker source is exact")
+
+    let event = RichControlEvent(active = true, control_id = todo.id,
+        kind = RichControlKind.toggle, requested_checked = true,
+        source_revision = 11)
+    let action <- md_control_action(doc, projection, event)
+    t |> success(action.valid, "current control event produces an edit")
+    t |> equal(action.edit.replacement, "x", "toggle edit uses canonical lowercase x")
+    t |> equal(action.edit.expected, " ", "toggle edit guards the original byte")
+
+    var stale_event := event
+    stale_event.source_revision = 10
+    let stale <- md_control_action(doc, projection, stale_event)
+    t |> equal(stale.status, TextDocumentStatus.stale_revision,
+               "stale control event is rejected before source mutation")
+    rich_document_projection_dispose(projection)
 }
 
 [test]
@@ -188,9 +246,9 @@ def test_markdown_options(t : T?) {
         strikethrough = false,
         permissive_autolinks = false))
     t |> success(plain.ok, "restricted Markdown options still parse")
-    t |> equal(count_kind(plain, MdNodeKind.strikethrough), 0,
+    t |> equal(count_kind(plain, RichNodeKind.strikethrough), 0,
                "strikethrough extension can be disabled")
-    t |> equal(count_kind(plain, MdNodeKind.table_), 0,
+    t |> equal(count_kind(plain, RichNodeKind.table_), 0,
                "table extension can be disabled")
 }
 
@@ -208,7 +266,7 @@ def test_markdown_plain_unicode_uris(t : T?) {
     let source = "Plain https://example.com/文档/naïve/é?q=👩‍💻 and editor://workspace/文档."
     let doc <- md_parse(source)
     t |> success(doc.ok, "plain Unicode URI document parses")
-    let paragraph = first_kind(doc, MdNodeKind.paragraph)
+    let paragraph = first_kind(doc, RichNodeKind.paragraph)
     let inline <- md_inline_content(doc, paragraph)
     var automatic = 0
     for (run in inline.runs) {
@@ -230,7 +288,7 @@ def test_markdown_image_is_atomic_with_plain_text_fallback(t : T?) {
     let doc <- md_parse(source)
     t |> success(doc.ok, "image fixture parses")
     if (!doc.ok) return
-    let image = first_kind(doc, MdNodeKind.image)
+    let image = first_kind(doc, RichNodeKind.image)
     t |> success(image >= 0, "image is a typed Markdown node")
     if (image < 0) return
     t |> equal(doc.nodes[image].destination, "editor://assets/terminal.png",
@@ -238,10 +296,10 @@ def test_markdown_image_is_atomic_with_plain_text_fallback(t : T?) {
     t |> equal(doc.nodes[image].title, "Terminal preview",
                "image title is retained")
 
-    let paragraph = first_kind(doc, MdNodeKind.paragraph)
+    let paragraph = first_kind(doc, RichNodeKind.paragraph)
     let inline <- md_inline_content(doc, paragraph)
     var image_runs = 0
-    var image_run = MdInlineRun()
+    var image_run = RichInlineRun()
     for (run in inline.runs) {
         if (run.is_image) {
             image_runs++
@@ -272,7 +330,7 @@ def test_markdown_selection_source_and_styles(t : T?) {
     let doc <- md_parse(source)
     t |> success(doc.ok, "selection fixture parses")
     if (!doc.ok) return
-    let paragraph = first_kind(doc, MdNodeKind.paragraph)
+    let paragraph = first_kind(doc, RichNodeKind.paragraph)
     let inline <- md_inline_content(doc, paragraph)
 
     let bold_display = inline.text |> find("bold")
@@ -319,7 +377,7 @@ def test_markdown_selection_rich_export(t : T?) {
     let doc <- md_parse(source)
     t |> success(doc.ok, "rich-selection fixture parses")
     if (!doc.ok) return
-    let paragraph = first_kind(doc, MdNodeKind.paragraph)
+    let paragraph = first_kind(doc, RichNodeKind.paragraph)
     let inline <- md_inline_content(doc, paragraph)
     var exported = MdSelectionExport()
     md_selection_export_include(exported, inline,

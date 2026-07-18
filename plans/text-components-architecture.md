@@ -166,6 +166,17 @@ results, URI actions, terminal annotations, and editor code lenses.
   autoscroll.
 - Selection highlighting, screen anchors, right-click context requests, and
   UTF-8 clipboard copy.
+- Canonical `TextDocumentSource` storage with content/saved revisions, UTF-8
+  BOM retention, exact `TextEdit` transactions, inverse edits, and source-anchor
+  remapping.
+- Format-neutral `RichDocument` block/inline types and a shared
+  `rich_document_view` entry point; Markdown is an adapter and a plain producer
+  proves marker-looking bytes receive no accidental Markdown semantics.
+- Exact task-checkbox controls and semantic events. The Markdown adapter turns
+  a revision-checked toggle into a one-byte source edit, then the viewer
+  reparses and saves the canonical source.
+- Deterministic checkbox UI/save/reload coverage, including byte-exact no-op
+  saves with a UTF-8 BOM and mixed line endings.
 
 ## Roadmap
 
@@ -280,3 +291,9 @@ terminal buffer revisions rather than introducing sleeps or frame delays.
 - 2026-07-17: Monospace source layout assigns display cells per grapheme
   (including two-cell emoji/CJK) and treats actual fallback glyph advance as a
   drawing concern inside the allocated cells.
+- 2026-07-18: Canonical source owns persistence; rich trees are disposable
+  projections and are never serialized to save a file.
+- 2026-07-18: Rich block/inline/control types live in the shared text layer;
+  Markdown parser names remain only on adapter-specific parse/export helpers.
+- 2026-07-18: Checkbox activation emits a revision-scoped semantic event and
+  replaces only the exact task-marker byte before reparsing.

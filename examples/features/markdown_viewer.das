@@ -28,7 +28,7 @@ require strings
 
 var private g_fonts = FontRoleSet()
 var private g_font_sources : array<string>
-var private g_doc = MdDocument()
+var private g_doc = RichDocument()
 var private g_view = MarkdownViewState()
 var private g_status = "Drag to select text; right-click a selection for its comment anchor."
 var private g_zoom_percent = 100
@@ -55,7 +55,7 @@ struct MarkdownProbeBindImageArgs {
 
 def private first_image_node() : int {
     for (node_index in range(length(g_doc.nodes))) {
-        if (g_doc.nodes[node_index].kind == MdNodeKind.image) return node_index
+        if (g_doc.nodes[node_index].kind == RichNodeKind.image) return node_index
     }
     return -1
 }
@@ -195,7 +195,7 @@ def markdown_probe_fragment(input : JsonValue?) : JsonValue? {
 def markdown_probe_code_block(_input : JsonValue?) : JsonValue? {
     for (node_index in range(length(g_doc.nodes))) {
         let node = g_doc.nodes[node_index]
-        if (node.kind != MdNodeKind.code_block) continue
+        if (node.kind != RichNodeKind.code_block) continue
         let entry & = unsafe(g_view.nodes[node_index])
         return JV((
             ok = true,

@@ -84,6 +84,7 @@ struct public MarkdownViewResult {
     selection_copy_uri_list : string
     selection_context_requested : bool = false
     selection_context_pos : float2
+    control_event : RichControlEvent = RichControlEvent()
 }
 
 struct public MarkdownImageBinding {
@@ -124,7 +125,7 @@ struct public MarkdownLayoutKey {
 
 struct public MarkdownNodeViewCache {
     content_valid : bool = false
-    content : MdInlineContent
+    content : RichInlineContent
     marker_valid : bool = false
     marker : string
     layout_valid : bool = false
@@ -136,7 +137,9 @@ struct public MarkdownNodeViewCache {
     screen_origin : float2
     screen_revision : int = -1
     screen_available_width : float = 0.0f
-    screen_alignment : MdAlignment = MdAlignment.default_
+    screen_alignment : RichAlignment = RichAlignment.default_
+    control_screen_valid : bool = false
+    control_screen_rect : float4
 }
 
 struct public MarkdownViewState {
@@ -151,8 +154,8 @@ struct public MarkdownViewState {
     content_misses : int = 0
     layout_hits : int = 0
     layout_misses : int = 0
-    selection_anchor : MdTextPosition = MdTextPosition()
-    selection_focus : MdTextPosition = MdTextPosition()
+    selection_anchor : RichTextPosition = RichTextPosition()
+    selection_focus : RichTextPosition = RichTextPosition()
     selection_dragging : bool = false
     selection_dragged : bool = false
     selection_pressed_semantic : int = -1
@@ -191,6 +194,8 @@ struct public MarkdownViewState {
     navigation_scroll_target : float = 0.0f
     viewport_top : float = 0.0f
     viewport_bottom : float = 0.0f
+    control_activation_revision : int = 0
+    activated_control_id : int = -1
 }
 
 let private STYLE_STRONG = 1
@@ -220,8 +225,8 @@ def private clear_node_cache(var entry : MarkdownNodeViewCache) {
 }
 
 def private clear_selection(var state : MarkdownViewState) {
-    state.selection_anchor = MdTextPosition()
-    state.selection_focus = MdTextPosition()
+    state.selection_anchor = RichTextPosition()
+    state.selection_focus = RichTextPosition()
     state.selection_dragging = false
     state.selection_dragged = false
     state.selection_pressed_semantic = -1
@@ -344,7 +349,7 @@ def private retain_image_bindings(var state : MarkdownViewState;
     }
 }
 
-def private prepare_view_state(doc : MdDocument const;
+def private prepare_view_state(doc : RichDocument const;
                                var state : MarkdownViewState;
                                document_revision : int) {
     let count = length(doc.nodes)
@@ -362,7 +367,7 @@ def private prepare_view_state(doc : MdDocument const;
     state.node_count = count
 }
 
-def private ensure_inline(doc : MdDocument const; node_index : int;
+def private ensure_inline(doc : RichDocument const; node_index : int;
                           var state : MarkdownViewState;
                           direct_children_only : bool = false) {
     var entry & = unsafe(state.nodes[node_index])
@@ -385,7 +390,7 @@ def private zoomed(style : MarkdownViewStyle const; value : float) : float {
     return value * view_zoom(style)
 }
 
-def private run_style(run : MdInlineRun const) : int {
+def private run_style(run : RichInlineRun const) : int {
     var value = 0
     if (run.is_strong) {
         value += STYLE_STRONG
@@ -436,12 +441,12 @@ def private font_for_style(style_id : int; var roles : FontRoleSet;
 
 def public markdown_line_alignment_offset(entry : MarkdownNodeViewCache const;
                                           line_index : int) : float {
-    if (entry.screen_alignment == MdAlignment.default_
-            || entry.screen_alignment == MdAlignment.left
+    if (entry.screen_alignment == RichAlignment.default_
+            || entry.screen_alignment == RichAlignment.left
             || line_index < 0 || line_index >= length(entry.layout.lines)) return 0.0f
     let remaining = max(0.0f,
         entry.screen_available_width - entry.layout.lines[line_index].width)
-    return entry.screen_alignment == MdAlignment.center ? remaining * 0.5f : remaining
+    return entry.screen_alignment == RichAlignment.center ? remaining * 0.5f : remaining
 }
 
 def public markdown_cached_fragment_rect(entry : MarkdownNodeViewCache const;
@@ -454,13 +459,13 @@ def public markdown_cached_fragment_rect(entry : MarkdownNodeViewCache const;
         entry.screen_origin.y + fragment.rect.w)
 }
 
-def private run_semantic_id(doc : MdDocument const; run : MdInlineRun const;
+def private run_semantic_id(doc : RichDocument const; run : RichInlineRun const;
                             run_index : int) : int {
     if (!run.is_link) return -1
     return run.semantic_node >= 0 ? run.semantic_node : length(doc.nodes) + run_index
 }
 
-def private link_run_index(doc : MdDocument const; content : MdInlineContent const;
+def private link_run_index(doc : RichDocument const; content : RichInlineContent const;
                            semantic_id : int) : int {
     for (i in range(length(content.runs))) {
         if (run_semantic_id(doc, content.runs[i], i) == semantic_id) return i
@@ -468,7 +473,7 @@ def private link_run_index(doc : MdDocument const; content : MdInlineContent con
     return -1
 }
 
-def private link_target(doc : MdDocument const; content : MdInlineContent const;
+def private link_target(doc : RichDocument const; content : RichInlineContent const;
                         semantic_id : int) : string {
     let index = link_run_index(doc, content, semantic_id)
     if (index < 0) return ""
@@ -479,17 +484,17 @@ def private selected_source(state : MarkdownViewState const) : TextSourceRange {
     return md_text_selection_range(state.selection_anchor, state.selection_focus)
 }
 
-def private same_text_position(a, b : MdTextPosition const) : bool {
+def private same_text_position(a, b : RichTextPosition const) : bool {
     return (a.valid == b.valid && a.inline_node == b.inline_node
         && a.display_byte == b.display_byte && a.source_byte == b.source_byte
         && a.trailing == b.trailing)
 }
 
 def private adjacent_text_position(var state : MarkdownViewState;
-                                   from : MdTextPosition const;
-                                   direction : int) : MdTextPosition {
+                                   from : RichTextPosition const;
+                                   direction : int) : RichTextPosition {
     if (!from.valid || from.inline_node < 0
-            || from.inline_node >= length(state.nodes)) return MdTextPosition()
+            || from.inline_node >= length(state.nodes)) return RichTextPosition()
     let content & = unsafe(state.nodes[from.inline_node].content)
     if (direction < 0 && from.display_byte > 0) {
         let at = text_previous_grapheme_boundary(content.text, from.display_byte)
@@ -512,7 +517,7 @@ def private adjacent_text_position(var state : MarkdownViewState;
 }
 
 def private position_line_index(entry : MarkdownNodeViewCache const;
-                                position : MdTextPosition const) : int {
+                                position : RichTextPosition const) : int {
     for (fragment in entry.layout.fragments) {
         if (position_in_fragment(position, position.inline_node, fragment)) {
             return fragment.line_index
@@ -522,8 +527,8 @@ def private position_line_index(entry : MarkdownNodeViewCache const;
 }
 
 def private line_boundary_position(var state : MarkdownViewState;
-                                   from : MdTextPosition const;
-                                   end_ : bool) : MdTextPosition {
+                                   from : RichTextPosition const;
+                                   end_ : bool) : RichTextPosition {
     if (!from.valid || from.inline_node < 0
             || from.inline_node >= length(state.nodes)) return from
     let entry & = unsafe(state.nodes[from.inline_node])
@@ -553,8 +558,8 @@ def private line_text_x_range(entry : MarkdownNodeViewCache const;
 
 def private vertical_text_position(var state : MarkdownViewState;
                                    var style : MarkdownViewStyle;
-                                   from : MdTextPosition const;
-                                   direction : int) : MdTextPosition {
+                                   from : RichTextPosition const;
+                                   direction : int) : RichTextPosition {
     if (!from.valid || from.inline_node < 0
             || from.inline_node >= length(state.nodes)) return from
     let current & = unsafe(state.nodes[from.inline_node])
@@ -717,7 +722,7 @@ def private include_selection_screen_rect(var state : MarkdownViewState;
     }
 }
 
-def private position_in_fragment(position : MdTextPosition const; node_index : int;
+def private position_in_fragment(position : RichTextPosition const; node_index : int;
                                  fragment : TextFlowFragment const) : bool {
     if (!position.valid || position.inline_node != node_index || fragment.is_control) return false
     if (position.trailing) {
@@ -742,7 +747,7 @@ def private same_layout_key(a, b : MarkdownLayoutKey) : bool {
         && a.monospace_id == b.monospace_id && a.fallback_id == b.fallback_id)
 }
 
-def private ensure_layout(doc : MdDocument const; node_index : int;
+def private ensure_layout(doc : RichDocument const; node_index : int;
                           var state : MarkdownViewState;
                           key : MarkdownLayoutKey;
                           var style : MarkdownViewStyle;
@@ -804,11 +809,11 @@ def private ensure_layout(doc : MdDocument const; node_index : int;
     state.layout_misses++
 }
 
-def private render_inline(doc : MdDocument const; node_index : int;
+def private render_inline(doc : RichDocument const; node_index : int;
                           var state : MarkdownViewState; max_width : float;
                           var style : MarkdownViewStyle;
                           font_scale : float; forced_style : int;
-                          alignment : MdAlignment;
+                          alignment : RichAlignment;
                           var result : MarkdownViewResult;
                           direct_children_only : bool = false) {
     let available = max(max_width, 1.0f)
@@ -1205,7 +1210,7 @@ def private block_spacing(var style : MarkdownViewStyle; amount : float) {
     if (amount > 0.0f) Dummy(float2(0.0f, zoomed(style, amount)))
 }
 
-def private render_children(doc : MdDocument const; node_index : int;
+def private render_children(doc : RichDocument const; node_index : int;
                             var state : MarkdownViewState;
                             var style : MarkdownViewStyle;
                             var result : MarkdownViewResult) {
@@ -1216,7 +1221,7 @@ def private render_children(doc : MdDocument const; node_index : int;
     }
 }
 
-def private render_list(doc : MdDocument const; node_index : int;
+def private render_list(doc : RichDocument const; node_index : int;
                         var state : MarkdownViewState;
                         var style : MarkdownViewStyle;
                         var result : MarkdownViewResult) {
@@ -1227,13 +1232,59 @@ def private render_list(doc : MdDocument const; node_index : int;
         let node = doc.nodes[item]
         var cache & = unsafe(state.nodes[item])
         if (!cache.marker_valid) {
-            cache.marker = list.kind == MdNodeKind.ordered_list ? "{ordinal}." : "•"
-            if (node.is_task) {
-                cache.marker = node.is_checked ? "☑" : "☐"
-            }
+            cache.marker = list.kind == RichNodeKind.ordered_list ? "{ordinal}." : "•"
             cache.marker_valid = true
         }
-        TextColored(style.marker_color, cache.marker)
+        cache.control_screen_valid = false
+        if (node.is_task) {
+            let marker_pos = GetCursorScreenPos()
+            // Font checkbox glyphs differ in advance and visible bounds on
+            // several fallback faces. Reserve one state-independent square
+            // and draw both states ourselves, so toggling can never reflow.
+            let marker_edge = max(GetTextLineHeight(), 1.0f)
+            let marker_size = float2(marker_edge, marker_edge)
+            PushID(item)
+            let pressed = InvisibleButton("##task_toggle", marker_size)
+            PopID()
+            let hovered = IsItemHovered(ImGuiHoveredFlags.None)
+            let marker_max = marker_pos + marker_size
+            cache.control_screen_valid = true
+            cache.control_screen_rect = float4(
+                marker_pos.x, marker_pos.y, marker_max.x, marker_max.y)
+            var dl = GetWindowDrawList()
+            let box_edge = marker_edge * 0.68f
+            let box_pad = (marker_edge - box_edge) * 0.5f
+            let box0 = marker_pos + float2(box_pad, box_pad)
+            let box1 = box0 + float2(box_edge, box_edge)
+            let color = hovered ? style.link_hover_color : style.marker_color
+            let thickness = max(1.0f, box_edge * 0.09f)
+            *dl |> AddRect(box0, box1, GetColorU32(color),
+                           max(1.0f, box_edge * 0.10f),
+                           ImDrawFlags.None, thickness)
+            if (node.is_checked) {
+                *dl |> AddLine(
+                    box0 + float2(box_edge * 0.18f, box_edge * 0.52f),
+                    box0 + float2(box_edge * 0.42f, box_edge * 0.74f),
+                    GetColorU32(color), thickness)
+                *dl |> AddLine(
+                    box0 + float2(box_edge * 0.42f, box_edge * 0.74f),
+                    box0 + float2(box_edge * 0.84f, box_edge * 0.25f),
+                    GetColorU32(color), thickness)
+            }
+            if (pressed) {
+                result.control_event = RichControlEvent(
+                    active = true,
+                    control_id = item,
+                    kind = RichControlKind.toggle,
+                    requested_checked = !node.is_checked,
+                    source_revision = state.document_revision)
+                state.control_activation_revision++
+                state.activated_control_id = item
+                state.selection_click_claimed = true
+            }
+        } else {
+            TextColored(style.marker_color, cache.marker)
+        }
         SameLine(0.0f, GetStyle().ItemInnerSpacing.x)
         var has_direct_inline = false
         var direct_child = node.first_child
@@ -1246,7 +1297,7 @@ def private render_list(doc : MdDocument const; node_index : int;
         }
         if (has_direct_inline) {
             render_inline(doc, item, state, GetContentRegionAvail().x,
-                          style, 1.0f, 0, MdAlignment.default_, result, true)
+                          style, 1.0f, 0, RichAlignment.default_, result, true)
             block_spacing(style, style.paragraph_spacing)
         }
         var child = node.first_child
@@ -1263,7 +1314,7 @@ def private render_list(doc : MdDocument const; node_index : int;
     block_spacing(style, list.is_tight ? 2.0f : style.block_spacing)
 }
 
-def private render_table_section(doc : MdDocument const;
+def private render_table_section(doc : RichDocument const;
                                  section_index : int; headers : bool;
                                  var state : MarkdownViewState;
                                  var style : MarkdownViewStyle;
@@ -1285,7 +1336,7 @@ def private render_table_section(doc : MdDocument const;
     }
 }
 
-def private render_table(doc : MdDocument const; node_index : int;
+def private render_table(doc : RichDocument const; node_index : int;
                          var state : MarkdownViewState;
                          var style : MarkdownViewStyle;
                          var result : MarkdownViewResult) {
@@ -1300,7 +1351,7 @@ def private render_table(doc : MdDocument const; node_index : int;
         }
         var section = node.first_child
         while (section >= 0) {
-            let is_head = doc.nodes[section].kind == MdNodeKind.table_head
+            let is_head = doc.nodes[section].kind == RichNodeKind.table_head
             render_table_section(doc, section, is_head, state, style, result)
             section = doc.nodes[section].next_sibling
         }
@@ -1310,7 +1361,7 @@ def private render_table(doc : MdDocument const; node_index : int;
     block_spacing(style, style.block_spacing)
 }
 
-def private render_code_block(doc : MdDocument const; node_index : int;
+def private render_code_block(doc : RichDocument const; node_index : int;
                               var state : MarkdownViewState;
                               var style : MarkdownViewStyle;
                               var result : MarkdownViewResult) {
@@ -1339,7 +1390,7 @@ def private render_code_block(doc : MdDocument const; node_index : int;
         code_style.show_link_copy = false
         let content_width = max(measured.x, GetContentRegionAvail().x - padding)
         render_inline(doc, node_index, state, max(content_width, 1.0f),
-                      code_style, 1.0f, STYLE_CODE, MdAlignment.default_, result)
+                      code_style, 1.0f, STYLE_CODE, RichAlignment.default_, result)
     }
     EndChild()
     PopID()
@@ -1347,30 +1398,30 @@ def private render_code_block(doc : MdDocument const; node_index : int;
     block_spacing(style, style.block_spacing)
 }
 
-def private render_block(doc : MdDocument const; node_index : int;
+def private render_block(doc : RichDocument const; node_index : int;
                          var state : MarkdownViewState;
                          var style : MarkdownViewStyle;
                          var result : MarkdownViewResult) {
     if (node_index < 0 || node_index >= length(doc.nodes)) return
     let node = doc.nodes[node_index]
-    if (node.kind == MdNodeKind.document) {
+    if (node.kind == RichNodeKind.document) {
         render_children(doc, node_index, state, style, result)
-    } elif (node.kind == MdNodeKind.paragraph) {
+    } elif (node.kind == RichNodeKind.paragraph) {
         render_inline(doc, node_index, state, GetContentRegionAvail().x,
-                      style, 1.0f, 0, MdAlignment.default_, result)
+                      style, 1.0f, 0, RichAlignment.default_, result)
         block_spacing(style, style.paragraph_spacing)
-    } elif (node.kind == MdNodeKind.heading) {
+    } elif (node.kind == RichNodeKind.heading) {
         let scale = node.level == 1 ? 1.55f : (node.level == 2 ? 1.35f
                   : (node.level == 3 ? 1.18f : 1.05f))
         var heading_style := style
         heading_style.text_color = style.heading_color
         render_inline(doc, node_index, state, GetContentRegionAvail().x,
-                      heading_style, scale, STYLE_HEADING, MdAlignment.default_, result)
+                      heading_style, scale, STYLE_HEADING, RichAlignment.default_, result)
         block_spacing(style, style.block_spacing)
-    } elif (node.kind == MdNodeKind.unordered_list
-            || node.kind == MdNodeKind.ordered_list) {
+    } elif (node.kind == RichNodeKind.unordered_list
+            || node.kind == RichNodeKind.ordered_list) {
         render_list(doc, node_index, state, style, result)
-    } elif (node.kind == MdNodeKind.quote) {
+    } elif (node.kind == RichNodeKind.quote) {
         let p0 = GetCursorScreenPos()
         let indent = zoomed(style, style.quote_indent)
         Indent(indent)
@@ -1382,14 +1433,14 @@ def private render_block(doc : MdDocument const; node_index : int;
         *dl |> AddLine(p0 + float2(bar_x, 0.0f),
                        float2(p0.x + bar_x, p1.y),
                        GetColorU32(style.quote_color), zoomed(style, 2.0f))
-    } elif (node.kind == MdNodeKind.thematic_break) {
+    } elif (node.kind == RichNodeKind.thematic_break) {
         Separator()
         block_spacing(style, style.block_spacing)
-    } elif (node.kind == MdNodeKind.code_block) {
+    } elif (node.kind == RichNodeKind.code_block) {
         render_code_block(doc, node_index, state, style, result)
-    } elif (node.kind == MdNodeKind.table_) {
+    } elif (node.kind == RichNodeKind.table_) {
         render_table(doc, node_index, state, style, result)
-    } elif (node.kind == MdNodeKind.raw_html) {
+    } elif (node.kind == RichNodeKind.raw_html) {
         ensure_inline(doc, node_index, state)
         let content & = unsafe(state.nodes[node_index].content)
         TextColored(style.marker_color, content.text)
@@ -1399,7 +1450,7 @@ def private render_block(doc : MdDocument const; node_index : int;
     }
 }
 
-def private finish_selection(doc : MdDocument const;
+def private finish_selection(doc : RichDocument const;
                              var state : MarkdownViewState;
                              var result : MarkdownViewResult) {
     let source = selected_source(state)
@@ -1462,7 +1513,7 @@ def public markdown_selection_export(state : MarkdownViewState const) : MdSelect
     return <- result
 }
 
-def public markdown_view(id : string; doc : MdDocument const;
+def public markdown_view(id : string; doc : RichDocument const;
                          var state : MarkdownViewState;
                          var style : MarkdownViewStyle;
                          document_revision : int = 0) : MarkdownViewResult {
@@ -1566,7 +1617,7 @@ def public markdown_view(id : string; doc : MdDocument const;
     return <- result
 }
 
-def public markdown_view(id : string; doc : MdDocument const;
+def public markdown_view(id : string; doc : RichDocument const;
                          var style : MarkdownViewStyle) : MarkdownViewResult {
     //! Compatibility form. For live applications prefer the overload taking
     //! caller-owned `MarkdownViewState`, so stable frames reuse all layout.
@@ -1576,7 +1627,26 @@ def public markdown_view(id : string; doc : MdDocument const;
     return <- result
 }
 
-def public markdown_view(id : string; doc : MdDocument const) : MarkdownViewResult {
+def public markdown_view(id : string; doc : RichDocument const) : MarkdownViewResult {
     var style = MarkdownViewStyle()
     return <- markdown_view(id, doc, style)
+}
+
+def public rich_document_view(id : string; doc : RichDocument const;
+                              var state : MarkdownViewState;
+                              var style : MarkdownViewStyle;
+                              document_revision : int = 0) : MarkdownViewResult {
+    //! Format-neutral entry point. `markdown_view` remains as the compatibility
+    //! name while its renderer is shared by every RichDocument producer.
+    return <- markdown_view(id, doc, state, style, document_revision)
+}
+
+def public rich_document_view(id : string; doc : RichDocument const;
+                              var style : MarkdownViewStyle) : MarkdownViewResult {
+    return <- markdown_view(id, doc, style)
+}
+
+def public rich_document_view(id : string;
+                              doc : RichDocument const) : MarkdownViewResult {
+    return <- markdown_view(id, doc)
 }
