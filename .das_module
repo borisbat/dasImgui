@@ -1,6 +1,5 @@
 options gen2
 require daslib/fio
-require clipboard/clipboard
 
 [export]
 def initialize(project_path : string) {
