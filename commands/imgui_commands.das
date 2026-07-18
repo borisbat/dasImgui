@@ -83,10 +83,10 @@ struct CommandBindingsEditorState {
 
 let COMMAND_ROUTE_GLOBAL = 1 << 12
 let COMMAND_REPEAT = 1 << 0
-let COMMAND_MOD_PRIMARY = 1 << 12
+let COMMAND_MOD_CTRL = 1 << 12
 let COMMAND_MOD_SHIFT = 1 << 13
 let COMMAND_MOD_ALT = 1 << 14
-let COMMAND_MOD_SECONDARY = 1 << 15
+let COMMAND_MOD_SUPER = 1 << 15
 
 def public command_binding(command_id : string; key : ImGuiKey;
                            primary : bool = false; shift : bool = false;
@@ -164,12 +164,24 @@ def public command_take(var registry : CommandRegistry;
     return true
 }
 
+def private command_uses_macos_behaviors() : bool {
+    if (GetCurrentContext() != null) {
+        return unsafe(GetIO()).ConfigMacOSXBehaviors
+    }
+    return get_platform_name() == "darwin"
+}
+
 def public command_binding_chord(binding : CommandBinding const) : int {
     var chord = binding.key
-    if (binding.primary) { chord = chord | COMMAND_MOD_PRIMARY }
+    let macos = command_uses_macos_behaviors()
+    if (binding.primary) {
+        chord = chord | (macos ? COMMAND_MOD_SUPER : COMMAND_MOD_CTRL)
+    }
     if (binding.shift) { chord = chord | COMMAND_MOD_SHIFT }
     if (binding.alt) { chord = chord | COMMAND_MOD_ALT }
-    if (binding.secondary) { chord = chord | COMMAND_MOD_SECONDARY }
+    if (binding.secondary) {
+        chord = chord | (macos ? COMMAND_MOD_CTRL : COMMAND_MOD_SUPER)
+    }
     return chord
 }
 

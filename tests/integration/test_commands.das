@@ -26,6 +26,27 @@ def test_command_invocation_is_input_source_agnostic(t : T?) {
 }
 
 [test]
+def test_command_primary_modifier_follows_platform_policy(t : T?) {
+    let macos = get_platform_name() == "darwin"
+    let key = int(ImGuiKey.C)
+    let ctrl = 1 << 12
+    let shift = 1 << 13
+    let alt = 1 << 14
+    let super = 1 << 15
+    let primary = command_binding("edit.copy", ImGuiKey.C, primary = true,
+                                  shift = true, alt = true)
+    let secondary = command_binding("edit.copy.secondary", ImGuiKey.C,
+                                    secondary = true)
+
+    t |> equal(command_binding_chord(primary),
+               key | (macos ? super : ctrl) | shift | alt,
+               "primary follows the current platform modifier policy")
+    t |> equal(command_binding_chord(secondary),
+               key | (macos ? ctrl : super),
+               "secondary uses the complementary platform modifier")
+}
+
+[test]
 def test_command_bindings_save_load_and_conflict_roundtrip(t : T?) {
     var temp_error : string
     let temp_dir = create_temp_directory("das_imgui_commands", temp_error)
