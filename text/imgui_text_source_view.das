@@ -46,6 +46,17 @@ struct public TextSourceViewStyle {
     zoom : float = 1.0f
     text_color : float4 = float4(0.86f, 0.87f, 0.89f, 1.0f)
     marker_color : float4 = float4(0.97f, 0.76f, 0.34f, 1.0f)
+    syntax_comment_color : float4 = float4(0.48f, 0.62f, 0.50f, 1.0f)
+    syntax_string_color : float4 = float4(0.78f, 0.67f, 0.45f, 1.0f)
+    syntax_number_color : float4 = float4(0.70f, 0.58f, 0.86f, 1.0f)
+    syntax_keyword_color : float4 = float4(0.78f, 0.48f, 0.68f, 1.0f)
+    syntax_type_color : float4 = float4(0.42f, 0.72f, 0.74f, 1.0f)
+    syntax_function_color : float4 = float4(0.48f, 0.68f, 0.92f, 1.0f)
+    syntax_variable_color : float4 = float4(0.86f, 0.87f, 0.89f, 1.0f)
+    syntax_property_color : float4 = float4(0.60f, 0.76f, 0.90f, 1.0f)
+    syntax_constant_color : float4 = float4(0.72f, 0.61f, 0.88f, 1.0f)
+    syntax_operator_color : float4 = float4(0.76f, 0.78f, 0.82f, 1.0f)
+    syntax_punctuation_color : float4 = float4(0.62f, 0.65f, 0.70f, 1.0f)
     selection_color : float4 = float4(0.24f, 0.48f, 0.78f, 0.55f)
     caret_color : float4 = float4(0.92f, 0.92f, 0.94f, 1.0f)
     wrap : bool = false
@@ -107,6 +118,7 @@ struct public TextSourceViewState {
 
 let private SOURCE_STYLE_REGULAR = 0
 let private SOURCE_STYLE_MARKER = 1
+let private SOURCE_STYLE_SYNTAX_OFFSET = 1
 
 def private source_zoom(style : TextSourceViewStyle const) : float {
     return clamp(style.zoom, 0.5f, 3.0f)
@@ -176,7 +188,28 @@ def public text_source_view_dispose(var state : TextSourceViewState) {
 }
 
 def private style_id(span : TextSourceSpan const) : int {
-    return span.styles.marker ? SOURCE_STYLE_MARKER : SOURCE_STYLE_REGULAR
+    if (span.styles.marker) return SOURCE_STYLE_MARKER
+    if (span.syntax_style != TextSourceSyntaxStyle.none) {
+        return SOURCE_STYLE_SYNTAX_OFFSET + int(span.syntax_style)
+    }
+    return SOURCE_STYLE_REGULAR
+}
+
+def private source_color(style_id : int;
+                         style : TextSourceViewStyle const) : float4 {
+    let syntax_style = style_id - SOURCE_STYLE_SYNTAX_OFFSET
+    if (syntax_style == int(TextSourceSyntaxStyle.comment)) return style.syntax_comment_color
+    if (syntax_style == int(TextSourceSyntaxStyle.string_)) return style.syntax_string_color
+    if (syntax_style == int(TextSourceSyntaxStyle.number)) return style.syntax_number_color
+    if (syntax_style == int(TextSourceSyntaxStyle.keyword)) return style.syntax_keyword_color
+    if (syntax_style == int(TextSourceSyntaxStyle.type_)) return style.syntax_type_color
+    if (syntax_style == int(TextSourceSyntaxStyle.function_)) return style.syntax_function_color
+    if (syntax_style == int(TextSourceSyntaxStyle.variable)) return style.syntax_variable_color
+    if (syntax_style == int(TextSourceSyntaxStyle.property)) return style.syntax_property_color
+    if (syntax_style == int(TextSourceSyntaxStyle.constant)) return style.syntax_constant_color
+    if (syntax_style == int(TextSourceSyntaxStyle.operator_)) return style.syntax_operator_color
+    if (syntax_style == int(TextSourceSyntaxStyle.punctuation)) return style.syntax_punctuation_color
+    return style_id == SOURCE_STYLE_MARKER ? style.marker_color : style.text_color
 }
 
 def private range_columns(source : string; start_byte, end_byte, tab_cells : int) : int {
@@ -513,8 +546,7 @@ def public text_source_view(id : string; document : TextSourceDocument const;
         }
         let draw_x = p0.x + max(0.0f,
             (p1.x - p0.x - cell.natural_width) * 0.5f)
-        let color = (cell.style_id == SOURCE_STYLE_MARKER
-            ? style.marker_color : style.text_color)
+        let color = source_color(cell.style_id, style)
         *dl |> PushClipRect(p0, p1, true)
         *dl |> AddTextRange(font, state.key.font_size,
             float2(draw_x, p0.y), GetColorU32(color),

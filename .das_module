@@ -45,6 +45,7 @@ def initialize(project_path : string) {
     register_native_path("imgui", "imgui_document_model", "{project_path}/text/imgui_document_model.das")
     register_native_path("imgui", "imgui_text_source_model", "{project_path}/text/imgui_text_source_model.das")
     register_native_path("imgui", "imgui_text_source_view", "{project_path}/text/imgui_text_source_view.das")
+    register_native_path("imgui", "imgui_text_tree_sitter", "{project_path}/text/imgui_text_tree_sitter.das")
     // Semantic commands, scoped shortcuts and editable per-user bindings.
     register_native_path("imgui", "imgui_commands", "{project_path}/commands/imgui_commands.das")
     // Markdown-facing UI adapters. Parsing/model modules will join this section
@@ -52,6 +53,7 @@ def initialize(project_path : string) {
     register_native_path("imgui", "imgui_markdown_model", "{project_path}/markdown/imgui_markdown_model.das")
     register_native_path("imgui", "imgui_markdown_text", "{project_path}/markdown/imgui_markdown_text.das")
     register_native_path("imgui", "imgui_markdown_view", "{project_path}/markdown/imgui_markdown_view.das")
+    register_native_path("imgui", "imgui_markdown_tree_sitter", "{project_path}/markdown/imgui_markdown_tree_sitter.das")
     // Flag-operator extensions (| / & / ~) for internal imgui enums the binder gave
     // no addEnumFlagOps — currently ImGuiItemFlags. Re-exported by imgui_scope_builtin.
     register_native_path("imgui", "imgui_enums", "{project_path}/widgets/imgui_enums.das")

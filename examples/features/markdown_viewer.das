@@ -5,7 +5,7 @@ options persistent_heap
 require imgui/imgui_harness
 require imgui/imgui_commands
 require imgui/imgui_fonts
-require imgui/imgui_markdown_view
+require imgui/imgui_markdown_tree_sitter
 require imgui/imgui_theme_daslang
 require imgui/imgui_style_builtin
 require daslib/safe_addr
@@ -31,6 +31,7 @@ var private g_fonts = FontRoleSet()
 var private g_font_sources : array<string>
 var private g_doc = RichDocument()
 var private g_view = MarkdownViewState()
+var private g_tree_sitter = MarkdownTreeSitterState()
 var private g_status = "Drag to select text; right-click a selection for its comment anchor."
 var private g_zoom_percent = 100
 var private g_context_source = TextSourceRange(start_byte = -1, end_byte = -1)
@@ -40,6 +41,20 @@ var private g_last_hovered_node = -1
 var private g_last_hovered_image = false
 var private g_last_hovered_target = ""
 var private g_commands = CommandRegistry()
+
+let SYNTAX_DEFAULT_LABELS : array<string> <- [
+    "Auto (fence)", "Plain text", "daScript", "C", "C++", "Markdown"
+]
+let SYNTAX_DEFAULT_VALUES : array<string> <- [
+    "auto", "none", "das", "c", "cpp", "markdown"
+]
+let SYNTAX_BLOCK_LABELS : array<string> <- [
+    "Inherit default", "Auto (fence)", "Plain text",
+    "daScript", "C", "C++", "Markdown"
+]
+let SYNTAX_BLOCK_VALUES : array<string> <- [
+    "inherit", "auto", "none", "das", "c", "cpp", "markdown"
+]
 
 struct MarkdownProbeFragmentArgs {
     text : string
@@ -58,6 +73,13 @@ struct MarkdownProbeBindImageArgs {
 def private first_image_node() : int {
     for (node_index in range(length(g_doc.nodes))) {
         if (g_doc.nodes[node_index].kind == RichNodeKind.image) return node_index
+    }
+    return -1
+}
+
+def private first_code_block_node() : int {
+    for (node_index in range(length(g_doc.nodes))) {
+        if (g_doc.nodes[node_index].kind == RichNodeKind.code_block) return node_index
     }
     return -1
 }
@@ -208,6 +230,11 @@ def markdown_probe_code_block(_input : JsonValue?) : JsonValue? {
             node = node_index,
             info = node.info,
             language = node.language,
+            syntax_default = g_tree_sitter.default_language,
+            syntax_override = markdown_tree_sitter_override_language(
+                g_tree_sitter, 0, node_index),
+            syntax_effective = markdown_tree_sitter_effective_language(
+                g_doc, g_tree_sitter, 0, node_index),
             font_size = entry.layout_key.font_size,
             base_font_size = g_fonts.size_px * float(g_zoom_percent) / 100.0f,
             rendered = entry.content_valid && entry.layout_valid
@@ -362,8 +389,8 @@ Image fallback and host URI semantics: ![Unicode terminal preview](editor://asse
 
 ## Follow-up: shared text infrastructure
 
-- [ ] Syntax token model independent of Markdown, ImGui, and the future editor
-- [ ] Language-aware syntax highlighting for fenced code blocks
+- [x] Syntax token model independent of Markdown, ImGui, and the future editor
+- [x] Language-aware syntax highlighting for fenced code blocks
 - [ ] Reuse the same tokenizer/theme pipeline in the text editor
 - [ ] Incremental tokenization for large editable documents
 
@@ -444,6 +471,36 @@ def update() {
         }
         same_line()
         text_disabled("Ctrl+wheel")
+        text("Syntax")
+        same_line()
+        SetNextItemWidth(150.0f)
+        if (combo(SYNTAX_DEFAULT,
+                (text = "##syntax_default", items <- SYNTAX_DEFAULT_LABELS))) {
+            let index = clamp(SYNTAX_DEFAULT.value, 0,
+                              length(SYNTAX_DEFAULT_VALUES) - 1)
+            let _ = markdown_tree_sitter_set_default(
+                g_tree_sitter, SYNTAX_DEFAULT_VALUES[index])
+        }
+        let code_node = first_code_block_node()
+        if (code_node >= 0) {
+            same_line()
+            text("First block")
+            same_line()
+            SetNextItemWidth(160.0f)
+            if (combo(SYNTAX_BLOCK,
+                    (text = "##syntax_block", items <- SYNTAX_BLOCK_LABELS))) {
+                let index = clamp(SYNTAX_BLOCK.value, 0,
+                                  length(SYNTAX_BLOCK_VALUES) - 1)
+                let value = SYNTAX_BLOCK_VALUES[index]
+                if (value == "inherit") {
+                    let _ = markdown_tree_sitter_clear_override(
+                        g_tree_sitter, 0, code_node)
+                } else {
+                    let _ = markdown_tree_sitter_set_override(
+                        g_tree_sitter, 0, code_node, value)
+                }
+            }
+        }
         separator()
         with_font(g_fonts.regular, 18.0f) {
             var markdown_style = MarkdownViewStyle(
@@ -455,7 +512,8 @@ def update() {
                     code_block_scale = 0.88f),
                 zoom = float(g_zoom_percent) / 100.0f,
                 write_system_clipboard = !harness_is_headless())
-            let result = markdown_view("probe", g_doc, g_view, markdown_style)
+            let result = markdown_view_tree_sitter(
+                "probe", g_doc, g_tree_sitter, g_view, markdown_style)
             g_last_selection = result.selection
             g_last_hovered_node = result.hovered_node
             g_last_hovered_image = result.hovered_image
@@ -502,6 +560,7 @@ def update() {
 
 [export]
 def shutdown() {
+    markdown_tree_sitter_dispose(g_tree_sitter)
     markdown_view_dispose(g_view)
     command_registry_dispose(g_commands)
     harness_shutdown()

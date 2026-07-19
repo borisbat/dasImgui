@@ -34,6 +34,9 @@ struct public TextFlowSpan {
     source : TextSourceRange
     style_id : int
     semantic_id : int = -1
+    //! Optional syntax/theme role supplied by a language provider. The flow
+    //! core preserves this opaque value without depending on any parser.
+    syntax_style_id : int = -1
 
     //! Adds URI-friendly opportunities after '/', '?', '&', '#', '=', '-',
     //! '_', '.', ':', and '%'. Natural whitespace wrapping remains enabled.
@@ -56,6 +59,7 @@ struct public TextFlowFragment {
     source : TextSourceRange
     style_id : int
     semantic_id : int
+    syntax_style_id : int = -1
     line_index : int
     rect : float4                 //!< local (x0, y0, x1, y1)
     control_id : int = -1
@@ -108,6 +112,7 @@ struct private TextFlowUnit {
     source : TextSourceRange
     style_id : int
     semantic_id : int
+    syntax_style_id : int
     width : float
     height : float
     break_after : bool
@@ -122,19 +127,18 @@ def private continuation_byte(b : uint) : bool {
     return (b & 0xC0u) == 0x80u
 }
 
-def private ascii_alpha(b : uint) : bool {
-    return ((b >= uint('A') && b <= uint('Z'))
-        || (b >= uint('a') && b <= uint('z')))
+def private ascii_alpha(b : int) : bool {
+    return ((b >= 'A' && b <= 'Z') || (b >= 'a' && b <= 'z')) // nolint:PERF014
 }
 
-def private ascii_digit(b : uint) : bool {
-    return b >= uint('0') && b <= uint('9')
+def private ascii_digit(b : int) : bool {
+    return b >= '0' && b <= '9' // nolint:PERF014
 }
 
 def private uri_boundary_before(bytes : array<uint8> const#; at : int) : bool {
     if (at <= 0) return true
-    let b = uint(bytes[at - 1])
-    return b < 0x80u && !ascii_alpha(b) && !ascii_digit(b) && b != uint('_')
+    let b = int(bytes[at - 1])
+    return b < 0x80 && !ascii_alpha(b) && !ascii_digit(b) && b != '_'
 }
 
 def private starts_ascii_ci(bytes : array<uint8> const#; at : int; value : string) : bool {
@@ -142,13 +146,13 @@ def private starts_ascii_ci(bytes : array<uint8> const#; at : int; value : strin
     var matches = true
     peek_data(value) $(expected) {
         for (i in range(length(expected))) {
-            var a = uint(bytes[at + i])
-            var b = uint(expected[i])
-            if (a >= uint('A') && a <= uint('Z')) {
-                a += 32u
+            var a = int(bytes[at + i])
+            var b = int(expected[i])
+            if (a >= 'A' && a <= 'Z') { // nolint:PERF014
+                a += 32
             }
-            if (b >= uint('A') && b <= uint('Z')) {
-                b += 32u
+            if (b >= 'A' && b <= 'Z') { // nolint:PERF014
+                b += 32
             }
             if (a != b) {
                 matches = false
@@ -170,23 +174,23 @@ def private uri_end(bytes : array<uint8> const#; start : int) : int {
     var at = start
     var parens = 0
     while (at < length(bytes)) {
-        let b = uint(bytes[at])
-        if (b <= 0x20u || b == uint('"') || b == uint('\'')
-                || b == uint('<') || b == uint('>') || b == uint('`')
-                || b == uint('[') || b == uint(']')
-                || b == uint('{') || b == uint('}')) break
-        if (b == uint('(')) {
+        let b = int(bytes[at])
+        if (b <= 0x20 || b == '"' || b == '\''
+                || b == '<' || b == '>' || b == '`'
+                || b == '[' || b == ']'
+                || b == '{' || b == '}') break
+        if (b == '(') {
             parens++
-        } elif (b == uint(')')) {
+        } elif (b == ')') {
             if (parens == 0) break
             parens--
         }
         at++
     }
     while (at > start) {
-        let b = uint(bytes[at - 1])
-        if (b == uint('.') || b == uint(',') || b == uint(';')
-                || b == uint('!') || b == uint('?') || b == uint(':')) {
+        let b = int(bytes[at - 1])
+        if (b == '.' || b == ',' || b == ';'
+                || b == '!' || b == '?' || b == ':') {
             at--
         } else {
             break
@@ -213,18 +217,18 @@ def public text_uris(text : string) : array<TextUri> {
             if (starts_ascii_ci(bytes, at, "www.")) {
                 body = at + 4
                 kind = TextUriKind.www
-            } elif (ascii_alpha(uint(bytes[at]))) {
+            } elif (ascii_alpha(int(bytes[at]))) {
                 var colon = at + 1
                 while (colon < length(bytes)) {
-                    let b = uint(bytes[colon])
+                    let b = int(bytes[colon])
                     if (!ascii_alpha(b) && !ascii_digit(b)
-                            && b != uint('+') && b != uint('-') && b != uint('.')) break
+                            && b != '+' && b != '-' && b != '.') break
                     colon++
                 }
-                if (colon < length(bytes) && uint(bytes[colon]) == uint(':')) {
+                if (colon < length(bytes) && int(bytes[colon]) == ':') {
                     let slash_form = (colon + 2 < length(bytes)
-                        && uint(bytes[colon + 1]) == uint('/')
-                        && uint(bytes[colon + 2]) == uint('/'))
+                        && int(bytes[colon + 1]) == '/'
+                        && int(bytes[colon + 2]) == '/')
                     if (slash_form || known_uri_scheme(slice(text, at, colon))) {
                         body = slash_form ? colon + 3 : colon + 1
                     }
@@ -527,11 +531,11 @@ def private natural_break_after(cp : uint) : bool {
     return cp == 0x0020u || cp == 0x0009u || cp == 0x200Bu
 }
 
-def private uri_break_after(cp : uint) : bool {
-    return (cp == uint('/') || cp == uint('?') || cp == uint('&')
-        || cp == uint('#') || cp == uint('=') || cp == uint('-')
-        || cp == uint('_') || cp == uint('.') || cp == uint(':')
-        || cp == uint('%'))
+def private uri_break_after(cp : int) : bool {
+    return (cp == '/' || cp == '?' || cp == '&'
+        || cp == '#' || cp == '=' || cp == '-'
+        || cp == '_' || cp == '.' || cp == ':'
+        || cp == '%')
 }
 
 def private make_units(source : string; spans : array<TextFlowSpan> const;
@@ -549,6 +553,7 @@ def private make_units(source : string; spans : array<TextFlowSpan> const;
                 source = TextSourceRange(start_byte = a, end_byte = a),
                 style_id = span.style_id,
                 semantic_id = span.semantic_id,
+                syntax_style_id = span.syntax_style_id,
                 width = span.leading_control_size.x,
                 height = max(line_height, span.leading_control_size.y),
                 break_after = false,
@@ -570,10 +575,11 @@ def private make_units(source : string; spans : array<TextFlowSpan> const;
                 source = TextSourceRange(start_byte = ga, end_byte = gb),
                 style_id = span.style_id,
                 semantic_id = span.semantic_id,
+                syntax_style_id = span.syntax_style_id,
                 width = measured_width,
                 height = line_height,
                 break_after = natural_break_after(g.last_codepoint)
-                    || (span.uri_wrap && uri_break_after(g.last_codepoint)),
+                    || (span.uri_wrap && uri_break_after(int(g.last_codepoint))),
                 hard_break = hard))
         }
         delete graphemes
@@ -582,6 +588,7 @@ def private make_units(source : string; spans : array<TextFlowSpan> const;
                 source = TextSourceRange(start_byte = b, end_byte = b),
                 style_id = span.style_id,
                 semantic_id = span.semantic_id,
+                syntax_style_id = span.syntax_style_id,
                 width = span.trailing_control_size.x,
                 height = max(line_height, span.trailing_control_size.y),
                 break_after = true,
@@ -614,6 +621,7 @@ def private push_fragment(var layout : TextFlowLayout; units : array<TextFlowUni
             end_byte = units[end_ - 1].source.end_byte),
         style_id = u0.style_id,
         semantic_id = u0.semantic_id,
+        syntax_style_id = u0.syntax_style_id,
         line_index = line_index,
         rect = float4(x, rect_y, x + width, rect_y + rect_h),
         control_id = u0.control_id,
@@ -643,6 +651,7 @@ def private emit_line(var layout : TextFlowLayout; units : array<TextFlowUnit> c
         if (i > fragment_start) {
             same = (!a.is_control && !b.is_control
                 && a.style_id == b.style_id && a.semantic_id == b.semantic_id
+                && a.syntax_style_id == b.syntax_style_id
                 && units[i - 1].source.end_byte == b.source.start_byte)
         }
         if (i > fragment_start && !same) {
