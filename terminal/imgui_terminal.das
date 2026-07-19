@@ -6,6 +6,7 @@ module imgui_terminal shared
 require imgui public
 require terminal/terminal public
 require clipboard/clipboard
+require imgui/imgui_boost_runtime
 require math
 require strings
 
@@ -29,6 +30,8 @@ struct public ImGuiTerminalState {
     render_revision : int
     resize_revision : int
     input_revision : int
+    content_revision : int
+    screen_text : string
     scroll_offset : int
     selection_active : bool
     selection_dragging : bool
@@ -201,6 +204,26 @@ def private selected_text(buffer : TerminalBufferSnapshot const;
     return <- result
 }
 
+def private screen_text(buffer : TerminalBufferSnapshot const) : string {
+    var result = ""
+    var line = ""
+    var current_row = 0
+    for (cell in buffer.cells) {
+        while (current_row < cell.row) {
+            result += line |> rtrim(" ")
+            result += "\n"
+            line = ""
+            current_row++
+        }
+        if (cell.width > 0) {
+            line += cell.grapheme
+        }
+    }
+    result += line |> rtrim(" ")
+    result = result |> rtrim("\n")
+    return <- result
+}
+
 def private pressed(key : ImGuiKey) : bool {
     return IsKeyPressed(key, false)
 }
@@ -314,6 +337,10 @@ def public imgui_terminal(id : string; terminal : Terminal const;
     PushID(id)
     InvisibleButton("##terminal", extent)
     let hovered = IsItemHovered(ImGuiHoveredFlags.None)
+    register_clickable_bbox(id, "##terminal", "terminal")
+    if (IsItemFocused()) {
+        state.focused = true
+    }
     if (hovered && IsMouseClicked(ImGuiMouseButton.Left, false)) {
         state.focused = true
     }
@@ -327,6 +354,11 @@ def public imgui_terminal(id : string; terminal : Terminal const;
         0.0f, ImDrawFlags.None)
     *dl |> PushClipRect(origin, origin + extent, true)
     let buffer <- snapshot.alternate_active ? snapshot.alternate : snapshot.normal
+    let current_screen_text = screen_text(buffer)
+    if (current_screen_text != state.screen_text) {
+        state.screen_text := current_screen_text
+        state.content_revision++
+    }
     let io & = unsafe(GetIO())
     if (hovered && io.MouseWheel != 0.0f) {
         state.scroll_offset = clamp(state.scroll_offset + int(io.MouseWheel * 3.0f),
