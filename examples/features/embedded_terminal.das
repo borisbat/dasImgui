@@ -4,6 +4,7 @@ options persistent_heap
 
 require imgui/imgui_harness
 require imgui/imgui_terminal
+require imgui/imgui_fonts
 require daslib/safe_addr
 require math
 require strings
@@ -11,6 +12,13 @@ require strings
 var private g_terminal : Terminal
 var private g_terminal_view = ImGuiTerminalState()
 var private g_zoom_percent = 150
+var private g_terminal_font : ImFont?
+var private g_font_sources : array<string>
+var private g_status = "Ready"
+
+def private zoom_by(delta : int) {
+    g_zoom_percent = clamp(g_zoom_percent + delta, 50, 300)
+}
 
 def terminal_command() : string {
     let prefix = "--terminal-command="
@@ -24,6 +32,7 @@ def terminal_command() : string {
 def init() {
     harness_init("embedded_terminal", 960, 640)
     harness_maximize_window()
+    g_terminal_font = load_unicode_ui_font(14.0f, g_font_sources)
     var inscope launched <- terminal_launch(terminal_command(), "", 100, 30)
     g_terminal := launched
 }
@@ -46,32 +55,80 @@ def update() {
         let io & = unsafe(GetIO())
         if (IsWindowHovered(ImGuiHoveredFlags.RootAndChildWindows) && io.KeyCtrl) {
             if (io.MouseWheel > 0.0f) {
-                g_zoom_percent = min(g_zoom_percent + 10, 300)
+                zoom_by(5)
             } elif (io.MouseWheel < 0.0f) {
-                g_zoom_percent = max(g_zoom_percent - 10, 50)
+                zoom_by(-5)
             }
         }
+        let terminal_style = ImGuiTerminalStyle(
+            view_height = max(GetTextLineHeight(),
+                GetContentRegionAvail().y - GetFrameHeightWithSpacing()
+                    - GetStyle().ItemSpacing.y))
+        with_font(g_terminal_font) {
+            let _ = imgui_terminal("shell", g_terminal, g_terminal_view, terminal_style)
+        }
+        separator()
+        if (small_button(TERMINAL_EDIT_MENU, (text = "Edit"))) {
+            open_popup("terminal_edit_menu")
+        }
+        popup_window(TERMINAL_EDIT_POPUP,
+                     (str_id = "terminal_edit_menu",
+                      flags = ImGuiWindowFlags.AlwaysAutoResize)) {
+            if (menu_label(TERMINAL_COPY,
+                    (text = "Copy", shortcut = "Ctrl+C",
+                     enabled = g_terminal_view.selection_active))) {
+                g_status = (imgui_terminal_copy_selection(g_terminal, g_terminal_view)
+                    ? "Selection copied" : "Nothing selected")
+            }
+            if (menu_label(TERMINAL_PASTE,
+                    (text = "Paste", shortcut = "Ctrl+V"))) {
+                g_status = (imgui_terminal_paste_clipboard(g_terminal)
+                    ? "Clipboard pasted" : "Clipboard unavailable")
+            }
+            separator()
+            if (menu_label(TERMINAL_SELECT_ALL, (text = "Select all"))) {
+                imgui_terminal_select_all(g_terminal, g_terminal_view)
+            }
+            if (menu_label(TERMINAL_CLEAR_SELECTION,
+                    (text = "Clear selection",
+                     enabled = g_terminal_view.selection_active))) {
+                imgui_terminal_clear_selection(g_terminal_view)
+            }
+        }
+        same_line()
+        if (small_button(TERMINAL_VIEW_MENU, (text = "View"))) {
+            open_popup("terminal_view_menu")
+        }
+        popup_window(TERMINAL_VIEW_POPUP,
+                     (str_id = "terminal_view_menu",
+                      flags = ImGuiWindowFlags.AlwaysAutoResize)) {
+            if (menu_label(TERMINAL_ZOOM_IN, (text = "Zoom in", shortcut = "Ctrl++"))) {
+                zoom_by(5)
+            }
+            if (menu_label(TERMINAL_ZOOM_OUT, (text = "Zoom out", shortcut = "Ctrl+-"))) {
+                zoom_by(-5)
+            }
+            if (menu_label(TERMINAL_ZOOM_RESET, (text = "Reset zoom", shortcut = "Ctrl+0"))) {
+                g_zoom_percent = 100
+            }
+            separator()
+            if (menu_label(TERMINAL_SCROLL_BOTTOM, (text = "Scroll to bottom"))) {
+                g_terminal_view.scroll_offset = 0
+            }
+        }
+        same_line()
         text("Zoom")
         same_line()
-        SetNextItemWidth(180.0f)
+        SetNextItemWidth(130.0f)
         if (edit_slider_int(safe_addr(g_zoom_percent),
                 (id = "TERMINAL_ZOOM_SLIDER", text = "##zoom", v_min = 50,
                  v_max = 300, format = "%d%%"))) {
-            g_zoom_percent = clamp(((g_zoom_percent + 5) / 10) * 10, 50, 300)
+            g_zoom_percent = clamp(((g_zoom_percent + 2) / 5) * 5, 50, 300)
         }
         same_line()
-        if (small_button(TERMINAL_ZOOM_RESET, (text = "100%"))) {
-            g_zoom_percent = 100
-        }
         text_show(TERMINAL_ZOOM, "{g_zoom_percent}")
-        separator()
-        let result = imgui_terminal("shell", g_terminal, g_terminal_view)
-        text_show(TERMINAL_FOCUS, "{g_terminal_view.focused}")
-        text_show(TERMINAL_GEOMETRY,
-            "{g_terminal_view.columns}x{g_terminal_view.rows}:{g_terminal_view.resize_revision}")
-        text_show(TERMINAL_REVISIONS,
-            "{g_terminal_view.input_revision}:{g_terminal_view.content_revision}")
-        text_show(TERMINAL_SCREEN, g_terminal_view.screen_text)
+        same_line()
+        text_disabled("{g_terminal_view.scrollback_rows} history lines - {g_status}")
     }
     harness_end_frame()
 }

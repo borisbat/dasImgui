@@ -21,6 +21,7 @@ struct public ImGuiTerminalStyle {
     selection : float4 = float4(0.20f, 0.42f, 0.72f, 0.72f)
     cell_width : float = 0.0f
     line_height : float = 0.0f
+    view_height : float = 0.0f
 }
 
 struct public ImGuiTerminalState {
@@ -33,6 +34,10 @@ struct public ImGuiTerminalState {
     content_revision : int
     screen_text : string
     scroll_offset : int
+    scrollback_rows : int
+    cursor_visible : bool
+    cursor_blinking : bool
+    cursor_phase_visible : bool
     selection_active : bool
     selection_dragging : bool
     selection_anchor_row : int
@@ -204,6 +209,43 @@ def private selected_text(buffer : TerminalBufferSnapshot const;
     return <- result
 }
 
+def public imgui_terminal_clear_selection(var state : ImGuiTerminalState) {
+    if (!state.selection_active && !state.selection_dragging) return
+    state.selection_active = false
+    state.selection_dragging = false
+    state.selection_revision++
+}
+
+def public imgui_terminal_select_all(terminal : Terminal const;
+                                     var state : ImGuiTerminalState) {
+    var snapshot = TerminalSnapshot()
+    terminal_snapshot(terminal, snapshot)
+    let buffer <- snapshot.alternate_active ? snapshot.alternate : snapshot.normal
+    let last_row = max(0, buffer.scrollback_rows + snapshot.rows - 1)
+    state.selection_anchor_row = 0
+    state.selection_anchor_column = 0
+    state.selection_focus_row = last_row
+    state.selection_focus_column = max(0, snapshot.columns - 1)
+    state.selection_active = true
+    state.selection_dragging = false
+    state.selection_revision++
+}
+
+def public imgui_terminal_copy_selection(terminal : Terminal const;
+                                         state : ImGuiTerminalState const) : bool {
+    if (!state.selection_active) return false
+    var snapshot = TerminalSnapshot()
+    terminal_snapshot(terminal, snapshot)
+    let buffer <- snapshot.alternate_active ? snapshot.alternate : snapshot.normal
+    return clipboard_set_text(selected_text(buffer, state, snapshot.columns)) == ClipboardStatus.ok
+}
+
+def public imgui_terminal_paste_clipboard(terminal : Terminal const) : bool {
+    var text = ""
+    if (clipboard_get_text(text) != ClipboardStatus.ok) return false
+    return terminal_send_paste(terminal, text)
+}
+
 def private screen_text(buffer : TerminalBufferSnapshot const) : string {
     var result = ""
     var line = ""
@@ -317,7 +359,10 @@ def public imgui_terminal(id : string; terminal : Terminal const;
     if (line_height <= 0.0f) {
         line_height = max(1.0f, GetTextLineHeight())
     }
-    let available = GetContentRegionAvail()
+    var available = GetContentRegionAvail()
+    if (style.view_height > 0.0f) {
+        available.y = min(available.y, style.view_height)
+    }
     let columns = max(1, int(floor(available.x / cell_width)))
     let rows = max(1, int(floor(available.y / line_height)))
     if (columns != snapshot.columns || rows != snapshot.rows) {
@@ -337,7 +382,10 @@ def public imgui_terminal(id : string; terminal : Terminal const;
     PushID(id)
     InvisibleButton("##terminal", extent)
     let hovered = IsItemHovered(ImGuiHoveredFlags.None)
-    register_clickable_bbox(id, "##terminal", "terminal")
+    unsafe {
+        register_clickable_state_bbox(id, "##terminal", "terminal", addr(state),
+            reinterpret<TypeInfo const?>(typeinfo rtti_typeinfo(type<ImGuiTerminalState>)))
+    }
     if (IsItemFocused()) {
         state.focused = true
     }
@@ -354,9 +402,10 @@ def public imgui_terminal(id : string; terminal : Terminal const;
         0.0f, ImDrawFlags.None)
     *dl |> PushClipRect(origin, origin + extent, true)
     let buffer <- snapshot.alternate_active ? snapshot.alternate : snapshot.normal
+    state.scrollback_rows = buffer.scrollback_rows
     let current_screen_text = screen_text(buffer)
     if (current_screen_text != state.screen_text) {
-        state.screen_text := current_screen_text
+        state.screen_text = current_screen_text
         state.content_revision++
     }
     let io & = unsafe(GetIO())
@@ -407,7 +456,12 @@ def public imgui_terminal(id : string; terminal : Terminal const;
         draw_terminal_cell(dl, cell, global_row, global_row - visible_start_row,
             origin, cell_width, line_height, snapshot.columns, state, style)
     }
-    if (buffer.cursor.visible && state.scroll_offset == 0) {
+    state.cursor_visible = buffer.cursor.visible
+    state.cursor_blinking = buffer.cursor.blinking
+    state.cursor_phase_visible = (buffer.cursor.visible
+        && (!buffer.cursor.blinking || !state.focused
+            || fmod(float(GetTime()), 1.0f) < 0.5f))
+    if (state.cursor_phase_visible && state.scroll_offset == 0) {
         let cp0 = origin + float2(float(buffer.cursor.column) * cell_width,
             float(buffer.cursor.row) * line_height)
         *dl |> AddRectFilled(cp0, cp0 + float2(max(1.0f, cell_width * 0.12f), line_height),
@@ -420,7 +474,7 @@ def public imgui_terminal(id : string; terminal : Terminal const;
     }
     if (state.focused && state.selection_active && io.KeyCtrl && pressed(ImGuiKey.C)) {
         let copy_text = selected_text(buffer, state, snapshot.columns)
-        result.selection_text := copy_text
+        result.selection_text = copy_text
         result.selection_copied = clipboard_set_text(copy_text) == ClipboardStatus.ok
     }
     let (sent, pasted) = route_input(terminal, state)

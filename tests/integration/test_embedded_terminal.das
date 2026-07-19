@@ -11,11 +11,9 @@ require daslib/strings_boost
 
 let TERMINAL_FEATURE = "modules/dasImgui/examples/features/embedded_terminal.das"
 let TERMINAL_TARGET = "TERMINAL_WIN/shell"
-let TERMINAL_FOCUS = "TERMINAL_WIN/TERMINAL_FOCUS"
-let TERMINAL_GEOMETRY = "TERMINAL_WIN/TERMINAL_GEOMETRY"
-let TERMINAL_REVISIONS = "TERMINAL_WIN/TERMINAL_REVISIONS"
-let TERMINAL_SCREEN = "TERMINAL_WIN/TERMINAL_SCREEN"
 let TERMINAL_ZOOM = "TERMINAL_WIN/TERMINAL_ZOOM"
+let TERMINAL_VIEW_MENU = "TERMINAL_WIN/TERMINAL_VIEW_MENU"
+let TERMINAL_ZOOM_IN = "TERMINAL_WIN/TERMINAL_VIEW_POPUP/TERMINAL_ZOOM_IN"
 
 [test]
 def test_embedded_terminal_focus_and_input(t : T?) {
@@ -27,19 +25,26 @@ def test_embedded_terminal_focus_and_input(t : T?) {
 
         let entry = find_widget(initial, TERMINAL_TARGET)
         t |> equal(entry?["kind"] ?? "", "terminal", "snapshot kind is terminal")
-        var geometry = wait_for_render(d, TERMINAL_GEOMETRY, 5.0f)
-        t |> success(geometry != null, "terminal geometry telemetry renders")
-        if (geometry != null) {
-            let value = widget_payload_field(geometry, TERMINAL_GEOMETRY, "value") ?? ""
-            t |> success(contains(value, "x") && !ends_with(value, ":0"),
-                "first layout reports a measured and resized PTY grid")
-        }
+        t |> success((widget_payload_field(initial, TERMINAL_TARGET, "columns") ?? 0) > 0
+                   && (widget_payload_field(initial, TERMINAL_TARGET, "rows") ?? 0) > 0,
+            "terminal snapshot reports a measured PTY grid")
+        t |> success(widget_payload_field(initial, TERMINAL_TARGET, "cursor_blinking") ?? false,
+            "terminal snapshot exposes a blinking cursor")
         t |> success(wait_for_string_value(d, TERMINAL_ZOOM, "value", "150", 300),
             "terminal defaults to accessible 150 percent zoom")
 
+        click(d, TERMINAL_VIEW_MENU)
+        t |> success(wait_for_mouse_idle(d), "view menu click timeline drains")
+        t |> success(wait_for_visible(d, TERMINAL_ZOOM_IN, 5.0f) != null,
+            "bottom View menu exposes zoom actions")
+        click(d, TERMINAL_ZOOM_IN)
+        t |> success(wait_for_mouse_idle(d), "zoom action click timeline drains")
+        t |> success(wait_for_string_value(d, TERMINAL_ZOOM, "value", "155", 300),
+            "zoom menu advances in five percent steps")
+
         click(d, TERMINAL_TARGET)
         t |> success(wait_for_mouse_idle(d), "terminal focus click timeline drains")
-        t |> success(wait_for_string_value(d, TERMINAL_FOCUS, "value", "true", 300),
+        t |> success(wait_for_bool_value(d, TERMINAL_TARGET, "focused", true, 300),
             "terminal focus effect becomes observable")
 
         let command = "Write-Output ('DASHERD_' + 'RESULT')\n"
@@ -48,14 +53,15 @@ def test_embedded_terminal_focus_and_input(t : T?) {
         t |> success(wait_for_key_idle(d, 6.0f), "terminal key timeline drains")
 
         var output = wait_until_sec(d, 10.0f) $(var snap) {
-            let screen = widget_payload_field(snap, TERMINAL_SCREEN, "value") ?? ""
+            let screen = widget_payload_field(snap, TERMINAL_TARGET, "screen_text") ?? ""
             return contains(screen, "DASHERD_RESULT")
         }
         t |> success(output != null,
             "PowerShell result reaches the semantic terminal snapshot")
         if (output != null) {
-            let revisions = widget_payload_field(output, TERMINAL_REVISIONS, "value") ?? "0:0"
-            t |> success(revisions != "0:0", "input and content revisions advanced")
+            t |> success((widget_payload_field(output, TERMINAL_TARGET, "input_revision") ?? 0) > 0
+                       && (widget_payload_field(output, TERMINAL_TARGET, "content_revision") ?? 0) > 0,
+                "input and content revisions advanced")
         }
     }
 }
