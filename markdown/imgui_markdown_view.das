@@ -462,6 +462,7 @@ def public markdown_view_unbind_syntax(var state : MarkdownViewState;
 }
 
 def public markdown_view_clear_syntax(var state : MarkdownViewState) {
+    if (empty(state.syntax_bindings)) return
     for (i in range(length(state.syntax_bindings))) {
         delete state.syntax_bindings[i].tokens
     }

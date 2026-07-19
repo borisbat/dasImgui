@@ -60,14 +60,14 @@ def public plain_source_document(source : string;
     return <- document
 }
 
-def private ascii_markdown_delimiter(b : uint) : bool {
-    return (b == uint('*') || b == uint('_') || b == uint('~')
-        || b == uint('`') || b == uint('[') || b == uint(']')
-        || b == uint('(') || b == uint(')') || b == uint('!'))
+def private ascii_markdown_delimiter(b : int) : bool {
+    return (b == '*' || b == '_' || b == '~'
+        || b == '`' || b == '[' || b == ']'
+        || b == '(' || b == ')' || b == '!')
 }
 
-def private ascii_digit_byte(b : uint) : bool {
-    return b >= uint('0') && b <= uint('9')
+def private ascii_digit_byte(b : int) : bool {
+    return b >= '0' && b <= '9' // nolint:PERF014
 }
 
 def private push_source_span(var document : TextSourceDocument;
@@ -110,43 +110,43 @@ def public markdown_source_document(source : string;
             if (at == line_start) {
                 var content = at
                 while (content < n && content - at < 3
-                        && uint(bytes[content]) == uint(' ')) {
+                        && int(bytes[content]) == ' ') {
                     content++
                 }
                 if (content < n) {
-                    let first = uint(bytes[content])
+                    let first = int(bytes[content])
                     var marker_end = content
-                    if (first == uint('#')) {
+                    if (first == '#') {
                         while (marker_end < n && marker_end - content < 6
-                                && uint(bytes[marker_end]) == uint('#')) {
+                                && int(bytes[marker_end]) == '#') {
                             marker_end++
                         }
-                        if (marker_end < n && uint(bytes[marker_end]) == uint(' ')) {
+                        if (marker_end < n && int(bytes[marker_end]) == ' ') {
                             push_marker(document, covered_until, content, marker_end)
                             at = marker_end
                             continue
                         }
-                    } elif (first == uint('>')) {
+                    } elif (first == '>') {
                         push_marker(document, covered_until, content, content + 1)
                         at = content + 1
                         continue
-                    } elif ((first == uint('-') || first == uint('+') || first == uint('*'))
+                    } elif ((first == '-' || first == '+' || first == '*')
                             && content + 1 < n
-                            && (uint(bytes[content + 1]) == uint(' ')
-                                || uint(bytes[content + 1]) == uint('\t'))) {
+                            && (int(bytes[content + 1]) == ' '
+                                || int(bytes[content + 1]) == '\t')) {
                         push_marker(document, covered_until, content, content + 1)
                         at = content + 1
                         continue
                     } elif (ascii_digit_byte(first)) {
                         marker_end = content + 1
-                        while (marker_end < n && ascii_digit_byte(uint(bytes[marker_end]))) {
+                        while (marker_end < n && ascii_digit_byte(int(bytes[marker_end]))) {
                             marker_end++
                         }
                         if (marker_end + 1 < n
-                                && (uint(bytes[marker_end]) == uint('.')
-                                    || uint(bytes[marker_end]) == uint(')'))
-                                && (uint(bytes[marker_end + 1]) == uint(' ')
-                                    || uint(bytes[marker_end + 1]) == uint('\t'))) {
+                                && (int(bytes[marker_end]) == '.'
+                                    || int(bytes[marker_end]) == ')')
+                                && (int(bytes[marker_end + 1]) == ' '
+                                    || int(bytes[marker_end + 1]) == '\t')) {
                             push_marker(document, covered_until, content, marker_end + 1)
                             at = marker_end + 1
                             continue
@@ -155,10 +155,10 @@ def public markdown_source_document(source : string;
                 }
             }
 
-            let b = uint(bytes[at])
-            if (b == uint('\r') || b == uint('\n')) {
-                if (b == uint('\r') && at + 1 < n
-                        && uint(bytes[at + 1]) == uint('\n')) {
+            let b = int(bytes[at])
+            if (b == '\r' || b == '\n') {
+                if (b == '\r' && at + 1 < n
+                        && int(bytes[at + 1]) == '\n') {
                     at += 2
                 } else {
                     at++
@@ -166,32 +166,32 @@ def public markdown_source_document(source : string;
                 line_start = at
                 continue
             }
-            if (b == uint('\\') && at + 1 < n
-                    && ascii_markdown_delimiter(uint(bytes[at + 1]))) {
+            if (b == '\\' && at + 1 < n
+                    && ascii_markdown_delimiter(int(bytes[at + 1]))) {
                 push_marker(document, covered_until, at, at + 1)
                 at += 2 // escaped byte remains regular
                 continue
             }
-            if (b == uint('*') || b == uint('_') || b == uint('`') || b == uint('~')) {
+            if (b == '*' || b == '_' || b == '`' || b == '~') {
                 var end_ = at + 1
-                while (end_ < n && uint(bytes[end_]) == b) {
+                while (end_ < n && int(bytes[end_]) == b) {
                     end_++
                 }
-                if (b != uint('~') || end_ - at >= 2) {
+                if (b != '~' || end_ - at >= 2) {
                     push_marker(document, covered_until, at, end_)
                 }
                 at = end_
                 continue
             }
-            if (b == uint('[') || b == uint(']') || b == uint('!')) {
+            if (b == '[' || b == ']' || b == '!') {
                 push_marker(document, covered_until, at, at + 1)
-            } elif (b == uint('(') && at > 0 && uint(bytes[at - 1]) == uint(']')) {
+            } elif (b == '(' && at > 0 && int(bytes[at - 1]) == ']') {
                 push_marker(document, covered_until, at, at + 1)
                 link_paren_depth = 1
-            } elif (b == uint('(') && link_paren_depth > 0) {
+            } elif (b == '(' && link_paren_depth > 0) {
                 link_paren_depth++
                 push_marker(document, covered_until, at, at + 1)
-            } elif (b == uint(')') && link_paren_depth > 0) {
+            } elif (b == ')' && link_paren_depth > 0) {
                 push_marker(document, covered_until, at, at + 1)
                 link_paren_depth--
             }
