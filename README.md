@@ -113,9 +113,11 @@ daslang.exe -project_root . my_app.das
 | `imgui` | `require imgui` | Core Dear ImGui bindings (raw surface; most code goes through the v2 `widgets/` macro layer rather than calling these directly) |
 | `imgui_app` | (used by harness) | GLFW + OpenGL3 application runtime |
 | `imgui_app_headless` | (used by harness) | Display-less ImGui backend (CPU font atlas, no GLFW, no GL) for `--headless` runs |
+| `imgui_terminal` | `require imgui/imgui_terminal` | Interactive cell renderer for the renderless `dasTerminal` snapshot/PTY module, with keyboard, paste, resize, scrollback, selection, and clipboard routing |
 
 ## Examples
 
+- `examples/features/embedded_terminal.das` - live PowerShell/ConPTY terminal view (also runs through the headless harness)
 - `examples/features/with_indent.das` — smallest single-file harness example (drives [test_with_indent.das](tests/integration/test_with_indent.das))
 - `examples/features/` — 90+ small focused demos, one widget/helper per file
 - `examples/imgui_demo/imgui_demo.das` — full Dear ImGui demo port (90+ scenes)

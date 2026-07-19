@@ -1,0 +1,398 @@
+options gen2
+options indenting = 4
+
+module imgui_terminal shared
+
+require imgui public
+require terminal/terminal public
+require clipboard/clipboard
+require math
+require strings
+
+//! First interactive terminal view. Terminal cells remain the layout authority;
+//! glyphs are clipped to the one- or two-cell rectangle assigned by the emulator.
+
+struct public ImGuiTerminalStyle {
+    background : float4 = float4(0.035f, 0.043f, 0.055f, 1.0f)
+    foreground : float4 = float4(0.83f, 0.85f, 0.88f, 1.0f)
+    cursor : float4 = float4(0.82f, 0.84f, 0.90f, 0.72f)
+    focus_border : float4 = float4(0.30f, 0.56f, 0.92f, 1.0f)
+    selection : float4 = float4(0.20f, 0.42f, 0.72f, 0.72f)
+    cell_width : float = 0.0f
+    line_height : float = 0.0f
+}
+
+struct public ImGuiTerminalState {
+    focused : bool
+    columns : int
+    rows : int
+    render_revision : int
+    resize_revision : int
+    input_revision : int
+    scroll_offset : int
+    selection_active : bool
+    selection_dragging : bool
+    selection_anchor_row : int
+    selection_anchor_column : int
+    selection_focus_row : int
+    selection_focus_column : int
+    selection_revision : int
+}
+
+struct public ImGuiTerminalResult {
+    focused : bool
+    resized : bool
+    input_sent : bool
+    paste_sent : bool
+    selection_copied : bool
+    selection_text : string
+    columns : int
+    rows : int
+}
+
+def private byte_char(value : int) : string {
+    return to_char(value & 255)
+}
+
+def private codepoint_utf8(codepoint : int) : string {
+    if (codepoint <= 0x7f) return byte_char(codepoint)
+    if (codepoint <= 0x7ff) {
+        return (byte_char(0xc0 | (codepoint >> 6)) +
+            byte_char(0x80 | (codepoint & 0x3f)))
+    }
+    if (codepoint <= 0xffff) {
+        return (byte_char(0xe0 | (codepoint >> 12)) +
+            byte_char(0x80 | ((codepoint >> 6) & 0x3f)) +
+            byte_char(0x80 | (codepoint & 0x3f)))
+    }
+    return (byte_char(0xf0 | (codepoint >> 18)) +
+        byte_char(0x80 | ((codepoint >> 12) & 0x3f)) +
+        byte_char(0x80 | ((codepoint >> 6) & 0x3f)) +
+        byte_char(0x80 | (codepoint & 0x3f)))
+}
+
+def private indexed_color(index : int) : float4 {
+    if (index == 0) return float4(0.00f, 0.00f, 0.00f, 1.0f)
+    if (index == 1) return float4(0.80f, 0.16f, 0.16f, 1.0f)
+    if (index == 2) return float4(0.20f, 0.72f, 0.30f, 1.0f)
+    if (index == 3) return float4(0.80f, 0.66f, 0.20f, 1.0f)
+    if (index == 4) return float4(0.25f, 0.43f, 0.82f, 1.0f)
+    if (index == 5) return float4(0.72f, 0.30f, 0.76f, 1.0f)
+    if (index == 6) return float4(0.20f, 0.70f, 0.72f, 1.0f)
+    if (index == 7) return float4(0.72f, 0.74f, 0.76f, 1.0f)
+    if (index < 16) {
+        let bright = indexed_color(index - 8)
+        return float4(min(1.0f, bright.x + 0.22f), min(1.0f, bright.y + 0.22f),
+            min(1.0f, bright.z + 0.22f), 1.0f)
+    }
+    if (index < 232) {
+        let cube = index - 16
+        let r = cube / 36
+        let g = (cube / 6) % 6
+        let b = cube % 6
+        return float4(float(r == 0 ? 0 : 55 + r * 40) / 255.0f,
+            float(g == 0 ? 0 : 55 + g * 40) / 255.0f,
+            float(b == 0 ? 0 : 55 + b * 40) / 255.0f, 1.0f)
+    }
+    let gray = float(8 + (index - 232) * 10) / 255.0f
+    return float4(gray, gray, gray, 1.0f)
+}
+
+def private resolve_color(color : TerminalColor const; fallback : float4) : float4 {
+    if (color.kind == TerminalColorKind.indexed) return indexed_color(color.index)
+    if (color.kind == TerminalColorKind.rgb) {
+        return float4(float(color.red) / 255.0f, float(color.green) / 255.0f,
+            float(color.blue) / 255.0f, 1.0f)
+    }
+    return fallback
+}
+
+def private is_selected(state : ImGuiTerminalState const; columns, row, column, width : int) : bool {
+    if (!state.selection_active) return false
+    let anchor = state.selection_anchor_row * columns + state.selection_anchor_column
+    let focus = state.selection_focus_row * columns + state.selection_focus_column
+    let first = min(anchor, focus)
+    let last = max(anchor, focus) + 1
+    let cell_first = row * columns + column
+    let cell_last = cell_first + max(1, width)
+    return cell_last > first && cell_first < last
+}
+
+def private draw_terminal_cell(var dl : ImDrawList?; cell : TerminalCell const;
+                               global_row, display_row : int;
+                               origin : float2; cell_width, line_height : float;
+                               columns : int; state : ImGuiTerminalState const;
+                               style : ImGuiTerminalStyle const) {
+    if (cell.width == 0 || display_row < 0 || display_row >= state.rows) return
+    let p0 = origin + float2(float(cell.column) * cell_width,
+        float(display_row) * line_height)
+    let p1 = p0 + float2(cell_width * float(max(1, cell.width)), line_height)
+    var fg = resolve_color(cell.foreground, style.foreground)
+    var bg = resolve_color(cell.background, style.background)
+    if ((cell.attributes & 32) != 0) {
+        let swap = fg
+        fg = bg
+        bg = swap
+    }
+    if (bg != style.background) {
+        *dl |> AddRectFilled(p0, p1, GetColorU32(bg), 0.0f, ImDrawFlags.None)
+    }
+    if (is_selected(state, columns, global_row, cell.column, cell.width)) {
+        *dl |> AddRectFilled(p0, p1, GetColorU32(style.selection), 0.0f, ImDrawFlags.None)
+    }
+    if ((cell.attributes & 64) == 0 && cell.grapheme != " " && cell.grapheme != "") {
+        *dl |> AddText(p0, GetColorU32(fg), cell.grapheme)
+    }
+    if ((cell.attributes & 8) != 0) {
+        *dl |> AddLine(float2(p0.x, p1.y - 1.0f), float2(p1.x, p1.y - 1.0f),
+            GetColorU32(fg), 1.0f)
+    }
+    if ((cell.attributes & 128) != 0) {
+        let y = p0.y + line_height * 0.55f
+        *dl |> AddLine(float2(p0.x, y), float2(p1.x, y), GetColorU32(fg), 1.0f)
+    }
+}
+
+def private selected_text(buffer : TerminalBufferSnapshot const;
+                          state : ImGuiTerminalState const; columns : int) : string {
+    if (!state.selection_active) return ""
+    let anchor = state.selection_anchor_row * columns + state.selection_anchor_column
+    let focus = state.selection_focus_row * columns + state.selection_focus_column
+    let first = min(anchor, focus)
+    let last = max(anchor, focus)
+    let first_row = first / columns
+    let last_row = last / columns
+    var result = ""
+    for (row in range(first_row, last_row + 1)) {
+        let first_column = row == first_row ? first % columns : 0
+        let last_column = row == last_row ? last % columns : columns - 1
+        var line = ""
+        var continuation_until = -1
+        for (column in range(first_column, last_column + 1)) {
+            if (column < continuation_until) continue
+            var grapheme = " "
+            var width = 1
+            if (row < buffer.scrollback_rows) {
+                for (cell in buffer.scrollback) {
+                    if (cell.row == row && cell.column == column && cell.width > 0) {
+                        grapheme = cell.grapheme
+                        width = cell.width
+                        break
+                    }
+                }
+            } else {
+                let screen_row = row - buffer.scrollback_rows
+                for (cell in buffer.cells) {
+                    if (cell.row == screen_row && cell.column == column && cell.width > 0) {
+                        grapheme = cell.grapheme
+                        width = cell.width
+                        break
+                    }
+                }
+            }
+            line += grapheme
+            continuation_until = column + max(1, width)
+        }
+        result += line |> rtrim(" ")
+        if (row != last_row) {
+            result += "\n"
+        }
+    }
+    return <- result
+}
+
+def private pressed(key : ImGuiKey) : bool {
+    return IsKeyPressed(key, false)
+}
+
+def private send_special(terminal : Terminal const; key : ImGuiKey;
+                         terminal_key : TerminalKey; io : ImGuiIO const) : bool {
+    if (!pressed(key)) return false
+    return terminal_send_key(terminal, TerminalKeyEvent(
+        key = terminal_key, shift = io.KeyShift, alt = io.KeyAlt,
+        control = io.KeyCtrl))
+}
+
+def private route_input(terminal : Terminal const;
+                        var state : ImGuiTerminalState) : tuple<bool; bool> {
+    if (!state.focused) return (false, false)
+    let io & = unsafe(GetIO())
+    var sent = false
+    var pasted = false
+    sent = send_special(terminal, ImGuiKey.Enter, TerminalKey.enter, io) || sent
+    sent = send_special(terminal, ImGuiKey.KeypadEnter, TerminalKey.enter, io) || sent
+    sent = send_special(terminal, ImGuiKey.Tab, TerminalKey.tab, io) || sent
+    sent = send_special(terminal, ImGuiKey.Backspace, TerminalKey.backspace, io) || sent
+    sent = send_special(terminal, ImGuiKey.Escape, TerminalKey.escape, io) || sent
+    sent = send_special(terminal, ImGuiKey.UpArrow, TerminalKey.up, io) || sent
+    sent = send_special(terminal, ImGuiKey.DownArrow, TerminalKey.down, io) || sent
+    sent = send_special(terminal, ImGuiKey.RightArrow, TerminalKey.right, io) || sent
+    sent = send_special(terminal, ImGuiKey.LeftArrow, TerminalKey.left, io) || sent
+    sent = send_special(terminal, ImGuiKey.Home, TerminalKey.home, io) || sent
+    sent = send_special(terminal, ImGuiKey.End, TerminalKey.end, io) || sent
+    sent = send_special(terminal, ImGuiKey.Insert, TerminalKey.insert, io) || sent
+    sent = send_special(terminal, ImGuiKey.Delete, TerminalKey.delete_key, io) || sent
+    sent = send_special(terminal, ImGuiKey.PageUp, TerminalKey.page_up, io) || sent
+    sent = send_special(terminal, ImGuiKey.PageDown, TerminalKey.page_down, io) || sent
+    sent = send_special(terminal, ImGuiKey.F1, TerminalKey.f1, io) || sent
+    sent = send_special(terminal, ImGuiKey.F2, TerminalKey.f2, io) || sent
+    sent = send_special(terminal, ImGuiKey.F3, TerminalKey.f3, io) || sent
+    sent = send_special(terminal, ImGuiKey.F4, TerminalKey.f4, io) || sent
+    sent = send_special(terminal, ImGuiKey.F5, TerminalKey.f5, io) || sent
+    sent = send_special(terminal, ImGuiKey.F6, TerminalKey.f6, io) || sent
+    sent = send_special(terminal, ImGuiKey.F7, TerminalKey.f7, io) || sent
+    sent = send_special(terminal, ImGuiKey.F8, TerminalKey.f8, io) || sent
+    sent = send_special(terminal, ImGuiKey.F9, TerminalKey.f9, io) || sent
+    sent = send_special(terminal, ImGuiKey.F10, TerminalKey.f10, io) || sent
+    sent = send_special(terminal, ImGuiKey.F11, TerminalKey.f11, io) || sent
+    sent = send_special(terminal, ImGuiKey.F12, TerminalKey.f12, io) || sent
+
+    if (io.KeyCtrl) {
+        if (pressed(ImGuiKey.V)) {
+            var text = ""
+            if (clipboard_get_text(text) == ClipboardStatus.ok) {
+                pasted = terminal_send_paste(terminal, text)
+                sent = pasted || sent
+            }
+        } else {
+            for (letter in range(0, 26)) {
+                if (letter == 2 && state.selection_active) continue
+                let imgui_key = unsafe(reinterpret<ImGuiKey>(int(ImGuiKey.A) + letter))
+                if (pressed(imgui_key)) {
+                    sent = terminal_send_key(terminal, TerminalKeyEvent(
+                        key = TerminalKey.text, text = to_char(65 + letter),
+                        shift = io.KeyShift, alt = io.KeyAlt, control = true)) || sent
+                }
+            }
+        }
+    } else {
+        for (value in io.InputQueueCharacters) {
+            let codepoint = int(value)
+            if (codepoint > 0 && codepoint <= 0x10ffff) {
+                sent = terminal_send_key(terminal, TerminalKeyEvent(
+                    key = TerminalKey.text, text = codepoint_utf8(codepoint),
+                    shift = io.KeyShift, alt = io.KeyAlt,
+                    control = io.KeyCtrl)) || sent
+            }
+        }
+    }
+    if (sent) state.input_revision++
+    return (sent, pasted)
+}
+
+def public imgui_terminal(id : string; terminal : Terminal const;
+                          var state : ImGuiTerminalState;
+                          style : ImGuiTerminalStyle = ImGuiTerminalStyle()) : ImGuiTerminalResult {
+    var result = ImGuiTerminalResult()
+    var snapshot = TerminalSnapshot()
+    terminal_snapshot(terminal, snapshot)
+    var cell_width = style.cell_width
+    if (cell_width <= 0.0f) {
+        cell_width = max(1.0f, CalcTextSize("M", false, -1.0f).x)
+    }
+    var line_height = style.line_height
+    if (line_height <= 0.0f) {
+        line_height = max(1.0f, GetTextLineHeight())
+    }
+    let available = GetContentRegionAvail()
+    let columns = max(1, int(floor(available.x / cell_width)))
+    let rows = max(1, int(floor(available.y / line_height)))
+    if (columns != snapshot.columns || rows != snapshot.rows) {
+        terminal_resize(terminal, columns, rows)
+        terminal_snapshot(terminal, snapshot)
+        state.resize_revision++
+        result.resized = true
+    }
+    state.columns = snapshot.columns
+    state.rows = snapshot.rows
+    result.columns = snapshot.columns
+    result.rows = snapshot.rows
+
+    let origin = GetCursorScreenPos()
+    let extent = float2(cell_width * float(snapshot.columns),
+        line_height * float(snapshot.rows))
+    PushID(id)
+    InvisibleButton("##terminal", extent)
+    let hovered = IsItemHovered(ImGuiHoveredFlags.None)
+    if (hovered && IsMouseClicked(ImGuiMouseButton.Left, false)) {
+        state.focused = true
+    }
+    if (!hovered && IsMouseClicked(ImGuiMouseButton.Left, false)) {
+        state.focused = false
+    }
+    PopID()
+
+    var dl = GetWindowDrawList()
+    *dl |> AddRectFilled(origin, origin + extent, GetColorU32(style.background),
+        0.0f, ImDrawFlags.None)
+    *dl |> PushClipRect(origin, origin + extent, true)
+    let buffer <- snapshot.alternate_active ? snapshot.alternate : snapshot.normal
+    let io & = unsafe(GetIO())
+    if (hovered && io.MouseWheel != 0.0f) {
+        state.scroll_offset = clamp(state.scroll_offset + int(io.MouseWheel * 3.0f),
+            0, buffer.scrollback_rows)
+    } else {
+        state.scroll_offset = clamp(state.scroll_offset, 0, buffer.scrollback_rows)
+    }
+    let visible_start_row = buffer.scrollback_rows - state.scroll_offset
+    let local_mouse = io.MousePos - origin
+    if (hovered && IsMouseClicked(ImGuiMouseButton.Left, false)) {
+        let selected_row = visible_start_row + clamp(
+            int(floor(local_mouse.y / line_height)), 0, snapshot.rows - 1)
+        let selected_column = clamp(
+            int(floor(local_mouse.x / cell_width)), 0, snapshot.columns - 1)
+        state.selection_active = false
+        state.selection_dragging = true
+        state.selection_anchor_row = selected_row
+        state.selection_anchor_column = selected_column
+        state.selection_focus_row = selected_row
+        state.selection_focus_column = selected_column
+        state.selection_revision++
+    } elif (hovered && state.selection_dragging && IsMouseDown(ImGuiMouseButton.Left)) {
+        let selected_row = visible_start_row + clamp(
+            int(floor(local_mouse.y / line_height)), 0, snapshot.rows - 1)
+        let selected_column = clamp(
+            int(floor(local_mouse.x / cell_width)), 0, snapshot.columns - 1)
+        if (selected_row != state.selection_focus_row
+                || selected_column != state.selection_focus_column) {
+            state.selection_active = true
+            state.selection_focus_row = selected_row
+            state.selection_focus_column = selected_column
+            state.selection_revision++
+        }
+    }
+    if (state.selection_dragging && IsMouseReleased(ImGuiMouseButton.Left)) {
+        state.selection_dragging = false
+    }
+    for (cell in buffer.scrollback) {
+        draw_terminal_cell(dl, cell, cell.row, cell.row - visible_start_row,
+            origin, cell_width, line_height, snapshot.columns, state, style)
+    }
+    for (cell in buffer.cells) {
+        let global_row = buffer.scrollback_rows + cell.row
+        draw_terminal_cell(dl, cell, global_row, global_row - visible_start_row,
+            origin, cell_width, line_height, snapshot.columns, state, style)
+    }
+    if (buffer.cursor.visible && state.scroll_offset == 0) {
+        let cp0 = origin + float2(float(buffer.cursor.column) * cell_width,
+            float(buffer.cursor.row) * line_height)
+        *dl |> AddRectFilled(cp0, cp0 + float2(max(1.0f, cell_width * 0.12f), line_height),
+            GetColorU32(style.cursor), 0.0f, ImDrawFlags.None)
+    }
+    *dl |> PopClipRect()
+    if (state.focused) {
+        *dl |> AddRect(origin, origin + extent, GetColorU32(style.focus_border),
+            0.0f, ImDrawFlags.None, 1.0f)
+    }
+    if (state.focused && state.selection_active && io.KeyCtrl && pressed(ImGuiKey.C)) {
+        let copy_text = selected_text(buffer, state, snapshot.columns)
+        result.selection_text := copy_text
+        result.selection_copied = clipboard_set_text(copy_text) == ClipboardStatus.ok
+    }
+    let (sent, pasted) = route_input(terminal, state)
+    result.input_sent = sent
+    result.paste_sent = pasted
+    result.focused = state.focused
+    state.render_revision++
+    return <- result
+}
