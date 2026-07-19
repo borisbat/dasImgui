@@ -170,43 +170,44 @@ def private selected_text(buffer : TerminalBufferSnapshot const;
     let last = max(anchor, focus)
     let first_row = first / columns
     let last_row = last / columns
-    var result = ""
-    for (row in range(first_row, last_row + 1)) {
-        let first_column = row == first_row ? first % columns : 0
-        let last_column = row == last_row ? last % columns : columns - 1
-        var line = ""
-        var continuation_until = -1
-        for (column in range(first_column, last_column + 1)) {
-            if (column < continuation_until) continue
-            var grapheme = " "
-            var width = 1
-            if (row < buffer.scrollback_rows) {
-                for (cell in buffer.scrollback) {
-                    if (cell.row == row && cell.column == column && cell.width > 0) {
-                        grapheme = cell.grapheme
-                        width = cell.width
-                        break
+    return build_string() $(var result) {
+        for (row in range(first_row, last_row + 1)) {
+            let first_column = row == first_row ? first % columns : 0
+            let last_column = row == last_row ? last % columns : columns - 1
+            var continuation_until = -1
+            let line = build_string() $(var line_writer) {
+                for (column in range(first_column, last_column + 1)) {
+                    if (column < continuation_until) continue
+                    var grapheme = " "
+                    var width = 1
+                    if (row < buffer.scrollback_rows) {
+                        for (cell in buffer.scrollback) {
+                            if (cell.row == row && cell.column == column && cell.width > 0) {
+                                grapheme = cell.grapheme
+                                width = cell.width
+                                break
+                            }
+                        }
+                    } else {
+                        let screen_row = row - buffer.scrollback_rows
+                        for (cell in buffer.cells) {
+                            if (cell.row == screen_row && cell.column == column && cell.width > 0) {
+                                grapheme = cell.grapheme
+                                width = cell.width
+                                break
+                            }
+                        }
                     }
-                }
-            } else {
-                let screen_row = row - buffer.scrollback_rows
-                for (cell in buffer.cells) {
-                    if (cell.row == screen_row && cell.column == column && cell.width > 0) {
-                        grapheme = cell.grapheme
-                        width = cell.width
-                        break
-                    }
+                    line_writer |> write(grapheme)
+                    continuation_until = column + max(1, width)
                 }
             }
-            line += grapheme
-            continuation_until = column + max(1, width)
-        }
-        result += line |> rtrim(" ")
-        if (row != last_row) {
-            result += "\n"
+            result |> write(line |> rtrim(" "))
+            if (row != last_row) {
+                result |> write("\n")
+            }
         }
     }
-    return <- result
 }
 
 def public imgui_terminal_clear_selection(var state : ImGuiTerminalState) {
@@ -247,23 +248,28 @@ def public imgui_terminal_paste_clipboard(terminal : Terminal const) : bool {
 }
 
 def private screen_text(buffer : TerminalBufferSnapshot const) : string {
-    var result = ""
-    var line = ""
-    var current_row = 0
-    for (cell in buffer.cells) {
-        while (current_row < cell.row) {
-            result += line |> rtrim(" ")
-            result += "\n"
-            line = ""
-            current_row++
-        }
-        if (cell.width > 0) {
-            line += cell.grapheme
+    if (empty(buffer.cells)) return ""
+    var cell_index = 0
+    let last_row = buffer.cells[length(buffer.cells) - 1].row
+    let result = build_string() $(var result_writer) {
+        for (row in range(0, last_row + 1)) {
+            let line = build_string() $(var line_writer) {
+                while (cell_index < length(buffer.cells)
+                        && buffer.cells[cell_index].row == row) {
+                    let cell = buffer.cells[cell_index]
+                    if (cell.width > 0) {
+                        line_writer |> write(cell.grapheme)
+                    }
+                    cell_index++
+                }
+            }
+            result_writer |> write(line |> rtrim(" "))
+            if (row != last_row) {
+                result_writer |> write("\n")
+            }
         }
     }
-    result += line |> rtrim(" ")
-    result = result |> rtrim("\n")
-    return <- result
+    return result |> rtrim("\n")
 }
 
 def private pressed(key : ImGuiKey) : bool {
