@@ -13,8 +13,6 @@ require strings
 //! First interactive terminal view. Terminal cells remain the layout authority;
 //! glyphs are clipped to the one- or two-cell rectangle assigned by the emulator.
 
-let private TERMINAL_ATTR_HIDDEN = 64
-
 struct public ImGuiTerminalStyle {
     background : float4 = float4(0.035f, 0.043f, 0.055f, 1.0f)
     foreground : float4 = float4(0.83f, 0.85f, 0.88f, 1.0f)
@@ -435,7 +433,7 @@ def private refresh_terminal_cache(terminal : Terminal const; scroll_offset : in
     return true
 }
 
-def public imgui_terminal(id : string; terminal : Terminal const;
+def public imgui_terminal(id : string; var terminal : Terminal;
                           var state : ImGuiTerminalState;
                           var cache : ImGuiTerminalCache;
                           style : ImGuiTerminalStyle = ImGuiTerminalStyle()) : ImGuiTerminalResult {
@@ -622,7 +620,7 @@ def public imgui_terminal(id : string; terminal : Terminal const;
 
 //! Compatibility overload for callers which do not retain a cache. Interactive
 //! terminal hosts should pass a persistent ImGuiTerminalCache.
-def public imgui_terminal(id : string; terminal : Terminal const;
+def public imgui_terminal(id : string; var terminal : Terminal;
                           var state : ImGuiTerminalState;
                           style : ImGuiTerminalStyle = ImGuiTerminalStyle()) : ImGuiTerminalResult {
     var cache = ImGuiTerminalCache()

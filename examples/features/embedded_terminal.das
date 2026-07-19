@@ -9,7 +9,7 @@ require daslib/safe_addr
 require math
 require strings
 
-var private g_terminal : Terminal
+var private g_terminal = Terminal()
 var private g_terminal_view = ImGuiTerminalState()
 var private g_terminal_cache = ImGuiTerminalCache()
 var private g_zoom_percent = 150
