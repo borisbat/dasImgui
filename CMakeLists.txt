@@ -232,6 +232,11 @@ IF(COMMAND ADD_MODULE_CPP)
         GET_FILENAME_COMPONENT(_n "${_f}" NAME_WE)
         ADD_MODULE_DAS(imgui markdown ${_n})
     ENDFOREACH()
+    FILE(GLOB _imgui_terminal_files "${DAS_IMGUI_DIR}/terminal/*.das")
+    FOREACH(_f ${_imgui_terminal_files})
+        GET_FILENAME_COMPONENT(_n "${_f}" NAME_WE)
+        ADD_MODULE_DAS(imgui terminal ${_n})
+    ENDFOREACH()
 
     # Static halves only — no ADD_MODULE_LIB shared twins. In a superbuild the DLL
     # flavor comes from this module's own standalone build (daspkg); the twins would

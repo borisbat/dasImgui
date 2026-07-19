@@ -1358,6 +1358,26 @@ def public register_clickable_bbox(alias_ident : string; id_tag : string; kind :
     g_registry[alias] <- entry
 }
 
+def public register_clickable_state_bbox(alias_ident : string; id_tag : string; kind : string;
+                                         state_addr : void?; ti : TypeInfo const?) {
+    //! Stateful sibling of ``register_clickable_bbox`` for hand-drawn components.
+    //! The geometry remains a real ImGui hit target while ``state_addr``/``ti``
+    //! make the component's semantic state available in ``imgui_snapshot``.
+    let alias = widget_path_key(alias_ident)
+    check_unique_render(alias, kind)
+    var entry = WidgetEntry(kind = kind, hex_id = GetID(id_tag))
+    let rmin = GetItemRectMin()
+    let rmax = GetItemRectMax()
+    capture_item_bbox(entry, float4(rmin.x, rmin.y, rmax.x, rmax.y))
+    entry.hover = IsItemHovered(ImGuiHoveredFlags.None)
+    entry.active = IsItemActive()
+    entry.focus = IsItemFocused()
+    g_id_to_path[entry.hex_id] = alias
+    g_id_to_bbox[entry.hex_id] = entry.bbox
+    g_registry[alias] <- entry
+    widgets_mark_seen(alias_ident, alias, kind, state_addr, ti)
+}
+
 def public register_handle_bbox(tag : string) {
     //! Surface a split/dock drag-handle's geometry as a child alias ``<container>/HANDLE``,
     //! so external drivers and recordings can target a REAL synthetic drag at the handle

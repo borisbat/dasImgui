@@ -6,6 +6,9 @@ All notable changes to dasImgui are documented in this file. Format based on
 ## [Unreleased]
 
 ### Added
+- Embedded PowerShell/ConPTY terminal UI via `imgui/imgui_terminal`, with an
+  accessible docked example, semantic live snapshots, selection and clipboard
+  actions, cursor state, Unicode font fallbacks, and five-percent zoom controls.
 - Shared Unicode text infrastructure: role-based prose/monospace font stacks
   with color emoji, grapheme-safe flow and source views, source-mapped
   CommonMark/GFM documents and Markdown rendering, selectable rich/plain text,

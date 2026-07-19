@@ -254,8 +254,11 @@ jobs:
         # these tests cannot pass. Substring-match against the file basename:
         #   glfw_synth  → test_glfw_synth_keys.das, test_glfw_synth_mouse.das
         #   key_hud     → test_visual_aids_key_hud.das (1 of N subtests is GLFW)
+        #   embedded_terminal → test_embedded_terminal.das (requires the
+        #     Windows-only ConPTY backend and a separately built dasTerminal module)
         # Re-include them when a windowed CI job (or a key-event abstraction
-        # that bypasses GLFW under headless) lands.
+        # that bypasses GLFW under headless) lands, and re-include the terminal
+        # test when Windows CI provisions dasTerminal.
         #
         # Windows-only --exclude entries: libhv's event loop on Windows CI
         # processes at most 16 POST /command connections per subprocess before
@@ -305,5 +308,6 @@ jobs:
             $ISOLATED \
             --exclude glfw_synth \
             --exclude key_hud \
+            --exclude embedded_terminal \
             $EXTRA_EXCLUDES \
             --headless
