@@ -360,7 +360,9 @@ def public imgui_terminal(id : string; terminal : Terminal const;
         state.content_revision++
     }
     let io & = unsafe(GetIO())
-    if (hovered && io.MouseWheel != 0.0f) {
+    // Ctrl+wheel is reserved for application-level terminal zoom, matching
+    // the Markdown viewer. Plain wheel continues to own scrollback.
+    if (hovered && !io.KeyCtrl && io.MouseWheel != 0.0f) {
         state.scroll_offset = clamp(state.scroll_offset + int(io.MouseWheel * 3.0f),
             0, buffer.scrollback_rows)
     } else {

@@ -4,10 +4,13 @@ options persistent_heap
 
 require imgui/imgui_harness
 require imgui/imgui_terminal
+require daslib/safe_addr
+require math
 require strings
 
 var private g_terminal : Terminal
 var private g_terminal_view = ImGuiTerminalState()
+var private g_zoom_percent = 150
 
 def terminal_command() : string {
     let prefix = "--terminal-command="
@@ -20,6 +23,7 @@ def terminal_command() : string {
 [export]
 def init() {
     harness_init("embedded_terminal", 960, 640)
+    harness_maximize_window()
     var inscope launched <- terminal_launch(terminal_command(), "", 100, 30)
     g_terminal := launched
 }
@@ -33,10 +37,34 @@ def update() {
         if (terminal_poll(g_terminal) != TerminalPollStatus.data) break
     }
     harness_new_frame()
-    SetNextWindowPos(float2(20.0f, 20.0f), ImGuiCond.Always)
-    SetNextWindowSize(float2(920.0f, 600.0f), ImGuiCond.Always)
+    GetStyle().FontScaleMain = float(g_zoom_percent) / 100.0f
+    let viewport = GetMainViewport()
+    SetNextWindowPos(viewport.WorkPos, ImGuiCond.Always)
+    SetNextWindowSize(viewport.WorkSize, ImGuiCond.Always)
     window(TERMINAL_WIN, (text = "dasHerd terminal", closable = false,
             flags = ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove)) {
+        let io & = unsafe(GetIO())
+        if (IsWindowHovered(ImGuiHoveredFlags.RootAndChildWindows) && io.KeyCtrl) {
+            if (io.MouseWheel > 0.0f) {
+                g_zoom_percent = min(g_zoom_percent + 10, 300)
+            } elif (io.MouseWheel < 0.0f) {
+                g_zoom_percent = max(g_zoom_percent - 10, 50)
+            }
+        }
+        text("Zoom")
+        same_line()
+        SetNextItemWidth(180.0f)
+        if (edit_slider_int(safe_addr(g_zoom_percent),
+                (id = "TERMINAL_ZOOM_SLIDER", text = "##zoom", v_min = 50,
+                 v_max = 300, format = "%d%%"))) {
+            g_zoom_percent = clamp(((g_zoom_percent + 5) / 10) * 10, 50, 300)
+        }
+        same_line()
+        if (small_button(TERMINAL_ZOOM_RESET, (text = "100%"))) {
+            g_zoom_percent = 100
+        }
+        text_show(TERMINAL_ZOOM, "{g_zoom_percent}")
+        separator()
         let result = imgui_terminal("shell", g_terminal, g_terminal_view)
         text_show(TERMINAL_FOCUS, "{g_terminal_view.focused}")
         text_show(TERMINAL_GEOMETRY,

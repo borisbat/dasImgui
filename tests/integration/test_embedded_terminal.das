@@ -15,6 +15,7 @@ let TERMINAL_FOCUS = "TERMINAL_WIN/TERMINAL_FOCUS"
 let TERMINAL_GEOMETRY = "TERMINAL_WIN/TERMINAL_GEOMETRY"
 let TERMINAL_REVISIONS = "TERMINAL_WIN/TERMINAL_REVISIONS"
 let TERMINAL_SCREEN = "TERMINAL_WIN/TERMINAL_SCREEN"
+let TERMINAL_ZOOM = "TERMINAL_WIN/TERMINAL_ZOOM"
 
 [test]
 def test_embedded_terminal_focus_and_input(t : T?) {
@@ -33,6 +34,8 @@ def test_embedded_terminal_focus_and_input(t : T?) {
             t |> success(contains(value, "x") && !ends_with(value, ":0"),
                 "first layout reports a measured and resized PTY grid")
         }
+        t |> success(wait_for_string_value(d, TERMINAL_ZOOM, "value", "150", 300),
+            "terminal defaults to accessible 150 percent zoom")
 
         click(d, TERMINAL_TARGET)
         t |> success(wait_for_mouse_idle(d), "terminal focus click timeline drains")

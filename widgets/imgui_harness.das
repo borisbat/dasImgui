@@ -183,6 +183,13 @@ def public harness_init(title : string; width : int = 800; height : int = 600) {
     }
 }
 
+def public harness_maximize_window() {
+    //! Maximize the native GLFW window. Headless runs intentionally no-op.
+    if (!harness_is_headless() && live_window != null) {
+        glfwMaximizeWindow(live_window)
+    }
+}
+
 def public harness_begin_frame() : bool {
     //! Returns false to skip update (window closed in windowed mode; auto-exit
     //! cap reached in headless). Windowed: ``live_begin_frame`` + ``begin_frame``
