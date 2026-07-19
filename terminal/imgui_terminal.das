@@ -47,6 +47,15 @@ struct public ImGuiTerminalState {
     selection_revision : int
 }
 
+//! Cell projection cache kept separate from ImGuiTerminalState so live
+//! inspection remains concise. Rebuilds only when terminal content, geometry,
+//! active buffer, or scroll position changes.
+struct public ImGuiTerminalCache {
+    terminal_revision : int64 = -1l
+    scroll_offset : int = -1
+    snapshot : TerminalViewportSnapshot = TerminalViewportSnapshot()
+}
+
 struct public ImGuiTerminalResult {
     focused : bool
     resized : bool
@@ -351,12 +360,25 @@ def private route_input(terminal : Terminal const;
     return (sent, pasted)
 }
 
+def private refresh_terminal_cache(terminal : Terminal const; scroll_offset : int;
+                                   var cache : ImGuiTerminalCache) : bool {
+    let revision = terminal_revision(terminal)
+    if (cache.terminal_revision == revision && cache.scroll_offset == scroll_offset) {
+        return false
+    }
+    terminal_viewport_snapshot(terminal, scroll_offset, cache.snapshot)
+    cache.terminal_revision = cache.snapshot.revision
+    cache.scroll_offset = clamp(scroll_offset, 0, cache.snapshot.buffer.scrollback_rows)
+    return true
+}
+
 def public imgui_terminal(id : string; terminal : Terminal const;
                           var state : ImGuiTerminalState;
+                          var cache : ImGuiTerminalCache;
                           style : ImGuiTerminalStyle = ImGuiTerminalStyle()) : ImGuiTerminalResult {
     var result = ImGuiTerminalResult()
-    var snapshot = TerminalSnapshot()
-    terminal_snapshot(terminal, snapshot)
+    var snapshot_changed = refresh_terminal_cache(terminal, state.scroll_offset, cache)
+    var snapshot & = unsafe(cache.snapshot)
     var cell_width = style.cell_width
     if (cell_width <= 0.0f) {
         cell_width = max(1.0f, CalcTextSize("M", false, -1.0f).x)
@@ -373,7 +395,9 @@ def public imgui_terminal(id : string; terminal : Terminal const;
     let rows = max(1, int(floor(available.y / line_height)))
     if (columns != snapshot.columns || rows != snapshot.rows) {
         terminal_resize(terminal, columns, rows)
-        terminal_snapshot(terminal, snapshot)
+        if (refresh_terminal_cache(terminal, state.scroll_offset, cache)) {
+            snapshot_changed = true
+        }
         state.resize_revision++
         result.resized = true
     }
@@ -407,19 +431,25 @@ def public imgui_terminal(id : string; terminal : Terminal const;
     *dl |> AddRectFilled(origin, origin + extent, GetColorU32(style.background),
         0.0f, ImDrawFlags.None)
     *dl |> PushClipRect(origin, origin + extent, true)
-    let buffer <- snapshot.alternate_active ? snapshot.alternate : snapshot.normal
+    var buffer & = unsafe(snapshot.buffer)
     state.scrollback_rows = buffer.scrollback_rows
-    let current_screen_text = screen_text(buffer)
-    if (current_screen_text != state.screen_text) {
-        state.screen_text = current_screen_text
-        state.content_revision++
+    if (snapshot_changed) {
+        let current_screen_text = screen_text(buffer)
+        if (current_screen_text != state.screen_text) {
+            state.screen_text = current_screen_text
+            state.content_revision++
+        }
     }
     let io & = unsafe(GetIO())
     // Ctrl+wheel is reserved for application-level terminal zoom, matching
     // the Markdown viewer. Plain wheel continues to own scrollback.
     if (hovered && !io.KeyCtrl && io.MouseWheel != 0.0f) {
+        let old_scroll_offset = state.scroll_offset
         state.scroll_offset = clamp(state.scroll_offset + int(io.MouseWheel * 3.0f),
             0, buffer.scrollback_rows)
+        if (state.scroll_offset != old_scroll_offset) {
+            let _ = refresh_terminal_cache(terminal, state.scroll_offset, cache)
+        }
     } else {
         state.scroll_offset = clamp(state.scroll_offset, 0, buffer.scrollback_rows)
     }
@@ -479,7 +509,10 @@ def public imgui_terminal(id : string; terminal : Terminal const;
             0.0f, ImDrawFlags.None, 1.0f)
     }
     if (state.focused && state.selection_active && io.KeyCtrl && pressed(ImGuiKey.C)) {
-        let copy_text = selected_text(buffer, state, snapshot.columns)
+        var copy_snapshot = TerminalSnapshot()
+        terminal_snapshot(terminal, copy_snapshot)
+        let copy_buffer <- copy_snapshot.alternate_active ? copy_snapshot.alternate : copy_snapshot.normal
+        let copy_text = selected_text(copy_buffer, state, copy_snapshot.columns)
         result.selection_text = copy_text
         result.selection_copied = clipboard_set_text(copy_text) == ClipboardStatus.ok
     }
@@ -489,4 +522,13 @@ def public imgui_terminal(id : string; terminal : Terminal const;
     result.focused = state.focused
     state.render_revision++
     return <- result
+}
+
+//! Compatibility overload for callers which do not retain a cache. Interactive
+//! terminal hosts should pass a persistent ImGuiTerminalCache.
+def public imgui_terminal(id : string; terminal : Terminal const;
+                          var state : ImGuiTerminalState;
+                          style : ImGuiTerminalStyle = ImGuiTerminalStyle()) : ImGuiTerminalResult {
+    var cache = ImGuiTerminalCache()
+    return <- imgui_terminal(id, terminal, state, cache, style)
 }

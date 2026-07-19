@@ -11,6 +11,7 @@ require strings
 
 var private g_terminal : Terminal
 var private g_terminal_view = ImGuiTerminalState()
+var private g_terminal_cache = ImGuiTerminalCache()
 var private g_zoom_percent = 150
 var private g_terminal_font : ImFont?
 var private g_font_sources : array<string>
@@ -65,7 +66,8 @@ def update() {
                 GetContentRegionAvail().y - GetFrameHeightWithSpacing()
                     - GetStyle().ItemSpacing.y))
         with_font(g_terminal_font) {
-            let _ = imgui_terminal("shell", g_terminal, g_terminal_view, terminal_style)
+            let _ = imgui_terminal("shell", g_terminal, g_terminal_view,
+                g_terminal_cache, terminal_style)
         }
         separator()
         if (small_button(TERMINAL_EDIT_MENU, (text = "Edit"))) {
