@@ -252,8 +252,12 @@ IF(COMMAND ADD_MODULE_CPP)
             ${DAS_IMGUI_GLFW_ROOT}/src
             ${DAS_IMGUI_CLIPBOARD_ROOT}/src
         )
-        TARGET_COMPILE_DEFINITIONS(${imgui_mod_lib} PRIVATE
-            ${DAS_IMGUI_COMMON_DEFS}
+        # Dear ImGui compile-time options are part of its public C++ ABI.
+        # Publish them so superbuild consumers such as ImPlot use the same
+        # ImWchar width and feature configuration as libDasModuleImgui.
+        TARGET_COMPILE_DEFINITIONS(${imgui_mod_lib}
+            PUBLIC ${DAS_IMGUI_COMMON_DEFS}
+            PRIVATE
             IMGUI_IMPL_OPENGL_LOADER_GL3W
             # dasGlfw's binding TU owns typeFactory<GLFWwindow> in a superbuild link
             DAS_IMGUI_APP_EXTERN_GLFW_TYPE_FACTORY=1)
