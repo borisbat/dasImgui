@@ -48,6 +48,17 @@ struct public MarkdownViewStyle {
     image_border : float4 = float4(0.31f, 0.55f, 0.40f, 1.0f)
     code_color : float4 = float4(0.94f, 0.80f, 0.55f, 1.0f)
     code_background : float4 = float4(0.10f, 0.11f, 0.14f, 1.0f)
+    syntax_comment_color : float4 = float4(0.48f, 0.62f, 0.50f, 1.0f)
+    syntax_string_color : float4 = float4(0.78f, 0.67f, 0.45f, 1.0f)
+    syntax_number_color : float4 = float4(0.70f, 0.58f, 0.86f, 1.0f)
+    syntax_keyword_color : float4 = float4(0.78f, 0.48f, 0.68f, 1.0f)
+    syntax_type_color : float4 = float4(0.42f, 0.72f, 0.74f, 1.0f)
+    syntax_function_color : float4 = float4(0.48f, 0.68f, 0.92f, 1.0f)
+    syntax_variable_color : float4 = float4(0.86f, 0.87f, 0.89f, 1.0f)
+    syntax_property_color : float4 = float4(0.60f, 0.76f, 0.90f, 1.0f)
+    syntax_constant_color : float4 = float4(0.72f, 0.61f, 0.88f, 1.0f)
+    syntax_operator_color : float4 = float4(0.76f, 0.78f, 0.82f, 1.0f)
+    syntax_punctuation_color : float4 = float4(0.62f, 0.65f, 0.70f, 1.0f)
     selection_color : float4 = float4(0.24f, 0.48f, 0.78f, 0.55f)
     quote_color : float4 = float4(0.42f, 0.47f, 0.56f, 1.0f)
     marker_color : float4 = float4(0.70f, 0.73f, 0.78f, 1.0f)
@@ -121,6 +132,34 @@ struct public MarkdownImageBinding {
     tint_color : float4 = float4(1.0f, 1.0f, 1.0f, 1.0f)
 }
 
+enum public MarkdownSyntaxStyle {
+    comment
+    string_
+    number
+    keyword
+    type_
+    function_
+    variable
+    property
+    constant
+    operator_
+    punctuation
+}
+
+struct public MarkdownSyntaxToken {
+    start_byte : int
+    end_byte : int
+    style : MarkdownSyntaxStyle
+}
+
+struct public MarkdownSyntaxBinding {
+    //! View-independent token projection for one code block. Token ranges are
+    //! relative to that block's displayed text, not the outer Markdown source.
+    document_revision : int = -1
+    node_index : int = -1
+    tokens : array<MarkdownSyntaxToken>
+}
+
 struct public MarkdownLayoutKey {
     max_width : float
     line_height : float
@@ -131,6 +170,7 @@ struct public MarkdownLayoutKey {
     forced_style : int
     show_link_copy : bool
     image_layout_revision : int = 0
+    syntax_layout_revision : int = 0
     regular_id : uint64 = 0uL
     bold_id : uint64 = 0uL
     italic_id : uint64 = 0uL
@@ -166,6 +206,8 @@ struct public MarkdownViewState {
     nodes : array<MarkdownNodeViewCache>
     image_bindings : array<MarkdownImageBinding>
     image_bindings_revision : int = 0
+    syntax_bindings : array<MarkdownSyntaxBinding>
+    syntax_bindings_revision : int = 0
     content_hits : int = 0
     content_misses : int = 0
     layout_hits : int = 0
@@ -370,11 +412,69 @@ def public markdown_view_clear_images(var state : MarkdownViewState) {
     state.image_bindings_revision++
 }
 
+def private syntax_binding_index(state : MarkdownViewState const;
+                                 document_revision, node_index : int) : int {
+    for (i in range(length(state.syntax_bindings))) {
+        let binding & = unsafe(state.syntax_bindings[i])
+        if (binding.document_revision == document_revision
+                && binding.node_index == node_index) return i
+    }
+    return -1
+}
+
+def public markdown_view_syntax_bound(state : MarkdownViewState const;
+                                      document_revision, node_index : int) : bool {
+    return syntax_binding_index(state, document_revision, node_index) >= 0
+}
+
+def public markdown_view_syntax_token_count(state : MarkdownViewState const;
+                                            document_revision, node_index : int) : int {
+    let index = syntax_binding_index(state, document_revision, node_index)
+    return index >= 0 ? length(state.syntax_bindings[index].tokens) : 0
+}
+
+def public markdown_view_bind_syntax(var state : MarkdownViewState;
+                                     document_revision, node_index : int;
+                                     tokens : array<MarkdownSyntaxToken> const) : bool {
+    //! Install a deterministic token snapshot. Parsers remain optional and
+    //! external to the Markdown renderer; the renderer owns its copied view.
+    if (document_revision < 0 || node_index < 0) return false
+    let index = syntax_binding_index(state, document_revision, node_index)
+    if (index >= 0) {
+        return false
+    }
+    var binding = MarkdownSyntaxBinding(
+        document_revision = document_revision, node_index = node_index)
+    binding.tokens := tokens
+    state.syntax_bindings |> emplace(binding)
+    state.syntax_bindings_revision++
+    return true
+}
+
+def public markdown_view_unbind_syntax(var state : MarkdownViewState;
+                                       document_revision, node_index : int) : bool {
+    let index = syntax_binding_index(state, document_revision, node_index)
+    if (index < 0) return false
+    delete state.syntax_bindings[index].tokens
+    state.syntax_bindings |> erase(index)
+    state.syntax_bindings_revision++
+    return true
+}
+
+def public markdown_view_clear_syntax(var state : MarkdownViewState) {
+    for (i in range(length(state.syntax_bindings))) {
+        delete state.syntax_bindings[i].tokens
+    }
+    delete state.syntax_bindings
+    state.syntax_bindings_revision++
+}
+
 def public markdown_view_dispose(var state : MarkdownViewState) {
     //! Release a caller-owned view state during application shutdown.
     markdown_view_invalidate(state)
     unsafe { delete state.nodes }
     delete state.image_bindings
+    markdown_view_clear_syntax(state)
     state = MarkdownViewState()
 }
 
@@ -395,6 +495,34 @@ def private retain_image_bindings(var state : MarkdownViewState;
     }
 }
 
+def private retain_syntax_bindings(var state : MarkdownViewState;
+                                   document_revision : int) {
+    var retained : array<MarkdownSyntaxBinding>
+    for (binding_index in range(length(state.syntax_bindings))) {
+        let binding & = unsafe(state.syntax_bindings[binding_index])
+        if (binding.document_revision == document_revision) {
+            var copy = MarkdownSyntaxBinding(
+                document_revision = binding.document_revision,
+                node_index = binding.node_index)
+            copy.tokens := binding.tokens
+            retained |> emplace(copy)
+        }
+    }
+    if (length(retained) != length(state.syntax_bindings)) {
+        for (i in range(length(state.syntax_bindings))) {
+            delete state.syntax_bindings[i].tokens
+        }
+        delete state.syntax_bindings
+        state.syntax_bindings <- retained
+        state.syntax_bindings_revision++
+    } else {
+        for (i in range(length(retained))) {
+            delete retained[i].tokens
+        }
+        delete retained
+    }
+}
+
 def private prepare_view_state(doc : RichDocument const;
                                var state : MarkdownViewState;
                                document_revision : int) {
@@ -402,6 +530,7 @@ def private prepare_view_state(doc : RichDocument const;
     if (state.document_revision == document_revision
             && state.node_count == count && length(state.nodes) == count) return
     retain_image_bindings(state, document_revision)
+    retain_syntax_bindings(state, document_revision)
     markdown_view_invalidate(state)
     if (length(state.nodes) != count) {
         unsafe {
@@ -434,6 +563,20 @@ def private view_zoom(style : MarkdownViewStyle const) : float {
 
 def private zoomed(style : MarkdownViewStyle const; value : float) : float {
     return value * view_zoom(style)
+}
+
+def private syntax_color(style_id : int; style : MarkdownViewStyle const) : float4 {
+    if (style_id == int(MarkdownSyntaxStyle.comment)) return style.syntax_comment_color
+    if (style_id == int(MarkdownSyntaxStyle.string_)) return style.syntax_string_color
+    if (style_id == int(MarkdownSyntaxStyle.number)) return style.syntax_number_color
+    if (style_id == int(MarkdownSyntaxStyle.keyword)) return style.syntax_keyword_color
+    if (style_id == int(MarkdownSyntaxStyle.type_)) return style.syntax_type_color
+    if (style_id == int(MarkdownSyntaxStyle.function_)) return style.syntax_function_color
+    if (style_id == int(MarkdownSyntaxStyle.variable)) return style.syntax_variable_color
+    if (style_id == int(MarkdownSyntaxStyle.property)) return style.syntax_property_color
+    if (style_id == int(MarkdownSyntaxStyle.constant)) return style.syntax_constant_color
+    if (style_id == int(MarkdownSyntaxStyle.operator_)) return style.syntax_operator_color
+    return style.syntax_punctuation_color
 }
 
 def private run_style(run : RichInlineRun const) : int {
@@ -816,6 +959,7 @@ def private same_layout_key(a, b : MarkdownLayoutKey) : bool {
         && a.forced_style == b.forced_style
         && a.show_link_copy == b.show_link_copy
         && a.image_layout_revision == b.image_layout_revision
+        && a.syntax_layout_revision == b.syntax_layout_revision
         && a.regular_id == b.regular_id && a.bold_id == b.bold_id
         && a.italic_id == b.italic_id && a.bold_italic_id == b.bold_italic_id
         && a.monospace_id == b.monospace_id && a.fallback_id == b.fallback_id)
@@ -834,6 +978,8 @@ def private ensure_layout(doc : RichDocument const; node_index : int;
     delete entry.layout.lines
     delete entry.layout.fragments
     var spans : array<TextFlowSpan>
+    let syntax_index = syntax_binding_index(
+        state, state.document_revision, node_index)
     for (i in range(length(entry.content.runs))) {
         let run = entry.content.runs[i]
         let semantic_id = run_semantic_id(doc, run, i)
@@ -854,21 +1000,50 @@ def private ensure_layout(doc : RichDocument const; node_index : int;
                     binding.display_size.y * zoom)
             }
         }
-        spans |> push(TextFlowSpan(
-            source = run.display,
-            style_id = run_style(run) | key.forced_style,
-            semantic_id = semantic_id,
-            uri_wrap = run.is_link,
-            leading_control_id = run.is_image ? semantic_id : -1,
-            leading_control_kind = run.is_image ? CONTROL_IMAGE_PLACEHOLDER : 0,
-            leading_control_size = run.is_image
-                ? image_size : float2(0.0f, 0.0f),
-            trailing_control_id = key.show_link_copy && is_last_semantic
-                ? semantic_id : -1,
-            trailing_control_kind = key.show_link_copy && is_last_semantic
-                ? CONTROL_COPY_URI : 0,
-            trailing_control_size = key.show_link_copy && is_last_semantic
-                ? key.icon_size : float2(0.0f, 0.0f)))
+        if (syntax_index >= 0 && !run.is_link && !run.is_image) {
+            var cursor = run.display.start_byte
+            for (token in state.syntax_bindings[syntax_index].tokens) {
+                let a = max(run.display.start_byte, token.start_byte)
+                let b = min(run.display.end_byte, token.end_byte)
+                if (b <= a || b <= cursor) continue
+                let token_start = max(a, cursor)
+                if (token_start > cursor) {
+                    spans |> push(TextFlowSpan(
+                        source = TextSourceRange(start_byte = cursor, end_byte = token_start),
+                        style_id = run_style(run) | key.forced_style,
+                        semantic_id = semantic_id))
+                }
+                spans |> push(TextFlowSpan(
+                    source = TextSourceRange(start_byte = token_start, end_byte = b),
+                    style_id = run_style(run) | key.forced_style,
+                    semantic_id = semantic_id,
+                    syntax_style_id = int(token.style)))
+                cursor = max(cursor, b)
+            }
+            if (cursor < run.display.end_byte) {
+                spans |> push(TextFlowSpan(
+                    source = TextSourceRange(
+                        start_byte = cursor, end_byte = run.display.end_byte),
+                    style_id = run_style(run) | key.forced_style,
+                    semantic_id = semantic_id))
+            }
+        } else {
+            spans |> push(TextFlowSpan(
+                source = run.display,
+                style_id = run_style(run) | key.forced_style,
+                semantic_id = semantic_id,
+                uri_wrap = run.is_link,
+                leading_control_id = run.is_image ? semantic_id : -1,
+                leading_control_kind = run.is_image ? CONTROL_IMAGE_PLACEHOLDER : 0,
+                leading_control_size = run.is_image
+                    ? image_size : float2(0.0f, 0.0f),
+                trailing_control_id = key.show_link_copy && is_last_semantic
+                    ? semantic_id : -1,
+                trailing_control_kind = key.show_link_copy && is_last_semantic
+                    ? CONTROL_COPY_URI : 0,
+                trailing_control_size = key.show_link_copy && is_last_semantic
+                    ? key.icon_size : float2(0.0f, 0.0f)))
+        }
     }
     entry.layout <- layout_text_flow_styled_ranges(entry.content.text, spans,
         key.max_width, key.line_height) $(text : string; start_byte : int; end_byte : int;
@@ -925,6 +1100,7 @@ def private render_inline(doc : RichDocument const; node_index : int;
         forced_style = forced_style,
         show_link_copy = style.show_link_copy,
         image_layout_revision = image_layout_revision,
+        syntax_layout_revision = state.syntax_bindings_revision,
         regular_id = unsafe(reinterpret<uint64>(style.fonts.regular)),
         bold_id = unsafe(reinterpret<uint64>(style.fonts.bold)),
         italic_id = unsafe(reinterpret<uint64>(style.fonts.italic)),
@@ -1134,6 +1310,8 @@ def private render_inline(doc : RichDocument const; node_index : int;
         var color = style.text_color
         if (has_style(fragment.style_id, STYLE_LINK)) {
             color = hot_link ? style.link_hover_color : style.link_color
+        } elif (fragment.syntax_style_id >= 0) {
+            color = syntax_color(fragment.syntax_style_id, style)
         } elif (has_style(fragment.style_id, STYLE_CODE)) {
             color = style.code_color
         } elif (has_style(fragment.style_id, STYLE_STRONG)) {

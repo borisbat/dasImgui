@@ -15,9 +15,27 @@ bitfield public TextSourceStyles {
     bold
 }
 
+enum public TextSourceSyntaxStyle {
+    none
+    comment
+    string_
+    number
+    keyword
+    type_
+    function_
+    variable
+    property
+    constant
+    operator_
+    punctuation
+}
+
 struct public TextSourceSpan {
     source : TextSourceRange
     styles : TextSourceStyles
+    //! Optional parser-neutral syntax role. Providers such as Tree-sitter
+    //! populate this without coupling the source model to a parser runtime.
+    syntax_style : TextSourceSyntaxStyle = TextSourceSyntaxStyle.none
 }
 
 struct public TextSourceDocument {
@@ -30,6 +48,16 @@ struct public TextSourceDocument {
 def public text_source_document_dispose(var document : TextSourceDocument) {
     delete document.spans
     document = TextSourceDocument()
+}
+
+def public plain_source_document(source : string;
+                                 revision : int = 0) : TextSourceDocument {
+    var document = TextSourceDocument(source = source, revision = revision)
+    if (!empty(source)) {
+        document.spans |> push(TextSourceSpan(
+            source = TextSourceRange(start_byte = 0, end_byte = length(source))))
+    }
+    return <- document
 }
 
 def private ascii_markdown_delimiter(b : uint) : bool {

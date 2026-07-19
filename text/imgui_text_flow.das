@@ -34,6 +34,9 @@ struct public TextFlowSpan {
     source : TextSourceRange
     style_id : int
     semantic_id : int = -1
+    //! Optional syntax/theme role supplied by a language provider. The flow
+    //! core preserves this opaque value without depending on any parser.
+    syntax_style_id : int = -1
 
     //! Adds URI-friendly opportunities after '/', '?', '&', '#', '=', '-',
     //! '_', '.', ':', and '%'. Natural whitespace wrapping remains enabled.
@@ -56,6 +59,7 @@ struct public TextFlowFragment {
     source : TextSourceRange
     style_id : int
     semantic_id : int
+    syntax_style_id : int = -1
     line_index : int
     rect : float4                 //!< local (x0, y0, x1, y1)
     control_id : int = -1
@@ -108,6 +112,7 @@ struct private TextFlowUnit {
     source : TextSourceRange
     style_id : int
     semantic_id : int
+    syntax_style_id : int
     width : float
     height : float
     break_after : bool
@@ -549,6 +554,7 @@ def private make_units(source : string; spans : array<TextFlowSpan> const;
                 source = TextSourceRange(start_byte = a, end_byte = a),
                 style_id = span.style_id,
                 semantic_id = span.semantic_id,
+                syntax_style_id = span.syntax_style_id,
                 width = span.leading_control_size.x,
                 height = max(line_height, span.leading_control_size.y),
                 break_after = false,
@@ -570,6 +576,7 @@ def private make_units(source : string; spans : array<TextFlowSpan> const;
                 source = TextSourceRange(start_byte = ga, end_byte = gb),
                 style_id = span.style_id,
                 semantic_id = span.semantic_id,
+                syntax_style_id = span.syntax_style_id,
                 width = measured_width,
                 height = line_height,
                 break_after = natural_break_after(g.last_codepoint)
@@ -582,6 +589,7 @@ def private make_units(source : string; spans : array<TextFlowSpan> const;
                 source = TextSourceRange(start_byte = b, end_byte = b),
                 style_id = span.style_id,
                 semantic_id = span.semantic_id,
+                syntax_style_id = span.syntax_style_id,
                 width = span.trailing_control_size.x,
                 height = max(line_height, span.trailing_control_size.y),
                 break_after = true,
@@ -614,6 +622,7 @@ def private push_fragment(var layout : TextFlowLayout; units : array<TextFlowUni
             end_byte = units[end_ - 1].source.end_byte),
         style_id = u0.style_id,
         semantic_id = u0.semantic_id,
+        syntax_style_id = u0.syntax_style_id,
         line_index = line_index,
         rect = float4(x, rect_y, x + width, rect_y + rect_h),
         control_id = u0.control_id,
@@ -643,6 +652,7 @@ def private emit_line(var layout : TextFlowLayout; units : array<TextFlowUnit> c
         if (i > fragment_start) {
             same = (!a.is_control && !b.is_control
                 && a.style_id == b.style_id && a.semantic_id == b.semantic_id
+                && a.syntax_style_id == b.syntax_style_id
                 && units[i - 1].source.end_byte == b.source.start_byte)
         }
         if (i > fragment_start && !same) {
