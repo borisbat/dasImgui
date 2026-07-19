@@ -13,6 +13,8 @@ require strings
 //! First interactive terminal view. Terminal cells remain the layout authority;
 //! glyphs are clipped to the one- or two-cell rectangle assigned by the emulator.
 
+let private TERMINAL_ATTR_HIDDEN = 64
+
 struct public ImGuiTerminalStyle {
     background : float4 = float4(0.035f, 0.043f, 0.055f, 1.0f)
     foreground : float4 = float4(0.83f, 0.85f, 0.88f, 1.0f)
@@ -45,6 +47,17 @@ struct public ImGuiTerminalState {
     selection_focus_row : int
     selection_focus_column : int
     selection_revision : int
+    paint_cells : int
+    paint_special_cells : int
+    paint_glyph_cells : int
+    paint_text_runs : int
+    paint_batched_cells : int
+    perf_cache_refreshed : bool
+    perf_snapshot_us : int
+    perf_run_build_us : int
+    perf_chrome_us : int
+    perf_text_us : int
+    perf_terminal_us : int
 }
 
 //! Cell projection cache kept separate from ImGuiTerminalState so live
@@ -54,6 +67,9 @@ struct public ImGuiTerminalCache {
     terminal_revision : int64 = -1l
     scroll_offset : int = -1
     snapshot : TerminalViewportSnapshot = TerminalViewportSnapshot()
+    refreshed : bool
+    snapshot_us : int
+    run_build_us : int
 }
 
 struct public ImGuiTerminalResult {
@@ -124,29 +140,22 @@ def private resolve_color(color : TerminalColor const; fallback : float4) : floa
     return fallback
 }
 
-def private is_selected(state : ImGuiTerminalState const; columns, row, column, width : int) : bool {
-    if (!state.selection_active) return false
-    let anchor = state.selection_anchor_row * columns + state.selection_anchor_column
-    let focus = state.selection_focus_row * columns + state.selection_focus_column
-    let first = min(anchor, focus)
-    let last = max(anchor, focus) + 1
-    let cell_first = row * columns + column
-    let cell_last = cell_first + max(1, width)
-    return cell_last > first && cell_first < last
-}
-
-def private draw_terminal_cell(var dl : ImDrawList?; cell : TerminalCell const;
-                               global_row, display_row : int;
-                               origin : float2; cell_width, line_height : float;
-                               columns : int; state : ImGuiTerminalState const;
-                               style : ImGuiTerminalStyle const) {
-    if (cell.width == 0 || display_row < 0 || display_row >= state.rows) return
+def private draw_terminal_cell_chrome(var dl : ImDrawList?; cell : TerminalCell const;
+                                      display_row, rows : int;
+                                      origin : float2; cell_width, line_height : float;
+                                      style : ImGuiTerminalStyle const) {
+    if (cell.width == 0 || display_row < 0 || display_row >= rows) return
+    let inverse = (cell.attributes & 32) != 0
+    let underline = (cell.attributes & 8) != 0
+    let strike = (cell.attributes & 128) != 0
+    if (!inverse && !underline && !strike
+            && cell.background.kind == TerminalColorKind.default_color) return
     let p0 = origin + float2(float(cell.column) * cell_width,
         float(display_row) * line_height)
     let p1 = p0 + float2(cell_width * float(max(1, cell.width)), line_height)
     var fg = resolve_color(cell.foreground, style.foreground)
     var bg = resolve_color(cell.background, style.background)
-    if ((cell.attributes & 32) != 0) {
+    if (inverse) {
         let swap = fg
         fg = bg
         bg = swap
@@ -154,20 +163,107 @@ def private draw_terminal_cell(var dl : ImDrawList?; cell : TerminalCell const;
     if (bg != style.background) {
         *dl |> AddRectFilled(p0, p1, GetColorU32(bg), 0.0f, ImDrawFlags.None)
     }
-    if (is_selected(state, columns, global_row, cell.column, cell.width)) {
-        *dl |> AddRectFilled(p0, p1, GetColorU32(style.selection), 0.0f, ImDrawFlags.None)
-    }
-    if ((cell.attributes & 64) == 0 && cell.grapheme != " " && cell.grapheme != "") {
-        *dl |> AddText(p0, GetColorU32(fg), cell.grapheme)
-    }
-    if ((cell.attributes & 8) != 0) {
+    if (underline) {
         *dl |> AddLine(float2(p0.x, p1.y - 1.0f), float2(p1.x, p1.y - 1.0f),
             GetColorU32(fg), 1.0f)
     }
-    if ((cell.attributes & 128) != 0) {
+    if (strike) {
         let y = p0.y + line_height * 0.55f
         *dl |> AddLine(float2(p0.x, y), float2(p1.x, y), GetColorU32(fg), 1.0f)
     }
+}
+
+def private draw_terminal_selection(var dl : ImDrawList?;
+                                    state : ImGuiTerminalState const;
+                                    columns, rows, visible_start_row : int;
+                                    origin : float2; cell_width, line_height : float;
+                                    style : ImGuiTerminalStyle const) {
+    if (!state.selection_active) return
+    let anchor = state.selection_anchor_row * columns + state.selection_anchor_column
+    let focus = state.selection_focus_row * columns + state.selection_focus_column
+    let first = min(anchor, focus)
+    let last = max(anchor, focus) + 1
+    for (display_row in range(0, rows)) {
+        let row_first = (visible_start_row + display_row) * columns
+        let overlap_first = max(first, row_first)
+        let overlap_last = min(last, row_first + columns)
+        if (overlap_last <= overlap_first) continue
+        let first_column = overlap_first - row_first
+        let last_column = overlap_last - row_first
+        let p0 = origin + float2(float(first_column) * cell_width,
+            float(display_row) * line_height)
+        let p1 = origin + float2(float(last_column) * cell_width,
+            float(display_row + 1) * line_height)
+        *dl |> AddRectFilled(p0, p1, GetColorU32(style.selection), 0.0f, ImDrawFlags.None)
+    }
+}
+
+def private batchable_ascii(cell : TerminalCell const) : bool {
+    // Text runs carry color only. Styled and linked ASCII stays on the sparse
+    // cell path so its attributes and OSC 8 metadata are not discarded.
+    if (cell.width != 1 || cell.attributes != 0 || cell.hyperlink != ""
+            || length(cell.grapheme) != 1) {
+        return false
+    }
+    let value = cell.grapheme |> character_at(0) // nolint:PERF003 one byte per cached cell
+    return value >= 32 && value <= 126
+}
+
+def private draw_terminal_text_runs(var dl : ImDrawList?;
+                                    runs : array<TerminalTextRun> const;
+                                    visible_start_row : int; origin : float2;
+                                    cell_width, line_height : float;
+                                    style : ImGuiTerminalStyle const;
+                                    var state : ImGuiTerminalState) {
+    for (run in runs) {
+        let display_row = run.global_row - visible_start_row
+        if (display_row < 0 || display_row >= state.rows) continue
+        let fallback = run.default_is_background ? style.background : style.foreground
+        let color = resolve_color(run.color, fallback)
+        let p0 = origin + float2(float(run.column) * cell_width,
+            float(display_row) * line_height)
+        *dl |> AddText(p0, GetColorU32(color), run.text)
+        state.paint_text_runs++
+        state.paint_glyph_cells += run.glyph_cells
+        state.paint_batched_cells += run.glyph_cells
+    }
+}
+
+def private draw_terminal_fallback_cells(var dl : ImDrawList?;
+                                         cells : array<TerminalCell> const; row_base : int;
+                                         visible_start_row : int; origin : float2;
+                                         cell_width, line_height : float;
+                                         style : ImGuiTerminalStyle const;
+                                         var state : ImGuiTerminalState) {
+    for (cell in cells) {
+        if (batchable_ascii(cell) || cell.width == 0 || cell.grapheme == ""
+                || cell.grapheme == " "
+                || (cell.attributes & TERMINAL_ATTR_HIDDEN) != 0) continue
+        let global_row = row_base + cell.row
+        let display_row = global_row - visible_start_row
+        if (display_row < 0 || display_row >= state.rows) continue
+        let inverse = (cell.attributes & 32) != 0
+        let color = (inverse
+            ? resolve_color(cell.background, style.background)
+            : resolve_color(cell.foreground, style.foreground))
+        let p0 = origin + float2(float(cell.column) * cell_width,
+            float(display_row) * line_height)
+        *dl |> AddText(p0, GetColorU32(color), cell.grapheme)
+        state.paint_text_runs++
+        state.paint_glyph_cells++
+    }
+}
+
+def private selected_cell(cells : array<TerminalCell> const;
+                          row, column, columns : int) : tuple<string; int> {
+    //! Full terminal snapshots are canonical dense row-major projections.
+    //! Preserve a defensive coordinate check so malformed external snapshots
+    //! still produce a blank cell instead of returning the wrong grapheme.
+    let index = row * columns + column
+    if (index < 0 || index >= length(cells)) return (" ", 1)
+    let cell = cells[index]
+    if (cell.row != row || cell.column != column || cell.width <= 0) return (" ", 1)
+    return (cell.grapheme, max(1, cell.width))
 }
 
 def private selected_text(buffer : TerminalBufferSnapshot const;
@@ -187,28 +283,17 @@ def private selected_text(buffer : TerminalBufferSnapshot const;
             let line = build_string() $(var line_writer) {
                 for (column in range(first_column, last_column + 1)) {
                     if (column < continuation_until) continue
-                    var grapheme = " "
-                    var width = 1
                     if (row < buffer.scrollback_rows) {
-                        for (cell in buffer.scrollback) {
-                            if (cell.row == row && cell.column == column && cell.width > 0) {
-                                grapheme = cell.grapheme
-                                width = cell.width
-                                break
-                            }
-                        }
+                        let (grapheme, width) = selected_cell(
+                            buffer.scrollback, row, column, columns)
+                        line_writer |> write(grapheme)
+                        continuation_until = column + width
                     } else {
-                        let screen_row = row - buffer.scrollback_rows
-                        for (cell in buffer.cells) {
-                            if (cell.row == screen_row && cell.column == column && cell.width > 0) {
-                                grapheme = cell.grapheme
-                                width = cell.width
-                                break
-                            }
-                        }
+                        let (grapheme, width) = selected_cell(
+                            buffer.cells, row - buffer.scrollback_rows, column, columns)
+                        line_writer |> write(grapheme)
+                        continuation_until = column + width
                     }
-                    line_writer |> write(grapheme)
-                    continuation_until = column + max(1, width)
                 }
             }
             result |> write(line |> rtrim(" "))
@@ -254,31 +339,6 @@ def public imgui_terminal_paste_clipboard(terminal : Terminal const) : bool {
     var text = ""
     if (clipboard_get_text(text) != ClipboardStatus.ok) return false
     return terminal_send_paste(terminal, text)
-}
-
-def private screen_text(buffer : TerminalBufferSnapshot const) : string {
-    if (empty(buffer.cells)) return ""
-    var cell_index = 0
-    let last_row = buffer.cells[length(buffer.cells) - 1].row
-    let result = build_string() $(var result_writer) {
-        for (row in range(0, last_row + 1)) {
-            let line = build_string() $(var line_writer) {
-                while (cell_index < length(buffer.cells)
-                        && buffer.cells[cell_index].row == row) {
-                    let cell = buffer.cells[cell_index]
-                    if (cell.width > 0) {
-                        line_writer |> write(cell.grapheme)
-                    }
-                    cell_index++
-                }
-            }
-            result_writer |> write(line |> rtrim(" "))
-            if (row != last_row) {
-                result_writer |> write("\n")
-            }
-        }
-    }
-    return result |> rtrim("\n")
 }
 
 def private pressed(key : ImGuiKey) : bool {
@@ -367,6 +427,9 @@ def private refresh_terminal_cache(terminal : Terminal const; scroll_offset : in
         return false
     }
     terminal_viewport_snapshot(terminal, scroll_offset, cache.snapshot)
+    cache.snapshot_us += cache.snapshot.cell_projection_us
+    cache.run_build_us += cache.snapshot.text_run_projection_us
+    cache.refreshed = true
     cache.terminal_revision = cache.snapshot.revision
     cache.scroll_offset = clamp(scroll_offset, 0, cache.snapshot.buffer.scrollback_rows)
     return true
@@ -376,6 +439,10 @@ def public imgui_terminal(id : string; terminal : Terminal const;
                           var state : ImGuiTerminalState;
                           var cache : ImGuiTerminalCache;
                           style : ImGuiTerminalStyle = ImGuiTerminalStyle()) : ImGuiTerminalResult {
+    let terminal_started = ref_time_ticks()
+    cache.refreshed = false
+    cache.snapshot_us = 0
+    cache.run_build_us = 0
     var result = ImGuiTerminalResult()
     var snapshot_changed = refresh_terminal_cache(terminal, state.scroll_offset, cache)
     var snapshot & = unsafe(cache.snapshot)
@@ -434,7 +501,7 @@ def public imgui_terminal(id : string; terminal : Terminal const;
     var buffer & = unsafe(snapshot.buffer)
     state.scrollback_rows = buffer.scrollback_rows
     if (snapshot_changed) {
-        let current_screen_text = screen_text(buffer)
+        let current_screen_text = snapshot.screen_text
         if (current_screen_text != state.screen_text) {
             state.screen_text = current_screen_text
             state.content_revision++
@@ -483,15 +550,40 @@ def public imgui_terminal(id : string; terminal : Terminal const;
     if (state.selection_dragging && IsMouseReleased(ImGuiMouseButton.Left)) {
         state.selection_dragging = false
     }
+    state.paint_cells = snapshot.columns * snapshot.rows
+    state.paint_special_cells = 0
+    state.paint_glyph_cells = 0
+    state.paint_text_runs = 0
+    state.paint_batched_cells = 0
+    let chrome_started = ref_time_ticks()
     for (cell in buffer.scrollback) {
-        draw_terminal_cell(dl, cell, cell.row, cell.row - visible_start_row,
-            origin, cell_width, line_height, snapshot.columns, state, style)
+        let display_row = cell.row - visible_start_row
+        if (cell.width > 0 && display_row >= 0 && display_row < state.rows) {
+            state.paint_special_cells++
+        }
+        draw_terminal_cell_chrome(dl, cell, display_row, state.rows,
+            origin, cell_width, line_height, style)
     }
     for (cell in buffer.cells) {
         let global_row = buffer.scrollback_rows + cell.row
-        draw_terminal_cell(dl, cell, global_row, global_row - visible_start_row,
-            origin, cell_width, line_height, snapshot.columns, state, style)
+        let display_row = global_row - visible_start_row
+        if (cell.width > 0 && display_row >= 0 && display_row < state.rows) {
+            state.paint_special_cells++
+        }
+        draw_terminal_cell_chrome(dl, cell, display_row, state.rows,
+            origin, cell_width, line_height, style)
     }
+    draw_terminal_selection(dl, state, snapshot.columns, snapshot.rows,
+        visible_start_row, origin, cell_width, line_height, style)
+    state.perf_chrome_us = get_time_usec(chrome_started)
+    let text_started = ref_time_ticks()
+    draw_terminal_text_runs(dl, snapshot.text_runs, visible_start_row,
+        origin, cell_width, line_height, style, state)
+    draw_terminal_fallback_cells(dl, buffer.scrollback, 0, visible_start_row,
+        origin, cell_width, line_height, style, state)
+    draw_terminal_fallback_cells(dl, buffer.cells, buffer.scrollback_rows, visible_start_row,
+        origin, cell_width, line_height, style, state)
+    state.perf_text_us = get_time_usec(text_started)
     state.cursor_visible = buffer.cursor.visible
     state.cursor_blinking = buffer.cursor.blinking
     state.cursor_phase_visible = (buffer.cursor.visible
@@ -520,6 +612,10 @@ def public imgui_terminal(id : string; terminal : Terminal const;
     result.input_sent = sent
     result.paste_sent = pasted
     result.focused = state.focused
+    state.perf_cache_refreshed = cache.refreshed
+    state.perf_snapshot_us = cache.snapshot_us
+    state.perf_run_build_us = cache.run_build_us
+    state.perf_terminal_us = get_time_usec(terminal_started)
     state.render_revision++
     return <- result
 }
