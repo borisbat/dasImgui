@@ -20,7 +20,7 @@ def private marker_text(document : TextSourceDocument const) : string {
 
 [test]
 def test_plain_source_document(t : T?) {
-    let source = "plain ðŸ‘©â€ðŸ’» text"
+    let source = "plain 👩‍💻 text"
     var document <- plain_source_document(source, 11)
     t |> equal(document.source, source, "plain source retains exact UTF-8 text")
     t |> equal(document.revision, 11, "caller document revision is retained")
