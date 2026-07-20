@@ -40,6 +40,8 @@ struct public ImGuiTerminalState {
     visual_header : string
     scroll_offset : int
     scrollback_rows : int
+    cursor_row : int
+    cursor_column : int
     cursor_visible : bool
     cursor_blinking : bool
     cursor_phase_visible : bool
@@ -617,6 +619,8 @@ def public imgui_terminal(id : string; var terminal : Terminal;
     draw_terminal_fallback_cells(dl, buffer.cells, buffer.scrollback_rows, visible_start_row,
         content_origin, cell_width, line_height, style, state)
     state.perf_text_us = get_time_usec(text_started)
+    state.cursor_row = buffer.cursor.row
+    state.cursor_column = buffer.cursor.column
     state.cursor_visible = buffer.cursor.visible
     state.cursor_blinking = buffer.cursor.blinking
     state.cursor_phase_visible = (buffer.cursor.visible
