@@ -54,6 +54,8 @@ struct public ImGuiTerminalState {
     selection_revision : int
     paint_cells : int
     paint_special_cells : int
+    paint_background_cells : int
+    paint_background_runs : int
     paint_glyph_cells : int
     paint_text_runs : int
     paint_batched_cells : int
@@ -146,6 +148,62 @@ def private resolve_color(color : TerminalColor const; fallback : float4) : floa
     return fallback
 }
 
+def private effective_background(cell : TerminalCell const;
+                                 style : ImGuiTerminalStyle const) : float4 {
+    if ((cell.attributes & TERMINAL_ATTR_INVERSE) != 0) {
+        return resolve_color(cell.foreground, style.foreground)
+    }
+    return resolve_color(cell.background, style.background)
+}
+
+def private draw_terminal_background_runs(var dl : ImDrawList?;
+                                          cells : array<TerminalCell> const;
+                                          row_base, visible_start_row, columns : int;
+                                          origin : float2; cell_width, line_height : float;
+                                          style : ImGuiTerminalStyle const;
+                                          var state : ImGuiTerminalState) {
+    if (columns <= 0 || empty(cells)) return
+    let row_count = length(cells) / columns
+    for (row in range(row_count)) {
+        let display_row = row_base + row - visible_start_row
+        if (display_row < 0 || display_row >= state.rows) continue
+        var run_first = -1
+        var run_color = style.background
+        for (column in range(columns + 1)) {
+            var color = style.background
+            if (column < columns) {
+                color = effective_background(cells[row * columns + column], style)
+            }
+            if (color != style.background) {
+                state.paint_background_cells++
+                if (run_first < 0) {
+                    run_first = column
+                    run_color = color
+                } elif (color != run_color) {
+                    let p0 = origin + float2(float(run_first) * cell_width,
+                        float(display_row) * line_height)
+                    let p1 = origin + float2(float(column) * cell_width,
+                        float(display_row + 1) * line_height)
+                    *dl |> AddRectFilled(p0, p1, GetColorU32(run_color),
+                        0.0f, ImDrawFlags.None)
+                    state.paint_background_runs++
+                    run_first = column
+                    run_color = color
+                }
+            } elif (run_first >= 0) {
+                let p0 = origin + float2(float(run_first) * cell_width,
+                    float(display_row) * line_height)
+                let p1 = origin + float2(float(column) * cell_width,
+                    float(display_row + 1) * line_height)
+                *dl |> AddRectFilled(p0, p1, GetColorU32(run_color),
+                    0.0f, ImDrawFlags.None)
+                state.paint_background_runs++
+                run_first = -1
+            }
+        }
+    }
+}
+
 def private draw_terminal_cell_chrome(var dl : ImDrawList?; cell : TerminalCell const;
                                       display_row, rows : int;
                                       origin : float2; cell_width, line_height : float;
@@ -154,8 +212,7 @@ def private draw_terminal_cell_chrome(var dl : ImDrawList?; cell : TerminalCell 
     let inverse = (cell.attributes & 32) != 0
     let underline = (cell.attributes & 8) != 0
     let strike = (cell.attributes & 128) != 0
-    if (!inverse && !underline && !strike
-            && cell.background.kind == TerminalColorKind.default_color) return
+    if (!underline && !strike) return
     let p0 = origin + float2(float(cell.column) * cell_width,
         float(display_row) * line_height)
     let p1 = p0 + float2(cell_width * float(max(1, cell.width)), line_height)
@@ -165,9 +222,6 @@ def private draw_terminal_cell_chrome(var dl : ImDrawList?; cell : TerminalCell 
         let swap = fg
         fg = bg
         bg = swap
-    }
-    if (bg != style.background) {
-        *dl |> AddRectFilled(p0, p1, GetColorU32(bg), 0.0f, ImDrawFlags.None)
     }
     if (underline) {
         *dl |> AddLine(float2(p0.x, p1.y - 1.0f), float2(p1.x, p1.y - 1.0f),
@@ -587,10 +641,17 @@ def public imgui_terminal(id : string; var terminal : Terminal;
     }
     state.paint_cells = snapshot.columns * snapshot.rows
     state.paint_special_cells = 0
+    state.paint_background_cells = 0
+    state.paint_background_runs = 0
     state.paint_glyph_cells = 0
     state.paint_text_runs = 0
     state.paint_batched_cells = 0
     let chrome_started = ref_time_ticks()
+    draw_terminal_background_runs(dl, buffer.scrollback, 0, visible_start_row,
+        snapshot.columns, content_origin, cell_width, line_height, style, state)
+    draw_terminal_background_runs(dl, buffer.cells, buffer.scrollback_rows,
+        visible_start_row, snapshot.columns, content_origin, cell_width, line_height,
+        style, state)
     for (cell in buffer.scrollback) {
         let display_row = cell.row - visible_start_row
         if (cell.width > 0 && display_row >= 0 && display_row < state.rows) {
