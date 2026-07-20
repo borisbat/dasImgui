@@ -19,6 +19,8 @@ struct public ImGuiTerminalStyle {
     cursor : float4 = float4(0.82f, 0.84f, 0.90f, 0.72f)
     focus_border : float4 = float4(0.30f, 0.56f, 0.92f, 1.0f)
     selection : float4 = float4(0.20f, 0.42f, 0.72f, 0.72f)
+    visual_header_color : float4 = float4(0.48f, 0.52f, 0.58f, 1.0f)
+    visual_header : string
     cell_width : float = 0.0f
     line_height : float = 0.0f
     view_height : float = 0.0f
@@ -33,6 +35,7 @@ struct public ImGuiTerminalState {
     input_revision : int
     content_revision : int
     screen_text : string
+    visual_header : string
     scroll_offset : int
     scrollback_rows : int
     cursor_visible : bool
@@ -457,7 +460,9 @@ def public imgui_terminal(id : string; var terminal : Terminal;
         available.y = min(available.y, style.view_height)
     }
     let columns = max(1, int(floor(available.x / cell_width)))
-    let rows = max(1, int(floor(available.y / line_height)))
+    let visual_header_rows = empty(style.visual_header) ? 0 : 1
+    let rows = max(1,
+        int(floor(available.y / line_height)) - visual_header_rows)
     if (columns != snapshot.columns || rows != snapshot.rows) {
         terminal_resize(terminal, columns, rows)
         if (refresh_terminal_cache(terminal, state.scroll_offset, cache)) {
@@ -472,8 +477,10 @@ def public imgui_terminal(id : string; var terminal : Terminal;
     result.rows = snapshot.rows
 
     let origin = GetCursorScreenPos()
+    let content_origin = origin + float2(0.0f,
+        line_height * float(visual_header_rows))
     let extent = float2(cell_width * float(snapshot.columns),
-        line_height * float(snapshot.rows))
+        line_height * float(snapshot.rows + visual_header_rows))
     PushID(id)
     InvisibleButton("##terminal", extent)
     let hovered = IsItemHovered(ImGuiHoveredFlags.None)
@@ -496,6 +503,11 @@ def public imgui_terminal(id : string; var terminal : Terminal;
     *dl |> AddRectFilled(origin, origin + extent, GetColorU32(style.background),
         0.0f, ImDrawFlags.None)
     *dl |> PushClipRect(origin, origin + extent, true)
+    state.visual_header = style.visual_header
+    if (visual_header_rows > 0) {
+        *dl |> AddText(origin, GetColorU32(style.visual_header_color),
+            style.visual_header)
+    }
     var buffer & = unsafe(snapshot.buffer)
     state.scrollback_rows = buffer.scrollback_rows
     if (snapshot_changed) {
@@ -519,8 +531,10 @@ def public imgui_terminal(id : string; var terminal : Terminal;
         state.scroll_offset = clamp(state.scroll_offset, 0, buffer.scrollback_rows)
     }
     let visible_start_row = buffer.scrollback_rows - state.scroll_offset
-    let local_mouse = io.MousePos - origin
-    if (hovered && IsMouseClicked(ImGuiMouseButton.Left, false)) {
+    let local_mouse = io.MousePos - content_origin
+    let over_content = (local_mouse.y >= 0.0f
+        && local_mouse.y < line_height * float(snapshot.rows))
+    if (hovered && over_content && IsMouseClicked(ImGuiMouseButton.Left, false)) {
         let selected_row = visible_start_row + clamp(
             int(floor(local_mouse.y / line_height)), 0, snapshot.rows - 1)
         let selected_column = clamp(
@@ -532,7 +546,8 @@ def public imgui_terminal(id : string; var terminal : Terminal;
         state.selection_focus_row = selected_row
         state.selection_focus_column = selected_column
         state.selection_revision++
-    } elif (hovered && state.selection_dragging && IsMouseDown(ImGuiMouseButton.Left)) {
+    } elif (hovered && over_content && state.selection_dragging
+            && IsMouseDown(ImGuiMouseButton.Left)) {
         let selected_row = visible_start_row + clamp(
             int(floor(local_mouse.y / line_height)), 0, snapshot.rows - 1)
         let selected_column = clamp(
@@ -560,7 +575,7 @@ def public imgui_terminal(id : string; var terminal : Terminal;
             state.paint_special_cells++
         }
         draw_terminal_cell_chrome(dl, cell, display_row, state.rows,
-            origin, cell_width, line_height, style)
+            content_origin, cell_width, line_height, style)
     }
     for (cell in buffer.cells) {
         let global_row = buffer.scrollback_rows + cell.row
@@ -569,18 +584,18 @@ def public imgui_terminal(id : string; var terminal : Terminal;
             state.paint_special_cells++
         }
         draw_terminal_cell_chrome(dl, cell, display_row, state.rows,
-            origin, cell_width, line_height, style)
+            content_origin, cell_width, line_height, style)
     }
     draw_terminal_selection(dl, state, snapshot.columns, snapshot.rows,
-        visible_start_row, origin, cell_width, line_height, style)
+        visible_start_row, content_origin, cell_width, line_height, style)
     state.perf_chrome_us = get_time_usec(chrome_started)
     let text_started = ref_time_ticks()
     draw_terminal_text_runs(dl, snapshot.text_runs, visible_start_row,
-        origin, cell_width, line_height, style, state)
+        content_origin, cell_width, line_height, style, state)
     draw_terminal_fallback_cells(dl, buffer.scrollback, 0, visible_start_row,
-        origin, cell_width, line_height, style, state)
+        content_origin, cell_width, line_height, style, state)
     draw_terminal_fallback_cells(dl, buffer.cells, buffer.scrollback_rows, visible_start_row,
-        origin, cell_width, line_height, style, state)
+        content_origin, cell_width, line_height, style, state)
     state.perf_text_us = get_time_usec(text_started)
     state.cursor_visible = buffer.cursor.visible
     state.cursor_blinking = buffer.cursor.blinking
@@ -588,7 +603,7 @@ def public imgui_terminal(id : string; var terminal : Terminal;
         && (!buffer.cursor.blinking || !state.focused
             || fmod(float(GetTime()), 1.0f) < 0.5f))
     if (state.cursor_phase_visible && state.scroll_offset == 0) {
-        let cp0 = origin + float2(float(buffer.cursor.column) * cell_width,
+        let cp0 = content_origin + float2(float(buffer.cursor.column) * cell_width,
             float(buffer.cursor.row) * line_height)
         *dl |> AddRectFilled(cp0, cp0 + float2(max(1.0f, cell_width * 0.12f), line_height),
             GetColorU32(style.cursor), 0.0f, ImDrawFlags.None)
