@@ -24,6 +24,7 @@ struct public ImGuiTerminalStyle {
     cell_width : float = 0.0f
     line_height : float = 0.0f
     view_height : float = 0.0f
+    external_input : bool  // Return encoded input to the caller instead of writing this terminal's PTY.
 }
 
 struct public ImGuiTerminalState {
@@ -33,6 +34,7 @@ struct public ImGuiTerminalState {
     render_revision : int
     resize_revision : int
     input_revision : int
+    external_input : bool  // Last rendered input-routing mode; exposed for live inspection.
     content_revision : int
     screen_text : string
     visual_header : string
@@ -82,6 +84,7 @@ struct public ImGuiTerminalResult {
     selection_text : string
     columns : int
     rows : int
+    input_text : string  // Encoded keys/paste for an external transport when external_input is set.
 }
 
 def private byte_char(value : int) : string {
@@ -346,53 +349,68 @@ def private pressed(key : ImGuiKey) : bool {
     return IsKeyPressed(key, false)
 }
 
+def private dispatch_input(terminal : Terminal const; text : string;
+                           external_input : bool; var output : string&) : bool {
+    if (empty(text)) return false
+    if (external_input) {
+        output += text
+        return true
+    }
+    return terminal_write(terminal, text)
+}
+
 def private send_special(terminal : Terminal const; key : ImGuiKey;
-                         terminal_key : TerminalKey; io : ImGuiIO const) : bool {
+                         terminal_key : TerminalKey; io : ImGuiIO const;
+                         external_input : bool; var output : string&) : bool {
     if (!pressed(key)) return false
-    return terminal_send_key(terminal, TerminalKeyEvent(
+    let encoded = terminal_encode_key(terminal, TerminalKeyEvent(
         key = terminal_key, shift = io.KeyShift, alt = io.KeyAlt,
         control = io.KeyCtrl))
+    return dispatch_input(terminal, encoded, external_input, output)
 }
 
 def private route_input(terminal : Terminal const;
-                        var state : ImGuiTerminalState) : tuple<bool; bool> {
-    if (!state.focused) return (false, false)
+                        var state : ImGuiTerminalState;
+                        external_input : bool) : tuple<bool; bool; string> {
+    if (!state.focused) return (false, false, "")
     let io & = unsafe(GetIO())
     var sent = false
     var pasted = false
-    sent = send_special(terminal, ImGuiKey.Enter, TerminalKey.enter, io) || sent
-    sent = send_special(terminal, ImGuiKey.KeypadEnter, TerminalKey.enter, io) || sent
-    sent = send_special(terminal, ImGuiKey.Tab, TerminalKey.tab, io) || sent
-    sent = send_special(terminal, ImGuiKey.Backspace, TerminalKey.backspace, io) || sent
-    sent = send_special(terminal, ImGuiKey.Escape, TerminalKey.escape, io) || sent
-    sent = send_special(terminal, ImGuiKey.UpArrow, TerminalKey.up, io) || sent
-    sent = send_special(terminal, ImGuiKey.DownArrow, TerminalKey.down, io) || sent
-    sent = send_special(terminal, ImGuiKey.RightArrow, TerminalKey.right, io) || sent
-    sent = send_special(terminal, ImGuiKey.LeftArrow, TerminalKey.left, io) || sent
-    sent = send_special(terminal, ImGuiKey.Home, TerminalKey.home, io) || sent
-    sent = send_special(terminal, ImGuiKey.End, TerminalKey.end, io) || sent
-    sent = send_special(terminal, ImGuiKey.Insert, TerminalKey.insert, io) || sent
-    sent = send_special(terminal, ImGuiKey.Delete, TerminalKey.delete_key, io) || sent
-    sent = send_special(terminal, ImGuiKey.PageUp, TerminalKey.page_up, io) || sent
-    sent = send_special(terminal, ImGuiKey.PageDown, TerminalKey.page_down, io) || sent
-    sent = send_special(terminal, ImGuiKey.F1, TerminalKey.f1, io) || sent
-    sent = send_special(terminal, ImGuiKey.F2, TerminalKey.f2, io) || sent
-    sent = send_special(terminal, ImGuiKey.F3, TerminalKey.f3, io) || sent
-    sent = send_special(terminal, ImGuiKey.F4, TerminalKey.f4, io) || sent
-    sent = send_special(terminal, ImGuiKey.F5, TerminalKey.f5, io) || sent
-    sent = send_special(terminal, ImGuiKey.F6, TerminalKey.f6, io) || sent
-    sent = send_special(terminal, ImGuiKey.F7, TerminalKey.f7, io) || sent
-    sent = send_special(terminal, ImGuiKey.F8, TerminalKey.f8, io) || sent
-    sent = send_special(terminal, ImGuiKey.F9, TerminalKey.f9, io) || sent
-    sent = send_special(terminal, ImGuiKey.F10, TerminalKey.f10, io) || sent
-    sent = send_special(terminal, ImGuiKey.F11, TerminalKey.f11, io) || sent
-    sent = send_special(terminal, ImGuiKey.F12, TerminalKey.f12, io) || sent
+    var output : string
+    sent = send_special(terminal, ImGuiKey.Enter, TerminalKey.enter, io, external_input, output) || sent
+    sent = send_special(terminal, ImGuiKey.KeypadEnter, TerminalKey.enter, io, external_input, output) || sent
+    sent = send_special(terminal, ImGuiKey.Tab, TerminalKey.tab, io, external_input, output) || sent
+    sent = send_special(terminal, ImGuiKey.Backspace, TerminalKey.backspace, io, external_input, output) || sent
+    sent = send_special(terminal, ImGuiKey.Escape, TerminalKey.escape, io, external_input, output) || sent
+    sent = send_special(terminal, ImGuiKey.UpArrow, TerminalKey.up, io, external_input, output) || sent
+    sent = send_special(terminal, ImGuiKey.DownArrow, TerminalKey.down, io, external_input, output) || sent
+    sent = send_special(terminal, ImGuiKey.RightArrow, TerminalKey.right, io, external_input, output) || sent
+    sent = send_special(terminal, ImGuiKey.LeftArrow, TerminalKey.left, io, external_input, output) || sent
+    sent = send_special(terminal, ImGuiKey.Home, TerminalKey.home, io, external_input, output) || sent
+    sent = send_special(terminal, ImGuiKey.End, TerminalKey.end, io, external_input, output) || sent
+    sent = send_special(terminal, ImGuiKey.Insert, TerminalKey.insert, io, external_input, output) || sent
+    sent = send_special(terminal, ImGuiKey.Delete, TerminalKey.delete_key, io, external_input, output) || sent
+    sent = send_special(terminal, ImGuiKey.PageUp, TerminalKey.page_up, io, external_input, output) || sent
+    sent = send_special(terminal, ImGuiKey.PageDown, TerminalKey.page_down, io, external_input, output) || sent
+    sent = send_special(terminal, ImGuiKey.F1, TerminalKey.f1, io, external_input, output) || sent
+    sent = send_special(terminal, ImGuiKey.F2, TerminalKey.f2, io, external_input, output) || sent
+    sent = send_special(terminal, ImGuiKey.F3, TerminalKey.f3, io, external_input, output) || sent
+    sent = send_special(terminal, ImGuiKey.F4, TerminalKey.f4, io, external_input, output) || sent
+    sent = send_special(terminal, ImGuiKey.F5, TerminalKey.f5, io, external_input, output) || sent
+    sent = send_special(terminal, ImGuiKey.F6, TerminalKey.f6, io, external_input, output) || sent
+    sent = send_special(terminal, ImGuiKey.F7, TerminalKey.f7, io, external_input, output) || sent
+    sent = send_special(terminal, ImGuiKey.F8, TerminalKey.f8, io, external_input, output) || sent
+    sent = send_special(terminal, ImGuiKey.F9, TerminalKey.f9, io, external_input, output) || sent
+    sent = send_special(terminal, ImGuiKey.F10, TerminalKey.f10, io, external_input, output) || sent
+    sent = send_special(terminal, ImGuiKey.F11, TerminalKey.f11, io, external_input, output) || sent
+    sent = send_special(terminal, ImGuiKey.F12, TerminalKey.f12, io, external_input, output) || sent
 
     if (io.KeyCtrl) {
         if (pressed(ImGuiKey.V)) {
             var text = ""
             if (clipboard_get_text(text) == ClipboardStatus.ok) {
-                pasted = terminal_send_paste(terminal, text)
+                let encoded = terminal_encode_paste(terminal, text)
+                pasted = dispatch_input(terminal, encoded, external_input, output)
                 sent = pasted || sent
             }
         } else {
@@ -400,9 +418,10 @@ def private route_input(terminal : Terminal const;
                 if (letter == 2 && state.selection_active) continue
                 let imgui_key = unsafe(reinterpret<ImGuiKey>(int(ImGuiKey.A) + letter))
                 if (pressed(imgui_key)) {
-                    sent = terminal_send_key(terminal, TerminalKeyEvent(
+                    let encoded = terminal_encode_key(terminal, TerminalKeyEvent(
                         key = TerminalKey.text, text = to_char(65 + letter),
-                        shift = io.KeyShift, alt = io.KeyAlt, control = true)) || sent
+                        shift = io.KeyShift, alt = io.KeyAlt, control = true))
+                    sent = dispatch_input(terminal, encoded, external_input, output) || sent
                 }
             }
         }
@@ -410,15 +429,16 @@ def private route_input(terminal : Terminal const;
         for (value in io.InputQueueCharacters) {
             let codepoint = int(value)
             if (codepoint > 0 && codepoint <= 0x10ffff) {
-                sent = terminal_send_key(terminal, TerminalKeyEvent(
+                let encoded = terminal_encode_key(terminal, TerminalKeyEvent(
                     key = TerminalKey.text, text = codepoint_utf8(codepoint),
                     shift = io.KeyShift, alt = io.KeyAlt,
-                    control = io.KeyCtrl)) || sent
+                    control = io.KeyCtrl))
+                sent = dispatch_input(terminal, encoded, external_input, output) || sent
             }
         }
     }
     if (sent) state.input_revision++
-    return (sent, pasted)
+    return (sent, pasted, output)
 }
 
 def private refresh_terminal_cache(terminal : Terminal const; scroll_offset : int;
@@ -621,9 +641,11 @@ def public imgui_terminal(id : string; var terminal : Terminal;
         result.selection_text = copy_text
         result.selection_copied = clipboard_set_text(copy_text) == ClipboardStatus.ok
     }
-    let (sent, pasted) = route_input(terminal, state)
+    let (sent, pasted, input_text) = route_input(terminal, state, style.external_input)
+    state.external_input = style.external_input
     result.input_sent = sent
     result.paste_sent = pasted
+    result.input_text = input_text
     result.focused = state.focused
     state.perf_cache_refreshed = cache.refreshed
     state.perf_snapshot_us = cache.snapshot_us
