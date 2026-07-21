@@ -30,6 +30,17 @@ enum public TextSourceSyntaxStyle {
     punctuation
 }
 
+enum public TextSourceLineMarkKind {
+    added
+    removed
+    modified
+}
+
+struct public TextSourceLineMark {
+    line_index : int
+    kind : TextSourceLineMarkKind = TextSourceLineMarkKind.modified
+}
+
 struct public TextSourceSpan {
     source : TextSourceRange
     styles : TextSourceStyles
@@ -41,12 +52,14 @@ struct public TextSourceSpan {
 struct public TextSourceDocument {
     source : string
     spans : array<TextSourceSpan>
+    line_marks : array<TextSourceLineMark>
     revision : int = 0
     marker_count : int = 0
 }
 
 def public text_source_document_dispose(var document : TextSourceDocument) {
     delete document.spans
+    delete document.line_marks
     document = TextSourceDocument()
 }
 
