@@ -56,3 +56,33 @@ def test_das_fragment_recovers_lexical_syntax_after_parse_error(t : T?) {
         "fallback spans cover every source byte")
     text_source_document_dispose(document)
 }
+
+[test]
+def test_json_lexical_syntax_handles_diff_fragments(t : T?) {
+    let source = "\{\n  \"name\": \"sheep \\\"one\\\"\",\n  \"count\": -12.5e+2,\n  \"active\": true,\n  \"missing\": null,\n  \"partial\": \"unfinished"
+    var document <- tree_sitter_source_document(source, "json", 23)
+
+    t |> equal(style_at(document, find(source, "\"name\"")),
+        TextSourceSyntaxStyle.property, "object keys are properties")
+    t |> equal(style_at(document, find(source, "\"sheep")),
+        TextSourceSyntaxStyle.string_, "quoted values are strings")
+    t |> equal(style_at(document, find(source, "-12.5")),
+        TextSourceSyntaxStyle.number, "JSON numbers retain number color")
+    t |> equal(style_at(document, find(source, "true")),
+        TextSourceSyntaxStyle.number, "JSON booleans retain literal color")
+    t |> equal(style_at(document, find(source, "null")),
+        TextSourceSyntaxStyle.constant, "JSON null is a constant")
+    t |> equal(style_at(document, find(source, "\"unfinished")),
+        TextSourceSyntaxStyle.string_,
+        "an incomplete hunk still colors an unterminated string")
+
+    var covered_until = 0
+    for (span in document.spans) {
+        t |> equal(span.source.start_byte, covered_until,
+            "JSON spans remain contiguous")
+        covered_until = span.source.end_byte
+    }
+    t |> equal(covered_until, length(source),
+        "JSON spans cover every exact source byte")
+    text_source_document_dispose(document)
+}

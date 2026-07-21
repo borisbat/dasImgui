@@ -62,6 +62,7 @@ struct public TextSourceViewStyle {
     added_line_color : float4 = float4(0.20f, 0.72f, 0.38f, 0.92f)
     removed_line_color : float4 = float4(0.88f, 0.28f, 0.32f, 0.92f)
     modified_line_color : float4 = float4(0.92f, 0.70f, 0.22f, 0.92f)
+    line_number_color : float4 = float4(0.48f, 0.50f, 0.55f, 1.0f)
     line_mark_background_alpha : float = 0.0f
     line_mark_width : float = 2.0f
     wrap : bool = false
@@ -364,6 +365,36 @@ def private ensure_layout(document : TextSourceDocument const;
     state.layout_misses++
 }
 
+def private line_number_gutter_width(document : TextSourceDocument const;
+                                     style : TextSourceViewStyle const;
+                                     font : ImFont?; font_size : float) : float {
+    if (style.wrap || empty(document.line_numbers)) return 0.0f
+    var largest = 0
+    for (number in document.line_numbers) {
+        largest = max(largest, number)
+    }
+    if (largest <= 0) return 0.0f
+    let number_text = "{largest}"
+    let text_width = CalcTextSizeForFontRange(
+        font, font_size, number_text, length(number_text), 0, length(number_text)).x
+    return text_width + max(8.0f, GetStyle().ItemSpacing.x)
+}
+
+def private draw_line_number(var dl : ImDrawList?; origin : float2;
+                             line_y, gutter_width : float; number : int;
+                             font : ImFont?; font_size : float;
+                             color : float4) {
+    if (number < 0 || gutter_width <= 0.0f) return
+    let number_text = "{number}"
+    let text_width = CalcTextSizeForFontRange(
+        font, font_size, number_text, length(number_text), 0, length(number_text)).x
+    let right_padding = max(4.0f, GetStyle().ItemSpacing.x * 0.5f)
+    *dl |> AddTextRange(font, font_size,
+        float2(origin.x + gutter_width - right_padding - text_width,
+            origin.y + line_y),
+        GetColorU32(color), number_text, length(number_text), 0, length(number_text))
+}
+
 def private line_for_y(state : TextSourceViewState const; y : float) : int {
     var lo = 0
     var hi = length(state.layout.lines)
@@ -657,10 +688,13 @@ def private text_source_virtual_view(id : string;
         GetTextLineHeight() * font_size / max(GetFontSize(), 1.0f))
     let cell_width = max(1.0f,
         CalcTextSizeForFontRange(font, font_size, "M", 1, 0, 1).x)
+    let number_width = line_number_gutter_width(
+        document, style, font, font_size)
     let gutter_width = (!empty(document.line_marks)
         ? max(1.0f, style.line_mark_width * zoom) : 0.0f)
-    let gutter_space = (gutter_width > 0.0f
+    let mark_space = (gutter_width > 0.0f
         ? gutter_width + max(4.0f, GetStyle().ItemSpacing.x) : 0.0f)
+    let gutter_space = number_width + mark_space
     let available = max(GetContentRegionAvail().x - gutter_space, 1.0f)
     let content_width = max(available,
         float(state.virtual_max_line_bytes) * cell_width)
@@ -721,9 +755,16 @@ def private text_source_virtual_view(id : string;
                             row_origin + float2(content_width + gutter_space, line_height),
                             GetColorU32(background), 0.0f, ImDrawFlags.None)
                     }
-                    *dl |> AddRectFilled(row_origin,
-                        row_origin + float2(gutter_width, line_height),
+                    *dl |> AddRectFilled(
+                        float2(row_origin.x + number_width, row_origin.y),
+                        float2(row_origin.x + number_width + gutter_width,
+                            row_origin.y + line_height),
                         GetColorU32(color), 0.0f, ImDrawFlags.None)
+                }
+                if (line_index < length(document.line_numbers)) {
+                    draw_line_number(dl, row_origin, 0.0f, number_width,
+                        document.line_numbers[line_index], font, font_size,
+                        style.line_number_color)
                 }
                 if (has_selection && selection.end_byte > start_byte
                         && selection.start_byte < end_byte) {
@@ -815,10 +856,15 @@ def public text_source_view(id : string; document : TextSourceDocument const;
     var fallback = GetFont()
     var font = source_font(style, fallback)
     let zoom = source_zoom(style)
+    let font_size = (style.fonts.size_px > 0.0f
+        ? style.fonts.size_px : GetFontSize()) * zoom
+    let number_width = line_number_gutter_width(
+        document, style, font, font_size)
     let gutter_width = (!empty(document.line_marks)
         ? max(1.0f, style.line_mark_width * zoom) : 0.0f)
-    let gutter_space = (gutter_width > 0.0f
+    let mark_space = (gutter_width > 0.0f
         ? gutter_width + max(4.0f, GetStyle().ItemSpacing.x) : 0.0f)
+    let gutter_space = number_width + mark_space
     let available = max(GetContentRegionAvail().x - gutter_space, 1.0f)
     ensure_layout(document, state, style, available, font)
     state.render_revision++
@@ -895,9 +941,20 @@ def public text_source_view(id : string; document : TextSourceDocument const;
             background.w = style.line_mark_background_alpha
             *dl |> AddRectFilled(p0, p1, GetColorU32(background), 0.0f, ImDrawFlags.None)
         }
-        *dl |> AddRectFilled(p0,
-            float2(p0.x + gutter_width, p1.y),
+        *dl |> AddRectFilled(float2(p0.x + number_width, p0.y),
+            float2(p0.x + number_width + gutter_width, p1.y),
             GetColorU32(color), 0.0f, ImDrawFlags.None)
+    }
+    if (number_width > 0.0f) {
+        for (line_index in range(min(length(document.line_numbers),
+                length(state.layout.lines)))) {
+            let line = state.layout.lines[line_index]
+            let p0 = gutter_origin + float2(0.0f, line.y)
+            if (p0.y + line.height < visible_min.y || p0.y > visible_max.y) continue
+            draw_line_number(dl, gutter_origin, line.y, number_width,
+                document.line_numbers[line_index], font, state.key.font_size,
+                style.line_number_color)
+        }
     }
     var first_visible_cell = 0
     var visible_hi = length(state.cells)

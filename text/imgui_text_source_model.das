@@ -53,6 +53,9 @@ struct public TextSourceDocument {
     source : string
     spans : array<TextSourceSpan>
     line_marks : array<TextSourceLineMark>
+    //! Optional display numbers per unwrapped visual line. Negative entries
+    //! reserve an aligned gap without drawing a number (side-by-side diffs).
+    line_numbers : array<int>
     revision : int = 0
     marker_count : int = 0
 }
@@ -60,6 +63,7 @@ struct public TextSourceDocument {
 def public text_source_document_dispose(var document : TextSourceDocument) {
     delete document.spans
     delete document.line_marks
+    delete document.line_numbers
     document = TextSourceDocument()
 }
 

@@ -33,7 +33,10 @@ def test_plain_source_document(t : T?) {
                  "plain span has no Markdown styles")
     t |> equal(document.spans[0].syntax_style, TextSourceSyntaxStyle.none,
                "plain span has no syntax style")
+    document.line_numbers |> push(41)
     text_source_document_dispose(document)
+    t |> equal(length(document.line_numbers), 0,
+               "disposing a source document releases optional line numbers")
 
     var empty_document <- plain_source_document("", 12)
     t |> equal(empty_document.source, "", "empty source is retained")

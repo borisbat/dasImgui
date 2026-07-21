@@ -256,8 +256,112 @@ def private apply_syntax_fallback(var document : TextSourceDocument;
     document.spans <- merged
 }
 
+def private json_whitespace(value : int) : bool {
+    return value == ' ' || value == '\t' || value == '\r' || value == '\n'
+}
+
+def private json_number_byte(value : int) : bool {
+    return is_number(value) || value == '-' || value == '+' || value == '.' || value == 'e' || value == 'E'
+}
+
+def private push_json_span(var document : TextSourceDocument;
+                           var covered_until : int&;
+                           start_byte, end_byte : int;
+                           style : TextSourceSyntaxStyle) {
+    push_source_syntax_span(document, covered_until, start_byte,
+        TextSourceSyntaxStyle.none)
+    push_source_syntax_span(document, start_byte, end_byte, style)
+    covered_until = end_byte
+}
+
+def private json_lexical_source_document(source : string;
+                                         revision : int) : TextSourceDocument {
+    //! Diffs are often incomplete JSON fragments, so a validating parser is
+    //! the wrong producer here. This lexer preserves exact byte coordinates
+    //! and colors every useful token it can recognize, including an
+    //! unterminated string at the edge of a hunk.
+    var document = TextSourceDocument(source = source, revision = revision)
+    var covered_until = 0
+    peek_data(source) $(bytes) {
+        var at = 0
+        while (at < length(bytes)) {
+            let value = int(bytes[at])
+            if (value == '"') {
+                let start = at
+                var terminated = false
+                at++
+                while (at < length(bytes)) {
+                    let current = int(bytes[at])
+                    if (current == '\\' && at + 1 < length(bytes)) {
+                        at += 2
+                        continue
+                    }
+                    at++
+                    if (current == '"') {
+                        terminated = true
+                        break
+                    }
+                }
+                var lookahead = at
+                while (lookahead < length(bytes)
+                        && json_whitespace(int(bytes[lookahead]))) {
+                    lookahead++
+                }
+                var style = TextSourceSyntaxStyle.string_
+                if (terminated && lookahead < length(bytes)
+                        && int(bytes[lookahead]) == ':') {
+                    style = TextSourceSyntaxStyle.property
+                }
+                push_json_span(document, covered_until, start, at, style)
+                continue
+            }
+            if (is_number(value) || value == '-') {
+                let start = at
+                at++
+                while (at < length(bytes)
+                        && json_number_byte(int(bytes[at]))) {
+                    at++
+                }
+                push_json_span(document, covered_until, start, at,
+                    TextSourceSyntaxStyle.number)
+                continue
+            }
+            if (value >= 'a' && value <= 'z') {
+                let start = at
+                at++
+                while (at < length(bytes) && int(bytes[at]) >= 'a'
+                        && int(bytes[at]) <= 'z') {
+                    at++
+                }
+                let word = slice(source, start, at)
+                if (word == "true" || word == "false") {
+                    push_json_span(document, covered_until, start, at,
+                        TextSourceSyntaxStyle.number)
+                } elif (word == "null") {
+                    push_json_span(document, covered_until, start, at,
+                        TextSourceSyntaxStyle.constant)
+                }
+                continue
+            }
+            if (value == '{' || value == '}' || value == '[' || value == ']'
+                    || value == ':' || value == ',') {
+                push_json_span(document, covered_until, at, at + 1,
+                    TextSourceSyntaxStyle.punctuation)
+            }
+            at++
+        }
+    }
+    push_source_syntax_span(document, covered_until, length(source),
+        TextSourceSyntaxStyle.none)
+    return <- document
+}
+
 def public tree_sitter_source_document(source, language : string;
                                        revision : int = 0) : TextSourceDocument {
+    let canonical = syntax_canonical_language(language)
+    if (canonical == "json") {
+        return <- json_lexical_source_document(source, revision)
+    }
     var document = TextSourceDocument(source = source, revision = revision)
     var tokens : array<SyntaxToken>
     if (syntax_highlight(language, source, tokens) != SyntaxHighlightStatus.ok) {
@@ -278,7 +382,7 @@ def public tree_sitter_source_document(source, language : string;
     }
     push_source_syntax_span(document, covered_until, length(source),
                             TextSourceSyntaxStyle.none)
-    if (syntax_canonical_language(language) == "daslang") {
+    if (canonical == "daslang") {
         var fallback <- das_lexical_fallback(source)
         apply_syntax_fallback(document, fallback)
         delete fallback
