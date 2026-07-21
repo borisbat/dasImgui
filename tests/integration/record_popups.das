@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
@@ -48,10 +49,9 @@ def context_pick_voice(app : ImguiApp; dwell : uint; rclick_pos : tuple<float; f
     post_command(app, "imgui_mouse_click_at",
                  JV((x = rclick_pos._0, y = rclick_pos._1, button = 1, travel_ms = 350)))
     wait_for_mouse_idle(app)                              // SYNC: the right-click timeline played
-    // WAIT FOR IT TO OPEN: poll until the menu item is painted (no fixed sleep).
-    // Use widget_rendered, not a raw `rendered ?? false`: painted widgets OMIT the
-    // rendered field (it's only present, = false, when registered-but-unpainted), so
-    // `?? false` would never see the open menu and this poll would time out.
+    // Poll until the menu item is painted (no fixed sleep). Use widget_rendered, not a raw
+    // `rendered ?? false`: painted widgets OMIT the rendered field (present only when
+    // registered-but-unpainted), so `?? false` would never see the open menu and time out.
     var opened = wait_until(app, 120) $(var snap) {
         return widget_rendered(snap, item_path)
     }

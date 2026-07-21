@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 // This demo deliberately exercises the Form 2 named-tuple-without-ident shape
 // that STYLE001 forbids on single-arg narrative widgets like `text`. Opt out
 // per-file so the educational `text((text=...))` line below renders instead

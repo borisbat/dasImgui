@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 
 module app_dockspace
@@ -31,10 +32,9 @@ var private DS_FLAG_NO_RESIZE = false
 var private DS_FLAG_AUTO_HIDE_TAB_BAR = false
 var private DS_FLAG_PASSTHRU_CENTRAL = false
 
-// Set by the "Close" menu entry. ShowExampleAppDockSpace returns false when
-// this flips OR when the X-button closes the window, so the aggregator's
-// `if (SHOW_X && !ShowExampleAppDockSpace()) SHOW_X = false` pattern works
-// uniformly across both close paths.
+// Set by the "Close" menu entry. ShowExampleAppDockSpace returns false when this
+// flips OR when the X-button closes the window, so the aggregator's
+// `if (SHOW_X && !ShowExampleAppDockSpace()) SHOW_X = false` works for both paths.
 var private DS_REQUEST_CLOSE = false
 
 def private current_dockspace_flags() : ImGuiDockNodeFlags {
@@ -61,9 +61,7 @@ def private current_dockspace_flags() : ImGuiDockNodeFlags {
 }
 
 def private current_host_flags() : ImGuiWindowFlags {
-    // PassthruCentralNode only works when the host window itself is
-    // background-less; without NoBackground the host fill covers the
-    // central node and the pass-through visual is suppressed.
+    // PassthruCentralNode needs a background-less host — without NoBackground the host fill covers the central node.
     var flags = ImGuiWindowFlags.MenuBar | ImGuiWindowFlags.NoDocking
     if (DS_FLAG_PASSTHRU_CENTRAL) {
         flags |= ImGuiWindowFlags.NoBackground
@@ -121,10 +119,9 @@ def public ShowExampleAppDockSpace() : bool {
     // imgui_demo aggregator path doesn't, so flip it on at entry. Idempotent.
     var io & = unsafe(GetIO())
     io.ConfigFlags |= ImGuiConfigFlags.DockingEnable
-    // X-button closes by flipping DS_WIN.open=false; the aggregator then
-    // clears its SHOW flag and stops calling us. When the user re-checks
-    // the demo checkbox, we're re-entered with the stale open=false — reset
-    // so the window renders again.
+    // X-button closes by flipping DS_WIN.open=false; the aggregator then clears its
+    // SHOW flag and stops calling us. On re-check we're re-entered with stale
+    // open=false — reset so the window renders again.
     DS_WIN.open = true
     SetNextWindowSize(ImVec2(720.0f, 480.0f), ImGuiCond.FirstUseEver)
     // Match the C++ original: when "Padding" is off, push zero WindowPadding

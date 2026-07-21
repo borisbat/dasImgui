@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
@@ -47,11 +48,9 @@ def test_active_widget_foundation(t : T?) {
                        "io.mouse_buttons has 3 entries (L/M/R)")
         }
 
-        // Gate 3: with no input driving anything, GetActiveID() returns 0
-        // and io_jv() omits both keys. daslib/json's `?[]` returns a
-        // JV(null) placeholder for missing object keys (not literal null),
-        // so we use the from_JV-with-default idiom that imgui_playwright's
-        // widget_rendered helper uses too.
+        // Gate 3: with nothing active, GetActiveID() returns 0 and io_jv() omits both keys.
+        // daslib/json's `?[]` returns a JV(null) placeholder for missing keys (not literal null),
+        // so we use the from_JV-with-default idiom (as imgui_playwright's widget_rendered does).
         t |> equal(snap0?["io"]?["active_id"] ?? 0u, 0u,
                    "io.active_id reads 0 when nothing is active")
         t |> success(empty(snap0?["io"]?["active_widget"] ?? ""),

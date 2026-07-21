@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 
 module app_custom_rendering
@@ -81,9 +82,7 @@ def private cr_pack_color(c : float4) : uint {
 
 def private show_primitives_tab() {
     with_item_width(-GetFontSize() * 15.0f) {
-        // Gradient strips. ImGui's GetColorU32(IM_COL32(...)) multiplies the
-        // packed color by the current style alpha; the boost-side equivalent
-        // is GetColorU32(rgba(...)) which preserves the same semantics.
+        // Gradient strips. GetColorU32(rgba(...)) matches C++ GetColorU32(IM_COL32(...)) — both fold in style alpha.
         text(CR_GRAD_LABEL, (text = "Gradients"))
         let gradient_sz = float2(CalcItemWidth(), GetFrameHeight())
         {
@@ -131,8 +130,7 @@ def private show_primitives_tab() {
              v_min = 3, v_max = 40))
         edit_color_edit4(safe_addr(CR_COLOR), (id = "CR_COLOR_EDIT", text = "Color"))
 
-        // Draw all the primitives row by row, two rows of stroked
-        // (thickness=1, then user thickness) + one row of filled.
+        // Draw primitives row by row: two stroked rows (thickness=1, then user) + one filled.
         let p = GetCursorScreenPos()
         let col = cr_pack_color(CR_COLOR)
         let spacing = 10.0f
@@ -296,13 +294,7 @@ def private show_canvas_tab() {
     }
 
     let drag_delta = GetMouseDragDelta(ImGuiMouseButton.Right, -1.0f)
-    // Mirrors cpp original: `popup` (BeginPopup) is unconditional, but the
-    // ONLY way the popup opens is the explicit open_popup_on_item_click
-    // path, double-gated by CR_CANVAS_OPT_CTX and a no-right-drag guard.
-    // Uses the STATEFUL state-arg overload — the string-id form computes
-    // GetID("context") at the call site, which doesn't match the popup
-    // container's BeginPopup ID (the container does its own PushID(IDENT)),
-    // so the popup would never actually open.
+    // Use the STATEFUL state-arg overload — the string-id form's GetID("context") won't match the container's PushID(IDENT) popup ID, so the popup would never open.
     if (CR_CANVAS_OPT_CTX && drag_delta.x == 0.0f && drag_delta.y == 0.0f) {
         open_popup_on_item_click(CR_CV_CTX_MENU, ImGuiPopupFlags.MouseButtonRight)
     }

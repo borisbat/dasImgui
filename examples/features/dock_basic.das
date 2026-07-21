@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 
 require imgui/imgui_harness
 
@@ -33,13 +34,9 @@ require imgui/imgui_harness
 // =============================================================================
 
 def setup_default_layout(dock_id : uint) {
-    //! Seed a 4-panel layout:
-    //!     +----------+--------------------+
-    //!     |          |       Source       |
-    //!     | Explorer +---------+----------+
-    //!     |          |         | Properties
-    //!     |          | Output  |          |
-    //!     +----------+---------+----------+
+    //! Seed a 4-panel layout: Explorer (left, full height); the right column is
+    //! Source (top) over a bottom row of Output (left) + Properties (right).
+    //! Panels bind by title in the DockBuilderDockWindow calls below.
     DockBuilderRemoveNode(dock_id)
     DockBuilderAddDockSpaceNode(dock_id, ImGuiDockNodeFlags.None)
     let vp = GetMainViewport()
@@ -76,10 +73,9 @@ def update() {
     harness_new_frame()
 
     dockspace(DOCK_ROOT, (flags = ImGuiDockNodeFlags.PassthruCentralNode)) {
-        //! Seed the layout once per session (or after imgui_dock_reset flips
-        //! has_initial_layout back to false). state.dock_id is valid after the
-        //! first DockSpaceOverViewport return — the dockspace wrapper captures
-        //! it before invoking this block.
+        //! Seed the layout once per session (imgui_dock_reset flips
+        //! has_initial_layout back to false to re-seed). dock_id is valid only
+        //! after the first DockSpaceOverViewport return, captured by the wrapper.
         if (!DOCK_ROOT.has_initial_layout && DOCK_ROOT.dock_id != 0u) {
             setup_default_layout(DOCK_ROOT.dock_id)
             DOCK_ROOT.has_initial_layout = true

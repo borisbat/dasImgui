@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
@@ -118,13 +119,9 @@ struct RadioIntState {
     @optional changed : bool                         //! true on the frame the selection changed
 }
 
-// Drag* family. One state struct per scalar-or-vector value type the imgui
-// API exposes; `bounds` is the only persistent config (zero-init = unclamped
-// per ImGui's v_min==v_max semantics). `speed`, `format`, `flags` are passed
-// at the call site — globals can't apply struct field defaults (they're
-// zero-init), and string defaults trip the uninit-safety check. `pending_value`
-// matches `value`'s type so the generic `drag_set_finalize` helper in
-// imgui_widgets_builtin can capture state and steer it from imgui_force_set.
+// Drag* family — one state struct per scalar/vector value type. `bounds` is the only persistent
+// config (zero-init = unclamped, per ImGui's v_min==v_max). speed/format/flags are per-call
+// (globals can't apply field defaults; string defaults trip the uninit check).
 
 struct DragStateFloat {
     @live value : float                          //! preserved across reload
@@ -209,10 +206,9 @@ struct DragStateRangeInt {
     @optional changed : bool                     //! true on the frame the range changed
 }
 
-// Input* numeric family. No bounds — InputFloat/Int/Double don't clamp;
-// step / step_fast / format are per-call args (uniform with Drag/Slider).
-// Only `value` persists. Same has_pending/pending_value/changed shape so
-// `pending_value_finalize` covers the dispatch.
+// Input* numeric family. No bounds — InputFloat/Int/Double don't clamp; step/step_fast/format
+// are per-call. Only `value` persists; same has_pending/pending_value/changed shape as Drag/Slider
+// so `pending_value_finalize` covers the dispatch.
 
 struct InputStateFloat {
     @live value : float                          //! preserved across reload
@@ -277,12 +273,9 @@ struct InputStateDouble {
     @optional changed : bool                     //! true on the frame the widget fired
 }
 
-// Color* family. ColorEdit3/ColorPicker3 share ColorState3 (RGB);
-// ColorEdit4/ColorPicker4 share ColorState4 (RGBA). ColorButton is
-// click-only (no value stored — caller passes the color per-frame),
-// so it reuses ClickState (mirrors `button` / `small_button`). `flags`
-// is per-call; ImGui's color flags (DisplayHSV, Float, NoInputs, …)
-// are call-site config, not persistent state.
+// Color* family. ColorEdit3/ColorPicker3 share ColorState3 (RGB); ColorEdit4/ColorPicker4 share
+// ColorState4 (RGBA). ColorButton is click-only (caller passes color per-frame) so it reuses
+// ClickState. flags + ImGui color flags (DisplayHSV/Float/NoInputs/…) are per-call, not persistent.
 
 struct ColorState3 {
     @live value : float3                         //! RGB in [0..1]
@@ -298,16 +291,9 @@ struct ColorState4 {
     @optional changed : bool                     //! true on the frame the color changed
 }
 
-// Choice family. `value` is the selected item index; `imgui_force_set {"value":N}`
-// steers the next-frame selection. The user passes `items : array<string>`
-// per-frame; combo/list_box marshal it C-side without a shim:
-//   - combo packs a zero-separated `array<uint8>` (kept on state for capacity
-//     reuse) and reinterprets `addr(buf[0])` as `string#` for ImGui's
-//     null-separated overload.
-//   - list_box passes `addr(items[0])` directly — daslang `array<string>`
-//     storage is `char **`, which matches ImGui's `const char* const items[]`.
-// BeginCombo/EndCombo + BeginListBox/EndListBox (block-arg manual loop) roll
-// into 0b.3 with the rest of the [container] family.
+// Choice family. `value` = selected index; `imgui_force_set {"value":N}` steers next frame.
+// items marshal C-side without a shim: combo packs a zero-separated array<uint8> reinterpreted as
+// `string#` for ImGui's null-separated overload; list_box passes addr(items[0]) (array<string> is char**).
 
 struct ComboState {
     @live value : int = -1                       //! selected index, -1 = none
@@ -324,10 +310,9 @@ struct ListBoxState {
     @optional changed : bool                     //! true on the frame the selection changed
 }
 
-// Text-input family. The buffer is the canonical storage; `value` is the
-// extracted (clone-on-change) string presented to user code.
-// `input_text_growable` reuses this struct; its CallbackResize lambda
-// updates `capacity` + `buffer` in place.
+// Text-input family. `buffer` is canonical storage; `value` is the extracted (clone-on-change)
+// string given to user code. `input_text_growable` reuses this struct — its CallbackResize lambda
+// updates `capacity`+`buffer` in place.
 
 struct InputTextState {
     @live value : string = ""                             //! current text content (clone of buffer)
@@ -339,23 +324,15 @@ struct InputTextState {
 }
 
 struct TextShowState {
-    //! Backs the `text_show` display widget (master plan §4.3a). Read-only
-    //! from the user's perspective — `value` is set either by an
-    //! initializer at the call site (`text_show(STATUS, value="saved")`)
-    //! or programmatically (`STATUS.value = compute_status()`). The
-    //! standard serializer surfaces `value` for telemetry / playwright
-    //! `expect_value(app, STATUS, "saved")`. Tests can also drive the
-    //! value externally via `imgui_force_set` — the dispatcher writes
-    //! `state.value` directly.
+    //! Backs the `text_show` display widget. Read-only from the user's perspective — `value` is set
+    //! by a call-site initializer (`text_show(STATUS, value="saved")`), programmatically, or via
+    //! `imgui_force_set`; the standard serializer surfaces it for telemetry.
     @live value : string = ""                          //! displayed text; settable via call-site initializer or imgui_force_set
 }
 
 struct PlotState {
-    //! Backs the `plot_lines` / `plot_histogram` display widgets. The
-    //! plotted values are passed per-frame as a parameter (not stored in
-    //! state) — same shape as the imgui_test_engine and daslib v1
-    //! conventions. State carries last-frame's call args for telemetry:
-    //! the visible label, the (scale_min, scale_max) range, and the
+    //! Backs `plot_lines` / `plot_histogram`. Plotted values are passed per-frame (not stored);
+    //! state carries last-frame's call args for telemetry — label, (scale_min, scale_max) range,
     //! sample count. Read-only — no dispatcher.
     @optional title : string                           //! overlay text
     @optional bounds : tuple<float; float>             //! (scale_min, scale_max)
@@ -363,29 +340,24 @@ struct PlotState {
 }
 
 struct NarrativeState {
-    //! Backs every text-bearing narrative widget — text / text_unformatted /
-    //! text_wrapped / text_colored / text_disabled / bullet_text /
-    //! separator_text / set_tooltip / set_item_tooltip. The displayed string
-    //! is per-call (the call site is the source of truth) and echoed into
-    //! `value` every frame for telemetry. `expect_value(MSG, "literal")`
-    //! works uniformly across the family. Read-only — no dispatcher.
+    //! Backs every text-bearing narrative widget (text / text_unformatted / text_wrapped /
+    //! text_colored / text_disabled / bullet_text / separator_text / set_tooltip / set_item_tooltip).
+    //! Displayed string is per-call, echoed into `value` each frame for telemetry. Read-only.
     @optional value : string                           //! per-frame echo of call-site `text` arg
 }
 
 struct LabelTextState {
-    //! Backs the `label_text` display widget. ImGui's `LabelText(label, fmt)`
-    //! displays the label-key on the left and the value-text on the right;
-    //! both strings are per-call and echoed for telemetry. Read-only — no
-    //! dispatcher. (Field is `key` not `label` — `label` is reserved in gen2.)
+    //! Backs the `label_text` widget. ImGui's `LabelText(label, fmt)` shows label-key on the left,
+    //! value-text on the right; both per-call, echoed for telemetry. Read-only. (Field is `key` not
+    //! `label` — `label` is reserved in gen2.)
     @optional key : string                             //! per-frame echo of the left-side label string
     @optional value : string                           //! per-frame echo of the right-side value string
 }
 
 struct EmptyMarkerState {
-    //! Backs the stateless decoration widgets — `separator`, `spacing`,
-    //! `new_line`, `dummy`, `same_line`, `bullet`. The state global exists
-    //! only because [widget] auto-emit needs something to instantiate;
-    //! mirrors GroupState / MenuBarState / TooltipState shape.
+    //! Backs the stateless decoration widgets (`separator`, `spacing`, `new_line`, `dummy`,
+    //! `same_line`, `bullet`). The state global exists only because [widget] auto-emit needs
+    //! something to instantiate.
     @optional _placeholder : bool                      //! unused; keeps the struct non-empty for [widget] auto-emit
 }
 
@@ -401,36 +373,24 @@ struct ImageState {
 }
 
 struct ProgressBarState {
-    //! Backs the `progress_bar` display widget. `fraction` is per-frame
-    //! per-call (the caller drives progress); `overlay` is the optional
-    //! center-aligned label; `size` is the per-call display size. Read-only
-    //! — no dispatcher.
+    //! Backs the `progress_bar` widget. `fraction` is per-frame per-call (caller drives progress);
+    //! `overlay` is the optional center-aligned label; `size` is the per-call display size.
+    //! Read-only — no dispatcher.
     @optional fraction : float                         //! per-frame progress in [0,1]; -1 means indeterminate
     @optional overlay : string                         //! optional overlay text (e.g. "42/100")
     @optional size : float2                            //! per-call display size; (-1, 0) defaults to full-width
 }
 
 // ===== Container family (Phase 0b.3) =====
-//
-// `[container]` widgets wrap a daslang block argument and push themselves onto
-// `g_container_path` so leaf children get hierarchical registry keys. Per-kind
-// state captures only what's worth remembering across frames + reloads — open
-// state for togglable containers, layout dims for windows / children, flags
-// for everything that takes them. Stateless containers (group, menu_bar,
-// tooltip, item_tooltip) get an empty struct so the [widget] auto-emit gate
-// still has something to instantiate.
+
+// `[container]` widgets wrap a block arg and push onto `g_container_path` so leaf children get
+// hierarchical registry keys. Per-kind state keeps only what's worth remembering across frames +
+// reloads; stateless containers get an empty struct so [widget] auto-emit has something to instantiate.
 
 struct WindowState {
-    //! Backs the `window` container. `open` defaults to true so a closable
-    //! window renders from frame 1; the X-button or `imgui_close` flips it
-    //! false. `@live` carries that across reload. Everything else is per-
-    //! frame observed (pos/size/collapsed/scroll) or echoed from per-call
-    //! args (flags). ImGui persists window pos itself via imgui.ini, so
-    //! duplicating it as `@live` would only fight that. `imgui_open` /
-    //! `imgui_close` flow through pending_open/close; the renderer applies
-    //! them at the top of the next frame. Per-call config (closable, flags)
-    //! is supplied via the named-tuple at the call site — same convention
-    //! as `[widget]`.
+    //! Backs the `window` container. `open` defaults true so a closable window renders from frame 1;
+    //! X-button / `imgui_close` flips it, `@live` carries it across reload. Pos is NOT @live (ImGui persists
+    //! it via imgui.ini). imgui_open/close route through pending_open/close, applied at the next frame's top.
     @live open : bool = true                  //! window open state; preserved across reload
     @optional flags : ImGuiWindowFlags        //! per-call ImGuiWindowFlags (echoed for telemetry)
     @optional pos : float2                    //! observed window position (top-left, screen coords)
@@ -458,10 +418,9 @@ struct ChildState {
 }
 
 struct GroupState {
-    //! Backs the `group` container. Pure layout grouping — no persistent or
-    //! observable state, but the [container] macro still needs a struct to
-    //! hang the auto-emitted global on. The `_placeholder` field stays
-    //! @optional so JV(state) emits `{}` when the group is rendered.
+    //! Backs the `group` container. Pure layout grouping — no persistent/observable state, but
+    //! [container] still needs a struct to hang the auto-emitted global on. `_placeholder` stays
+    //! @optional so JV(state) emits `{}`.
     @optional _placeholder : bool             //! unused; keeps the struct non-empty for [container] auto-emit
 }
 
@@ -478,10 +437,8 @@ struct MenuState {
 }
 
 struct PopupState {
-    //! Shared by `popup` and `popup_modal`. `open` is @live so the user-driven
-    //! state survives reload. `imgui_open` / `imgui_close` route through
-    //! pending_open/close; the renderer issues OpenPopup/CloseCurrentPopup
-    //! on the next frame in response.
+    //! Shared by `popup` and `popup_modal`. `open` is @live (survives reload). imgui_open/close route
+    //! through pending_open/close; the renderer issues OpenPopup/CloseCurrentPopup on the next frame.
     @live open : bool                         //! popup open state; preserved across reload
     @optional flags : ImGuiWindowFlags        //! per-call ImGuiWindowFlags
     @optional pending_open : bool             //! imgui_open queued; OpenPopup fires next frame
@@ -495,10 +452,9 @@ struct TabBarState {
 }
 
 struct TableState {
-    //! Backs the `table` container. ImGui owns column-resize/sort state
-    //! internally (TableSettings). Per-call config is echoed for snapshot
-    //! consumers; sort_specs / multi-select capture is deferred to the
-    //! `tables.das` port.
+    //! Backs the `table` container. ImGui owns column-resize/sort state internally (TableSettings);
+    //! per-call config is echoed for snapshot consumers. sort_specs / multi-select capture is
+    //! deferred to the `tables.das` port.
     @optional columns : int                   //! per-call column count
     @optional flags : ImGuiTableFlags         //! per-call ImGuiTableFlags
     @optional outer_size : float2             //! per-call outer_size (echoed)
@@ -518,11 +474,9 @@ struct TabItemState {
 }
 
 struct WrapTabBarState {
-    //! Backs the `wrap_tab_bar` container (the multi-row / wrapping tab bar
-    //! ImGui lacks). Active tab is an index into the tab list, like `combo`:
-    //! `imgui_force_set {"value":N}` selects tab N next frame. `labels` mirrors
-    //! the tabs seen last frame (the header strip is laid out a frame behind so
-    //! it can precede the bodies).
+    //! Backs `wrap_tab_bar` (the multi-row/wrapping tab bar ImGui lacks). Active tab is an index like
+    //! `combo`: `imgui_force_set {"value":N}` selects tab N next frame. `labels` mirrors last frame's
+    //! tabs (header strip is laid out a frame behind so it can precede the bodies).
     @live value : int                         //! active tab index; preserved across reload
     @optional has_pending : bool              //! imgui_force_set queued; consumed next frame
     @optional pending_value : int             //! next-frame index queued by imgui_force_set
@@ -548,31 +502,23 @@ struct PopupContextWindowState {
 }
 
 struct PopupWindowState {
-    //! Backs `popup_window`. Stateless `BeginPopup`/`EndPopup` wrapper for
-    //! the manual-trigger pattern — caller drives `open_popup(str_id, flags)`
-    //! themselves (typically on hover + mouse-release), then `popup_window`
-    //! brackets the body when ImGui reports the popup as open. ImGui owns
-    //! the open/close lifecycle by `str_id`, so no pending flags here.
+    //! Backs `popup_window` — stateless BeginPopup/EndPopup wrapper for the manual-trigger pattern:
+    //! caller drives `open_popup(str_id, flags)` (typically on hover+release), then `popup_window`
+    //! brackets the body when ImGui reports it open. ImGui owns the lifecycle by `str_id`, no pending flags.
     @optional _placeholder : bool             //! unused; keeps the struct non-empty for [container] auto-emit
 }
 
 struct TextFilterState {
-    //! Backs `text_filter`. Holds the bound C++ `ImGuiTextFilter` value
-    //! inline — zero-init is safe (empty `InputBuf`, empty `Filters`
-    //! `ImVector`, `CountGrep = 0`), so no explicit ctor call is needed.
-    //! `text_filter` renders the inline InputText editor via the bound
-    //! `Draw()` method; `passes_filter(state, line)` delegates to the
-    //! hand-bound `PassFilter(filter, text)` standalone helper.
+    //! Backs `text_filter`. Holds the bound C++ `ImGuiTextFilter` inline — zero-init is safe (empty
+    //! InputBuf/Filters ImVector, CountGrep=0), no ctor call needed. Renders the inline InputText via
+    //! the bound `Draw()`; `passes_filter` delegates to the hand-bound `PassFilter(filter, text)`.
     @safe_when_uninitialized @optional value : string  //! mirrored InputBuf text for snapshot/telemetry
     @safe_when_uninitialized filter : ImGuiTextFilter
 }
 
-// JV + archive::serialize overrides for TextFilterState. The bound
-// `ImGuiTextFilter` has no daslang-side JV or serialize binding (and no safe
-// `delete`), so the generic field-walking JV / archive::serialize generics
-// would fail to instantiate. The user-visible state is just the editor text
-// mirror; the bound filter regenerates from `value` on first frame after
-// reload via the widget body.
+// JV + archive::serialize overrides for TextFilterState: the bound `ImGuiTextFilter` has no
+// daslang JV/serialize binding (and no safe `delete`), so the generic field-walking generics would
+// fail to instantiate. Only the editor-text mirror is serialized; the filter regenerates from `value` post-reload.
 def public JV(value : TextFilterState) : JsonValue? {
     return JV((value = value.value))
 }
@@ -604,11 +550,9 @@ struct TreeNodeState {
 }
 
 struct CollapsingHeaderState {
-    //! Backs the `collapsing_header` container. Same shape as TreeNodeState
-    //! plus a TabItemState-style `@live open` slot for the X-button form
-    //! (CollapsingHeader(label, bool* p_visible, flags)). `open` defaults
-    //! to true so a closable section renders from frame 1; the X-button
-    //! or `imgui_close` flips it false.
+    //! Backs `collapsing_header`. Same shape as TreeNodeState plus a `@live open` slot for the
+    //! X-button form (CollapsingHeader(label, bool* p_visible, flags)); `open` defaults true so a
+    //! closable section renders from frame 1, X-button / `imgui_close` flips it.
     @live open : bool = true                  //! closable form's p_visible state; preserved across reload
     @optional flags : ImGuiTreeNodeFlags      //! per-call ImGuiTreeNodeFlags
     @optional opened : bool                   //! observed per-frame: CollapsingHeader returned true
@@ -624,22 +568,14 @@ struct MainMenuBarState {
 }
 
 // ===== Per-frame registry =====
-//
-// One entry per render of any boost-wrapped widget, keyed by the widget's
-// daslang identifier ("SAVE_BTN" / "SPEED" / "VOLUME" / ...). Cleared at
-// the start of each frame.
+
+// One entry per render of any boost-wrapped widget, keyed by the widget's daslang identifier
+// ("SAVE_BTN" / "SPEED" / ...). Cleared at the start of each frame.
 
 struct WidgetEntry {
-    //! Per-frame snapshot of one rendered widget. Common fields populated
-    //! every frame; per-kind detail is materialized on demand from the
-    //! ``(addr, ti)`` pair stored in ``g_widgets[ident]`` and pasted into
-    //! ``payload`` at imgui_snapshot time via ``sprint_json_at`` +
-    //! ``read_json``. No per-widget serializer lambda — the addr+ti pair
-    //! survives ``g_registry``'s per-frame clear because it's pinned in
-    //! the long-lived ``g_widgets`` table.
-    //! Stateless widgets/containers (no state global) instead set the
-    //! ``serialize`` hook + ``serialize_ctx``/``serialize_id``; the payload is
-    //! built lazily at snapshot from those, so per-frame render does zero JSON.
+    //! Per-frame snapshot of one rendered widget. Common fields populated each frame; per-kind detail
+    //! is materialized on demand at imgui_snapshot from the ``(addr, ti)`` pair in ``g_widgets[ident]``
+    //! (via ``sprint_json_at`` + ``read_json``). Stateless widgets instead set the ``serialize`` hook (+ ctx/id), built lazily at snapshot — zero per-frame JSON.
     kind : string                                //! widget kind ("button", "slider_float", ...)
     hex_id : uint                                //! ImGui's GetID() for this widget on this frame
     bbox : float4                                //! packed [x0, y0, x1, y1] — ALWAYS screen-space
@@ -670,9 +606,7 @@ def private state_payload_jv(state_addr : void?; ti : TypeInfo const?) : JsonVal
 }
 
 def private widget_entry_jv(ident : string; var entry : WidgetEntry) : JsonValue? {
-    // Snapshot blob for a widget rendered this frame. Payload source:
-    //   - reflected state via (state_addr, ti) from g_widgets[ident] (stateful), or
-    //   - the entry's lazy `serialize` hook (stateless widgets — built here, not per frame).
+    // Payload: reflected (state_addr, ti) from g_widgets[ident] (stateful), else the lazy `serialize` hook (stateless).
     let meta = unsafe(g_widgets?[ident])
     if (meta != null) {
         entry.payload = state_payload_jv(resolve_meta_addr(*meta), meta.ti)
@@ -686,23 +620,10 @@ var g_registry : table<string; WidgetEntry>
 var g_frame : int = 0
 
 // ===== Long-lived widget registry (Phase 1) =====
-//
-// `g_widgets` is the long-lived twin of `g_registry`. The [widget] macro
-// emits a `register_widget(...)` call into a per-module shared `[init]`
-// function (see daslib/decs_boost.das:583-589 for the setup_call_list
-// pattern), so every widget appears here at module load — even before its
-// containing window/tab is opened.
-//
-// `imgui_snapshot` walks `g_widgets` for the full widget enumeration and
-// joins each entry with `g_registry[k]` for this frame's bbox / hover /
-// active / focus when present. Closed-window widgets surface with
-// `rendered: false` and the state struct's serializer payload.
-//
-// Keying: registration uses the widget's bare ident (the macro can't
-// know the container chain at expansion time when the user's container
-// is hidden behind helpers). On first render `widget_finalize` migrates
-// the entry from `bareName` to `path_key` (container-aware) so siblings
-// across containers stay distinct.
+
+// `g_widgets` is the long-lived twin of `g_registry`: [widget] emits `register_widget(...)` into a
+// per-module `[init]`, so every widget appears at module load (even before its container opens).
+// imgui_snapshot walks it and joins `g_registry[k]` for this frame's bbox/hover/active/focus; keying starts at the bare ident, then widget_finalize migrates it to the container-aware path_key on first render so cross-container siblings stay distinct.
 
 struct WidgetMeta {
     module_name : string                                  //! owning module; lets clear_module_widgets drop on reload
@@ -719,30 +640,16 @@ struct WidgetMeta {
 
 var g_widgets : table<string; WidgetMeta>
 
-// Sentinel module_name for entries created lazily by `widgets_mark_seen` (the
-// [edit_widget] external-pointer path). Pre-registered entries from
-// `register_widget`/`register_widget_indexed`/`register_widget_str` carry the
-// caller's `compiling_module().name` — which is "" for main files (top-level
-// scripts with no `module X` decl) and non-empty for required modules. Lazy
-// entries get this sentinel instead so the snapshot freshness gate at
-// `widget_meta_jv`'s iteration loop can drop them after one frame absent
-// without affecting main-file pre-registered entries.
+// Sentinel module_name for entries created lazily by `widgets_mark_seen` (the [edit_widget]
+// external-pointer path). Pre-registered entries carry `compiling_module().name` ("" for main files);
+// lazy entries get this sentinel so the freshness gate can drop them after a frame absent without hitting main-file entries.
 let private LAZY_EDIT_WIDGET_MODULE = "<edit_widget>"
 
 // ===== Phase 2 reverse maps + coroutine runner =====
-//
-// `g_id_to_path` is a long-lived hex_id → path_key map populated by every
-// widget_finalize / container_finalize. Lets `io_jv()` resolve `GetActiveID()`
-// (an opaque ImGuiID) back to the user's identifier path. Surviving across
-// frames mirrors `g_widgets`; cleared on hot-reload via clear_module_widgets.
-//
-// `g_id_to_bbox` is a per-frame hex_id → bbox map for L1 click/drag fallback
-// when the target string is "0x..." but not in g_id_to_path. Cleared at the
-// top of begin_frame() alongside g_registry.
-//
-// `g_coroutines` holds in-flight synth coroutines (e.g. imgui_click's press/
-// release). Each [async] command spawns one Coroutine (iterator<bool>); the
-// runtime advances the array one step per frame in begin_frame() via advance_coroutines.
+
+// `g_id_to_path`: long-lived hex_id → path_key (populated by every finalize) so `io_jv()` resolves
+// GetActiveID's opaque ImGuiID back to a user path. `g_id_to_bbox`: per-frame hex_id → bbox, L1
+// click/drag fallback for "0x..." targets absent from g_id_to_path. `g_coroutines`: in-flight synth coroutines, advanced one step/frame by advance_coroutines.
 
 var private g_id_to_path : table<uint; string>
 var private g_id_to_bbox : table<uint; float4>
@@ -760,30 +667,15 @@ def public id_to_bbox(hid : uint) : float4 {
     return key_exists(g_id_to_bbox, hid) ? g_id_to_bbox[hid] : float4(0.0f, 0.0f, 0.0f, 0.0f)
 }
 
-// Deferred (Phase 4 / on-demand): a separate `extras` channel for
-// transient per-frame data that doesn't belong in the persistent state
-// struct (text-input cursor / selection, tooltip content). Phase 1.2
-// initially planned a `lambda<() : JsonValue?> extras` field on
-// WidgetMeta — dropped after a clean-room read of imgui_test_engine
-// confirmed cursor/selection isn't worth public-API gymnastics (test
-// engine reads InputText via clipboard, never exposes cursor/selection).
-// All current "transient observed state" fits inline in the kind's state
-// struct (ChildState.scroll / WindowState.collapsed / TreeNodeState.opened).
-// Reintroduce the extras channel only when a real consumer (e.g. Phase 4
-// visual aids) needs data that doesn't fit a state-struct field.
+// No separate `extras` channel for transient per-frame data (text-input cursor/selection, tooltip
+// content): it all fits inline in each kind's state struct (ChildState.scroll, WindowState.collapsed,
+// TreeNodeState.opened). Reintroduce only when a consumer needs data that doesn't fit a state field.
 
 // ===== Container path stack =====
-//
-// `g_container_path` is the chain of currently-open `[container]` idents,
-// outermost-first. Pushed on container body entry, popped on body exit. Leaf
-// widgets read the chain at finalize time to build hierarchical registry +
-// dispatcher keys ("MAIN_WIN/SETTINGS_TAB/RPS"). Containers themselves push
-// before invoking their block, so by the time their body calls
-// container_finalize, self is already at the chain's tail.
-//
-// `g_container_path_str` is the cached "/"-joined form, kept in sync by
-// push/pop so leaf finalize is one string interpolation rather than an
-// O(depth) join per leaf per frame.
+
+// `g_container_path`: chain of open `[container]` idents, outermost-first — pushed on body entry,
+// popped on exit; leaf widgets read it at finalize for hierarchical registry/dispatcher keys.
+// Containers push BEFORE invoking their block, so self is at the tail by container_finalize. `g_container_path_str` caches the "/"-joined form (push/pop-synced) so leaf finalize is one interpolation, not an O(depth) join.
 
 var g_container_path : array<string>
 var private g_container_path_str : string
@@ -850,11 +742,9 @@ def begin_frame() {
 }
 
 // ===== Memory / GC-pressure tracking (opt-in) =====
-//
-// Mirrors strudel_player's heap-delta tracking: sample the heap once per frame
-// (from begin_frame), hold a baseline + running max, log periodically while
-// enabled, and emit a final delta line at teardown. Off by default — one bool
-// test per frame when off.
+
+// Sample the heap once per frame (from begin_frame), hold a baseline + running max, log periodically
+// while enabled, emit a final delta line at teardown. Off by default — one bool test per frame when off.
 
 var private g_debug_memory : bool = false
 var private g_mem_baseline_set : bool = false
@@ -966,11 +856,10 @@ def public spawn_coroutine(var c : Coroutine) {
 }
 
 // ===== Render helpers =====
-//
-// `widget_prelude` runs at the top of every macro-wrapped widget body
-// (PushID for unique imgui scoping). `widget_finalize` runs at the bottom
-// — captures the common per-frame fields, registers the lazy serializer
-// + dispatcher on the first render of each ident, and balances the PushID.
+
+// `widget_prelude` runs at the top of every macro-wrapped widget body (PushID for unique imgui
+// scoping); `widget_finalize` runs at the bottom — captures per-frame fields, registers the lazy
+// serializer + dispatcher on first render, and balances the PushID with PopID.
 
 def public widget_prelude(widget_ident : string) {
     //! Top-of-body helper for ``[widget]`` macros: ``PushID(widget_ident)`` and apply any pending :ref:`imgui_focus <function-imgui_boost_runtime_imgui_focus_JsonValue_q_>` request.
@@ -1012,12 +901,7 @@ def public pending_value_finalize(widget_ident : string; kind : string; var stat
 }
 
 def private capture_sub_bboxes_into(var entry : WidgetEntry; components : int; item_width : float) {
-    //! Compute per-component sub-rects for a SliderScalarN-style widget and store them on ``entry``,
-    //! mapped to screen via the active item-transform (like ``capture_item_bbox``). Mirrors ImGui's
-    //! ``PushMultiItemsWidths`` layout: N items split ``item_width`` (the value ``CalcItemWidth()``
-    //! returned at the call), separated by ``ItemInnerSpacing.x``, the last taking the remainder.
-    //! ``GetItemRectMin/Max`` gives the combined frame — the sliders start at its left; the label (if
-    //! any) sits past ``item_width``, so the sub-rects use ``item_width``, not the combined width.
+    // Per-component sub-rects for a SliderScalarN widget (screen-mapped), splitting item_width like PushMultiItemsWidths — uses item_width not the combined GetItemRect width (the label sits past item_width).
     if (components <= 1) return
     let rmin = GetItemRectMin()
     let rmax = GetItemRectMax()
@@ -1036,13 +920,9 @@ def private capture_sub_bboxes_into(var entry : WidgetEntry; components : int; i
 
 def public pending_value_finalize_vec(widget_ident : string; kind : string;
                                       var state : auto(ST); components : int; item_width : float) {
-    //! Multi-component variant of ``pending_value_finalize`` for the vector / range numeric widgets
-    //! (``slider_float2/3/4``, ``slider_int2/3/4``, ``drag_float2/3/4``, ``drag_int2/3/4``, and the
-    //! two-handle ``drag_*_range2`` forms): identical dispatch wiring, plus per-component ``sub_bboxes``
-    //! so a driver can target one handle (``widget_component_point``) instead of guessing x within the
-    //! combined bbox. ``item_width`` is ``CalcItemWidth()`` captured at the call site — the width ImGui's
-    //! ``SliderScalarN`` / ``DragScalarN`` / ``DragFloatRange2`` divides among the components via
-    //! ``PushMultiItemsWidths``.
+    //! Multi-component variant of ``pending_value_finalize`` for the vector/range numeric widgets
+    //! (``slider_float2/3/4``, ``drag_float2/3/4``, the two-handle ``drag_*_range2``): same dispatch
+    //! wiring plus per-component ``sub_bboxes`` so a driver targets one handle. ``item_width`` = ``CalcItemWidth()`` captured at the call site.
     var entry : WidgetEntry
     capture_sub_bboxes_into(entry, components, item_width)
     unsafe {
@@ -1055,11 +935,9 @@ def public pending_value_finalize_vec(widget_ident : string; kind : string;
 
 def public pending_value_finalize_subs(widget_ident : string; kind : string;
                                        var state : auto(ST); var subs : array<float4>) {
-    //! ``pending_value_finalize`` plus a caller-BUILT per-item ``sub_bboxes`` array — for widgets whose
-    //! items aren't separately registered and whose rects can't be derived analytically (combo /
-    //! combo_getter popup items, captured one-per-Selectable via ``capture_current_item_rect``). An
-    //! empty ``subs`` (popup closed this frame) leaves ``sub_bboxes`` absent, so ``widget_component_point``
-    //! falls back to the combo box itself (the thing you click to open it). ``subs`` is moved out.
+    //! ``pending_value_finalize`` plus a caller-BUILT per-item ``sub_bboxes`` — for widgets whose items
+    //! aren't separately registered and can't be derived analytically (combo popup items, captured
+    //! one-per-Selectable via ``capture_current_item_rect``). Empty ``subs`` leaves ``sub_bboxes`` absent; ``subs`` is moved out.
     var entry : WidgetEntry
     if (!empty(subs)) {
         entry.sub_bboxes <- subs
@@ -1184,14 +1062,9 @@ def public with_state(path : string; t : type<auto(T)>;
     }
 }
 
-// Per-frame "this path rendered already" set. Each path_key may be
-// finalized exactly once between begin_frame()/end_of_frame() — collision
-// means a single-global widget got rendered twice in the same frame
-// (lexical duplicate, or invisibly aliased through two distinct call
-// sites). Cleared at begin_frame(); checked at widget_finalize /
-// container_finalize entry. Per API_REWORK §4.4: "loud, not a warning —
-// telemetry needs an unambiguous path → widget mapping or test commands
-// can't locate the right widget."
+// Per-frame "this path rendered already" set — each path_key must finalize exactly once between
+// begin_frame()/end_of_frame(). A collision means a single-global widget rendered twice (lexical dup
+// or aliased call sites); it's loud, not a warning — telemetry needs an unambiguous path → widget map.
 var private g_rendered_this_frame : table<string>
 
 def private check_unique_render(path_key : string; kind : string) {
@@ -1205,18 +1078,10 @@ def private check_unique_render(path_key : string; kind : string) {
 }
 
 // ===== Snapshot item-transform stack (for transformed canvases, e.g. node-editor) =====
-//
-// A custom canvas (imgui-node-editor's ImGuiEx::Canvas) remaps ImGui's coordinate
-// frame to canvas-local while active, so GetItemRectMin/Max — which widget_finalize
-// captures — returns canvas-local coords for any widget rendered inside it. To keep
-// the snapshot uniformly SCREEN-space, such a canvas pushes an affine item-transform
-// for the duration of its block; widget_finalize maps each captured rect to screen
-// (bbox) and records the original local rect (canvas_bbox). It's a STACK so canvases
-// nest like every other imgui scope (PushID/PushClipRect): each entry is the absolute
-// local→screen affine for that canvas — the editor's CanvasToScreen is already
-// absolute, so a push sets the innermost mapping and a pop restores the enclosing one,
-// no composition needed here. Empty stack = identity, so non-canvas widgets are
-// unaffected.
+
+// A custom canvas (node-editor's ImGuiEx::Canvas) remaps ImGui's coords to canvas-local, so
+// GetItemRectMin/Max returns canvas-local for interior widgets. To keep snapshots uniformly SCREEN-space,
+// the canvas pushes an affine item-transform for its block; widget_finalize maps each rect to screen (bbox) and keeps the local rect (canvas_bbox). A STACK (canvases nest); each entry is the absolute local→screen affine, so push sets / pop restores with no composition. Empty stack = identity.
 struct private ItemXform {
     scale  : float2
     offset : float2
@@ -1224,10 +1089,9 @@ struct private ItemXform {
 var private g_item_xform_stack : array<ItemXform>
 
 def public push_snapshot_item_transform(scale : float2; offset : float2) {
-    //! Push a `screen = local * scale + offset` mapping applied to every widget's
-    //! captured item rect until the matching `pop_snapshot_item_transform()`. A custom
-    //! canvas (e.g. `node_editor`) pushes this so interior widgets report screen-space
-    //! `bbox` plus a `canvas_bbox` carrying the original local rect. Nestable.
+    //! Push a `screen = local * scale + offset` mapping applied to every widget's captured item rect
+    //! until the matching `pop_snapshot_item_transform()`. A canvas (e.g. `node_editor`) pushes this so
+    //! interior widgets report screen-space `bbox` plus a `canvas_bbox` with the local rect. Nestable.
     g_item_xform_stack |> push(ItemXform(scale = scale, offset = offset))
 }
 
@@ -1250,12 +1114,9 @@ def private item_xform_screen(local : float4) : float4 {
 }
 
 def public capture_item_bbox(var entry : WidgetEntry; local : float4) {
-    //! Record a captured imgui item rect into `entry`: `bbox` mapped to screen via the
-    //! active snapshot item-transform, plus `canvas_bbox` carrying the original local rect
-    //! when the transform actually moved it. The single capture chokepoint for both leaf
-    //! widgets (`widget_finalize`) and container headers, so every entry stays consistent
-    //! under a transformed canvas. The (0,0,0,0) sentinel (a headerless container) is left
-    //! untouched — never mapped to a phantom rect at the transform offset.
+    //! Record a captured imgui item rect into `entry`: `bbox` screen-mapped via the active item-transform,
+    //! plus `canvas_bbox` (local rect) when the transform moved it. Single capture chokepoint for leaf
+    //! widgets and container headers. The (0,0,0,0) sentinel (headerless container) is left untouched — no phantom rect at the transform offset.
     if (local.x == 0.0f && local.y == 0.0f && local.z == 0.0f && local.w == 0.0f) {
         entry.bbox = local
         return
@@ -1274,9 +1135,8 @@ def public capture_item_bbox(var entry : WidgetEntry; local : float4) {
 
 def public capture_current_item_rect() : float4 {
     //! The just-submitted ImGui item's screen-space rect [x0,y0,x1,y1], mapped through the active
-    //! snapshot item-transform (identity in the common case). For popup/list widgets whose items are
-    //! NOT separately registered (combo popup items): the body captures one rect per item right after
-    //! its Selectable, building the sub_bboxes a driver then targets via widget_component_point.
+    //! item-transform (identity in the common case). For popup/list items NOT separately registered
+    //! (combo popup items): capture one rect per item after its Selectable to build sub_bboxes.
     let rmin = GetItemRectMin()
     let rmax = GetItemRectMax()
     let local = float4(rmin.x, rmin.y, rmax.x, rmax.y)
@@ -1302,10 +1162,9 @@ def public widget_finalize(widget_ident : string;
     entry.focus = IsItemFocused()
     g_id_to_path[entry.hex_id] = path_key
     g_id_to_bbox[entry.hex_id] = entry.bbox
-    // hex_id is GetID(widget_ident), which differs from ImGui's real active item id for input
-    // widgets - so focus_rect / the snapshot's active_widget couldn't resolve typing focus. When
-    // THIS widget is the active one, also map GetActiveID() (authoritative) -> path. Gated on
-    // entry.active so GetActiveID() is this item; additive (hex_id untouched, no targeting change).
+    // hex_id (GetID(widget_ident)) differs from ImGui's real active-item id for input widgets, so
+    // focus_rect / snapshot active_widget couldn't resolve typing focus. When THIS widget is active,
+    // also map GetActiveID() (authoritative) → path — gated on entry.active, additive (hex_id untouched).
     if (entry.active) {
         g_id_to_path[GetActiveID()] = path_key
     }
@@ -1316,13 +1175,9 @@ def public widget_finalize(widget_ident : string;
 
 def public register_radio_site_alias(widget_ident : string; v_button : int;
                                      state_addr : void?; ti : TypeInfo const?) {
-    //! Register a per-site geometry alias ``<path>#<v_button>`` for a grouped ``radio_button_int``,
-    //! so each option is independently click-/test-targetable even though all sites share one ident
-    //! (hence one ``<path>``) for their state. Shared state stays at ``<path>``; the alias carries
-    //! only this site's bbox. Call right after the site's normal finalize — ``GetItemRectMin/Max``
-    //! still reports this radio's rect (we re-capture rather than reuse the parent ``entry``, which
-    //! ``widget_finalize`` already moved into ``g_registry``). ``widgets_mark_seen(alias, alias, …)``
-    //! skips the bare-ident migration (its two args are equal) and lazily creates/refreshes the meta.
+    //! Register a per-site geometry alias ``<path>#<v_button>`` for a grouped ``radio_button_int`` so
+    //! each option is independently click/test-targetable though all sites share one ident (hence one
+    //! ``<path>``) for state. Call right after the site's finalize; ``widgets_mark_seen(alias, alias, …)`` skips the bare-ident migration (equal args) and refreshes the meta.
     let alias = "{widget_path_key(widget_ident)}#{v_button}"
     var entry : WidgetEntry
     entry.kind = "radio_button_int"
@@ -1334,17 +1189,9 @@ def public register_radio_site_alias(widget_ident : string; v_button : int;
 }
 
 def public register_clickable_bbox(alias_ident : string; id_tag : string; kind : string) {
-    //! Surface a draw-time clickable region (a raw ``Button`` / ``InvisibleButton`` a
-    //! ``[container]`` draws itself, with no ``[widget]`` of its own) as the child alias
-    //! ``<container>/alias_ident``, so external drivers and recordings can target a REAL
-    //! synthetic click/drag by path instead of only ``imgui_force_set``. Geometry-only (no
-    //! state): written straight into ``g_registry``, so it rides the per-frame clear and
-    //! surfaces via ``imgui_snapshot``'s registry-only pass with no freshness bookkeeping.
-    //! Call from inside the ``[container]`` body, right after the ``Button(id_tag, …)`` —
-    //! the open-container chain still names this container, and ``GetItemRectMin/Max`` /
-    //! ``GetID(id_tag)`` still report that item. ``id_tag`` is the ImGui label/id passed to
-    //! the button (used for ``GetID``); ``alias_ident`` is the snapshot path leaf (usually
-    //! the same string). The generic form behind ``register_handle_bbox``.
+    //! Surface a draw-time clickable region (a raw Button/InvisibleButton a ``[container]`` draws itself)
+    //! as child alias ``<container>/alias_ident``, so drivers can target a REAL synthetic click by path.
+    //! Geometry-only, written into ``g_registry`` (rides the per-frame clear). Call inside the container body right after ``Button(id_tag, …)``: ``id_tag`` is the ImGui id (for GetID), ``alias_ident`` the snapshot path leaf.
     let alias = widget_path_key(alias_ident)
     check_unique_render(alias, kind)   // loud on a duplicated alias, like every finalize
     var entry = WidgetEntry(kind = kind, hex_id = GetID(id_tag))
@@ -1379,12 +1226,9 @@ def public register_clickable_state_bbox(alias_ident : string; id_tag : string; 
 }
 
 def public register_handle_bbox(tag : string) {
-    //! Surface a split/dock drag-handle's geometry as a child alias ``<container>/HANDLE``,
-    //! so external drivers and recordings can target a REAL synthetic drag at the handle
-    //! instead of only ``imgui_force_set``-ing the fraction. Call from inside the
-    //! ``[container]`` body, right after the handle ``InvisibleButton(tag, …)``. Thin
-    //! specialization of ``register_clickable_bbox`` with the fixed ``HANDLE`` alias (a
-    //! split has exactly one handle). Mirrors ``register_radio_site_alias``.
+    //! Surface a split/dock drag-handle's geometry as child alias ``<container>/HANDLE``, so drivers can
+    //! target a REAL synthetic drag at the handle (not only ``imgui_force_set``-ing the fraction). Call
+    //! inside the ``[container]`` body after the handle ``InvisibleButton(tag, …)``. Fixed ``HANDLE`` alias (one per split).
     register_clickable_bbox("HANDLE", tag, "splitter_handle")
 }
 
@@ -1398,13 +1242,7 @@ def private widgets_mark_seen(bare_ident : string; path_key : string;
             g_widgets[path_key] <- moved
         }
     }
-    // Refresh (state_addr, ti) every frame. For pre-registered [widget] paths
-    // this is an idempotent overwrite of identical values; for [edit_widget]
-    // external-pointer widgets (which never went through register_widget at
-    // [init]) this is the only source of the meta — create it lazily on
-    // first render. Lazy entries get a sentinel module_name so the snapshot
-    // freshness gate can drop them after one frame absent without affecting
-    // pre-registered entries from top-level scripts (which carry module_name="").
+    // Refresh (state_addr, ti) each frame; [edit_widget] widgets that skipped register_widget get their meta created lazily here, with the LAZY sentinel module_name so the freshness gate can expire them.
     if (state_addr != null && ti != null) {
         if (key_exists(g_widgets, path_key)) {
             unsafe {
@@ -1446,27 +1284,16 @@ def public container_finalize(widget_ident : string;
 }
 
 // ===== L2/L3 dispatcher table — per-state-struct-type, addr-routed =====
-//
-// One top-level function per state struct, registered into ``g_dispatchers``
-// at module init via the ``[widget_dispatch]`` annotation (imgui_boost.das),
-// keyed by the state's runtime ``TypeInfo.hash``. At HTTP dispatch time,
-// ``dispatch_or_err`` resolves the target path's meta to ``(state_addr, ti)``,
-// looks up ``g_dispatchers[(*ti).hash]``, and invokes the dispatcher with
-// ``(state_addr, action, payload_json_string)``. No per-widget capture frame,
-// no ``from_JV<T>`` generic instantiation — the dispatcher casts ``state_addr``
-// to its state-struct type and runs ``sscan_json`` on the typed pending field
-// for ``set`` actions.
+
+// One top-level function per state struct, registered into ``g_dispatchers`` at module init via
+// ``[widget_dispatch]``, keyed by the state's runtime ``TypeInfo.hash``. At dispatch, ``dispatch_or_err``
+// resolves the target's ``(state_addr, ti)``, looks up ``g_dispatchers[(*ti).hash]``, and invokes it with ``(state_addr, action, payload)`` — the dispatcher casts state_addr to its struct type and runs ``sscan_json`` on the typed pending field. No per-widget capture frame or ``from_JV<T>`` instantiation.
 
 typedef KindDispatcher = function<(state_addr : void?; action : string; payload : string) : void>
 
-//! Dispatch is keyed by the state's runtime ``TypeInfo.hash`` — one dispatcher
-//! per state-struct type covers every widget kind that uses that struct (e.g.
-//! the single ToggleState dispatcher fires for ``checkbox``/``radio_button``/
-//! ``selectable``/``menu_item``). ClickState carries no dispatcher: an
-//! ``imgui_click`` is a real synthetic mouse click handled before any lookup.
-//! Non-Structure ti (scalar pointee from ``[edit_widget]``) that don't have a
-//! registered dispatcher fall back to the generic ``sscan_json_at(state_addr,
-//! *ti)`` write-through in ``dispatch_or_err``.
+// Keyed by the state's runtime ``TypeInfo.hash`` — one dispatcher per state-struct type covers every
+// widget kind using that struct (one ToggleState dispatcher serves checkbox/radio_button/selectable/menu_item).
+// ClickState has none (``imgui_click`` is a real synth click, handled pre-lookup); non-Structure ti fall back to the generic ``sscan_json_at`` write-through in ``dispatch_or_err``.
 var private g_dispatchers : table<uint64; KindDispatcher>
 
 def public register_widget_dispatch_for_type(ti : TypeInfo const?; dispatcher : KindDispatcher) {
@@ -1476,15 +1303,10 @@ def public register_widget_dispatch_for_type(ti : TypeInfo const?; dispatcher : 
 }
 
 // ===== Phase 2 — Result wire format + per-command await =====
-//
-// Every [live_command] handler returns a Result<T, string> (rendered to JSON
-// via the JV overload below). `with_await` is the generic wrapper that auto-
-// converts any payload to JSON and threads per-command await modifiers
-// (await_frames / await_until / timeout_sec / fire_and_forget) into the
-// response so the transport-side await_imgui (widgets/imgui_transport) can
-// poll for quiescence after dispatch. Server never blocks — running on the
-// GLFW main thread inside tick() means a server-side wait deadlocks the
-// frame loop that drives quiescence.
+
+// Every [live_command] handler returns a Result<T, string> (JSON via the JV overload below). `with_await`
+// auto-converts the payload and threads per-command await modifiers (await_frames/await_until/timeout_sec/
+// fire_and_forget) into the response so transport-side await_imgui polls for quiescence. The server NEVER blocks — it runs on the GLFW main thread inside tick(), so a server-side wait would deadlock the frame loop that drives quiescence.
 
 def public JV(r : $Result < auto(TT); auto(EE) >) : JsonValue? {
     //! Wire format for ``Result<T, E>``: ``{"ok": bool, "value"|"error": ...}``; the transport contract every ``imgui_*`` handler returns.
@@ -1564,24 +1386,16 @@ def private io_jv() : JsonValue? {
 def imgui_snapshot(_input : JsonValue?) : JsonValue? {
     //! Live-command: return ``{frame, globals, io}`` — every registered widget joined with its per-frame entry when rendered.
     var globals : table<string; JsonValue?>
-    // Walk long-lived registry first — covers unrendered widgets too.
-    // EXCEPT: indexed-form entries (path contains '[') expire after one
-    // frame absent. A user-table key that got removed must vanish from
-    // telemetry; otherwise stale state serializers fire on slots that
-    // may have been reused, returning misleading values.
+    // Walk the long-lived registry first (covers unrendered widgets too). EXCEPT indexed-form entries
+    // (path contains '['), which expire after one frame absent: a removed user-table key must vanish
+    // from telemetry, else stale serializers fire on reused slots and return misleading values.
     for (k, meta in keys(g_widgets), values(g_widgets)) {
         if (key_exists(g_registry, k)) {
             globals |> insert(k, widget_entry_jv(k, g_registry[k]))
         } else {
-            // Freshness gate for entries clear_module_widgets can't reach on
-            // @live reload: indexed slots (path contains '[' — user-table key
-            // may have been erased) and lazy-created [edit_widget] entries
-            // (module_name == LAZY_EDIT_WIDGET_MODULE sentinel — never went
-            // through register_widget). Both self-expire after one frame
-            // absent so snapshot doesn't deref a state_addr left dangling by
-            // a heap reset. Pre-registered entries with module_name == ""
-            // (main-file top-level scripts) are safe — clear_module_widgets("")
-            // covers them on reload.
+            // Freshness gate for entries clear_module_widgets can't reach on @live reload: indexed slots
+            // (path has '[', key may be erased) and lazy [edit_widget] entries (LAZY sentinel module_name).
+            // Both self-expire after one frame absent so snapshot won't deref a state_addr dangling after a heap reset; pre-registered "" (main-file) entries are safe (clear_module_widgets("") covers them).
             let needs_freshness = find(k, "[") >= 0 || meta.module_name == LAZY_EDIT_WIDGET_MODULE
             continue if (needs_freshness && meta.last_seen_frame < g_frame - 1)
             globals |> insert(k, widget_meta_jv(k, meta))
@@ -1610,23 +1424,16 @@ def private classify_target(target : string) : tuple<int; string> {
         return (1, target)
     }
     if (key_exists(g_widgets, target)) return (2, target)
-    // Geometry-only clickable aliases (register_clickable_bbox / register_handle_bbox):
-    // no dispatcher, click/drag by bbox only -> level 1 (like a hex_id), resolved by path
-    // via widget_rect's g_registry hit. Lets a wrap_tab_item header / split handle be
-    // clicked BY NAME, not just by hex_id.
+    // Geometry-only clickable aliases (no dispatcher) → level 1, click/drag by bbox but resolved by name, so a wrap_tab_item header / split handle is targetable by path not just hex_id.
     if (key_exists(g_registry, target)) return (1, target)
     return (0, target)
 }
 
 // ===== Synthetic input core (boost-owned) =====
-//
-// Low-level synth mouse/keyboard + the per-frame tick + real-input control.
-// Modeled on Dear ImGui's imgui_test_engine: synth input is persistent state
-// (cursor pos + button mask + held keys) re-asserted as io.Add*Event every
-// frame while owned. The animated "over-frames" timeline playback lives in
-// imgui_live_core and registers its per-frame advance + stop here (boost never
-// requires live; live requires boost and plugs in via these hooks). Real input
-// is suppressed by detaching the GLFW backend callbacks at source.
+
+// Low-level synth mouse/keyboard + per-frame tick + real-input control. Like imgui_test_engine, synth
+// input is persistent state (cursor pos + button mask + held keys) re-asserted as io.Add*Event every
+// frame while owned. Timeline playback lives in imgui_live_core, plugging in via these hooks (boost never requires live). Real input is suppressed by detaching the GLFW backend callbacks at source.
 
 var public synth_cursor_owned : bool = false   //! true once any synth IO fired; overlays render against the synth cursor
 var private mouse_cursor_x : float = 0.0
@@ -1635,18 +1442,15 @@ var public synth_buttons_mask : int = 0        //! held mouse-button bitmask (bi
 var public synth_click_button : int = -1       //! last synth-clicked button (visual_aids click flash)
 var public synth_click_action : int = 0        //! 1 press / 0 release
 var public synth_click_t : float = -1.0
-// FIFO serialization for click coroutines: each click claims a ticket at dispatch time (issue
-// order) and waits until it's the one being served. Keeps back-to-back clicks driving the button
-// strictly in the order their commands were issued, regardless of how the per-frame command drain
-// batches them or in what order the reverse-order coroutine advance resumes them.
+// FIFO serialization for click coroutines: each click claims a ticket at dispatch (issue order) and
+// waits until it's served, so back-to-back clicks drive the button strictly in issue order regardless
+// of how the per-frame command drain batches them or the reverse-order coroutine advance resumes them.
 var private g_click_ticket_next    : int = 0   // next ticket to hand out (bumped at dispatch, just before spawn)
 var private g_click_ticket_serving : int = 0   // ticket currently allowed to drive the button
 
-// Toggleable per-section debug logging. A section name maps to enabled;
-// emit via the ambient to_log gated on it, so per-frame instrumentation costs one set-lookup when
-// off. Toggle from a test or via the imgui_log_section live_command. Deliberately a tiny local
-// gate, NOT a daslib/logger require — boost is foundational and we don't pull logger+debugger into
-// every dasImgui app's compile.
+// Toggleable per-section debug logging: a section name maps to enabled, emit via ambient to_log gated
+// on it (one set-lookup when off). Deliberately a tiny local gate, NOT a daslib/logger require — boost
+// is foundational, so we don't pull logger+debugger into every dasImgui app's compile.
 var private g_log_sections : table<string>
 var private g_log_buf : array<string>   // drainable capped buffer of emitted lines (imgui_log_drain returns + clears)
 def log_section(name : string; on : bool) {
@@ -1659,10 +1463,7 @@ def log_section_on(name : string) : bool {
     return key_exists(g_log_sections, name)
 }
 def private clk_log(section, line : string) {
-    // Emit one instrumentation line if its section is on: to the ambient log (stdout/recordings)
-    // AND a drainable buffer (imgui_log_drain → JSON, readable over the transport / MCP, since a
-    // host's stdout is only surfaced to a test on panic). Capped so per-frame sections can't grow it
-    // unbounded.
+    // Emit one line to the ambient log AND a capped drainable buffer (imgui_log_drain → JSON over transport/MCP, since a host's stdout only reaches a test on panic).
     return if (!log_section_on(section))
     let entry = "[{section}] {line}"
     to_log(LOG_INFO, "{entry}\n")
@@ -1760,14 +1561,12 @@ def public release_held_buttons() {
 // --- keyboard primitives ---
 
 def private as_imgui_key(key : int) : ImGuiKey {
-    // AddKeyEvent wants ImGuiKey; the synth timeline + held-set store keys as int.
-    // No int→enum ctor in daslang, so reinterpret (same width).
+    // No int→enum ctor in daslang, so reinterpret int→ImGuiKey (same width; synth stores keys as int).
     return unsafe(reinterpret<ImGuiKey>(key))
 }
 
 def private mod_alias_for_side_key(key : int) : int {
-    // ImGui's IsKeyDown(ImGuiMod_Ctrl) / io.KeyCtrl / Shortcut() consult the alias key —
-    // emitting only the side key leaves the alias unset (mirrors imgui_test_engine).
+    // ImGui's IsKeyDown(ImGuiMod_*) / Shortcut() consult the alias key, so emitting only the side key leaves it unset (mirrors imgui_test_engine).
     if (key == int(ImGuiKey.LeftCtrl)  || key == int(ImGuiKey.RightCtrl)) return int(ImGuiKey.ImGuiMod_Ctrl)
     if (key == int(ImGuiKey.LeftShift) || key == int(ImGuiKey.RightShift)) return int(ImGuiKey.ImGuiMod_Shift)
     if (key == int(ImGuiKey.LeftAlt)   || key == int(ImGuiKey.RightAlt)) return int(ImGuiKey.ImGuiMod_Alt)
@@ -1843,10 +1642,9 @@ def public set_user_control_enabled(enabled : bool) {
         release_held_keys()
         synth_cursor_owned = false
     } else {
-        // Take over: clear keys/buttons latched right now so their release events
-        // aren't dropped by the per-frame queue clear, leaving ImGui with stuck
-        // input. ClearInputKeys() clears keys, ClearInputMouse() clears mouse —
-        // call both to cover keys + mouse.
+        // Take over: clear keys/buttons latched right now so their release events aren't dropped by the
+        // per-frame queue clear (which would leave ImGui with stuck input). ClearInputKeys() +
+        // ClearInputMouse() cover keys and mouse.
         var io & = unsafe(GetIO())
         io |> ClearInputKeys()
         io |> ClearInputMouse()
@@ -1855,10 +1653,9 @@ def public set_user_control_enabled(enabled : bool) {
 
 [before_reload]
 def reattach_real_input_before_reload() {
-    // Live reload reuses the ImGui context but resets module globals to their
-    // `true` defaults. If real input was detached at reload, the callbacks would
-    // stay removed while the new program thinks they're installed → real input
-    // permanently dead. Re-attach so the handoff matches the post-reload defaults.
+    // Live reload reuses the ImGui context but resets module globals to their `true` defaults. If real
+    // input was detached at reload, the callbacks stay removed while the new program thinks they're
+    // installed → real input permanently dead. Re-attach so the handoff matches post-reload defaults.
     if (!g_input_callbacks_installed) {
         if (g_real_input_toggle != null) {
             invoke(g_real_input_toggle, true)
@@ -1869,30 +1666,24 @@ def reattach_real_input_before_reload() {
 
 def public imgui_synth_tick() {
     //! Per-frame synth entry point — call between the backend's ``*_NewFrame()`` and ``ImGui::NewFrame()``. Detaches/reattaches real input on a user-control transition, advances registered timelines, and re-asserts held synth state (idempotent — ImGui dedupes same-state events). No-op when nothing is armed. ``harness_new_frame`` calls this for you.
-    // Real-input suppression at the GLFW source: glfwSet*Callback must run on the
-    // render thread, which this does. On a g_user_control transition, detach/reattach
-    // the backend's input callbacks so real mouse/keyboard never reach ImGui's queue;
-    // synth uses io.Add*Event directly and is unaffected.
+
+    // Real-input suppression at the GLFW source: glfwSet*Callback must run on the render thread (which
+    // this does). On a g_user_control transition, detach/reattach the backend's input callbacks so real
+    // mouse/keyboard never reach ImGui's queue; synth uses io.Add*Event directly and is unaffected.
     if (g_user_control != g_input_callbacks_installed) {
         if (g_real_input_toggle != null) {
             invoke(g_real_input_toggle, g_user_control)
         }
         g_input_callbacks_installed = g_user_control
         if (!g_user_control) {
-            // One-shot on take-over: drop real input queued before the detach took
-            // effect. After this, the detached GLFW callbacks keep real buttons/keys
-            // out, and the synth-pos re-assert below overrides the real cursor pos
-            // that ImGui_ImplGlfw_NewFrame still polls each frame. We deliberately do
-            // NOT clear every frame — that would also wipe synth events emitted
-            // earlier this frame (e.g. the click coroutine's release), leaving ImGui
-            // with a stuck button.
+            // One-shot on take-over: drop real input queued before the detach took effect. Deliberately
+            // NOT every frame — that would also wipe synth events emitted earlier this frame (e.g. the
+            // click coroutine's release), leaving ImGui with a stuck button.
             var io & = unsafe(GetIO())
             io |> ClearEventsQueue()
-            // Seize the cursor at its current position. ImGui_ImplGlfw_NewFrame keeps
-            // polling glfwGetCursorPos every frame regardless of the detached callbacks,
-            // so unless we own the cursor the gated re-assert below is skipped until the
-            // first synth move and the real position bleeds in (hover/move stay live while
-            // buttons are detached). Owning it here freezes position so synth fully owns IO.
+            // Seize the cursor at its current position: ImGui_ImplGlfw_NewFrame keeps polling
+            // glfwGetCursorPos every frame regardless of the detached callbacks, so unless we own the
+            // cursor the gated re-assert is skipped until the first synth move and the real pos bleeds in.
             if (!synth_cursor_owned) {
                 if (IsMousePosValid(null)) {
                     let cur = GetMousePos()
@@ -1957,41 +1748,22 @@ def private scroll_target_into_view(target : string) : float {
     return applied
 }
 
+// click_at_coro: a real synthetic click via the owned synth primitives (imgui_test_engine model) —
+// move → settle hover one frame → reset double-click timer → press → hold → release. The hover-settle
+// frame is load-bearing: tab bars (TabItemButton) register the press only once HoveredId is set from a prior frame. Clicks FIFO-serialize by ticket (g_click_ticket_serving): without ordering the reverse-order coroutine advance runs batched clicks LIFO — firing a menu item before the right-click that opens it, or merging two presses into one.
 [async]
 def private click_at_coro(center : float2; scrolled : bool; button : int; ticket : int) : void {
-    // Real synthetic click via the owned synth primitives (imgui_test_engine model):
-    // [scroll queued by dispatch] → move → settle hover one frame → reset the double-click
-    // timer → press → hold a frame → release. `center` is the post-scroll position (dispatch
-    // shifted it by the queued scroll delta), so when `scrolled` we yield one frame first to
-    // let the window apply SetNextWindowScroll. The hover-settle frame is load-bearing: tab
-    // bars (TabItemButton) register the press only once HoveredId is set from a prior frame's
-    // mouse pos — a real user always hovers before clicking, so the synthetic path must too.
-    //
-    // FIFO-serialize against any in-flight click: wait until this click's ticket is the one being
-    // served. imgui_test_engine runs one test coroutine, so its MouseClick calls are inherently
-    // sequential; dasImgui spawns a coroutine per imgui_click and the per-frame command drain can
-    // batch two into one frame — without ordering, the reverse-order advance runs them LIFO,
-    // either firing a menu-item click before the right-click that opens the menu, or merging two
-    // same-target presses into one button-down (one click registered instead of two). The NEXT
-    // click's own move+settle below supplies the frame gap that separates the two press/release
-    // cycles, so no extra hold frame is needed after release.
     while (g_click_ticket_serving != ticket) {
         await_next_frame()
     }
     if (log_section_on("synth.click")) clk_log("synth.click", "SERVE ticket={ticket} frame={GetFrameCount()} from=({mouse_cursor_x},{mouse_cursor_y}) to=({center.x},{center.y}) scrolled={scrolled} active={GetActiveID()} hover={IsAnyItemHovered()}")
     if (scrolled) await_next_frame()
-    // Animate the approach from the current cursor to the target instead of warping — a real
-    // mouse never teleports, and the move_to that precedes a click may land elsewhere (e.g. the
-    // glyph-targeted click point differs from a row-center approach). Step count scales with
-    // distance; the final step ends on `center` and its await doubles as the hover-settle frame
-    // (load-bearing for tab-bar press registration). Zero distance -> single in-place step.
+    // Animate the approach (no warp); the final step ends on `center` and its await doubles as the hover-settle frame (load-bearing for tab-bar press registration).
     let sx = mouse_cursor_x
     let sy = mouse_cursor_y
     let dx = center.x - sx
     let dy = center.y - sy
-    // Constant cursor SPEED: step count scales with distance (≈11 px/step) so a long hop takes
-    // proportionally more frames instead of warping. The cap is a sanity ceiling, not the common
-    // case — at the old /45+min(16) a full-width move flattened to 16 frames and read as a teleport.
+    // Constant cursor SPEED: ~11 px/step so a long hop takes proportionally more frames (not a warp); the cap is a sanity ceiling.
     let steps = max(int(max(abs(dx), abs(dy)) / 11.0f) + 1, 2) |> min(96)
     for (i in range(1, steps + 1)) {
         let f = float(i) / float(steps)
@@ -2112,32 +1884,21 @@ def private dispatch_or_err(action : string; input : JsonValue?) : Result<string
     let (level, resolved) = classify_target(target)
     if (log_section_on("synth.click")) clk_log("synth.click", "ATTEMPT action='{action}' target='{target}' level={level} resolved='{resolved}' frame={GetFrameCount()}")
     if (level == 0) return err("unresolvable target: {target}", type<string>)
-    // A click is a real synthetic mouse click: warp to the widget center, press and
-    // release across one frame (click_at_coro), driving ImGui's own input path. Every
-    // widget then behaves exactly as under a real click — buttons fire, checkbox /
-    // selectable / menu_item toggle and auto-close their popup, popup_context_* and
-    // IsItemClicked(N) all respond. No per-widget programmatic rail. resolve_target_bbox
-    // resolves both L2 (path) and L1 (hex_id) targets, so this handles every click form.
+    // A click drives ImGui's own input path via click_at_coro (real behavior); resolve_target_bbox handles both L2 (path) and L1 (hex_id) targets.
     if (action == "click") {
         let button = input?["button"] ?? 0
         let (got, center) = resolve_target_bbox(resolved)
         if (log_section_on("synth.click")) clk_log("synth.click", "BBOX resolved='{resolved}' got={got} center=({center.x},{center.y}) frame={GetFrameCount()}")
         if (!got) return err("target {resolved} has no bbox this frame (not rendered)", type<string>)
-        // Scroll a below-the-fold target into view first. Scroll is a pure vertical content
-        // translation, so the post-scroll center is the current center shifted up by the applied
-        // delta — computed here (registry is populated mid-dispatch) because the coroutine can't
-        // read the freshly-cleared registry when it advances in begin_frame.
+        // Post-scroll center = current center shifted by the applied delta, computed HERE (registry is live mid-dispatch) because the coroutine can't read the freshly-cleared registry in begin_frame.
         let scroll_dy = scroll_target_into_view(resolved)
         let target_center = float2(center.x, center.y - scroll_dy)
-        // Claim the FIFO ticket here (issue order), AFTER every early-return above — a ticket with
-        // no coroutine to serve it would stall g_click_ticket_serving and hang all later clicks.
+        // Claim the FIFO ticket AFTER every early-return above — a ticket with no coroutine to serve it stalls g_click_ticket_serving and hangs all later clicks.
         let my_ticket = g_click_ticket_next
         g_click_ticket_next++
         if (log_section_on("synth.click")) clk_log("synth.click", "DISPATCH target='{target}' resolved='{resolved}' level={level} center=({center.x},{center.y}) scroll_dy={scroll_dy} target_center=({target_center.x},{target_center.y}) ticket={my_ticket} serving={g_click_ticket_serving} frame={GetFrameCount()} active={GetActiveID()} hover={IsAnyItemHovered()}")
         spawn_coroutine(click_at_coro(target_center, scroll_dy != 0.0f, button, my_ticket))
-        // Return the clean resolved target (path or hex_id), not a synthetic tag:
-        // the post-command auto-highlight hook resolves it via widget_rect, and
-        // tests assert the resolved path. Same value for every button.
+        // Return the clean resolved target (path or hex_id) — the auto-highlight hook resolves it via widget_rect and tests assert it.
         return ok(resolved, type<string>)
     }
     if (level == 2) {
@@ -2151,11 +1912,7 @@ def private dispatch_or_err(action : string; input : JsonValue?) : Result<string
         let state_addr = resolve_meta_addr(*meta)
         if (state_addr == null) return err("state slot gone for {resolved}", type<string>)
         return err("widget meta missing TypeInfo for {resolved} (kind {meta.kind})", type<string>) if (meta.ti == null)
-        // payload is the JSON string of the action's value field — most kinds
-        // sscan into a typed pending field; multi-field actions (set_window_pos)
-        // sscan the whole value object. When there's no "value" field (e.g.
-        // open/close on a container) payload stays "" — those dispatchers don't
-        // read it.
+        // payload = JSON of the action's "value" (typed pending field, or whole object for multi-field like set_window_pos); "" when there's no value field (open/close don't read it).
         let value = input?["value"]
         var payload : string
         if (value != null) {
@@ -2167,10 +1924,7 @@ def private dispatch_or_err(action : string; input : JsonValue?) : Result<string
             invoke(*dispatcher, state_addr, action, payload)
             return ok(resolved, type<string>)
         }
-        // No registered dispatcher for this state struct. For non-Structure ti
-        // (scalar pointee from [edit_widget]), fall back to a generic scalar
-        // write-through using the runtime ti. Structures with no dispatcher
-        // are display-only — silently succeed.
+        // No dispatcher: non-Structure ti ([edit_widget] scalar pointee) fall back to a generic write-through; structures with none are display-only (silently succeed).
         if ((*meta.ti).basicType != Type.tStructure && action == "set") {
             unsafe {
                 sscan_json_at(payload, state_addr, *meta.ti)
@@ -2178,18 +1932,15 @@ def private dispatch_or_err(action : string; input : JsonValue?) : Result<string
         }
         return ok(resolved, type<string>)
     }
-    // L1 hex_id targets (the dispatcher never rendered them) support clicks only,
-    // which the click branch above already handled; no rail exists for other actions.
+    // L1 hex_id targets support clicks only (handled above); no rail for other actions.
     return err("L1 hex_id target {resolved} supports 'click' only, got '{action}'", type<string>)
 }
 
 [live_command(description = "Real synthetic mouse click on the widget identified by 'target' (optional 'button')")]
 def imgui_click(input : JsonValue?) : JsonValue? {
-    //! Live-command: a real synthetic mouse click on the widget named by ``input["target"]``
-    //! (resolves path or ``0x...`` hex_id; optional ``input["button"]`` — 0 left / 1 right / 2 middle).
-    //! Faithful — warps to the widget center and presses/releases through ImGui's own input path,
-    //! so the widget behaves exactly as under a real click (errors if the target isn't rendered).
-    //! To set an exact value a click can't reach, use ``imgui_force_set``.
+    //! Live-command: a real synthetic mouse click on ``input["target"]`` (path or ``0x...`` hex_id;
+    //! optional ``input["button"]`` — 0 left / 1 right / 2 middle). Presses/releases through ImGui's own
+    //! input path, so the widget behaves exactly as under a real click. For an exact value, use ``imgui_force_set``.
     let r = dispatch_or_err("click", input)
     if (r._is_ok) dispatch_post_command_hooks("click", r._value)
     return with_await(input, r)
@@ -2197,10 +1948,9 @@ def imgui_click(input : JsonValue?) : JsonValue? {
 
 [live_command(description = "Force a widget's value directly, bypassing input ('target' name + 'value')")]
 def imgui_force_set(input : JsonValue?) : JsonValue? {
-    //! Live-command: force the next-frame value of ``input["target"]`` to ``input["value"]``.
-    //! A BYPASS — writes state directly, doing what a user couldn't (exact value, off-screen
-    //! or inactive widget). For a faithful interaction prefer ``imgui_click`` /
-    //! ``imgui_mouse_play`` / ``imgui_key_type``; reach for this only when the value itself is the goal.
+    //! Live-command: force the next-frame value of ``input["target"]`` to ``input["value"]``. A BYPASS —
+    //! writes state directly, doing what a user couldn't (exact value, off-screen or inactive widget).
+    //! For a faithful interaction prefer ``imgui_click`` / ``imgui_key_type``; use this only when the value is the goal.
     let r = dispatch_or_err("set", input)
     if (r._is_ok) dispatch_post_command_hooks("set", r._value)
     return with_await(input, r)
@@ -2209,9 +1959,8 @@ def imgui_force_set(input : JsonValue?) : JsonValue? {
 [live_command(description = "Toggle a debug log section in the host ('name' + bool 'on') for toggleable per-frame instrumentation")]
 def imgui_log_section(input : JsonValue?) : JsonValue? {
     //! Live-command: enable/disable host-side debug log section ``input["name"]`` per ``input["on"]``.
-    //! Gated emit sites (e.g. "synth.click") cost one set-lookup when off, so heavy per-frame
-    //! logging is free until a section is turned on. Runs in the host context, so it reaches the
-    //! dispatch/coroutine instrumentation a test's own context can't.
+    //! Gated emit sites cost one set-lookup when off, so heavy per-frame logging is free until enabled.
+    //! Runs in the host context, so it reaches dispatch/coroutine instrumentation a test's context can't.
     let name = extract_string_field(input, "name")
     let on = input?["on"] ?? false
     log_section(name, on)
@@ -2246,10 +1995,9 @@ def imgui_close(input : JsonValue?) : JsonValue? {
 
 [live_command(description = "Select (activate) a tab_item in a tab_bar ('target' name)")]
 def imgui_select(input : JsonValue?) : JsonValue? {
-    //! Live-command: activate the ``tab_item`` named by ``input["target"]`` — the automation
-    //! counterpart of clicking a tab in a ``tab_bar`` (ImGui owns active-tab selection, so an
-    //! inactive tab can't be reached by ``imgui_click``). Routes through ImGuiTabItemFlags.SetSelected
-    //! on the next frame. The selected tab records ``state.selected = true`` for snapshot consumers.
+    //! Live-command: activate the ``tab_item`` named by ``input["target"]`` — the automation counterpart
+    //! of clicking a tab (ImGui owns active-tab selection, so an inactive tab can't be reached by
+    //! ``imgui_click``). Routes through ImGuiTabItemFlags.SetSelected next frame; sets ``state.selected = true``.
     let r = dispatch_or_err("select", input)
     if (r._is_ok) dispatch_post_command_hooks("select", r._value)
     return with_await(input, r)
@@ -2312,12 +2060,10 @@ def imgui_set_window_size(input : JsonValue?) : JsonValue? {
 }
 
 // ===== Phase 2.5 — Quiescence probe =====
-//
-// imgui_await is a polling probe: server reports current liveness state
-// (`{quiescent, frame, pending_coroutines, active_id}`) and the client
-// (widgets/imgui_transport — Phase 2.6) drives the wait loop. Server-side
-// blocking is incompatible with the GLFW-main-thread invariant — the
-// dispatch handler runs on the same thread that advances frames.
+
+// imgui_await is a polling probe: the server reports liveness ({quiescent, frame, pending_coroutines,
+// active_id}) and the client drives the wait loop. Server-side blocking is incompatible with the
+// GLFW-main-thread invariant — the dispatch handler runs on the same thread that advances frames.
 
 struct AwaitArgs {
     @optional until : string = "quiescent"       //! quiescence predicate name to poll
@@ -2381,10 +2127,7 @@ def public active_widget_path() : string {
 }
 
 def private is_left_glyph_kind(kind : string) : bool {
-    // Toggle-family widgets render a small glyph (square check / radio circle) at the LEFT of a
-    // row whose item rect also spans the label. Their click should land on the glyph, not the
-    // label-inflated row center. selectable / menu_item have no left glyph (the whole row IS the
-    // control), so they keep center-targeting.
+    // Toggle-family widgets render a left glyph (check/radio), so their click should land on it, not the label-inflated row center; selectable/menu_item have no glyph and keep center-targeting.
     return kind == "checkbox" || kind == "radio_button" || kind == "radio_button_int"
 }
 
@@ -2393,9 +2136,7 @@ def private resolve_target_bbox(target : string) : tuple<bool; float2> {
     if (!r._0) return (false, float2(0.0f, 0.0f))
     let bb = r._1
     let cy = (bb.y + bb.w) * 0.5f
-    // Aim the click at the glyph for the toggle family — the glyph is ImGui's left frame-height
-    // square, so its center is one half-row-height in from the left edge. Keeps the bbox (used by
-    // highlight / telemetry) as the full row.
+    // Aim at the glyph for the toggle family — ImGui's left frame-height square, so its center is half a row-height in from the left; the bbox stays the full row.
     if (key_exists(g_registry, target) && is_left_glyph_kind(g_registry[target].kind)) {
         let h = bb.w - bb.y
         return (true, float2(bb.x + h * 0.5f, cy))

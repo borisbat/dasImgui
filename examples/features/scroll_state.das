@@ -1,10 +1,12 @@
 options gen2
+options _comment_hygiene = true
 
 require imgui/imgui_harness
 
 var SCROLLY_ROW : table<int; NarrativeState>
 var LOG_ROW : table<int; NarrativeState>
 
+// nolint:STYLE014 — file-header feature banner displaced below var decls
 // =============================================================================
 // FEATURE: scroll_state — Phase 1.2 scroll capture for window + child.
 // SHOWS:   WindowState and ChildState now carry `scroll` and `scroll_max`

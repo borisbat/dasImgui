@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 
 require imgui/imgui_harness
 
@@ -32,8 +33,7 @@ var g_capture_requested = false
 // a decorated section header and a log-only injected line.
 def private render_report(logging : bool) {
     text("=== Daslang Widget Report ===")
-    // single '#' (not '##') so the readback below can display it verbatim — imgui
-    // strips everything after a '##' in rendered text.
+    // single '#' (not '##') — imgui strips everything after '##', so readback would lose it.
     if (logging && g_decorate) {
         LogSetNextTextDecoration("# ", "")
     }

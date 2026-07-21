@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
@@ -42,24 +43,11 @@ def private count_crumbs_in(var snap : JsonValue?) : int {
 
 def private count_crumbs(app : ImguiApp) : int => count_crumbs_in(snapshot(app))
 
-// TOPMOST reliably-clickable row whose Type cell == "Folder" (want_folder) or is any
-// non-folder file. A row is reliably clickable only when its whole bbox sits inside the
-// table's visible band: a row straddling the bottom scroll edge is still "rendered" but its
-// center can fall outside the clip and the click misses (this is what broke macOS CI — a
-// file row near the bottom was picked and the double-click landed nowhere). So:
-//  - widget_rendered (painted this frame), not just widget_exists (registered);
-//  - row bbox fully within the band, then topmost-by-y.
-// The band is bracketed by the NAV_SEP / BOTTOM_SEP separators (leaf widgets with real
-// bboxes). The data_table CONTAINER registers a zero bbox — only leaf widgets capture an item
-// rect — so clipping against it rejected EVERY row and silently skipped both double-click
-// sub-checks; the separators give the actual visible top/bottom instead.
-// Returns "" when no matching row is fully visible (e.g. files sit below the fold under a
-// many-folder start dir); callers treat that as "skip" rather than fail — no flake.
+// Topmost row of the wanted kind whose FULL bbox sits inside the visible band (band =
+// NAV_SEP..BOTTOM_SEP; the table container registers a zero bbox, so we can't clip on it). A row
+// straddling the bottom scroll edge renders but its center can miss the click — this broke macOS CI.
 def private first_row(var snap : JsonValue?; want_folder : bool) : string {
-    // If the bracketing separators are absent (e.g. renamed), we can't establish the band —
-    // skip rather than de-clip: a clean skip beats reintroducing the half-clipped-click flake.
-    // (Falling back to FILE_TABLE's own bbox is NOT an option — container widgets register
-    // (0,0)-(0,0), which is the always-reject bug this finder was rewritten to escape.)
+    // Separators absent (e.g. renamed) ⇒ band unknowable; skip beats reintroducing the half-clipped-click flake.
     if (!widget_exists(snap, "FILEDLG/NAV_SEP") || !widget_exists(snap, "FILEDLG/BOTTOM_SEP")) {
         return ""
     }
@@ -151,13 +139,9 @@ def test_file_dialog(t : T?) {
         click(d, "FILEDLG/BTN_OK")
         t |> success(wait_result(d, "zzz_unit_test"), "save confirm returns a path containing the typed name")
 
-        // --- save mode: double-clicking an EXISTING file must route through the
-        // overwrite-confirm modal, not confirm directly (regression for that gate).
-        // Needs a clickably-visible file row; files sort below all folders, so when the
-        // start dir has more folders than the table shows (e.g. a repo root) no file is
-        // visible and this sub-check skips — it covers the routing wherever a file IS
-        // visible (most dirs) without flaking where it isn't. The double_click verb +
-        // row-double-click path itself is exercised CI-wide by the open-mode folder case. ---
+        // save mode: double-clicking an EXISTING file must route through overwrite-confirm, not
+        // confirm directly (regression for that gate). Skips when no file row is visible (dir with
+        // more folders than the table shows); the double-click path is covered elsewhere by open mode.
         click(d, "FDLG_WIN/BTN_SAVE")
         if (wait_for_widget(d, "FILEDLG/FILE_TABLE", 10.0f) != null) {
             force_set_value(d, "FILEDLG/FILTER_COMBO", JV(1))   // widen to "All files"

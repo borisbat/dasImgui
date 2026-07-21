@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_function_arguments = false
 
@@ -200,10 +201,9 @@ def private uri_end(bytes : array<uint8> const#; start : int) : int {
 }
 
 def public text_uris(text : string) : array<TextUri> {
-    //! Find URI-shaped spans in arbitrary UTF-8 text. This intentionally lives
-    //! below Markdown: terminals, editors, logs, and Markdown text leaves all
-    //! need identical recognition. Unicode bytes are accepted in the URI body;
-    //! surrounding punctuation is excluded conservatively.
+    //! Find URI-shaped spans in arbitrary UTF-8 text. Lives below Markdown because terminals,
+    //! editors, logs, and Markdown leaves all need identical recognition. Unicode bytes are
+    //! accepted in the URI body; surrounding punctuation is excluded conservatively.
     var out : array<TextUri>
     peek_data(text) $(bytes) {
         var at = 0
@@ -309,8 +309,7 @@ def private is_control(cp : uint) : bool {
 }
 
 def private is_extend(cp : uint) : bool {
-    // Common combining ranges plus all variation selectors, emoji modifiers,
-    // combining enclosing keycap, and emoji tag characters.
+    // Combining ranges plus variation selectors, emoji modifiers/tags, and combining keycaps.
     return (in_range(cp, 0x0300u, 0x036Fu)
         || in_range(cp, 0x0483u, 0x0489u)
         || in_range(cp, 0x0591u, 0x05BDu) || cp == 0x05BFu
@@ -335,8 +334,7 @@ def private is_extend(cp : uint) : bool {
 }
 
 def private is_spacing_mark(cp : uint) : bool {
-    // High-value Mc ranges. These prevent caret stops inside the visible
-    // consonant/vowel cluster while keeping the table compact for now.
+    // High-value Mc ranges: prevent caret stops inside the visible consonant/vowel cluster.
     return (cp == 0x0903u || in_range(cp, 0x093Bu, 0x0940u)
         || in_range(cp, 0x0949u, 0x094Cu) || in_range(cp, 0x0982u, 0x0983u)
         || in_range(cp, 0x09BEu, 0x09C0u) || in_range(cp, 0x09C7u, 0x09C8u)
@@ -387,9 +385,7 @@ def private should_break_grapheme(prev, cur : uint; regional_run : int) : bool {
         || ((is_hangul_lv(prev) || is_hangul_v(prev))
             && (is_hangul_v(cur) || is_hangul_t(cur)))
         || ((is_hangul_lvt(prev) || is_hangul_t(prev)) && is_hangul_t(cur)))
-    // Joining the character following ZWJ is intentionally broad. It keeps
-    // emoji families and profession sequences atomic; a later generated UCD
-    // table can narrow this to Extended_Pictographic exactly.
+    // ZWJ-join is intentionally broad — keeps emoji families/professions atomic (narrow to Extended_Pictographic later).
     if (joins_hangul || is_prepend(prev) || is_extend(cur)
             || is_spacing_mark(cur) || cur == 0x200Du || prev == 0x200Du) return false
 
@@ -440,9 +436,7 @@ def public text_graphemes(text : string) : array<TextGrapheme> {
 }
 
 def private is_wide_text_codepoint(cp : uint) : bool {
-    // Compact East-Asian-wide + emoji subset used by terminal/editor cells.
-    // The API is deliberately isolated so generated Unicode width tables can
-    // replace these ranges without changing source-view consumers.
+    // Compact East-Asian-wide + emoji subset for terminal/editor cells (isolated so generated width tables can replace it).
     return (in_range(cp, 0x1100u, 0x115Fu)
         || in_range(cp, 0x231Au, 0x231Bu)
         || in_range(cp, 0x2329u, 0x232Au)
@@ -728,9 +722,7 @@ def private layout_units(units : array<TextFlowUnit> const;
                         end_ = i - 1
                         break
                     }
-                    // A leading adornment and the first grapheme are the
-                    // smallest legal unit, even if together they exceed the
-                    // available width.
+                    // Leading adornment + first grapheme are the smallest legal unit, even if they exceed the width.
                     width = next_width
                     i++
                     end_ = i
@@ -758,9 +750,7 @@ def private layout_units(units : array<TextFlowUnit> const;
         }
     }
 
-    // Editors and source viewers need the caret line after a terminal newline.
-    // The consumed hard-break unit contributes no glyph, but it does create
-    // one final empty visual line mapped to the source-end byte.
+    // A terminal newline needs a caret line: the hard-break unit adds one final empty visual line mapped to the source-end byte.
     if (!empty(units) && units[length(units) - 1].hard_break) {
         let h = emit_line(layout, units, length(units), length(units),
                           y, line_height)

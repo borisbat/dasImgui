@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
@@ -60,10 +61,9 @@ def test_imgui_drag_value_changes(t : T?) {
         // on the 5s poll window to absorb the drag timeline.
         t |> success(wait_for_mouse_idle(d, 10.0f), "drag timeline drains before value gate")
 
-        // Gate 4: after the drag completes (mouse released), the slider
-        // value should have moved away from 0. End-to-end proof that L1
-        // mouse-down → moves → mouse-up reached the widget and drove its
-        // interactive logic. Poll up to 5s for value > 0.
+        // Gate 4: after the drag completes (mouse released), the slider value must have moved off
+        // 0 — end-to-end proof that L1 mouse-down → moves → mouse-up reached the widget and drove
+        // its interactive logic. Poll for value > 0.
         let moved = wait_until(d, 300) $(snap) => (snap?["globals"]?["MAIN_WIN/DEMO_SLIDER"]?["payload"]?["value"] ?? 0.0f) > 0.0f
         t |> success(moved != null, "DEMO_SLIDER value moved off 0 after L1 drag")
     }

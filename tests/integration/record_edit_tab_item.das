@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
@@ -51,10 +52,9 @@ def main {
         hold_through_voice(app, say_begin(app, "checkbox hides a tab", T_CHECK_B,
             [voice = "The caller owns each tab's visibility bool. Click the external checkbox for beta, and the whole tab disappears, header and body both gone."]),
             [T_CHECK_B])
-        // A hidden edit_tab_item keeps registering with a zeroed bbox (no
-        // rendered:false flag), so its bound bool `value` — not `rendered` — is
-        // the honest visibility signal. T_TAB_B reading false proves the
-        // checkbox->tab bind landed.
+        // A hidden edit_tab_item still registers with a zeroed bbox (no rendered:false flag), so
+        // its bound bool `value` — not `rendered` — is the honest visibility signal; T_TAB_B
+        // reading false proves the checkbox->tab bind landed.
         record_check_value(app, T_TAB_B, "value", false, 180)
 
         // ---- Beat 2: the X close button writes the SAME bool (bidir payoff) ----

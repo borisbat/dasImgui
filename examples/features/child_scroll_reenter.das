@@ -1,9 +1,11 @@
 options gen2
+options _comment_hygiene = true
 
 require imgui/imgui_harness
 
 var private SCROLL_ROW : table<int; NarrativeState>
 
+// nolint:STYLE014 — file-header feature banner displaced below a var decl
 // =============================================================================
 // FEATURE: child_scroll_reenter — re-enter an existing child window from
 //          outside its body to nudge its scroll position via SetScrollX/Y.

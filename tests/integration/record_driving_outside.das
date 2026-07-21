@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
@@ -76,10 +77,9 @@ def main {
             panic("{T_USER} never rendered - wrong app running?")
         }
 
-        // No cursor gesture in beats 1-3/5 (force_set / open / close inject state with no
-        // pointer), so park the sprite unobtrusively in the right gutter and warm up the
-        // capture pipeline. imgui_click in beat 4 then animates the cursor to the button -
-        // the one place a pointer appears, by contrast.
+        // No cursor gesture in beats 1-3/5 (force_set / open / close inject state with no pointer),
+        // so park the sprite in the right gutter and warm up the capture pipeline. imgui_click in
+        // beat 4 then animates the cursor to the button — the one place a pointer appears.
         move_to(app, (760.0f, 300.0f), 800)
         hold_content(app, 1800u)
 

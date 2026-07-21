@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 
 require imgui
 require imgui_app
@@ -91,11 +92,9 @@ def update() {
 
         separator(WS_SEP_2)
         text("After with_style - baseline style restored.")
-        // If push/pop counts were off, this button would render with a
-        // stale color/rounding from the block above. ImGui asserts on a
-        // stack imbalance at EndFrame, so the live process would crash
-        // before reaching the next frame. The boost macro guarantees the
-        // bulk pop_style_n fires regardless of what the block body does.
+        // If push/pop counts were off, this button would render with stale
+        // color/rounding, and ImGui asserts on a stack imbalance at EndFrame
+        // (crash). The boost macro guarantees the bulk pop_style_n always fires.
         button(UNSTYLED_BTN, (text = "Plain button"))
     }
 

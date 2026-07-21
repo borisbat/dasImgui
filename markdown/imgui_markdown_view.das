@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_function_arguments = false
 
@@ -1224,9 +1225,7 @@ def private render_inline(doc : RichDocument const; node_index : int;
         }
     }
 
-    // A source selection is visually continuous across Markdown run boundaries
-    // and transformed soft breaks. Paint one union rectangle per visual line
-    // instead of one rectangle per run, which left transparent selected spaces.
+    // Paint one union rect per visual line (not per run, which left transparent selected spaces).
     let selection_source = selected_source(state)
     if (selection_source.start_byte >= 0
             && selection_source.end_byte > selection_source.start_byte) {
@@ -1502,9 +1501,7 @@ def private render_list(doc : RichDocument const; node_index : int;
         cache.control_screen_valid = false
         if (node.is_task) {
             let marker_pos = GetCursorScreenPos()
-            // Font checkbox glyphs differ in advance and visible bounds on
-            // several fallback faces. Reserve one state-independent square
-            // and draw both states ourselves, so toggling can never reflow.
+            // Reserve one state-independent square and draw both states ourselves, so toggling can never reflow.
             let marker_edge = max(GetTextLineHeight(), 1.0f)
             let marker_size = float2(marker_edge, marker_edge)
             PushID(item)
@@ -1737,10 +1734,9 @@ def private finish_selection(doc : RichDocument const;
 }
 
 def public markdown_selection_text(state : MarkdownViewState const) : string {
-    //! Flatten the selected display text on demand. This intentionally differs
-    //! from `md_source_text`: Markdown delimiters are omitted and transformed
-    //! entities retain the glyphs shown by the viewer. Separate inline blocks
-    //! are joined with a newline.
+    //! Flatten the selected display text on demand. Differs from `md_source_text`: Markdown
+    //! delimiters are omitted and transformed entities keep the glyphs shown by the viewer;
+    //! separate inline blocks are joined with a newline.
     let source = selected_source(state)
     if (source.start_byte < 0 || source.end_byte <= source.start_byte) return ""
     var value = ""
@@ -1912,8 +1908,7 @@ def private markdown_view_change_gutter_at(doc : RichDocument const;
                                            changed_ranges : array<TextSourceRange> const;
                                            gutter_x, width : float;
                                            color : float4) : int {
-    //! Paint a thin source-change marker beside every currently rendered rich
-    //! block whose source overlaps a changed range. Ranges must be sorted.
+    // Paint a change marker beside every rendered block whose source overlaps a changed range (ranges must be sorted).
     if (empty(changed_ranges)) return 0
     var dl = GetWindowDrawList()
     let window_pos = GetWindowPos()

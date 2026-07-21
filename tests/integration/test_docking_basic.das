@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
@@ -27,9 +28,8 @@ require daslib/json_boost public
 
 let DOCK_FEATURE = "modules/dasImgui/examples/features/dock_basic.das"
 
-// dockspace is a [container], so it pushes itself onto the registry path.
-// Child dock_windows therefore appear under `DOCK_ROOT/...`, mirroring how
-// `window(MAIN_WIN, ...) { dock_left(SIDEBAR, ...) { button(BTN, ...) } }`
+// dockspace is a [container], so it pushes itself onto the registry path — child dock_windows
+// appear under `DOCK_ROOT/...`, mirroring how `window(MAIN_WIN){ dock_left(SIDEBAR){ button(BTN) } }`
 // nests to `MAIN_WIN/SIDEBAR/BTN` in test_layout_helpers.
 
 [test]
@@ -76,10 +76,9 @@ def test_docking_basic(t : T?) {
             t |> success(docked, "EXPLORER reports docked=true after DockBuilder finish")
 
             var snap2 = snapshot(d)
-            // bbox: float4 = (x0, y0, x1, y1). After the layout seeds:
-            //   Explorer left of Source/Output/Properties (split-left 0.22 of root)
-            //   Source top of Output+Properties row (split-top 0.55 of main)
-            //   Output left of Properties (split-left 0.55 of bottom)
+            // bbox: float4 = (x0,y0,x1,y1). Layout seeds: Explorer left of the rest (split-left
+            // 0.22 of root); Source atop Output+Properties (split-top 0.55 of main); Output left
+            // of Properties (split-left 0.55 of bottom).
             let ex_bb = find_widget(snap2, "DOCK_ROOT/EXPLORER")?["bbox"]
             let so_bb = find_widget(snap2, "DOCK_ROOT/SOURCE")?["bbox"]
             let ou_bb = find_widget(snap2, "DOCK_ROOT/OUTPUT")?["bbox"]
@@ -167,11 +166,9 @@ def test_docking_basic(t : T?) {
             let seeded = wait_for_payload_value(d, "DOCK_ROOT", "has_initial_layout", true, 300)
             t |> success(seeded, "DOCK_ROOT.has_initial_layout=true after initial setup")
 
-            // imgui_dock_reset flips it back to false; the renderer re-runs setup,
-            // which immediately flips it true again. Polling for a *frame* with
-            // `has_initial_layout=false` would race, so instead check via the
-            // public contract: send the reset command, then verify EXPLORER is
-            // still docked (i.e. the layout came back).
+            // imgui_dock_reset flips the flag false, but setup re-runs and flips it true again
+            // immediately, so polling for a `has_initial_layout=false` frame would race. Instead
+            // check the public contract: reset, then verify EXPLORER is still docked (layout came back).
             post_command(d, "imgui_dock_reset", JV((target = "DOCK_ROOT")))
             let re_docked = wait_for_payload_value(d, "DOCK_ROOT/EXPLORER", "docked", true, 300)
             t |> success(re_docked, "EXPLORER re-docks after imgui_dock_reset round-trip")
@@ -179,10 +176,9 @@ def test_docking_basic(t : T?) {
         reset(d)
 
         t |> run("raise") <| @(t : T?) {
-            // Console + Output share one dock node (a tab pair). A backgrounded tab's children aren't
-            // painted (registered-but-`rendered:false`), so selecting a tab is observable as its child
-            // starting to paint and the other's stopping. There's no command to click a dock node's
-            // internal tab bar, so imgui_raise is the automation rail for it. Verified both directions.
+            // Console + Output share one dock node (tab pair). A backgrounded tab's children aren't
+            // painted (rendered:false), so selecting a tab shows as its child starting to paint and
+            // the other's stopping. No command clicks a dock tab bar, so imgui_raise is the rail.
             var snap = wait_for_widget(d, "DOCK_ROOT/CONSOLE", 15.0f)
             if (snap == null) {
                 t |> success(false, "snapshot reachable")

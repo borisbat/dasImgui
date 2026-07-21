@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 
 require imgui/imgui_boost_v2
 require imgui/imgui_widgets_builtin

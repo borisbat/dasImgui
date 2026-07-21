@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 
 require imgui/imgui_harness
 require imgui/imgui_visual_aids
@@ -38,9 +39,7 @@ def init() {
 }
 
 def private grid_pos(r : int; c : int) : float2 {
-    // Edge buttons hugged close to the viewport sides so right/left/below/above
-    // placement candidates each fail near the corners - exercises tier-2
-    // (relax to target-only) and tier-3 (centred fallback) of the cascade.
+    // Edge buttons hug the viewport corners so placement candidates fail there — exercises tier-2/tier-3 fallback.
     let mx = 16.0f
     let my_top = 96.0f
     let my_bot = 16.0f

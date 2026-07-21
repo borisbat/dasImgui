@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 
 require imgui
 require imgui_app
@@ -105,9 +106,7 @@ def private compare_rows(spec : TableSortSpec; a : Row; b : Row) : int {
 }
 
 def private sort_rows(specs : array<TableSortSpec>) {
-    // Multi-key comparator: walk specs in priority order; return on the
-    // first one that disambiguates a vs b. Final tiebreak on name keeps
-    // the order total.
+    // Multi-key comparator: first spec that disambiguates a vs b wins; name is the total-order tiebreak.
     ROWS |> sort() $(a, b) {
         for (s in specs) {
             let ord = compare_rows(s, a, b)

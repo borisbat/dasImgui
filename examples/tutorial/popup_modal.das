@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 
 require imgui
 require imgui_app
@@ -83,9 +84,10 @@ def update() {
         text("SETTINGS_MODAL.open (closable) = {SETTINGS_MODAL.open}")
 
         // ---- Modal A: Yes/No confirm ----
-        // closable=false → no X-button. Yes/No buttons + ESC are the close
-        // paths (ESC is an ImGui built-in for popups; to disable it the app
-        // would need to intercept the keystroke before NewFrame()).
+
+        // closable=false → no X-button; Yes/No buttons + ESC close it (ESC is an
+        // ImGui built-in — to disable it the app must intercept the key before
+        // NewFrame()).
         popup_modal(CONFIRM_MODAL, (text = "Confirm delete",
                                     closable = false,
                                     flags = ImGuiWindowFlags.AlwaysAutoResize)) {

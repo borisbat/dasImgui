@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 
 require imgui/imgui_harness
 require strings
@@ -71,10 +72,9 @@ def update() {
         FocusItem()
         separator()
 
-        // ActivateItemByID — queue an item (by ID) to activate on the next frame
-        // when it is next submitted. We render a real button, take its id via
-        // GetItemID(), and re-queue it every frame, so it stays in the activated
-        // (pressed) state — proof the queued activation actually applies.
+        // ActivateItemByID — queue an item (by ID) to activate next frame when
+        // submitted. We re-queue the button's GetItemID() every frame, so it stays
+        // pressed — proof the queued activation actually applies.
         text("ActivateItemByID(id): queue an item to activate by ID (applied next frame).")
         button(ACT_TARGET, (text = "held active by ActivateItemByID"))
         let act_id = GetItemID()

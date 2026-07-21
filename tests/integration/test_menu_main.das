@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
@@ -23,9 +24,8 @@ def test_menu_main_smoke(t : T?) {
 
         t |> success(widget_exists(snap, "MAIN_MENU_BAR"),
                      "main_menu_bar container registered")
-        // The menus + items only emit entries while the menu is open
-        // (BeginMenu returns true). Container existence alone is the
-        // headless-drive smoke gate; opening + clicking is exercised by
-        // record_menu_main.das.
+        // Menus + items only emit entries while the menu is open (BeginMenu returns true), so
+        // container existence alone is the headless-drive smoke gate; opening + clicking is
+        // exercised by record_menu_main.das.
     }
 }

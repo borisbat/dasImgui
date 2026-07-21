@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 
 require imgui/imgui_harness
 
@@ -60,11 +61,9 @@ def update() {
                 NEXT_ID++
             }
 
-            // Submit current tab list; drop entries the X button closed.
-            // `table[k]` auto-insert is zero-init — TabItemState's `open : bool
-            // = true` default initializer doesn't fire. Explicitly construct
-            // each fresh row so `open` starts true (else frame 1 sees open=false
-            // and we erase every seed tab on first pass).
+            // Submit tab list; drop X-closed entries. `table[k]` auto-insert is
+            // zero-init, so TabItemState's `open = true` default never fires —
+            // construct each row explicitly, else frame 1 erases every seed tab.
             var n = 0
             while (n < length(ACTIVE_TABS)) {
                 let tab_id = ACTIVE_TABS[n]

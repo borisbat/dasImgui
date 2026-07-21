@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options _allow_imgui_legacy = true
 
@@ -30,12 +31,9 @@ let IM_COL32_WHITE = rgba(255u, 255u, 255u, 255u)
 let IM_COL32_BLACK = rgba(0u, 0u, 0u, 255u)
 let IM_COL32_BLACK_TRANS = rgba(0u, 0u, 0u, 0u)
 
-// HSV → RGB / RGB → HSV converters. Wrap ImGui's float-out-param
-// helpers so callers get an `(r,g,b)` / `(h,s,v)` triple back in one
-// shot. Saturation/Value stay in [0,1]; Hue wraps in [0,1) (1.0
-// folds back to 0). Used by palette init in imgui_demo + any caller
-// that wants procedural color generation without piping out-params
-// by hand.
+// HSV → RGB / RGB → HSV converters — wrap ImGui's float-out-param helpers so callers get an
+// `(r,g,b)` / `(h,s,v)` triple in one shot. Saturation/Value stay in [0,1]; Hue wraps in [0,1)
+// (1.0 folds to 0). Used by palette init in imgui_demo and any procedural color generation.
 
 def hsv_to_rgb(h, s, v : float) : float3 {
     var r, g, b : float

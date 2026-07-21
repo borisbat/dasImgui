@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
@@ -53,9 +54,8 @@ def test_snapshot_transform(t : T?) {
         t |> success(near(bw, lw * 3.0f + 50.0f, 0.5f), "bbox.w == local.w*3 + 50")
 
         // ---- a CONTAINER header under the transform is also screen-space + canvas_bbox ----
-        // tab_item captures its header via current_item_bbox(), routed through the same
-        // capture_item_bbox chokepoint as leaf widgets — so it gets the screen-mapped bbox
-        // AND a canvas_bbox, identical to the contract for leaf widgets.
+        // tab_item captures its header via current_item_bbox() through the same capture_item_bbox
+        // chokepoint as leaf widgets, so it gets the screen-mapped bbox AND a canvas_bbox.
         t |> success(widget_exists(snap, "MAIN_WIN/XFORM_TABS/XFORM_TAB"),
                      "tab_item header present under transform")
         let tab = find_widget(snap, "MAIN_WIN/XFORM_TABS/XFORM_TAB")

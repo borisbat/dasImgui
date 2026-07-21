@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 
 require imgui/imgui_harness
 
@@ -46,10 +47,9 @@ def update() {
         color_picker3(SUN_RGB, (text = "Sun light"))
         text("sun = ({SUN_RGB.value.x}, {SUN_RGB.value.y}, {SUN_RGB.value.z})")
 
-        // ColorPicker4 with reference color (shows the [ref] swatch).
-        // Named-tuple args are positional in SOURCE ORDER, so when
-        // surfacing ref_col / has_ref_col we have to also pass the
-        // intermediate `flags` slot (even at default).
+        // ColorPicker4 with reference color (shows the [ref] swatch). Named-tuple
+        // args are positional in SOURCE ORDER, so surfacing ref_col / has_ref_col
+        // means also passing the intermediate `flags` slot (even at default).
         color_picker4(SHIRT_COLOR, (text = "Shirt",
                                     flags = ImGuiColorEditFlags.None,
                                     ref_col = float4(0.5f, 0.5f, 0.5f, 1.0f),

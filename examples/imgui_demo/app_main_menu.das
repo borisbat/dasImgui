@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 
 module app_main_menu
@@ -55,10 +56,9 @@ def ShowExampleMenuFile() {
         menu(FILE_MORE, (text = "More..", enabled = true)) {
             menu_item(FILE_HELLO, (text = "Hello"))
             menu_item(FILE_SAILOR, (text = "Sailor"))
-            // Recurse re-enters ShowExampleMenuFile — every [widget] global
-            // aliases the outer call (same module-scope identifier). ImGui's
-            // max-depth limit gates the dropdown and no test reads per-level
-            // state, so aliasing is intentional.
+            // Recurse re-enters ShowExampleMenuFile — every [widget] global aliases
+            // the outer call (same module-scope identifier). ImGui's max-depth limit
+            // gates the dropdown; no test reads per-level state, so aliasing is fine.
             menu(FILE_RECURSE, (text = "Recurse..", enabled = true)) {
                 ShowExampleMenuFile()
             }

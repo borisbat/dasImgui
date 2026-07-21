@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options rtti
 
@@ -133,12 +134,9 @@ def main : int {
     }
     to_log(LOG_INFO, "[convert] music: {music_wav} ({length(msamples) / max(mchannels, 1)} frames @ {mrate}Hz)\n")
 
-    // The APNG carries the recorder's per-frame delays, but "skip-missed" scheduling drops stalled
-    // time so those delays sum SHORTER than wall-clock (e.g. 53.9s APNG vs 74.9s recorded). ffmpeg
-    // would then play the video on that compressed clock while the voiceovers sit on wall-clock —
-    // every caption races ahead of its voice. Force the video onto a constant frames/duration grid
-    // (`-r fps_eff` before `-i`) and anchor each voiceover to its FRAME index on that SAME grid
-    // (frame/fps_eff). Box and voice then share one clock and stay locked together.
+    // "skip-missed" scheduling drops stalled time, so the APNG's per-frame delays sum SHORTER than
+    // wall-clock (e.g. 53.9s vs 74.9s) — captions would race ahead of their wall-clock voices. Force
+    // the video onto a constant grid (`-r fps_eff`) and anchor each voice to its frame index on it.
     let fps_eff = sc.frames > 0 ? float(sc.frames) / dur : float(sc.fps)
 
     // --- build the ffmpeg filtergraph: faded low music bed + each voiceover delayed to its frame ---

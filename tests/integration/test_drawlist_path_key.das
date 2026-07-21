@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
@@ -72,12 +73,9 @@ def test_drawlist_path_key_shape(t : T?) {
                    "every drawlist primitive path-key leaf matches `<mod>:<line>:<col>`")
         t |> equal(bad_bbox, "",
                    "every drawlist primitive has a bbox field")
-        // No state-global emission for DRAWLIST primitives — assert no
-        // drawlist-kind path leaf matches `__widget_<line>_<col>`. Sibling
-        // `[widget]` calls in the same feature legitimately auto-synthesize
-        // that form (e.g. `separator()`'s bare Form 4); we filter on kind
-        // first so this test verifies the rail's no-state-global contract
-        // without snagging neighbouring widget machinery.
+        // No state-global emission for DRAWLIST primitives: assert no drawlist-kind path leaf
+        // matches `__widget_<line>_<col>`. Sibling [widget] calls legitimately synthesize that
+        // form (e.g. separator's Form 4), so we filter on kind first to test only the drawlist rail.
         var state_global_leaks = ""
         for (k, v in keys(globals.value as _object), values(globals.value as _object)) {
             let kind = v?["kind"] ?? ""

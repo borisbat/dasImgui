@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
@@ -30,11 +31,9 @@ def col_header(var snap : JsonValue?; cell : string; header_dy : float) : tuple<
     return ((b?["x"] ?? 0.0f) + 22.0f, (b?["y"] ?? 0.0f) - header_dy)
 }
 
-//! Click ``pt`` (a column header) UNDER an already-posted voice line, then assert
-//! the sort callback reordered ``verify_target`` to ``expected``. ``shift`` holds
-//! LeftShift across the click for the SortMulti beat. The caller has posted
-//! say_begin (whose dwell is passed here) so prepare_recording can scan the
-//! literal voice line at the call site - mirrors window_size_constraints' split.
+//! Click ``pt`` (a column header) under an already-posted voice line, then assert the sort
+//! callback reordered ``verify_target`` to ``expected``; ``shift`` holds LeftShift for the
+//! SortMulti beat. Caller posts say_begin first so prepare_recording scans the voice line.
 def sort_under_voice(app : ImguiApp; dwell : uint; pt : tuple<float; float>;
                      shift : bool; verify_target : string; expected : string) {
     let anchor = record_frame_count(app)
@@ -64,10 +63,9 @@ def main {
         let T_NAME1 = "DT_WIN/DT_TABLE/DT_NAME[1]"
         let T_KIND0 = "DT_WIN/DT_TABLE/DT_KIND[0]"
         let T_VAL0  = "DT_WIN/DT_TABLE/DT_VAL[0]"
-        // Caption anchors: bottom-row cells of each column. The narrate box scores
-        // "below" the anchor with zero overlaps (the empty table region under the
-        // six rows), so it parks there instead of covering the clickable header
-        // row; the connector still points at the column being sorted.
+        // Caption anchors: bottom-row cells. The narrate box scores "below" with zero overlaps
+        // (empty region under the six rows), so it parks there instead of covering the clickable
+        // header row; the connector still points at the sorted column.
         let C_NAME  = "DT_WIN/DT_TABLE/DT_NAME[5]"
         let C_KIND  = "DT_WIN/DT_TABLE/DT_KIND[5]"
         let C_VAL   = "DT_WIN/DT_TABLE/DT_VAL[5]"
@@ -88,10 +86,9 @@ def main {
         // Light the modifier strip so the Shift pill is visible on the multi-sort beat.
         post_command(app, "imgui_key_hud", JV((enabled = true, show_modifiers = true)))
 
-        // Warm up the capture pipeline before the first voice. Cold-start frames
-        // render slower; counting them under the first beat skews convert's single
-        // frame->time map. A brief settled intro on the Name header absorbs them and
-        // leaves the cursor parked where beat 2 clicks.
+        // Warm up the capture pipeline before the first voice: cold-start frames render slower,
+        // and counting them under the first beat skews convert's frame->time map. A settled intro
+        // on the Name header absorbs them and parks the cursor where beat 2 clicks.
         move_to(app, p_name_hdr, 800)
         hold_content(app, 1800u)
 

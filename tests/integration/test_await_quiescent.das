@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
@@ -45,11 +46,9 @@ def test_imgui_await(t : T?) {
         t |> equal(idle?["value"]?["pending_coroutines"] ?? -1, 0,
                    "idle: pending_coroutines = 0")
 
-        // Gate 2: click → coroutine in flight; await says not quiescent.
-        // In headless mode the loop runs at multi-kHz (no vsync), so the click
-        // coroutine finishes in microseconds — faster than the next HTTP round-trip.
-        // with_paused freezes update() (and thus advance_coroutines) so the
-        // spawned coroutine sits in g_coroutines until we observe it.
+        // Gate 2: click → coroutine in flight; await says not quiescent. Headless runs multi-kHz
+        // (no vsync), so the click coroutine finishes in microseconds; with_paused freezes update()
+        // (hence advance_coroutines) so the spawned coroutine sits in g_coroutines until observed.
         with_paused(d) {
             let dr = click(d, "MAIN_WIN/DEMO_SLIDER")
             t |> equal(dr?["ok"] ?? false, true, "click dispatched")

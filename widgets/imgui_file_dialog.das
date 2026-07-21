@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
@@ -118,10 +119,9 @@ def private active_ext() : string {
     return ""
 }
 
-// "foo.json" matches the pre-split pattern list ["json"] / ["png","jpg"] iff it ends in
-// exactly ".<one of them>" (fio's replace_extension — never hand-rolled rfind/slice).
-// Empty list = all files. The caller splits the active filter ONCE so scan_dir doesn't
-// re-split (and leak) the same pattern string for every file in the directory.
+// "foo.json" matches the pre-split pattern list (["json"] / ["png","jpg"]) iff it ends in exactly
+// ".<one of them>" (via fio's replace_extension — never hand-rolled rfind/slice); empty list = all files.
+// The caller splits the active filter ONCE so scan_dir doesn't re-split (and leak) it per file.
 def private matches_ext(name : string; pats : array<string>) : bool {
     if (empty(pats)) {
         return true
@@ -211,8 +211,7 @@ def private scan_dir() {
     g_fd.entries |> clear()
     let ext = active_ext()
     let dirs_only = g_fd.mode == FileDialogMode.pick_dir
-    // split the active filter's pattern list ONCE here, not once per file in matches_ext;
-    // empty ext => empty list => all files (split("", ";") would yield [""], not [], so guard).
+    // Split the active filter's pattern list ONCE here, not per file in matches_ext; guard empty ext (split("", ";") yields [""] not [], which would break the "all files" case).
     var pats : array<string>
     if (!empty(ext)) {
         pats <- split(ext, ";")

@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 
 require imgui/imgui_harness
 
@@ -36,11 +37,9 @@ def update() {
                       flags = ImGuiWindowFlags.None)) {
         text("Three [widget] decls — every global below is auto-emitted.")
 
-        // Button — return form. Identifier `SAVE_BTN` becomes the
-        // module-scope `var SAVE_BTN : ClickState` global on first compile.
-        // Note `(text = "Save")` (parens, not square brackets): named-tuple
-        // form which the [widget] call_macro destructures into positional
-        // args.
+        // Button — return form. Identifier `SAVE_BTN` auto-emits the module-scope
+        // `var SAVE_BTN : ClickState` global on first compile; `(text = "Save")` is
+        // the named-tuple form the [widget] call_macro destructures to positionals.
         if (button(SAVE_BTN, (text = "Save"))) {
             print("save clicked, count={SAVE_BTN.click_count}\n")
         }

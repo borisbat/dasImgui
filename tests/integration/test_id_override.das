@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
@@ -69,10 +70,9 @@ def test_id_override(t : T?) {
                          "id= override: telemetry path stays the bare identifier")
             if (snap0 == null) return
 
-            // Baseline hex_id: any widget rendered without id= override at the
-            // same depth. SAVE_A_BTN sits inside with_id("section_a") so its
-            // hex_id is also mangled — not a baseline. Use NESTED_BTN (deepest
-            // with_id chain) just to confirm hex_ids are present and uint-valued.
+            // Baseline hex_id: a widget rendered without id= override. SAVE_A_BTN sits inside
+            // with_id("section_a") so its hex_id is also mangled — not a baseline. Use NESTED_BTN
+            // just to confirm hex_ids are present and uint-valued.
             let hashed = find_widget(snap0, "MAIN_WIN/HASHED_BTN")?["hex_id"] ?? 0u
             t |> success(hashed != 0u,
                          "id= override: hex_id exposed and non-zero")

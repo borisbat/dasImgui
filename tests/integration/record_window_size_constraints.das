@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
@@ -43,11 +44,9 @@ def win_corner(var snap : JsonValue?; ident : string; req : float2) : tuple<floa
     return (p.x + req.x, p.y + req.y)
 }
 
-//! Drag ``win``'s grip to ``corner`` UNDER an already-posted voice line, then
-//! assert the constraint callback snapped ``win`` to ``expected``. The caller
-//! has already move_to'd the grip and posted say_begin (whose dwell is passed
-//! here) — mirrors hold_through_voice / drag_through_voice's split so
-//! prepare_recording can scan the literal say lines at the call site.
+//! Drag ``win``'s grip to ``corner`` under an already-posted voice line, then assert the
+//! constraint callback snapped ``win`` to ``expected``. Caller has already move_to'd the grip
+//! and posted say_begin (dwell passed here) so prepare_recording scans the say lines in place.
 def drag_under_voice(app : ImguiApp; dwell : uint; win : string;
                      grip : tuple<float; float>; corner : tuple<float; float>;
                      expected : float2) {
@@ -77,10 +76,9 @@ def main {
             panic("{T_SQUARE} never rendered - wrong app running?")
         }
 
-        // Warm up the capture pipeline before the first voice. The cold-start
-        // frames render at a lower fps; counting them under the first beat skews
-        // convert's single frame->time mapping and can crowd the first two
-        // captions together (voice overlap). A brief settled intro absorbs them.
+        // Warm up the capture pipeline before the first voice: cold-start frames render at lower
+        // fps, and counting them under the first beat skews convert's frame->time map (can crowd
+        // the first two captions into voice overlap). A brief settled intro absorbs them.
         move_to(app, (200.0f, 120.0f), 800)
         hold_content(app, 1800u)
 

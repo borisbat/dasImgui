@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 
 module app_documents
@@ -187,11 +188,7 @@ def private show_close_confirm() {
         return
     }
     if (!POPUP_OPEN_LATCH) {
-        // Stateful overload — open_popup("Save?", ...) string-id form
-        // computes GetID("Save?") at this call site, which doesn't match
-        // the popup_modal container's BeginPopupModal ID (the container
-        // does its own PushID(DOCS_CLOSE_MODAL)), so the modal would
-        // never display.
+        // Use the stateful overload — the string-id open_popup("Save?") GetID won't match the container's PushID(DOCS_CLOSE_MODAL) ID, so the modal would never display.
         open_popup(DOCS_CLOSE_MODAL)
         POPUP_OPEN_LATCH = true
     }
@@ -258,10 +255,9 @@ def public ShowExampleAppDocuments() : bool {
             file_menu()
         }
 
-        // Debug row: per-doc checkbox to toggle visibility. The checkbox's
-        // ToggleState.value defaults to false; mirror doc.open into it each
-        // frame so the visible state matches the data, and the click handler
-        // routes the new ToggleState.value back into doc.open.
+        // Debug row: per-doc visibility checkbox. Mirror doc.open into the checkbox's
+        // ToggleState.value each frame so the widget matches the data; the click handler
+        // routes the new value back into doc.open.
         for (i in range(length(DOCS))) {
             var doc & = unsafe(DOCS[i])
             DOCS_OPEN_CHECKBOX[i].value = doc.open
@@ -284,11 +280,9 @@ def public ShowExampleAppDocuments() : bool {
             for (i in range(length(DOCS))) {
                 var doc & = unsafe(DOCS[i])
                 continue if (!doc.open)
-                // DOCS_TAB[i].open backs ImGui's p_open via the closable
-                // tab_item — seed it from doc.open each frame so the tab
-                // can be reopened after a prior X-close (otherwise its
-                // .open stays false from the close and File>Open or the
-                // debug checkbox would only set doc.open, not the tab).
+                // DOCS_TAB[i].open backs ImGui's p_open via the closable tab_item — seed it true
+                // each frame so the tab can reopen after a prior X-close (else .open stays false
+                // and File>Open / the debug checkbox would set only doc.open, not the tab).
                 DOCS_TAB[i].open = true
                 let tab_flags = (doc.dirty
                                  ? ImGuiTabItemFlags.UnsavedDocument
@@ -298,13 +292,9 @@ def public ShowExampleAppDocuments() : bool {
                     display_context_menu(i)
                     display_contents(i)
                 }
-                // Tab close handling MUST live outside the tab_item body —
-                // ImGui flips p_open=false when the user X-clicks the tab
-                // header even on INACTIVE tabs whose body never runs. The
-                // prior version inside the body silently swallowed inactive-
-                // tab close attempts because the frame-top reseed flipped
-                // .open back to true before the next frame's body could
-                // observe the false value.
+                // Tab close handling MUST live outside the tab_item body — ImGui flips p_open=false
+                // on X-click even for INACTIVE tabs whose body never runs. Inside the body, the
+                // frame-top reseed flips .open back to true before it could observe the close.
                 if (!DOCS_TAB[i].open) {
                     if (doc.dirty) {
                         // Cancel close attempt: requeue + reopen for the

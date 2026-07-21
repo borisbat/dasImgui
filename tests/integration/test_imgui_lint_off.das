@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options _allow_imgui_legacy = true
 
 require imgui

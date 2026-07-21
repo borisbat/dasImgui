@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_block_arguments = false
 
@@ -42,11 +43,8 @@ def public with_disabled(disabled : bool; blk : block) {
 
 def public with_font(font : ImFont?; size : float = 0.0f; blk : block) {
     //! Run ``blk`` with ``PushFont(font, size)`` applied; matching ``PopFont()`` on return.
-    //! ``font`` is typically obtained from the font atlas (e.g. ``GetIO().Fonts.Fonts[i]``);
-    //! pass ``null`` to keep the current font and re-size it only.
-    //! ``size`` is the pixel height the font is rasterized at (imgui 1.92 dynamic fonts);
-    //! ``0.0f`` (the default) keeps the current size, so ``with_font(font) { ... }`` is a
-    //! pure font swap as before.
+    //! ``font=null`` keeps the current font (re-size only); ``size`` is the rasterization pixel height,
+    //! ``0.0f`` (default) keeps the current size — so ``with_font(font) { ... }`` is a pure font swap.
     PushFont(font, size)
     invoke(blk)
     PopFont()
@@ -107,11 +105,9 @@ def public with_popup_ex(id : uint; window_flags : ImGuiWindowFlags; blk : block
 }
 
 def public with_tooltip_ex(tooltip_flags : ImGuiTooltipFlags; window_flags : ImGuiWindowFlags; blk : block) : bool {
-    //! `BeginTooltipEx(tooltip_flags, window_flags)` / `EndTooltip()` — only-on-true.
-    //! Like `tooltip` but with flag control: ``ImGuiTooltipFlags.OverridePrevious``
+    //! `BeginTooltipEx(tooltip_flags, window_flags)` / `EndTooltip()` — only-on-true. ``ImGuiTooltipFlags.OverridePrevious``
     //! replaces an already-submitted tooltip instead of appending. Returns whether it opened.
-    // ImGuiTooltipFlags is an internal enum (no arg-remap), so it binds as int;
-    // ImGuiWindowFlags is a public flag enum that binds as the enum type.
+    // ImGuiTooltipFlags is an internal enum (no arg-remap) so it binds as int, hence the ``int()`` cast.
     let opened = BeginTooltipEx(int(tooltip_flags), window_flags)
     if (opened) {
         invoke(blk)
@@ -144,13 +140,12 @@ def public with_menu_ex(lbl : string; icon : string; enabled : bool; blk : block
 }
 
 def public with_combo_popup(popup_id : uint; bb : float4; flags : ImGuiComboFlags; blk : block) : bool {
-    //! `BeginComboPopup(popup_id, bb, flags)` / `EndCombo()` — only-on-true. The
-    //! low-level combo dropdown the public `combo` is built on: open the popup first
-    //! (``OpenPopupEx(popup_id)``), pass the combo box's rect as ``bb``, and render the
-    //! selectable items in ``blk``. Returns whether the dropdown is open.
-    // NB: close with EndCombo, NOT EndPopup — BeginComboPopup increments
-    // g.BeginComboDepth and only EndCombo decrements it (EndPopup would leak the
-    // depth, corrupting the recycled ##Combo_NN popup window on the next open).
+    //! `BeginComboPopup(popup_id, bb, flags)` / `EndCombo()` — only-on-true. Low-level combo dropdown the
+    //! public `combo` is built on: open the popup first (``OpenPopupEx(popup_id)``), pass the combo box's
+    //! rect as ``bb``, render selectables in ``blk``. Returns whether the dropdown is open.
+
+    // Close with EndCombo, NOT EndPopup: BeginComboPopup increments g.BeginComboDepth and only EndCombo
+    // decrements it (EndPopup would leak the depth, corrupting the recycled ##Combo_NN popup on next open).
     let opened = BeginComboPopup(popup_id, bb, flags)
     if (opened) {
         invoke(blk)
@@ -160,12 +155,12 @@ def public with_combo_popup(popup_id : uint; bb : float4; flags : ImGuiComboFlag
 }
 
 def public with_custom_preview_combo(str_id : string; flags : ImGuiComboFlags; blk : block) : bool {
-    //! `BeginCombo(str_id, "", flags + CustomPreview)` / `EndCombo()` — only-on-true.
-    //! Opens a combo whose closed-state preview is custom-drawn — pair it with a
-    //! ``with_combo_preview`` block immediately after. ``blk`` renders the dropdown
-    //! items (selectables). Returns whether the dropdown is open.
-    // CustomPreview is the lone internal ImGuiComboFlagsPrivate flag; fold it into the
-    // public flags by value (the two are distinct das enums over one int flag set).
+    //! `BeginCombo(str_id, "", flags + CustomPreview)` / `EndCombo()` — only-on-true. Opens a combo whose
+    //! closed-state preview is custom-drawn: pair it with a ``with_combo_preview`` block immediately after.
+    //! ``blk`` renders the dropdown selectables. Returns whether the dropdown is open.
+
+    // CustomPreview is the lone internal ImGuiComboFlagsPrivate flag; fold it into the public flags by
+    // value (the two are distinct das enums over one int flag set).
     let cflags = unsafe(reinterpret<ImGuiComboFlags>(int(flags) | int(ImGuiComboFlagsPrivate.CustomPreview)))
     let opened = BeginCombo(str_id, "", cflags)
     if (opened) {
@@ -176,10 +171,9 @@ def public with_custom_preview_combo(str_id : string; flags : ImGuiComboFlags; b
 }
 
 def public with_combo_preview(blk : block) : bool {
-    //! `BeginComboPreview()` / `EndComboPreview()` — only-on-true. Renders the custom
-    //! preview content (``blk``) into the preview box of a combo opened with
-    //! ``with_custom_preview_combo``. Call it immediately after that combo's block.
-    //! Returns whether the preview began.
+    //! `BeginComboPreview()` / `EndComboPreview()` — only-on-true. Renders the custom preview content
+    //! (``blk``) into the preview box of a ``with_custom_preview_combo`` combo — call it immediately after
+    //! that combo's block. Returns whether the preview began.
     let opened = BeginComboPreview()
     if (opened) {
         invoke(blk)
@@ -189,12 +183,9 @@ def public with_combo_preview(blk : block) : bool {
 }
 
 def public with_log(log_type : ImGuiLogFlags; auto_open_depth : int; blk : block) {
-    //! `LogBegin(log_type, auto_open_depth)` / `LogFinish()`. Captures the rendered text
-    //! of every widget submitted in ``blk`` (plus any manual ``LogRenderedText``) to the
-    //! chosen target — ``ImGuiLogFlags.OutputTTY`` / ``OutputFile`` / ``OutputClipboard`` /
-    //! ``OutputBuffer``.
-    //! ``auto_open_depth`` is the tree depth to auto-expand (-1 = the default).
-    //! Do NOT nest: LogBegin asserts that logging is not already active.
+    //! `LogBegin(log_type, auto_open_depth)` / `LogFinish()` — captures rendered text of every widget in ``blk``
+    //! to the target flag (``OutputTTY`` / ``OutputFile`` / ``OutputClipboard`` / ``OutputBuffer``); ``auto_open_depth``
+    //! is the tree depth to auto-expand (-1 = default). Do NOT nest: LogBegin asserts logging is not already active.
     LogBegin(int(log_type), auto_open_depth)
     invoke(blk)
     LogFinish()

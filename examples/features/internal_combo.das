@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 
 require imgui/imgui_harness
 
@@ -52,10 +53,9 @@ def update() {
     window(CMB_WIN, (text = "internal_combo", closable = false,
                      flags = ImGuiWindowFlags.None)) {
 
-        // ----- 1. low-level custom combo: a box from ItemAdd + ButtonBehavior, its
-        //          dropdown from BeginComboPopup — exactly how the public combo is built.
-        //          The box id is stable; the current value is drawn into the box (so
-        //          changing the selection never shifts the box's id). -----
+        // ----- 1. low-level custom combo: box from ItemAdd + ButtonBehavior,
+        //          dropdown from BeginComboPopup — exactly how the public combo is
+        //          built. The box id is stable, so selection changes never shift it. -----
         text("BeginComboPopup(popup_id, bb, flags): the low-level dropdown, built by hand")
         text("  on ItemAdd + ButtonBehavior + the popup, exactly like the public combo.")
         let box_id = GetID("ll_combo")

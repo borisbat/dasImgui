@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 
 module inputs
@@ -75,8 +76,7 @@ def private InputsSubSection() {
         }
         text("Mouse delta: ({io.MouseDelta.x}, {io.MouseDelta.y})")
 
-        // C++ does Text("Mouse down:") + per-button SameLine+Text loop.
-        // We build the entire line in one string and render with one widget.
+        // C++ splices per-button with SameLine; we build one string, one widget.
         var down_line = "Mouse down:"
         for (i in range(5)) {
             if (IsMouseDown(unsafe(reinterpret<ImGuiMouseButton>(i)))) {
@@ -111,12 +111,7 @@ def private InputsSubSection() {
         }
         text((text = mods_line))
 
-        // Chars queue — InputQueueCharacters is an ImVector<ImWchar>; the
-        // ImVector binding wires up das_index and das_default_vector_size so
-        // `length()` + `[i]` work directly. cpp formats each as
-        // "'<c>' (0x<hex>)" — we build the whole line as one string and
-        // render with a single text() (matches the Mouse-down/Keys-down
-        // pattern above, no SameLine() per-character splice needed).
+        // InputQueueCharacters is an ImVector<ImWchar>; its binding wires das_index/das_default_vector_size so length()+[i] work directly.
         var chars_line = "Chars queue:"
         for (c16 in io.InputQueueCharacters) {
             let c = int(c16)
@@ -231,11 +226,7 @@ def private MouseCursorsSubSection() {
                         ? cursors[cur_idx] : "?")
         text("Current mouse cursor = {cur_idx}: {cur_name}")
 
-        // The C++ wraps a CheckboxFlags (read-only display of the
-        // HasMouseCursors backend bit) in BeginDisabled/EndDisabled. Since
-        // editing an `ImGuiBackendFlags_` field through the int? rail needs
-        // a bounce-buffer (matches the style_editor.das gap), display the
-        // bit state as plain text.
+        // C++ shows a disabled CheckboxFlags; editing an ImGuiBackendFlags field via the int? rail needs a bounce-buffer, so we render the bit as plain text.
         let has_mouse_cursors = (uint(io.BackendFlags & ImGuiBackendFlags.HasMouseCursors) != 0u)
         text("io.BackendFlags: HasMouseCursors = {has_mouse_cursors}")
 

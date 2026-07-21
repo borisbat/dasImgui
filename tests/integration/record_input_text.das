@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
@@ -33,9 +34,8 @@ def widget_center(var snap : JsonValue?; ident : string) : tuple<float; float> {
 }
 
 //! Type-under-voice for plain text fields: real click to focus+activate, stream the text,
-//! optionally tap a terminal key (Tab fires CallbackCompletion), then assert the committed
-//! value. terminal_key = 0 means none (multiline / filter want no trailing Enter). Total time
-//! is >= dwell so the next stage's voiceover never overlaps this one.
+//! optionally tap a terminal key (Tab fires CallbackCompletion), then assert the committed value.
+//! terminal_key = 0 means none; total time is >= dwell so the next voiceover never overlaps.
 def type_field_voice(app : ImguiApp; dwell : uint; target : string;
                      text : string; terminal_key : int; expected : string) {
     let anchor = record_frame_count(app)

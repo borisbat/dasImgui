@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
@@ -26,11 +27,9 @@ def public rgba(r, g, b, a : int) : uint {
 }
 
 // ===== Tunable knobs (var public) =====
-//
-// All visual settings live here as module globals. Reassign any of these
-// from your app's init (or at runtime) to reskin the overlays. Per-call
-// args on `highlight()` / `mouse_trail()` / `narrate()` still take
-// precedence on a per-call basis.
+
+// Reskin the overlays by reassigning these globals from app init or at runtime.
+// Per-call args on highlight()/mouse_trail()/narrate() override them.
 
 // Manual highlight() — appearance when user code (or imgui_highlight curl)
 // asks for a flash explicitly.
@@ -63,11 +62,9 @@ var public cursor_sprite_radius             : float = 9.0f
 var public cursor_sprite_outline_thickness  : float = 2.0f
 var public cursor_sprite_inner_radius       : float = 1.5f
 
-// Click flash — expanding ring drawn at the cursor when imgui_boost_runtime's
-// synth driver fires a button press. The overlay is the recording's proof-of-click
-// — useful when the widget's own hover/active visuals don't fire for a
-// synthetic click (e.g. because the backend's per-frame poll fights over
-// io.MousePos with our synth state).
+// Click flash — expanding ring at the cursor when imgui_boost_runtime's synth
+// driver fires a press. Proof-of-click for recordings when the widget's own
+// hover/active visuals don't fire (backend poll fights our synth io.MousePos).
 var public click_flash_enabled       : bool  = true
 var public click_flash_color         : uint  = rgba(255, 255, 0, 255)   // yellow
 var public click_flash_start_radius  : float = 8.0f
@@ -93,11 +90,9 @@ var public narrate_max_width      : float = 480.0f   //! pixel width at which th
 var public imgui_auto_highlight_on_command : bool = false
     //! When true, every accepted imgui_* command auto-flashes its target with ``auto_highlight_color`` for ``auto_highlight_frames`` ticks.
 
-// Keycap / modifier HUD — bottom-center keycap pops + modifier-strip below.
-// Reads `synth_last_codepoint` / `synth_last_keycode` from imgui_boost_runtime to
-// detect each new synth key event and pop a new keycap. Modifier strip
-// lights up directly from `IsKeyDown(ImGuiKey_*)` so it reacts to BOTH
-// synth events AND real hardware keys.
+// Keycap / modifier HUD — bottom-center keycap pops + modifier strip below.
+// Pops a keycap per new synth key event (synth_last_codepoint/keycode); the strip
+// uses IsKeyDown(ImGuiKey_*) so it reacts to both synth AND real hardware keys.
 var public key_hud_enabled              : bool   = false
 var public key_hud_show_modifiers       : bool   = true
 var public key_hud_offset_y_from_bottom : float  = 80.0f
@@ -123,9 +118,8 @@ let g_keycap_trace_max = 6                                  // most-recent N key
 let g_keycap_trace_fallback_lifetime_s = 1.0f               // safety cap on a stuck trace
 
 // Focus rectangle — halo around io.active_widget. Off by default; opt in via
-// imgui_focus_rect for tutorial recordings. Useful when typing into a text
-// input — without this halo there's nothing on screen tying the keycap HUD's
-// output to the destination widget.
+// imgui_focus_rect for tutorial recordings. Ties the keycap HUD's output to the
+// destination widget when typing into a text input.
 var public focus_rect_enabled   : bool  = false
 var public focus_rect_color     : uint  = rgba(80, 180, 255, 220)            // cyan
 var public focus_rect_thickness : float = 2.0f
@@ -197,13 +191,9 @@ def public cursor_sprite(enabled : bool) {
 }
 
 def public apply_synth_io_override() {
-    //! Per-frame synth IO entry point for hand-rolled (non-harness) update loops — call between the
-    //! backend's ``*_NewFrame()`` and ImGui's ``NewFrame()``. Drains the COMPLETE synth pipeline:
-    //! advances L1 input coroutines (``imgui_click`` press/release) then drives
-    //! :ref:`imgui_synth_tick <function-imgui_boost_runtime_imgui_synth_tick>` (timelines +
-    //! held-state re-assert). Mirrors the harness's ``advance_coroutines()`` (in ``harness_begin_frame``)
-    //! + ``imgui_synth_tick()`` (in ``harness_new_frame``), so coroutine-based synth clicks work
-    //! without the harness — a demo calls this one function and never needs ``advance_coroutines`` itself.
+    //! Per-frame synth IO for hand-rolled (non-harness) update loops — call between the backend's
+    //! ``*_NewFrame()`` and ImGui's ``NewFrame()``. Drains the full synth pipeline (``advance_coroutines()``
+    //! then ``imgui_synth_tick()``), mirroring the harness so coroutine synth clicks work without it.
     advance_coroutines()
     imgui_synth_tick()
 }
@@ -212,10 +202,9 @@ def public narrate(text : string;
                    target : string = "";
                    frames : int = narrate_default_frames;
                    duration_s : float = -1.0f) {
-    //! Pop a callout box with ``text``. By default it lingers ``frames`` render ticks; pass
-    //! ``duration_s > 0`` to hold it for that many wall-clock seconds instead — rate-independent,
-    //! required for recordings where render fps and capture fps diverge. If ``target`` resolves
-    //! to a widget bbox the box anchors next to it with a connector line; otherwise it floats top-left.
+    //! Pop a callout box with ``text``. Lingers ``frames`` render ticks, or ``duration_s > 0``
+    //! wall-clock seconds instead (needed when recording render fps != capture fps). A ``target``
+    //! that resolves to a widget bbox anchors the box beside it with a connector; else it floats top-left.
     g_narrates |> emplace(NarrateSpec(text = text, target = target,
                                       remaining_frames = frames, remaining_s = duration_s))
 }
@@ -302,9 +291,7 @@ def private rect_intersects(c : float2; box_size : float2; b : float4) : bool {
 
 def private clamp_anchor(c : float2; box_size : float2; viewport : float2;
                          edge_margin : float; shadow : float2; hud_zone_h : float) : float2 {
-    // Slide a candidate's top-left into [edge_margin, viewport - edge_margin -
-    // box - shadow], with the bottom edge pulled up by hud_zone_h when the
-    // key-HUD is visible.
+    // Slide the top-left into [edge_margin, viewport - edge_margin - box - shadow]; bottom edge pulled up by hud_zone_h when the key-HUD is visible.
     var r = c
     let max_x = viewport.x - edge_margin - box_size.x - shadow.x
     let max_y = viewport.y - edge_margin - box_size.y - shadow.y - hud_zone_h
@@ -326,9 +313,7 @@ def private clamp_anchor(c : float2; box_size : float2; viewport : float2;
 def private score_anchor(c : float2; box_size : float2;
                          target_bbox : float4; avoid_bboxes : array<float4>;
                          other_bboxes : array<float4>) : int {
-    // +1000 if the banner overlaps the anchor target (connector loses meaning) or any member of the
-    // step's hard-avoid group (the other "main" elements a multi-target narrate spans), so the box
-    // never covers them; +1 per incidental widget so it still prefers the least-crowded gap.
+    // +1000 for overlapping the anchor target or a hard-avoid member (box must never cover them); +1 per incidental widget, so it prefers the least-crowded gap.
     var s = 0
     if (rect_intersects(c, box_size, target_bbox)) {
         s += 1000
@@ -356,16 +341,9 @@ def public compute_narrate_anchor(
                                   other_bboxes : array<float4>;
                                   avoid_bboxes : array<float4>
                                   ) : float2 {
-    //! Pick a post-it anchor (top-left corner) by scoring 4 viewport-clamped
-    //! candidates (right/left/below/above). ``score_anchor`` adds 1 per incidental
-    //! widget bbox (``other_bboxes``) the banner overlaps, and 1000 if it overlaps
-    //! the anchor target OR any ``avoid_bboxes`` member (the step's other "main"
-    //! elements) — so a multi-target step's box never covers a related control —
-    //! lowest-score candidate wins, ties broken by iteration order (right >
-    //! left > below > above). If the banner is larger than the viewport's
-    //! placement region even when clamped, returns a bottom-left safety
-    //! anchor — only fires when the caller passed text that genuinely cannot
-    //! fit.
+    //! Pick a post-it anchor (top-left) by scoring 4 viewport-clamped candidates (right/left/below/above):
+    //! ``score_anchor`` adds 1 per incidental ``other_bboxes`` overlap and 1000 per anchor-target or ``avoid_bboxes`` overlap.
+    //! Lowest score wins (ties by order right>left>below>above); a banner too big to place returns a bottom-left failsafe.
     return float2(edge_margin, edge_margin) if (!has_target)
 
     let max_w = viewport.x - 2.0f * edge_margin - shadow.x
@@ -412,10 +390,8 @@ def public compute_connector_start(
                                    box_size      : float2;
                                    widget_center : float2
                                    ) : float2 {
-    //! Closest point on the post-it's boundary to ``widget_center``. Coincides
-    //! with the corresponding edge midpoint when ``widget_center`` is directly
-    //! outside one side of the post-it; for offset/corner cases (post-it
-    //! viewport-clamped sideways relative to the target), the line walks to
+    //! Closest point on the post-it's boundary to ``widget_center`` (clamp-onto-rect). It's the edge
+    //! midpoint when ``widget_center`` is directly outside one side; for offset/corner cases it walks to
     //! the nearest corner so the arrow points naturally at the target.
     let rect_min = anchor
     let rect_max = float2(anchor.x + box_size.x, anchor.y + box_size.y)
@@ -427,17 +403,15 @@ def public compute_connector_end(
                                  target_bbox   : float4;
                                  banner_center : float2
                                  ) : float2 {
-    //! Mirror of ``compute_connector_start`` on the target side: closest
-    //! point on the target's bbox boundary to ``banner_center``. Same
-    //! clamp-onto-rect trick — terminates the line on the target's edge (or
-    //! corner, in offset cases) instead of inside it.
+    //! Mirror of ``compute_connector_start`` on the target side: closest point on the target's
+    //! bbox boundary to ``banner_center``. Same clamp-onto-rect trick — terminates the line on the
+    //! target's edge (or corner) instead of inside it.
     return float2(clamp(banner_center.x, target_bbox.x, target_bbox.z),
                   clamp(banner_center.y, target_bbox.y, target_bbox.w))
 }
 
 def private narrate_hud_zone_h : float {
-    //! Bottom screen reserve so narrates don't collide with the key_hud
-    //! keycap row + modifier strip when the HUD is enabled.
+    // Bottom screen reserve so narrates don't collide with the key_hud keycap row + modifier strip when the HUD is enabled.
     return 0.0f if (!key_hud_enabled)
     return key_hud_offset_y_from_bottom + key_hud_mod_pill_h + key_hud_mod_strip_y_gap
 }
@@ -453,11 +427,7 @@ def private paint_narrates {
     var i = length(g_narrates)
     while (i > 0) {
         i--
-        // Actual text size via the CalcTextSize shim (main.cpp:342) — picks up
-        // FontGlobalScale and any active font, so the box fits the rendered text.
-        // Pass narrate_max_width as wrap_width so long narrations grow vertically
-        // instead of running off the viewport edge. CalcTextSize returns the
-        // bounding rectangle for the wrapped result.
+        // CalcTextSize shim (main.cpp:342) picks up FontGlobalScale/active font; wrap_width=narrate_max_width grows long text vertically instead of off-viewport.
         let text_size = CalcTextSize(g_narrates[i].text, false, narrate_max_width)
         let box_size = float2(text_size.x + narrate_pad_x * 2.0f,
                               text_size.y + narrate_pad_y * 2.0f)
@@ -474,17 +444,13 @@ def private paint_narrates {
                 have_target = true
             }
         }
-        // Collect every registered widget bbox except the target's, so the
-        // post-it doesn't land on a sibling. Cheap: linear scan of the
-        // per-frame registry, typically ≤ 30 entries.
+        // Collect every registered widget bbox except the target's so the post-it doesn't land on a sibling (linear scan, ≤ 30 entries).
         var other_bboxes : array<float4>
         for (k, w in keys(imgui_boost_runtime::g_registry), values(imgui_boost_runtime::g_registry)) {
             continue if (have_target && k == g_narrates[i].target)
             other_bboxes |> push(w.bbox)
         }
-        // The step's own sibling targets are HARD-avoided (scored like the anchor) so a
-        // multi-target narrate never covers a "main" element even when every gap is crowded.
-        // Plain loop (not a comprehension) so widget_rect(av) is resolved once per target, not twice.
+        // Sibling targets are HARD-avoided (scored like the anchor). Plain loop, not a comprehension, so widget_rect(av) resolves once per target.
         var avoid_bboxes : array<float4>
         for (av in g_narrates[i].avoid) {
             let r = widget_rect(av)
@@ -499,10 +465,7 @@ def private paint_narrates {
         delete other_bboxes
         delete avoid_bboxes
         let box_end = float2(anchor.x + box_size.x, anchor.y + box_size.y)
-        // Connector drawn first so the post-it covers any incidental crossing.
-        // Endpoints are on the OUTSIDE edges of banner + target — the line stays
-        // outside both rects, preventing the strike-through that crossing into
-        // the target's center would produce on its label text.
+        // Connector drawn first (post-it covers crossings); endpoints on the OUTSIDE edges of banner + target so the line never strikes through the target's label.
         if (have_target) {
             let banner_center = float2(anchor.x + box_size.x * 0.5f,
                                        anchor.y + box_size.y * 0.5f)
@@ -515,16 +478,12 @@ def private paint_narrates {
                              narrate_shadow_color, narrate_corner_radius, ImDrawFlags.None)
         *dl |> AddRectFilled(anchor, box_end, narrate_bg_color, narrate_corner_radius, ImDrawFlags.None)
         *dl |> AddRect(anchor, box_end, narrate_border_color, narrate_corner_radius, ImDrawFlags.None, narrate_border_thickness)
-        // 8-arg AddText overload (drawList, font=null, font_size=0, pos, col,
-        // text, wrap_width, cpu_fine_clip_rect=null) — passes wrap_width so the
-        // rendered text matches the multi-line size computed above.
+        // 8-arg AddText overload (…, wrap_width, cpu_fine_clip_rect=null) — passes wrap_width so rendered text matches the multi-line size computed above.
         *dl |> AddText(null, 0.0f,
                        float2(anchor.x + narrate_pad_x, anchor.y + narrate_pad_y),
                        narrate_fg_color, g_narrates[i].text, narrate_max_width, null)
         if (g_narrates[i].remaining_s >= 0.0f) {
-            // Wall-clock countdown. During recording the render fps != the capture fps, so a
-            // tick budget would drain at the render rate and the box would vanish early (mid
-            // voiceover). Summing io.DeltaTime holds the box for a true wall-clock span instead.
+            // Wall-clock countdown: sum io.DeltaTime for a true span — a tick budget drains at render fps and vanishes early when render fps != capture fps.
             g_narrates[i].remaining_s -= io.DeltaTime
             if (g_narrates[i].remaining_s <= 0.0f) {
                 g_narrates |> erase(i)
@@ -553,8 +512,7 @@ def private effective_synth_click() : tuple<int; float> {
 }
 
 def private paint_click_flash {
-    // Anchor latched on press (synth_mouse_button); release doesn't reset it, so the ring
-    // animates the full click_flash_duration_s even though the press->release is ~1 frame.
+    // Anchor latched on press (release doesn't reset it) so the ring animates the full click_flash_duration_s even though press->release is ~1 frame.
     let t = effective_synth_click()._1
     return if (!click_flash_enabled || t < 0.0)
     let elapsed = get_uptime() - t
@@ -598,8 +556,7 @@ def private glyph_for_imgui_key(kc : int) : string {
     if (kc == int(ImGuiKey.LeftCtrl)  || kc == int(ImGuiKey.RightCtrl)) return "Ctrl"
     if (kc == int(ImGuiKey.LeftAlt)   || kc == int(ImGuiKey.RightAlt)) return "Alt"
     if (kc == int(ImGuiKey.LeftSuper) || kc == int(ImGuiKey.RightSuper)) return "Cmd"
-    // Letter keys arrive as raw keycodes from a chord (no codepoint, unlike typing), so map
-    // them to their glyph here too - otherwise a Ctrl+D pops only the "Ctrl" keycap.
+    // Letter keys arrive as raw keycodes from a chord (no codepoint), so map them here too — else Ctrl+D pops only the "Ctrl" keycap.
     if (kc >= int(ImGuiKey.A) && kc <= int(ImGuiKey.Z))
         return build_string() $(writer) { writer |> write_char('A' + (kc - int(ImGuiKey.A))) }
     return ""    // unknown — caller skips the trace
@@ -608,9 +565,7 @@ def private glyph_for_imgui_key(kc : int) : string {
 def private paint_key_hud {
     return if (!key_hud_enabled)
 
-    // 1) Pull new synth events from imgui_boost_runtime into traces. Codepoint takes
-    //    priority: a typed char already includes the visible glyph;
-    //    modifier-only keystrokes fall through to the keycode branch.
+    // 1) Pull new synth events into traces. Codepoint takes priority (a typed char already includes the glyph); modifier-only keystrokes fall to the keycode branch.
     let now = get_uptime()
     let cp_t = imgui_boost_runtime::synth_last_codepoint_t
     let cp   = imgui_boost_runtime::synth_last_codepoint
@@ -619,8 +574,7 @@ def private paint_key_hud {
     if (cp_t > g_last_seen_codepoint_t && cp != 0u) {
         g_keycap_traces |> push(KeycapTrace(glyph = glyph_for_codepoint(cp), t_pushed = now))
         g_last_seen_codepoint_t = cp_t
-        // Mark this keycode as "represented by char"; if a key press at the
-        // same instant fires next, don't double-push.
+        // Mark this keycode "represented by char" so a key press at the same instant doesn't double-push.
         g_last_seen_keycode_t = kc_t
     } elif (kc_t > g_last_seen_keycode_t && kc != 0) {
         let g = glyph_for_imgui_key(kc)
@@ -643,8 +597,7 @@ def private paint_key_hud {
         g_keycap_traces |> erase(0)
     }
 
-    // 3) Layout bottom-center. ImGui's main viewport gives the window size in
-    //    pixels — use it for the anchor.
+    // 3) Layout bottom-center. ImGui's main viewport gives the window size in pixels — use it for the anchor.
     let viewport = GetMainViewport()
     let vp_size = viewport.Size
     let vp_pos  = viewport.Pos
@@ -652,9 +605,7 @@ def private paint_key_hud {
     var dl = GetForegroundDrawList()
 
     if (n > 0) {
-        // Pre-measure each glyph and grow the per-cap width when the label
-        // is wider than the default — keeps "Space" / "Enter" / "Shift"
-        // from overflowing the keycap box.
+        // Pre-measure each glyph and grow the per-cap width past the default so "Space"/"Enter"/"Shift" don't overflow the keycap box.
         var cap_widths : array<float>
         cap_widths |> resize(n)
         var row_w = 0.0f
@@ -689,8 +640,7 @@ def private paint_key_hud {
         }
     }
 
-    // 4) Modifier strip — pulls direct from ImGui's live key state so it
-    //    works for both synth events and real hardware keys.
+    // 4) Modifier strip — pulls direct from ImGui's live key state so it works for both synth events and real hardware keys.
     if (key_hud_show_modifiers) {
         let names = ["Ctrl", "Shift", "Alt", "Cmd"]
         let active = [
@@ -740,8 +690,7 @@ def private paint_focus_rect {
 def private paint_all {
     paint_highlights()
     paint_trail()
-    // focus rect is a widget annotation — paint it before the narrative bar so the
-    // (later-drawn, thus on-top) caption stays readable over the halo, not under it.
+    // Paint the focus rect before the narrative bar so the later-drawn caption stays readable over the halo, not under it.
     paint_focus_rect()
     paint_narrates()
     paint_cursor_sprite()

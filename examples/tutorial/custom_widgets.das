@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 // TODO: this tutorial uses pre-v2 raw imgui calls (Text/Spacing/Separator/
 // SameLine etc.) and needs a follow-up rewrite to use the v2 wrappers
 // (text/spacing/separator/same_line). Opt out of the default-on lint until
@@ -56,10 +57,9 @@ struct VolumeKnobState {
     @optional changed : bool              //! true on the frame the widget fired
 }
 
-// imgui_force_set's "set" action queues pending_value (drained in knob() step 1).
-// The dispatch half of the custom-widget rail; pending_value_finalize is the other.
-// payload is JSON (built by write_json), so parse it with sscan_json_at exactly
-// like the built-in value dispatchers (pending_value_apply, imgui_widgets_builtin.das).
+// imgui_force_set's "set" action queues pending_value (drained in knob() step 1) —
+// the dispatch half of the custom-widget rail. payload is JSON (write_json), parsed
+// with sscan_json_at like the built-in value dispatchers (imgui_widgets_builtin.das).
 [widget_dispatch]
 def knob_dispatch(var state : VolumeKnobState; action : string; payload : string) {
     if (action == "set") {
@@ -83,22 +83,18 @@ def knob(var state : VolumeKnobState; text : string) : bool {
     }
     let (mn, mx) = state.bounds
 
-    // 2. Reserve a hitbox. InvisibleButton is the "registered" item that
-    //    widget_finalize (via the [widget] postlude) attaches bbox/hex_id/
-    //    hover/active/focus to. Hitbox = knob disc + label + value readout,
-    //    so the whole rendered widget is one ImGui-layout cell of fixed
-    //    width — adjacent knobs stay aligned regardless of value-text width.
+    // 2. Reserve a hitbox. InvisibleButton is the "registered" item [widget]'s
+    //    postlude attaches bbox/hex_id/hover/active/focus to. Hitbox spans disc +
+    //    label + value — one fixed-width cell, so adjacent knobs stay aligned.
     let p = GetCursorScreenPos()
     let sz = ImVec2(72.0f, 112.0f)             // 72×72 knob + 24 label + 16 value
     let radius = 30.0f
     let center = ImVec2(p.x + sz.x * 0.5f, p.y + 36.0f)
     InvisibleButton(text, sz)
 
-    // 3. Drag handling — mouse position relative to center drives the
-    //    angle directly. atan2 returns (-π, π]; shifting by -3π/4 and
-    //    wrapping into [0, 2π) puts the active arc into [0, 3π/2) and the
-    //    bottom-gap dead zone into [3π/2, 2π). Dead-zone clicks are
-    //    ignored — value holds at its previous reading.
+    // 3. Drag handling — mouse-vs-center drives the angle. atan2 returns (-π, π];
+    //    shift by -3π/4 and wrap into [0, 2π) so the active arc is [0, 3π/2) and
+    //    the bottom-gap dead zone [3π/2, 2π); dead-zone clicks hold the old value.
     var changed = false
     if (IsItemActive()) {
         let mp = GetIO().MousePos
@@ -117,13 +113,9 @@ def knob(var state : VolumeKnobState; text : string) : bool {
     }
     state.changed = changed
 
-    // 4. Draw via the window's drawlist. Indicator sweeps a 270° arc with
-    //    a 90° gap at the bottom (DAW convention):
-    //       frac = 0 → θ = 3π/4   (bottom-left, "7 o'clock")
-    //       frac = 0.5 → θ = 3π/2 (straight up, "12 o'clock")
-    //       frac = 1 → θ = 9π/4   (bottom-right, "5 o'clock")
-    //    ImGui's y-axis points down, so positive sin is down; the formula
-    //    is monotonic in θ and the inverse of step 3's mapping.
+    // 4. Draw via the window's drawlist. Indicator sweeps a 270° arc with a 90°
+    //    bottom gap (DAW convention): frac 0→3π/4, 0.5→3π/2, 1→9π/4. ImGui's y
+    //    points down, so the formula is monotonic in θ and inverts step 3's map.
     let frac = (state.value - mn) / (mx - mn)
     let theta = 3.0f * PI / 4.0f + frac * 3.0f * PI / 2.0f
     let tip = ImVec2(

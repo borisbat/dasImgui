@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 
 module widgets
@@ -76,16 +77,13 @@ var WIDGETS_TREE_SELECTION_MASK = 1 << 2
 var WIDGETS_BASIC_ANGLE = 0.0f
 
 // ----- Plain counters (not widget state) -----
-// Repeater-driven counters that the C++ demo holds as `static int counter`.
-// Could be expressed as `radio_button_int.click_count` differences, but
-// preserving the imperative ++/-- semantics is simpler with a plain var.
+// C++ holds these as `static int counter`; a plain var keeps the imperative ++/-- semantics.
 var WIDGETS_BASIC_ARROW_COUNTER = 0
 var WIDGETS_IMAGES_PRESSED_COUNT = 0
 
 // ----- Indexed widget tables -----
-// The `[widget]` indexed form `IDENT[k]` requires a module-scope `table<K; ST>`
-// declared upfront (the macro does not auto-emit indexed tables — see
-// widgets/imgui_boost_v2.das "table global is not declared at module scope").
+// The [widget] indexed form IDENT[k] needs an upfront module-scope table<K; ST>
+// (the macro doesn't auto-emit indexed tables — see widgets/imgui_boost_v2.das).
 var private WIDGETS_BASIC_COLOR_BTN : table<int; ClickState>
 var private WIDGETS_TREE_BASIC : table<int; TreeNodeState>
 var private WIDGETS_TREE_BASIC_BTN : table<int; ClickState>
@@ -147,10 +145,8 @@ let private WIDGETS_TF_LINES : array<string> <- ["aaa1.c", "bbb1.c", "ccc1.c",
                                                  "abc.h", "hello, world"]
 
 // Vertical Sliders: three groups of state (cpp:2390 / 2394 / 2414).
-//   *_INT_PTR / *_VALUES{,_2} are caller-owned data fed to edit_vslider_*;
-//   *_SET{1,2,3} are per-iteration same_line markers (indexed); *_GROUP is
-//   the per-column BeginGroup container; *_TIP{1,2} are per-iter tooltip
-//   widgets (one fires per frame when an item is active/hovered).
+// INT_PTR/VALUES fed to edit_vslider_*; SET1-3 per-iter same_line markers;
+// GROUP the per-column BeginGroup; TIP1/2 per-iter tooltips.
 var private WIDGETS_VS_INT_PTR = 0
 var private WIDGETS_VS_VALUES : array<float> <- [0.0f, 0.60f, 0.35f, 0.9f,
                                                  0.70f, 0.20f, 0.0f]
@@ -162,10 +158,9 @@ var private WIDGETS_VS_GROUP : table<int; GroupState>
 var private WIDGETS_VS_TIP1 : table<int; NarrativeState>
 var private WIDGETS_VS_TIP2 : table<int; NarrativeState>
 
-// Tabs/Advanced & Close: bit-bag for ImGuiTabBarFlags driven by 6 checkboxes;
-// caller-owned WIDGETS_TABS_ADV_OPENED bool[] threaded through BOTH the
-// checkbox row AND the tab X-button via edit_checkbox / edit_tab_item.
-// Mirrors cpp's `bool opened[4]` shared between the two UI surfaces.
+// Tabs/Advanced & Close: ImGuiTabBarFlags bit-bag from 6 checkboxes;
+// WIDGETS_TABS_ADV_OPENED bool[] threads through both the checkbox row and the
+// tab X-button (mirrors cpp's `bool opened[4]` shared across two UI surfaces).
 var private WIDGETS_TABS_ADV_FLAGS = int(ImGuiTabBarFlags.Reorderable)
 var private WIDGETS_TABS_ADV_OPENED : array<bool> <- [true, true, true, true]
 var private WIDGETS_TABS_ADV_TOGGLE : table<int; EmptyMarkerState>
@@ -208,17 +203,9 @@ var private WIDGETS_SEL_GRID_SL : table<int; EmptyMarkerState>
 var private WIDGETS_SEL_ALIGN_ROW : table<int; ToggleState>
 var private WIDGETS_SEL_ALIGN_SL : table<int; EmptyMarkerState>
 
-// Text Input (cpp:1558) — six sub-trees.
-//   Multi-line:       module-scope persistent string (the cpp `static char[16K]`
-//                     verbatim) seeded once on first frame.
-//   Filtered:         7 fixed-32-char InputText boxes; the last two use
-//                     CallbackCharFilter via `input_text_callback`.
-//   Password:         3 InputText/InputTextWithHint instances sharing one
-//                     password buffer.
-//   Completion/History/Edit Callbacks: 3 separate callbacks dispatching by
-//                     `data.EventFlag`; Edit counter tallies via a plain int.
-//   Resize:           `input_text_growable` exercises CallbackResize internally.
-//   Misc:             flag-toggle row + a single InputText that respects them.
+// Text Input (cpp:1558) — six sub-trees: Multi-line (persistent 16K string),
+// Filtered (CallbackCharFilter), Password (shared buffer), Completion/History/Edit
+// Callbacks (dispatch by data.EventFlag), Resize (CallbackResize), Misc (flag toggles).
 let private WIDGETS_TI_MULTILINE_INIT = "/*\n The Pentium F00F bug, shorthand for F0 0F C7 C8,\n the hexadecimal encoding of one offending instruction,\n more formally, the invalid operand with locked CMPXCHG8B\n instruction bug, is a design flaw in the majority of\n Intel Pentium, Pentium MMX, and Pentium OverDrive\n processors (all in the P5 microarchitecture).\n*/\n\nlabel:\n\tlock cmpxchg8b eax\n"
 var private WIDGETS_TI_ML_FLAGS = int(ImGuiInputTextFlags.AllowTabInput)
 var private WIDGETS_TI_EDIT_COUNT = 0
@@ -244,13 +231,9 @@ var private WIDGETS_DD_TIP_BTN : table<int; ClickState>
 var private WIDGETS_DD_TIP_TGT : table<int; DragDropTargetState>
 var private WIDGETS_DD_TIP_NO : table<int; NarrativeState>
 
-// Data Types (cpp:2228) — one persistent value per scalar type, edited by 50
-// widgets that drive the new `edit_drag_scalar` / `edit_slider_scalar` /
-// `edit_input_scalar` rails (single generic per family, ImGuiDataType picked
-// at compile time from `typeinfo stripped_typename(T)`). cpp uses static
-// locals with init values that exercise sign edges (S8 at 127, U8 at 255, S32
-// at -1, etc); we mirror those so the format-specifier showcase below renders
-// the same way.
+// Data Types (cpp:2228) — one persistent value per scalar type driving 50
+// edit_drag/slider/input_scalar widgets (ImGuiDataType picked at compile time via
+// typeinfo stripped_typename). Init values hit sign edges (S8 127, U8 255, S32 -1).
 var private WIDGETS_DT_S8 : int8 = int8(127)
 var private WIDGETS_DT_U8 : uint8 = uint8(255)
 var private WIDGETS_DT_S16 : int16 = int16(32767)
@@ -262,13 +245,9 @@ var private WIDGETS_DT_U64 : uint64 = 0xfffffffffffffffful
 var private WIDGETS_DT_F32 : float = 0.123f
 var private WIDGETS_DT_F64 : double = 90000.01234567890123456789lf
 
-// Color/Picker Widgets (cpp:1990) — one shared float4 `color` viewed both as
-// RGBA (ColorEdit4 / ColorPicker4 / ColorButton) and as RGB-only (ColorEdit3 /
-// ColorPicker3 via `unsafe(reinterpret<float3?>)` — mirrors cpp's `(float*)&color`
-// trick so a single ImVec4 backs all displays). The 32-swatch palette is lazy-
-// built on first frame via `hsv_to_rgb` (h scanned across [0,1)); each swatch
-// is its own ColorButton (drag source by default) + drag_drop_target (accepts
-// dropped COL3F/COL4F payloads from any other ColorButton).
+// Color/Picker Widgets (cpp:1990) — one shared float4 viewed as RGBA and RGB-only
+// (reinterpret<float3?>, mirroring cpp's (float*)&color). 32-swatch palette lazy-built
+// via hsv_to_rgb; each swatch is a ColorButton drag source + drop target (COL3F/COL4F).
 var private WIDGETS_CP_COLOR : float4 = float4(114.0f / 255.0f, 144.0f / 255.0f, 154.0f / 255.0f, 200.0f / 255.0f)
 var private WIDGETS_CP_BACKUP : float4 = float4(0.0f, 0.0f, 0.0f, 0.0f)
 var private WIDGETS_CP_REF_COLOR_V : float4 = float4(1.0f, 0.0f, 1.0f, 0.5f)
@@ -284,24 +263,18 @@ let private WIDGETS_CP_DISPLAY_ITEMS : array<string> <- ["Auto/Current",
                                                           "HSV Only",
                                                           "Hex Only"]
 
-// Drag/Slider Flags (cpp:2183) — one int holding the ImGuiSliderFlags bitset
-// (driven by 4 edit_checkbox_flags), shared by all 5 drag + 2 slider widgets
-// via the `flags = ...` argument. Underlying drag_f / slider_f / drag_i /
-// slider_i mirror cpp's `static` locals: each widget routes through
-// edit_drag_* / edit_slider_* against a plain `?` ptr so the value is shared
-// across the multiple drag/slider entries that hit the SAME float/int
-// (cpp:2197-2200 — four DragFloat calls all editing one `drag_f`).
+// Drag/Slider Flags (cpp:2183) — one ImGuiSliderFlags bitset (from 4 edit_checkbox_flags)
+// shared by all 5 drag + 2 slider widgets via `flags=`. drag_f/slider_f/drag_i/slider_i
+// route through edit_* against a plain `?` ptr so entries hitting the same value share it.
 var private WIDGETS_DSF_FLAGS = int(ImGuiSliderFlags.None)
 var private WIDGETS_DSF_DRAG_F = 0.5f
 var private WIDGETS_DSF_DRAG_I = 50
 var private WIDGETS_DSF_SLIDER_F = 0.5f
 var private WIDGETS_DSF_SLIDER_I = 50
 
-// Querying Item Status (cpp:2594) — Combo-driven dispatcher cycling among 16
-// item kinds. The 4 InputText / scalar / color widgets share the same
-// underlying col4f array + str buffer (cpp:2613-2615) via edit_* rails; the
-// 12 self-contained widgets get their own state global per item-type branch
-// so the [widget] macro's "fixed state struct per ident" rule isn't violated.
+// Querying Item Status (cpp:2594) — Combo-driven dispatcher over 16 item kinds.
+// The 4 InputText/scalar/color widgets share one col4f array + str buffer via edit_*;
+// the 12 self-contained widgets each get their own state global per branch.
 var private WIDGETS_QIS_DISABLED = false
 var private WIDGETS_QIS_F1 = 1.0f
 var private WIDGETS_QIS_F1B = 0.5f
@@ -316,9 +289,8 @@ let private WIDGETS_QIS_TYPES : array<string> <- ["Text", "Button", "Button (w/ 
                                                   "Combo", "ListBox"]
 let private WIDGETS_QIS_FRUITS : array<string> <- ["Apple", "Banana", "Cherry", "Kiwi"]
 // Per-item-type widget states are auto-emitted by the [widget] macro from the
-// IDENT name (singleton state structs need no explicit declaration). Only the
-// ListBox row table needs an explicit declaration — the macro can't infer
-// indexed `IDENT[k]` shapes.
+// IDENT name; only the ListBox row table needs an explicit declaration (the
+// macro can't infer indexed IDENT[k] shapes).
 var private WIDGETS_QIS_LB_ROW : table<int; ToggleState>
 
 // Querying Window Status (cpp:2706) — one outer-child toggle + one
@@ -364,10 +336,9 @@ def ShowDemoWindowWidgets() {
                 QueryingItemStatusSection()
                 QueryingWindowStatusSection()
             }
-            // "Disable block" exposes the WIDGETS_DISABLE_ALL checkbox itself;
-            // it would be hidden by its own gate inside with_disabled, so it
-            // sits OUTSIDE the with_disabled scope (matches cpp:2807 placement
-            // after the with_disabled-equivalent block).
+            // "Disable block" exposes the WIDGETS_DISABLE_ALL checkbox itself; it would be
+            // hidden by its own gate, so it sits OUTSIDE with_disabled (matches cpp:2807
+            // placement after the with_disabled-equivalent block).
             DisableBlockSection()
             TextFilterSection()
     }
@@ -401,9 +372,7 @@ def private BasicSection() {
         radio_button_int(WIDGETS_BASIC_RADIO, (text = "radio b", v_button = 1)); same_line(WIDGETS_SL_3)
         radio_button_int(WIDGETS_BASIC_RADIO, (text = "radio c", v_button = 2))
 
-        // Coloured Buttons — `with_style` scopes the per-button color stack;
-        // indexed `WIDGETS_BASIC_COLOR_BTN[i]` gives each iteration its own state
-        // global and telemetry path.
+        // Coloured Buttons — with_style scopes the per-button color stack; indexed WIDGETS_BASIC_COLOR_BTN[i] gives each iteration its own state global.
         for (i in range(7)) {
             if (i > 0) same_line(WIDGETS_LOOP_BASIC_COLOR_SL[i])
             let hue = float(i) / 7.0f
@@ -414,8 +383,7 @@ def private BasicSection() {
             }
         }
 
-        // Arrow buttons with the Repeater flag — wrapped by with_button_repeat
-        // scope wrapper; the arrow buttons themselves go through boost.
+        // Arrow buttons with the Repeater flag, wrapped by the with_button_repeat scope; the arrow buttons go through boost.
         align_text_to_frame_padding(WIDGETS_BASIC_ATFP)
         text("Hold to repeat:")
         same_line(WIDGETS_SL_4)
@@ -530,8 +498,7 @@ def private BasicSection() {
         edit_slider_angle(safe_addr(WIDGETS_BASIC_ANGLE),
             (id = "WIDGETS_BASIC_ANGLE_SLIDER", text = "slider angle"))
 
-        // Slider (enum) — the format-string trick: omit %d so the label IS the
-        // value. Format is dynamic so it goes in the regular arg, not init=.
+        // Slider (enum): omit %d in the format so the label IS the value (dynamic, so it goes in the regular arg not init=).
         let elem_names = fixed_array("Fire", "Earth", "Air", "Water")
         let elem_v = WIDGETS_BASIC_ELEM.value
         let elem_name = (elem_v >= 0 && elem_v < 4) ? elem_names[elem_v] : "Unknown"
@@ -578,10 +545,7 @@ def private BasicSection() {
             }
         }
 
-        // One-liner ListBox — the [widget] items-array form was retired in Phase 1
-        // (boost `list_box` is now the manual BeginListBox/EndListBox container).
-        // Showcase the manual form here too — Selectable per item, sharing the
-        // listbox's `value` for the selected row.
+        // One-liner ListBox via the manual BeginListBox/EndListBox container — Selectable per item, sharing the listbox's `value` for the selected row.
         list_box(WIDGETS_BASIC_LISTBOX,
             (text = "listbox", size = float2(0.0f, GetTextLineHeightWithSpacing() * 4.25f))) {
             let lb_items = fixed_array("Apple", "Banana", "Cherry", "Kiwi", "Mango",
@@ -624,10 +588,7 @@ def private TooltipsSection() {
             }
         }
 
-        // The C++ demo passes `ImVec2(-FLT_MIN, 0.0f)` to give every button
-        // full row width; the boost `button` widget doesn't expose `size` yet, so
-        // these render at their default content width instead. Visual parity isn't
-        // load-bearing here.
+        // C++ passes ImVec2(-FLT_MIN, 0) for full-row-width buttons; boost `button` has no `size` yet, so these render at default content width.
         button(WIDGETS_TIP_BASIC, (text = "Basic"))
         item_tooltip(WIDGETS_TIP_BASIC_TIP) {
             text("I am a tooltip")
@@ -650,9 +611,7 @@ def private TooltipsSection() {
         if (WIDGETS_TIP_ALWAYS_ON.value == 1) {
             set_tooltip(WIDGETS_TIP_FOLLOW_TT, "I am following you around.")
         } elif (WIDGETS_TIP_ALWAYS_ON.value == 2) {
-            // Advanced form draws into the tooltip body. Value-gated rather than
-            // IsItemHovered()-gated — the boost `tooltip` container handles
-            // BeginTooltip/EndTooltip itself.
+            // Advanced form draws into the tooltip body; value-gated (the boost `tooltip` container handles BeginTooltip/EndTooltip itself).
             tooltip(WIDGETS_TIP_1) {
                 progress_bar((fraction = sin(float(GetTime())) * 0.5f + 0.5f,
                               size = float2(GetFontSize() * 25.0f, 0.0f),
@@ -718,8 +677,7 @@ def private TreeNodesSection() {
             (text = "Basic trees", flags = ImGuiTreeNodeFlags.None)) {
             for (i in range(5)) {
                 if (i == 0) SetNextItemOpen(true, ImGuiCond.Once)
-                // Indexed identifier — each iteration gets its own state global
-                // and telemetry path (WIDGETS_TREE_BASIC[0..4]).
+                // Indexed identifier — each iteration gets its own state global and telemetry path (WIDGETS_TREE_BASIC[0..4]).
                 tree_node(WIDGETS_TREE_BASIC[i],
                           (text = "Child {i}", flags = ImGuiTreeNodeFlags.None)) {
                     text(WIDGETS_LOOP_TREE_BASIC_TEXT[i], (text = "blah blah"))
@@ -742,10 +700,7 @@ def private TreeNodesSection() {
                 }
             }
 
-            // CheckboxFlags drives a single shared int (base_flags) through
-            // the boost `edit_checkbox_flags` external-pointer rail; each call
-            // toggles one specific bit. The two plain bool checkboxes below
-            // use the regular `checkbox` widget form.
+            // CheckboxFlags drives one shared int (base_flags) via edit_checkbox_flags, each call toggling one bit; plain bool checkboxes below use the regular `checkbox`.
             edit_checkbox_flags(safe_addr(WIDGETS_TREE_BASE_FLAGS),
                 (id = "WIDGETS_TREE_FLAG_OPEN_ON_ARROW",
                  text = "ImGuiTreeNodeFlags_OpenOnArrow",
@@ -824,14 +779,7 @@ def private TreeNodesSection() {
                 if (is_selected) {
                     node_flags |= ImGuiTreeNodeFlags.Selected
                 }
-                // Per-row ID scope. `tree_node_ex` (leaf-form boost widget)
-                // returns the open bool without claiming a TreePop — caller
-                // matches one when the node opened AND flags don't include
-                // `NoTreePushOnOpen`. The boost `tree_node` container can't be
-                // used here because we need post-header item-state queries
-                // (IsItemClicked, drag_drop_source, inline same_line + button);
-                // the container hides the TreeNodeEx call site so those would
-                // attach to the wrong item.
+                // Per-row ID scope. tree_node_ex returns the open bool without claiming a TreePop; the container can't be used here because we need post-header item-state queries (IsItemClicked, drag source, inline button) at the right call site.
                 with_id("row_{i}") {
                     if (i < 3) {
                         let node_open = tree_node_ex(WIDGETS_TREE_LOOP_NODE[i],
@@ -907,10 +855,7 @@ def private CollapsingHeadersSection() {
                     text(WIDGETS_LOOP_CH_TEXT_INNER[i], (text = "Some content {i}"))
                 }
             }
-            // The second header's X-button is wired to the checkbox's bool —
-            // boost `edit_collapsing_header` is the [edit_widget] form taking
-            // an external p_visible pointer; the body runs only while the bool
-            // is true AND the header is expanded.
+            // The second header's X-button wires to the checkbox bool via edit_collapsing_header (external p_visible); the body runs only while true AND expanded.
             if (edit_collapsing_header(safe_addr(WIDGETS_CH_CLOSABLE_GROUP.value),
                                        (id = "WIDGETS_CH_HEADER2",
                                         text = "Header with a close button"))) {
@@ -1034,8 +979,7 @@ def private ImagesSection() {
             "storage to pass pointers or identifier to your own texture data. " +
             "Hover the texture for a zoomed view!"))
 
-        // read the atlas size from TexData (ImTextureData) and pass
-        // io.Fonts.TexRef (ImTextureRef) directly to image().
+        // Read the atlas size from TexData (ImTextureData) and pass io.Fonts.TexRef (ImTextureRef) directly to image().
         let my_tex_w = float(io.Fonts.TexData.Width)
         let my_tex_h = float(io.Fonts.TexData.Height)
 
@@ -1134,8 +1078,7 @@ def private ComboSection() {
             }
         }
 
-        // NoArrowButton / NoPreview / WidthFitPreview are mutually exclusive
-        // pairs; clearing the incompatible flag matches cpp:1287-1291.
+        // NoArrowButton/NoPreview/WidthFitPreview are mutually exclusive; clearing the incompatible flag matches cpp:1287-1291.
         if (edit_checkbox_flags(safe_addr(WIDGETS_COMBO_FLAGS),
             (id = "WIDGETS_COMBO_F_NO_ARROW",
              text = "ImGuiComboFlags_NoArrowButton",
@@ -1177,8 +1120,7 @@ def private ComboSection() {
             WIDGETS_COMBO_FLAGS &= ~(HEIGHT_MASK & ~int(ImGuiComboFlags.HeightLargest))
         }
 
-        // combo 1 — BeginCombo + manual Selectable loop via combo_select.
-        // Preview value reads from WIDGETS_COMBO_C1.value (index into shared items).
+        // combo 1 — BeginCombo + manual Selectable loop via combo_select; preview reads WIDGETS_COMBO_C1.value (index into shared items).
         let combo_flags = unsafe(reinterpret<ImGuiComboFlags>(WIDGETS_COMBO_FLAGS))
         let preview_idx = WIDGETS_COMBO_C1.value
         let preview = ((preview_idx >= 0 && preview_idx < length(WIDGETS_COMBO_ITEMS))
@@ -1206,16 +1148,12 @@ def private ComboSection() {
             }
         }
 
-        // combo 2 — one-liner; cpp packs into "aaaa\0bbbb\0..."; boost combo
-        // takes array<string> and packs the same null-separated buffer internally.
-        // Module-scope const items avoid per-frame heap-allocation churn.
+        // combo 2 one-liner: boost combo takes array<string> and packs the same null-separated buffer cpp uses; module-scope const items avoid per-frame churn.
         combo(WIDGETS_COMBO_C2,
             (text = "combo 2 (one-liner)",
              items <- WIDGETS_COMBO_ONELINER_ITEMS))
 
-        // combo 3 — array form sharing the full 14-item list. cpp starts at
-        // -1 so no preview shows initially; daslang state defaults to 0, so we
-        // skip the negative-start trick (visual difference is minor).
+        // combo 3 array form over the full 14-item list; daslang state defaults to 0, so we skip cpp's -1 no-initial-preview trick.
         combo(WIDGETS_COMBO_C3,
             (text = "combo 3 (array)", items <- WIDGETS_COMBO_ITEMS))
 
@@ -1242,10 +1180,7 @@ def private ListBoxesSection() {
     tree_node(WIDGETS_LB_SECTION,
         (text = "List boxes", flags = ImGuiTreeNodeFlags.None)) {
 
-        // Two list_box instances SHARE one selection state (cpp:1358) — both
-        // read/write WIDGETS_LB_SHARED.value. The (-1, 0) default-size form
-        // wraps the items list snugly; the second box overrides size to take
-        // full content width and 5 rows tall.
+        // Two list_box instances share one selection state (cpp:1358, both read/write WIDGETS_LB_SHARED.value); the second overrides size to full width, 5 rows tall.
         list_box(WIDGETS_LB_SHARED,
             (text = "listbox 1", size = float2(0.0f, 0.0f))) {
             for (n in range(length(WIDGETS_COMBO_ITEMS))) {
@@ -1304,8 +1239,7 @@ def private PlottingSection() {
              scale_min = 0.0f, scale_max = 1.0f,
              graph_size = float2(0.0f, 80.0f)))
 
-        // 90-sample rolling cosine buffer animated at fixed 60 Hz to decouple
-        // from the recorder/host frame rate (cpp:1912-1924).
+        // 90-sample rolling cosine buffer animated at a fixed 60 Hz to decouple from the recorder/host frame rate (cpp:1912-1924).
         if (length(WIDGETS_PLOT_VALUES) != 90) {
             WIDGETS_PLOT_VALUES |> resize(90)
         }
@@ -1330,10 +1264,7 @@ def private PlottingSection() {
             (text = "Lines", values <- WIDGETS_PLOT_VALUES,
              scale_min = -1.0f, scale_max = 1.0f,
              graph_size = float2(0.0f, 80.0f)))
-        // plot_lines binding takes the array as-is — no values_offset rotation
-        // arg (the cpp passes the offset to skip the head; our boost wrapper
-        // currently always starts at index 0). Behaviorally the wave still
-        // animates correctly; only the "rolling head" alignment differs.
+        // plot_lines takes the array as-is with no values_offset rotation (cpp skips the head via the offset; our wrapper starts at 0) — only the rolling-head alignment differs.
         text("avg {average}")
 
         // Sin / Saw lambda-driven plots via *_getter (cpp:1941-1954).
@@ -1401,8 +1332,7 @@ def private ProgressBarsSection() {
             (fraction = WIDGETS_PROGRESS, size = float2(0.0f, 0.0f),
              overlay = "{units}/1753"))
 
-        // Negative fraction renders an indeterminate animation. -GetTime()
-        // pumps a continuously-decreasing value so ImGui advances its phase.
+        // Negative fraction renders an indeterminate animation; -GetTime() pumps a decreasing value so ImGui advances its phase.
         progress_bar(WIDGETS_PB_INDETERMINATE,
             (fraction = -1.0f * float(GetTime()),
              size = float2(0.0f, 0.0f),
@@ -1429,10 +1359,7 @@ def private RangeWidgetsSection() {
              speed = 0.25f,
              format = "%.1f %%",
              flags = ImGuiSliderFlags.AlwaysClamp))
-        // Format-per-handle: cpp passes "Min: %.1f %%" / "Max: %.1f %%" but our
-        // boost binding takes a single shared format string. Functional shape
-        // (clamped range, draggable handles) matches; the per-handle label
-        // prefix is a binding gap, not a behavior gap.
+        // cpp uses per-handle formats (Min:/Max:); our binding takes one shared format string — a label-prefix binding gap, not a behavior gap.
         drag_int_range2(WIDGETS_RANGE_I,
             (text = "range int",
              init = int2(100, 1000),
@@ -1452,12 +1379,10 @@ def private RangeWidgetsSection() {
 // =============================================================================
 // Multi-component Widgets — cpp:2352-2382
 // =============================================================================
-//
-// cpp uses a single shared `vec4f[4]` / `vec4i[4]` for all 18 widgets; our
-// boost rail auto-emits independent state per widget. Each widget shows the
-// daslang form of its cpp counterpart, but values do not propagate between
-// widgets (semantic deviation noted; cleaner than `safe_addr` arithmetic on
-// a global). Initial values seeded with the cpp tuples for visual parity.
+
+// cpp shares one vec4f[4]/vec4i[4] across all 18 widgets; our boost rail auto-emits
+// independent state per widget, so values don't propagate between widgets (initial
+// values seeded from the cpp tuples for visual parity).
 
 def private MultiComponentSection() {
     tree_node(WIDGETS_MC_SECTION,
@@ -1530,10 +1455,7 @@ def private VerticalSlidersSection() {
 
         let spacing_px = 4.0f
         with_style((ImGuiStyleVar.ItemSpacing, float2(spacing_px, spacing_px))) {
-            // Single VSliderInt + a row of 7 colored VSliderFloats sharing
-            // WIDGETS_VS_VALUES (cpp:2390-2410). edit_vslider_* binds to the
-            // caller-owned slot so each row stays "live" data, like cpp's
-            // shared `values[]`. `with_id` carves the per-iteration ID scope.
+            // Single VSliderInt + a row of 7 colored VSliderFloats sharing WIDGETS_VS_VALUES (cpp:2390-2410); edit_vslider_* binds the caller-owned slot, with_id carves the per-iter ID scope.
             edit_vslider_int(safe_addr(WIDGETS_VS_INT_PTR),
                 (id = "WIDGETS_VS_INT", text = "##int",
                  size = float2(18.0f, 160.0f), v_min = 0, v_max = 5))
@@ -1557,8 +1479,7 @@ def private VerticalSlidersSection() {
             }
             same_line(WIDGETS_VS_SL_SET1_END)
 
-            // 4×3 grid of small vertical sliders (cpp:2414-2430). Each column
-            // shares one float (values2[nx]) across 3 rows.
+            // 4×3 grid of small vertical sliders (cpp:2414-2430); each column shares one float (values2[nx]) across 3 rows.
             with_id("set2") {
                 let rows = 3
                 let row_h = (160.0f - float(rows - 1) * spacing_px) / float(rows)
@@ -1580,8 +1501,7 @@ def private VerticalSlidersSection() {
             }
             same_line(WIDGETS_VS_SL_SET2_END)
 
-            // Row of 4 fat-grab sliders reusing WIDGETS_VS_VALUES[0..3]
-            // (cpp:2434-2444). GrabMinSize style var scoped per slider.
+            // Row of 4 fat-grab sliders reusing WIDGETS_VS_VALUES[0..3] (cpp:2434-2444); GrabMinSize style var scoped per slider.
             with_id("set3") {
                 for (i in range(4)) {
                     if (i > 0) {
@@ -1631,11 +1551,9 @@ def private VSlider3At(i : int) {
 // =============================================================================
 // Disable block — cpp:2807-2813
 // =============================================================================
-//
-// The checkbox toggles WIDGETS_DISABLE_ALL, the same plain var that gates
-// `with_disabled` around the rest of the Widgets sections. Lives OUTSIDE
-// with_disabled so it stays interactive even when everything else is
-// disabled (matches cpp's EndDisabled-before-TreeNode placement).
+
+// The checkbox toggles WIDGETS_DISABLE_ALL (the var gating with_disabled); it lives
+// OUTSIDE with_disabled so it stays interactive when everything else is disabled.
 
 def private DisableBlockSection() {
     tree_node(WIDGETS_DIS_SECTION,
@@ -1678,9 +1596,7 @@ def private TextFilterSection() {
         text_filter(WIDGETS_TF_FILTER,
             (text = "Filter (\"incl,-excl\") (\"error\")"))
 
-        // Bullet each line that survives the filter. Lines are module-scope
-        // const (WIDGETS_TF_LINES) to avoid the per-frame heap alloc that an
-        // inline `let lines <- [...]` would leak.
+        // Bullet each line that survives the filter; lines are module-scope const (WIDGETS_TF_LINES) to avoid a per-frame heap alloc.
         for (i in range(length(WIDGETS_TF_LINES))) {
             if (passes_filter(WIDGETS_TF_FILTER, WIDGETS_TF_LINES[i])) {
                 bullet_text(WIDGETS_TF_LINE[i], (text = WIDGETS_TF_LINES[i]))
@@ -1691,14 +1607,11 @@ def private TextFilterSection() {
 
 
 // =============================================================================
-// Tabs — cpp:1752-1891. Three sub-trees:
-//   Basic                                — 3 static tab_items
-//   Advanced & Close Button              — flag-toggle row + 4 closable tabs
-//                                          with bidirectional checkbox↔tab.open
-//                                          binding (cpp shares `bool opened[4]`)
-//   TabItemButton & Leading/Trailing     — dynamic active_tabs list, "?" help
-//                                          popup, "+" add-tab trigger
+// Tabs — cpp:1752-1891
 // =============================================================================
+
+// Three sub-trees: Basic (static tab_items), Advanced & Close (flag row + closable
+// tabs with checkbox↔tab.open binding), Leading/Trailing (dynamic tab list, "+" add).
 
 def private TabsSection() {
     tree_node(WIDGETS_TABS_SECTION,
@@ -1757,8 +1670,7 @@ def private TabsAdvancedSection() {
             (id = "WIDGETS_TABS_ADV_F_NOMID",
              text = "ImGuiTabBarFlags_NoCloseWithMiddleMouseButton",
              flags_value = int(ImGuiTabBarFlags.NoCloseWithMiddleMouseButton)))
-        // Fitting-policy bits are mutually exclusive; default to ResizeDown if
-        // none is set (cpp:1790-1791) so the bar never gets a malformed mask.
+        // Fitting-policy bits are mutually exclusive; default to ResizeDown if none is set (cpp:1790-1791) so the mask stays valid.
         let POLICY_MASK = int(ImGuiTabBarFlags.FittingPolicyMask_)
         if ((WIDGETS_TABS_ADV_FLAGS & POLICY_MASK) == 0) {
             WIDGETS_TABS_ADV_FLAGS |= int(ImGuiTabBarFlags.FittingPolicyDefault_)
@@ -1778,9 +1690,7 @@ def private TabsAdvancedSection() {
                                         int(ImGuiTabBarFlags.FittingPolicyScroll))
         }
 
-        // Checkbox row drives WIDGETS_TABS_ADV_OPENED[n]; the matching
-        // edit_tab_item X-button writes the same slot. Two UI surfaces, one
-        // caller-owned bool[] — direct port of cpp's `bool opened[4]`.
+        // Checkbox row and the edit_tab_item X-button both write WIDGETS_TABS_ADV_OPENED[n] — two UI surfaces, one caller-owned bool[] (cpp's `bool opened[4]`).
         for (n in range(length(WIDGETS_TABS_ADV_NAMES))) {
             if (n > 0) {
                 same_line(WIDGETS_TABS_ADV_TOGGLE[n])
@@ -1802,8 +1712,7 @@ def private TabsAdvancedSection() {
                          flags = ImGuiTabItemFlags.None)) {
                         text(WIDGETS_TABS_ADV_BODY[n],
                             (text = "This is the {WIDGETS_TABS_ADV_NAMES[n]} tab!"))
-                        // cpp adds an "odd tab" hint for n & 1 — dropped to
-                        // keep the per-iteration widget count low.
+                        // cpp adds an "odd tab" hint for n & 1 — dropped to keep the per-iteration widget count low.
                     }
                 }
             }
@@ -1817,8 +1726,7 @@ def private TabsLeadingTrailingSection() {
         (text = "TabItemButton & Leading/Trailing flags",
          flags = ImGuiTreeNodeFlags.None)) {
 
-        // Seed 3 tabs on first frame (cpp:1828-1831). NEXT_ID==0 is the
-        // sentinel; once incremented past 0 the seed never re-fires.
+        // Seed 3 tabs on first frame (cpp:1828-1831); NEXT_ID==0 is the sentinel, so once incremented the seed never re-fires.
         if (WIDGETS_TABS_LT_NEXT_ID == 0) {
             WIDGETS_TABS_LT_ACTIVE |> reserve(3)
             for (_ in range(3)) {
@@ -1858,9 +1766,7 @@ def private TabsLeadingTrailingSection() {
         tab_bar(WIDGETS_TABS_LT_BAR,
             (text = "MyTabBar",
              flags = unsafe(reinterpret<ImGuiTabBarFlags>(WIDGETS_TABS_LT_FLAGS)))) {
-            // Leading "?" — opens a help popup on click. The popup_window MUST
-            // sit OUTSIDE the if(show_leading) gate (cpp:1855) so the
-            // popup state machine still runs even when the trigger is hidden.
+            // Leading "?" opens a help popup; popup_window MUST sit OUTSIDE the if(show_leading) gate (cpp:1855) so its state machine runs even when the trigger is hidden.
             if (WIDGETS_TABS_LT_SHOW_LEAD.value) {
                 if (tab_item_button(WIDGETS_TABS_LT_HELP_BTN,
                     (text = "?",
@@ -1874,8 +1780,7 @@ def private TabsLeadingTrailingSection() {
                 selectable(WIDGETS_TABS_LT_HELP_HELLO, (text = "Hello!"))
             }
 
-            // Trailing "+" — append a new tab id; AutoSelectNewTabs flag will
-            // focus it on creation.
+            // Trailing "+" appends a new tab id; the AutoSelectNewTabs flag focuses it on creation.
             if (WIDGETS_TABS_LT_SHOW_TRAIL.value) {
                 if (tab_item_button(WIDGETS_TABS_LT_ADD_BTN,
                     (text = "+",
@@ -1886,9 +1791,7 @@ def private TabsLeadingTrailingSection() {
                 }
             }
 
-            // Render current tabs; drop entries whose X was clicked. Forward
-            // iteration with `erase(n)` shrinks the array; skip the `n++` so
-            // the shifted element at index n gets visited next.
+            // Render current tabs, dropping entries whose X was clicked; erase(n) shrinks the array, so skip n++ to visit the shifted element next.
             var n = 0
             while (n < length(WIDGETS_TABS_LT_ACTIVE)) {
                 let tab_id = WIDGETS_TABS_LT_ACTIVE[n]
@@ -1902,8 +1805,7 @@ def private TabsLeadingTrailingSection() {
                 }
                 if (!WIDGETS_TABS_LT_DYN[tab_id].open) {
                     WIDGETS_TABS_LT_ACTIVE |> erase(n)
-                    // Leave the table entry — IDs never get reused (NEXT_ID
-                    // monotonically increments), so no key-collision risk.
+                    // Leave the table entry — NEXT_ID only increments, so IDs never reuse and there's no key-collision risk.
                 } else {
                     n++
                 }
@@ -1915,17 +1817,12 @@ def private TabsLeadingTrailingSection() {
 
 
 // =============================================================================
-// Selectables — cpp:1396-1553. Seven sub-trees:
-//   Basic                  — 3 self-toggling + 1 double-click-only selectable.
-//   Single Selection       — exclusive index across 5 rows (selectable_label).
-//   Multiple Selection     — Ctrl-click toggles; no-Ctrl resets bool[5].
-//   Same Line              — SetNextItemAllowOverlap + selectable + small_button.
-//   In columns             — 2 data_tables (3 cols, 10 items each);
-//                            second table uses SpanAllColumns + extra cells.
-//   Grid                   — 4x4; click toggles cell + 4 neighbors; "winning"
-//                            (all-selected) state animates SelectableTextAlign.
-//   Alignment              — 3x3; each cell sets its own SelectableTextAlign.
+// Selectables — cpp:1396-1553
 // =============================================================================
+
+// Seven sub-trees: Basic (self-toggling), Single/Multiple Selection, Same Line
+// (AllowOverlap + small_button), In columns (data_tables), Grid (4x4 toggle +
+// neighbors, all-selected animates alignment), Alignment (per-cell text align).
 
 def private SelectablesSection() {
     tree_node(WIDGETS_SEL_SECTION,
@@ -1943,23 +1840,14 @@ def private SelectablesSection() {
 def private SelectablesBasicSection() {
     tree_node(WIDGETS_SEL_BASIC,
         (text = "Basic", flags = ImGuiTreeNodeFlags.None)) {
-        // Rows 0-2: plain self-toggling selectables. Cpp seeds [1]=true at
-        // module load — daslang ToggleState defaults to false; seed it via
-        // `init = true` so the visual matches first-frame.
-        // Cpp seeds [1]=true at module load — daslang's `[widget]` indexed
-        // form doesn't support `init=` (it's a state-table per-index, not a
-        // single module-scope ident), so [1] starts false and the user
-        // clicks to toggle. Acceptable demo-fidelity loss.
+        // Rows 0-2 self-toggling selectables; cpp seeds [1]=true at load but the [widget] indexed form has no init=, so [1] starts false (minor demo-fidelity loss).
         selectable(WIDGETS_SEL_BASIC_TOGGLE[0],
             (text = "1. I am selectable"))
         selectable(WIDGETS_SEL_BASIC_TOGGLE[1],
             (text = "2. I am selectable"))
         selectable(WIDGETS_SEL_BASIC_TOGGLE[2],
             (text = "3. I am selectable"))
-        // Row 3: `AllowDoubleClick` makes Selectable only return true after a
-        // double-click — the boost-emitted toggle then fires only on the
-        // double-click frame, matching cpp's explicit IsMouseDoubleClicked
-        // guard. No daslang-side extra check needed.
+        // Row 3: AllowDoubleClick makes Selectable return true only on the double-click frame, matching cpp's IsMouseDoubleClicked guard with no extra check.
         selectable(WIDGETS_SEL_BASIC_TOGGLE[3],
             (text = "4. I am double clickable",
              flags = ImGuiSelectableFlags.AllowDoubleClick))
@@ -1983,9 +1871,7 @@ def private SelectablesMultiSection() {
     tree_node(WIDGETS_SEL_MULTI,
         (text = "Selection State: Multiple Selection",
          flags = ImGuiTreeNodeFlags.None)) {
-        // Cpp wraps the multi-select demo with a HelpMarker; dropped because
-        // the binding gap on HelpMarker (which renders TextDisabled + tooltip)
-        // would inflate the port for no functional gain.
+        // Cpp wraps this with a HelpMarker; dropped since the TextDisabled+tooltip binding gap would inflate the port for no functional gain.
         for (n in range(length(WIDGETS_SEL_MULTI_SEL))) {
             if (selectable_label(WIDGETS_SEL_MULTI_ROW[n],
                                  "Object {n}", WIDGETS_SEL_MULTI_SEL[n])) {
@@ -2049,9 +1935,7 @@ def private SelectablesInColumnsSection() {
 def private SelectablesGridSection() {
     tree_node(WIDGETS_SEL_GRID,
         (text = "Grid", flags = ImGuiTreeNodeFlags.None)) {
-        // Cpp's "silly fun": when every cell is selected, push a time-animated
-        // SelectableTextAlign so the labels orbit inside their squares. Mirror
-        // by checking the bool[16] for any-false, then gating with_style.
+        // Cpp's "silly fun": when every cell is selected, a time-animated SelectableTextAlign makes labels orbit inside their squares (gated on the bool[16] all-true check).
         var winning = true
         for (i in range(length(WIDGETS_SEL_GRID_SEL))) {
             if (!WIDGETS_SEL_GRID_SEL[i]) {
@@ -2108,9 +1992,7 @@ def private SelectablesGridBody() {
 def private SelectablesAlignmentSection() {
     tree_node(WIDGETS_SEL_ALIGN,
         (text = "Alignment", flags = ImGuiTreeNodeFlags.None)) {
-        // 3x3 grid; per-cell alignment via `with_style`. Cpp pushes a fresh
-        // style var around EACH Selectable — the boost wrapper scopes the
-        // push/pop tightly to the one selectable call.
+        // 3x3 grid; per-cell alignment via with_style, which scopes the push/pop tightly to each selectable (cpp pushes a fresh style var around each one).
         for (y in range(3)) {
             for (x in range(3)) {
                 let cell = float2(float(x) / 2.0f, float(y) / 2.0f)
@@ -2130,15 +2012,12 @@ def private SelectablesAlignmentSection() {
 
 
 // =============================================================================
-// Text Input — cpp:1558-1748. Six sub-trees:
-//   Multi-line             — flag toggles + InputTextMultiline.
-//   Filtered               — 7 fixed-buffer InputTexts; 2 use CharFilter cb.
-//   Password               — 3 InputText/InputTextWithHint variants over one
-//                            shared password buffer.
-//   Completion/Hist/Edit   — 3 callbacks dispatching on `data.EventFlag`.
-//   Resize                 — `input_text_growable` exercises CallbackResize.
-//   Misc                   — flag-toggle row + a single InputText.
+// Text Input — cpp:1558-1748
 // =============================================================================
+
+// Six sub-trees: Multi-line (flag toggles), Filtered (CharFilter cb), Password
+// (shared buffer), Completion/Hist/Edit (callbacks on data.EventFlag), Resize
+// (CallbackResize), Misc (flag toggles).
 
 def private TextInputSection() {
     tree_node(WIDGETS_TI_SECTION,
@@ -2155,8 +2034,7 @@ def private TextInputSection() {
 def private TextInputMultilineSection() {
     tree_node(WIDGETS_TI_MULTILINE,
         (text = "Multi-line Text Input", flags = ImGuiTreeNodeFlags.None)) {
-        // Seed the buffer once — InputTextState wakes up empty; subsequent
-        // frames preserve the user's edits via the state's persistent buffer.
+        // Seed the buffer once — InputTextState wakes up empty; later frames preserve the user's edits via the persistent buffer.
         if (empty(WIDGETS_TI_ML_BUF.value)) {
             WIDGETS_TI_ML_BUF.pending_value = WIDGETS_TI_MULTILINE_INIT
             WIDGETS_TI_ML_BUF.has_pending = true
@@ -2195,8 +2073,7 @@ def private TextInputFilteredSection() {
             (text = "uppercase", flags = ImGuiInputTextFlags.CharsUppercase))
         input_text(WIDGETS_TI_F_NOBLANK,
             (text = "no blank", flags = ImGuiInputTextFlags.CharsNoBlank))
-        // CharFilter callback: lower<->upper swap. `EventChar` is `uint16` —
-        // widen to `int` for the ASCII range comparisons.
+        // CharFilter callback: lower<->upper swap; EventChar is uint16, widen to int for the ASCII range comparisons.
         input_text_callback(WIDGETS_TI_F_CASE, "casing swap",
             ImGuiInputTextFlags.CallbackCharFilter,
             @(var data : ImGuiInputTextCallbackData) : int {
@@ -2208,8 +2085,7 @@ def private TextInputFilteredSection() {
                 }
                 return 0
             })
-        // CharFilter callback: pass only chars in "imgui" (i, m, g, u). Returns
-        // 1 to reject any other character.
+        // CharFilter callback: pass only chars in "imgui" (i, m, g, u); return 1 to reject any other.
         input_text_callback(WIDGETS_TI_F_IMGUI, "\"imgui\"",
             ImGuiInputTextFlags.CallbackCharFilter,
             @(var data : ImGuiInputTextCallbackData) : int {
@@ -2226,8 +2102,7 @@ def private TextInputFilteredSection() {
 def private TextInputPasswordSection() {
     tree_node(WIDGETS_TI_PASSWORD,
         (text = "Password Input", flags = ImGuiTreeNodeFlags.None)) {
-        // Cpp seeds the buffer to "password123"; do the same once via
-        // pending_text so subsequent reloads preserve user edits.
+        // Cpp seeds the buffer to "password123"; do the same once via pending_value so reloads preserve user edits.
         if (empty(WIDGETS_TI_PWD.value)) {
             WIDGETS_TI_PWD.pending_value = "password123"
             WIDGETS_TI_PWD.has_pending = true
@@ -2267,12 +2142,7 @@ def private TextInputCallbacksSection() {
                 }
                 return 0
             })
-        // Edit: tally edit count. Cpp also toggles case of buf[0] each edit;
-        // daslang's `data.Buf` reads as `string const` and stripping the
-        // const for a 1-byte write into ImGui's caller-owned buffer doesn't
-        // land cleanly through the current reinterpret rails. Keeping the
-        // count-only behavior — the demo intent (callback fires per edit
-        // and can mutate caller state) is preserved.
+        // Edit: tally edit count. Cpp also toggles case of buf[0] per edit, but data.Buf reads as string const and can't be written cleanly through the reinterpret rails, so we keep count-only.
         input_text_callback(WIDGETS_TI_CB_EDIT, "Edit",
             ImGuiInputTextFlags.CallbackEdit,
             @(var data : ImGuiInputTextCallbackData) : int {
@@ -2287,11 +2157,7 @@ def private TextInputCallbacksSection() {
 def private TextInputResizeSection() {
     tree_node(WIDGETS_TI_RESIZE,
         (text = "Resize Callback", flags = ImGuiTreeNodeFlags.None)) {
-        // `input_text_growable` wraps `ImGuiInputTextFlags_CallbackResize`
-        // internally and grows `state.buffer` past the initial capacity as
-        // the user types. Cpp demo uses an `ImVector<char>` to similar end —
-        // daslang's rail is single-line; the spirit (dynamic resize through
-        // a CallbackResize-driven buffer) is preserved.
+        // input_text_growable wraps ImGuiInputTextFlags_CallbackResize and grows state.buffer past the initial capacity as the user types (cpp uses an ImVector<char>).
         input_text_growable(WIDGETS_TI_RESIZE_BUF, (text = "##MyStr"))
         text(WIDGETS_TI_RESIZE_STATS,
             (text = "Filled: {!empty(WIDGETS_TI_RESIZE_BUF.value)}"))
@@ -2321,13 +2187,12 @@ def private TextInputMiscSection() {
 
 
 // =============================================================================
-// Drag and Drop — cpp:2450-2591. Four sub-trees:
-//   Drag and drop in standard widgets   — ColorEdit3/4 auto-source/target.
-//   Drag and drop to copy/swap items    — 9-button grid with Copy/Move/Swap.
-//   Drag to reorder items (simple)      — 5 Selectables + IsItemActive query;
-//                                          no DnD API involved.
-//   Tooltip at target location          — 2 drop targets + ColorButton source.
+// Drag and Drop — cpp:2450-2591
 // =============================================================================
+
+// Four sub-trees: standard widgets (ColorEdit3/4 auto source+target), copy/swap
+// (9-button grid), reorder (Selectables + IsItemActive, no DnD API), tooltip at
+// target (2 drop targets + ColorButton source).
 
 def private DragDropSection() {
     tree_node(WIDGETS_DD_SECTION,
@@ -2343,8 +2208,7 @@ def private DragDropStandardSection() {
     tree_node(WIDGETS_DD_STD,
         (text = "Drag and drop in standard widgets",
          flags = ImGuiTreeNodeFlags.None)) {
-        // ColorEdit3/4 register themselves as DnD sources and targets for the
-        // built-in COLOR_3F / COLOR_4F payload types — no caller wiring needed.
+        // ColorEdit3/4 auto-register as DnD sources and targets for the built-in COLOR_3F/COLOR_4F payloads — no caller wiring needed.
         color_edit3(WIDGETS_DD_STD_COL1,
             (text = "color 1", init = float3(1.0f, 0.0f, 0.2f)))
         color_edit4(WIDGETS_DD_STD_COL2,
@@ -2356,11 +2220,7 @@ def private DragDropCopySwapSection() {
     tree_node(WIDGETS_DD_COPYSWAP,
         (text = "Drag and drop to copy/swap items",
          flags = ImGuiTreeNodeFlags.None)) {
-        // Mode picker — exclusive radio group. radio_button_int reports click
-        // events; the caller maintains the selected-index plain var. The
-        // widget's own visual selection state lives in RadioIntState and is
-        // separate from WIDGETS_DD_COPY_MODE (which drives the source preview
-        // text + target apply branch).
+        // Mode picker — exclusive radio group; radio_button_int reports clicks, the caller keeps WIDGETS_DD_COPY_MODE which drives the source preview text and target apply branch.
         if (radio_button_int(WIDGETS_DD_COPY_R_COPY,
                              (text = "Copy", v_button = 0))) {
             WIDGETS_DD_COPY_MODE = 0
@@ -2375,9 +2235,7 @@ def private DragDropCopySwapSection() {
                              (text = "Swap", v_button = 2))) {
             WIDGETS_DD_COPY_MODE = 2
         }
-        // 9 buttons in a 3x3 grid. Each button is BOTH a drag source and a
-        // drag target — payload carries the source index, target applies the
-        // selected mode to the caller-owned names[] in place.
+        // 9 buttons in a 3x3 grid, each both a drag source and target — payload carries the source index, target applies the selected mode to names[] in place.
         for (n in range(length(WIDGETS_DD_COPY_NAMES))) {
             with_id("dd_copy_{n}") {
                 if ((n % 3) != 0) {
@@ -2427,9 +2285,7 @@ def private DragDropReorderSection() {
     tree_node(WIDGETS_DD_REORDER,
         (text = "Drag to reorder items (simple)",
          flags = ImGuiTreeNodeFlags.None)) {
-        // No DnD API here — cpp uses IsItemActive + GetMouseDragDelta + swap
-        // to reorder neighbors. Selectables are stateless rows; we report a
-        // ToggleState per row only because selectable's first slot needs one.
+        // No DnD API — reorder via IsItemActive + GetMouseDragDelta + neighbor swap; the per-row ToggleState exists only because selectable's first slot needs one.
         for (n in range(length(WIDGETS_DD_REORDER_NAMES))) {
             selectable(WIDGETS_DD_REORDER_ROW[n],
                 (text = WIDGETS_DD_REORDER_NAMES[n]))
@@ -2451,10 +2307,7 @@ def private DragDropTooltipSection() {
     tree_node(WIDGETS_DD_TIP,
         (text = "Tooltip at target location",
          flags = ImGuiTreeNodeFlags.None)) {
-        // 2 drop-target buttons + 1 ColorButton drag source.
-        // AcceptBeforeDelivery + AcceptNoPreviewTooltip changes payload arrival
-        // semantics — cpp uses this to take over the cursor + tooltip during
-        // hover. We force NotAllowed + "Cannot drop here!" tooltip on hover.
+        // 2 drop-target buttons + 1 ColorButton source; AcceptBeforeDelivery + AcceptNoPreviewTooltip let us take over the cursor+tooltip on hover (force NotAllowed + "Cannot drop here!").
         for (n in range(2)) {
             with_id("dd_tip_{n}") {
                 button(WIDGETS_DD_TIP_BTN[n],
@@ -2486,10 +2339,7 @@ def private DragDropTooltipSection() {
 // =============================================================================
 
 def private ColorPickerSection() {
-    // One-shot palette init via hsv_to_rgb (cpp:2034-2046). Each swatch is a
-    // distinct float4 stored in WIDGETS_CP_PALETTE; drag-drop accept memcpys
-    // 3 or 4 floats from the payload, so alpha is preserved when the source
-    // dropped a COL3F.
+    // One-shot palette init via hsv_to_rgb (cpp:2034-2046); drag-drop accept copies 3 or 4 floats from the payload, so alpha survives a COL3F drop.
     if (!WIDGETS_CP_PALETTE_INIT) {
         WIDGETS_CP_PALETTE |> reserve(32)
         for (n in range(32)) {
@@ -2517,11 +2367,7 @@ def private ColorPickerSection() {
         set_item_tooltip(WIDGETS_CP_HDR_TIP,
             (text = "Currently all this does is to lift the 0..1 limits on dragging widgets."))
 
-        // Synthesize misc_flags from 5 toggles. Mirrors cpp:2005 — the half-
-        // alpha preview supersedes the standard one when both are set.
-        // ImGui flag types are int-based enums (not daslang bitfields), so we
-        // build the bitset as int and reinterpret at the use site (same
-        // pattern as WIDGETS_DSF_FLAGS in the Drag/Slider Flags section).
+        // Synthesize misc_flags from 5 toggles (cpp:2005; half-alpha preview wins when both set); ImGui flags are int-based enums, so build the bitset as int and reinterpret at the use site.
         var mf_int = 0
         if (WIDGETS_CP_HDR.value) {
             mf_int |= int(ImGuiColorEditFlags.HDR)
@@ -2630,16 +2476,14 @@ def private ColorPickerSection() {
                                  col = WIDGETS_CP_PALETTE[n],
                                  size = float2(20.0f, 20.0f),
                                  flags = palette_flags))) {
-                            // Preserve current alpha when picking a palette
-                            // swatch (cpp:2080).
+                            // Preserve current alpha when picking a palette swatch (cpp:2080).
                             WIDGETS_CP_COLOR = float4(
                                 WIDGETS_CP_PALETTE[n].x,
                                 WIDGETS_CP_PALETTE[n].y,
                                 WIDGETS_CP_PALETTE[n].z,
                                 WIDGETS_CP_COLOR.w)
                         }
-                        // ColorButton is built-in drag source for COL3F/COL4F
-                        // payloads; the target overwrites the swatch in place.
+                        // ColorButton is a built-in drag source for COL3F/COL4F payloads; the target overwrites the swatch in place.
                         drag_drop_target(WIDGETS_CP_PALETTE_TGT[n]) {
                             let p3 = AcceptDragDropPayload("_COL3F",
                                                            ImGuiDragDropFlags.None)
@@ -2710,9 +2554,7 @@ def private ColorPickerSection() {
         set_item_tooltip(WIDGETS_CP_PM_TIP,
             (text = "When not specified explicitly (Auto/Current mode), user can right-click the picker to change mode."))
 
-        // Compose picker_flags from explorer state + misc_flags. `picker_mode`
-        // is vestigial in cpp (declared static but never UI-mutated), so we
-        // drop it and rely on the auto picker shape.
+        // Compose picker_flags from explorer state + misc_flags; cpp's picker_mode is vestigial (never UI-mutated), so we drop it and rely on the auto picker shape.
         var pf_int = mf_int
         if (!WIDGETS_CP_ALPHA.value) {
             pf_int |= int(ImGuiColorEditFlags.NoAlpha)
@@ -2813,18 +2655,10 @@ def private ColorPickerSection() {
 // =============================================================================
 // Data Types — cpp:2228-2348
 // =============================================================================
-//
-// Exercises the typed `edit_drag_scalar` / `edit_slider_scalar` /
-// `edit_input_scalar` rails across all 10 supported scalar types (S8/U8/
-// S16/U16/S32/U32/S64/U64/Float/Double). The Drags group toggles between
-// no-clamp and 0..50 via the "Clamp" checkbox (cpp:2279); Sliders pass
-// explicit min/max per row; Inputs toggles step buttons via cpp:2334.
-//
-// cpp passes a `NULL` upper bound for one widget ("drag double" at
-// cpp:2294); the daslang wrapper takes both bounds by value with the
-// convention "v_min == v_max == default → no clamp", so the equivalent is
-// the upper sentinel value below (any value satisfying ``v_min < v_max``
-// — DBL_MAX too eager triggers ImGui drag-speed pathology).
+
+// Exercises edit_drag/slider/input_scalar across all 10 scalar types. cpp passes a
+// NULL upper bound for "drag double" (cpp:2294); our wrapper takes bounds by value
+// (v_min==v_max==default → no clamp), so a finite sentinel replaces it — DBL_MAX triggers ImGui drag-speed pathology.
 
 let private WIDGETS_DT_DRAG_DOUBLE_NO_UPPER : double = 1.0e15lf
 
@@ -2875,8 +2709,7 @@ def private DataTypesSection() {
             (id = "WIDGETS_DT_DRAG_F_LOG", text = "drag float log",
              speed = 0.005f, v_min = 0.0f, v_max = 1.0f, format = "%f",
              flags = ImGuiSliderFlags.Logarithmic))
-        // cpp passes NULL upper here; we substitute a large finite sentinel
-        // (see WIDGETS_DT_DRAG_DOUBLE_NO_UPPER above).
+        // cpp passes NULL upper here; we substitute a large finite sentinel (WIDGETS_DT_DRAG_DOUBLE_NO_UPPER above).
         edit_drag_scalar(safe_addr(WIDGETS_DT_F64),
             (id = "WIDGETS_DT_DRAG_D", text = "drag double",
              speed = 0.0005f, v_min = 0.0lf,
@@ -3045,10 +2878,7 @@ def private DataTypesSection() {
 def private DragSliderFlagsSection() {
     tree_node(WIDGETS_DRAG_SLIDER_FLAGS,
         (text = "Drag/Slider Flags", flags = ImGuiTreeNodeFlags.None)) {
-        // 4 flag-bit toggles against a shared int holding the ImGuiSliderFlags
-        // bitset. HelpMarker tooltips dropped per the same precedent as the
-        // multi-select sub-tree (cpp:1518) — the flag names themselves are
-        // documentation.
+        // 4 flag-bit toggles against a shared int holding the ImGuiSliderFlags bitset; HelpMarker tooltips dropped (the flag names are self-documenting).
         edit_checkbox_flags(safe_addr(WIDGETS_DSF_FLAGS),
             (id = "WIDGETS_DSF_F_CLAMP",
              text = "ImGuiSliderFlags_AlwaysClamp",
@@ -3066,10 +2896,7 @@ def private DragSliderFlagsSection() {
              text = "ImGuiSliderFlags_NoInput",
              flags_value = int(ImGuiSliderFlags.NoInput)))
 
-        // All 4 DragFloat widgets share WIDGETS_DSF_DRAG_F (mirrors cpp's
-        // single `static float drag_f`). The 5th drags the int. flags-bitset
-        // is widened back from the int holder via reinterpret (same pattern as
-        // TabsAdvancedSection).
+        // All 4 DragFloat widgets share WIDGETS_DSF_DRAG_F (cpp's single static float); the 5th drags the int, and the flags bitset is widened back from the int via reinterpret.
         let flags = unsafe(reinterpret<ImGuiSliderFlags>(WIDGETS_DSF_FLAGS))
         text("Underlying float value: {WIDGETS_DSF_DRAG_F}")
         edit_drag_float(safe_addr(WIDGETS_DSF_DRAG_F),
@@ -3115,8 +2942,7 @@ def private QueryingItemStatusSection() {
         (text = "Querying Item Status (Edited/Active/Hovered etc.)",
          flags = ImGuiTreeNodeFlags.None)) {
 
-        // Item-type picker (16 entries). cpp seeds item_type = 4 (SliderFloat)
-        // on first frame — mirror via `init = 4`.
+        // Item-type picker (16 entries); cpp seeds item_type=4 (SliderFloat) on first frame, mirrored via init=4.
         combo(WIDGETS_QIS_TYPE_PICK,
             (text = "Item Type", init = 4, items <- WIDGETS_QIS_TYPES))
         edit_checkbox(safe_addr(WIDGETS_QIS_DISABLED),
@@ -3126,9 +2952,7 @@ def private QueryingItemStatusSection() {
         var ret = false
 
         with_disabled(WIDGETS_QIS_DISABLED) {
-            // 16-way dispatcher. Each branch renders ONE widget per frame, so
-            // each per-type state global only sees one render per frame and
-            // check_unique_render is satisfied.
+            // 16-way dispatcher; each branch renders one widget per frame, so each per-type state global renders once and check_unique_render is satisfied.
             if (item_type == 0) {
                 text("ITEM: Text")
             } elif (item_type == 1) {
@@ -3163,9 +2987,7 @@ def private QueryingItemStatusSection() {
             } elif (item_type == 11) {
                 ret = menu_item(WIDGETS_QIS_MENU, (text = "ITEM: MenuItem"))
             } elif (item_type == 12) {
-                // tree_node_ex (leaf form) — returns the open bool. cpp uses
-                // TreeNode + matching TreePop only when open; tree_node_ex
-                // (leaf) is the same shape without manual TreePop.
+                // tree_node_ex (leaf form) returns the open bool — same shape as cpp's TreeNode + open-gated TreePop, but without the manual TreePop.
                 ret = tree_node_ex(WIDGETS_QIS_TREE_LEAF,
                     (text = "ITEM: TreeNode",
                      flags = ImGuiTreeNodeFlags.NoTreePushOnOpen))
@@ -3178,10 +3000,7 @@ def private QueryingItemStatusSection() {
                 ret = combo(WIDGETS_QIS_COMBO_FRUIT,
                     (text = "ITEM: Combo", init = 1, items <- WIDGETS_QIS_FRUITS))
             } elif (item_type == 15) {
-                // ListBox container — emit the 4 fruit rows as selectables;
-                // cpp uses the one-liner ListBox(items, count) which was
-                // retired (see comment at cpp:494). Selection int is mirrored
-                // via per-row toggle states.
+                // ListBox container — 4 fruit rows as selectables (cpp's one-liner ListBox(items,count) was retired); selection mirrored via per-row toggle states.
                 list_box(WIDGETS_QIS_LB,
                     (text = "ITEM: ListBox", size = float2(0.0f, 0.0f))) {
                     for (i in range(length(WIDGETS_QIS_FRUITS))) {
@@ -3193,17 +3012,14 @@ def private QueryingItemStatusSection() {
                 }
             }
 
-            // Hovered-flag flavors must be captured immediately after the
-            // item is submitted; the BulletText below would itself become the
-            // last item and clobber IsItem* readouts.
+            // Hovered-flag flavors must be captured right after the item is submitted — the BulletText below would become the last item and clobber IsItem* readouts.
             let h_none = IsItemHovered() ? 1 : 0
             let h_stat = IsItemHovered(ImGuiHoveredFlags.Stationary) ? 1 : 0
             let h_short = IsItemHovered(ImGuiHoveredFlags.DelayShort) ? 1 : 0
             let h_norm = IsItemHovered(ImGuiHoveredFlags.DelayNormal) ? 1 : 0
             let h_tip = IsItemHovered(ImGuiHoveredFlags.ForTooltip) ? 1 : 0
 
-            // Single-call BulletText with multi-line payload — matches the
-            // cpp shape (one bullet, 25 readout lines after).
+            // Single-call BulletText with a multi-line payload — matches cpp's shape (one bullet, 25 readout lines).
             let r = ret ? 1 : 0
             let foc = IsItemFocused() ? 1 : 0
             let hov = IsItemHovered() ? 1 : 0
@@ -3254,8 +3070,7 @@ def private QueryingItemStatusSection() {
                         "IsItemHovered(_Tooltip) = {h_tip}"))
         }
 
-        // Bottom tab-out box (ReadOnly) so the user can tab off the test
-        // widget and observe _Deactivated transitions on the line above.
+        // Bottom tab-out box (ReadOnly) so the user can tab off the test widget and observe _Deactivated transitions above.
         input_text(WIDGETS_QIS_UNUSED,
             (text = "unused", flags = ImGuiInputTextFlags.ReadOnly))
     }
@@ -3275,8 +3090,7 @@ def private QueryingWindowStatusSection() {
             (id = "WIDGETS_QWS_EMBED_CB",
              text = "Embed everything inside a child window for testing _RootWindow flag."))
 
-        // Optional outer-child wrapping — exercises _RootWindow / _ChildWindows
-        // distinction on the readouts below. cpp uses ImGuiChildFlags_Borders.
+        // Optional outer-child wrapping exercises the _RootWindow/_ChildWindows distinction in the readouts below (cpp uses ImGuiChildFlags_Borders).
         if (WIDGETS_QWS_EMBED) {
             child(WIDGETS_QWS_OUTER_CHILD,
                 (text = "outer_child",
@@ -3367,8 +3181,7 @@ def private QueryingWindowStatusBody() {
                 "IsWindowHovered(_AnyWindow) = {h_any}\n" +
                 "IsWindowHovered(_Stationary) = {h_stat}"))
 
-    // Inner 50-px child purely to give IsWindowHovered(_ChildWindows) a real
-    // child to find.
+    // Inner 50-px child purely to give IsWindowHovered(_ChildWindows) a real child to find.
     child(WIDGETS_QWS_INNER_CHILD,
         (text = "child", size = float2(0.0f, 50.0f),
          child_flags = ImGuiChildFlags.Borders,
@@ -3376,9 +3189,7 @@ def private QueryingWindowStatusBody() {
         text("This is another child window for testing the _ChildWindows flag.")
     }
 
-    // Secondary closable window: title-bar IsItemHovered/IsItemActive readout
-    // (cpp:2780). Its X-button writes WIDGETS_QWS_TEST through the closable
-    // bool exposed by the `window` rail.
+    // Secondary closable window: title-bar IsItemHovered/IsItemActive readout (cpp:2780); its X-button writes WIDGETS_QWS_TEST via the window rail's closable bool.
     edit_checkbox(safe_addr(WIDGETS_QWS_TEST),
         (id = "WIDGETS_QWS_TEST_CB",
          text = "Hovered/Active tests after Begin() for title bar testing"))
@@ -3399,8 +3210,7 @@ def private QueryingWindowStatusBody() {
                 (text = "IsItemHovered() after begin = {ti_hov} (== is title bar hovered)\n" +
                         "IsItemActive() after begin = {ti_act} (== is window being clicked/moved)"))
         }
-        // Mirror the closable bool back so the X button's effect propagates
-        // to our toggle. WindowState.open is false after X.
+        // Mirror the closable bool back so the X button propagates to our toggle (WindowState.open is false after X).
         if (!WIDGETS_QWS_TEST_WIN.open) {
             WIDGETS_QWS_TEST = false
             WIDGETS_QWS_TEST_WIN.open = true

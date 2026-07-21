@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options strict_smart_pointers = true
 
@@ -36,9 +37,8 @@ let private ALLOWED_IMGUI : table<string> <- {
     // Context / frame lifecycle
     "CreateContext", "DestroyContext", "GetCurrentContext", "SetCurrentContext",
     "NewFrame", "EndFrame", "Render", "GetDrawData",
-    // Settings persistence — nulls IniFilename to disable imgui.ini load/save.
-    // Host-agnostic config call; tutorials opt in (NOT live_imgui_init), calling
-    // it in init() after CreateContext and before the first NewFrame, so the
+    // Settings persistence — nulls IniFilename to disable imgui.ini load/save. Host-agnostic;
+    // tutorials opt in by calling it in init() after CreateContext, before the first NewFrame, so the
     // documented FirstUseEver layout / recording is deterministic every run.
     "DisableIniPersistence",
     // IO / per-item state queries (post-widget probes — no v2 host needed)
@@ -108,9 +108,8 @@ let private ALLOWED_IMGUI : table<string> <- {
     "DeleteChars", "InsertChars",
     // Viewport queries.
     "GetMainViewport",
-    // Docking internals — DockBuilder* is cherry-picked from imgui_internal.h
-    // and used by tests/demos to seed initial layouts. The dockspace/
-    // dock_window containers wrap the routine surface; these are the
+    // Docking internals — DockBuilder* cherry-picked from imgui_internal.h to seed initial layouts
+    // in tests/demos. The dockspace/dock_window containers wrap the routine surface; these are the
     // imperative one-shot setup calls.
     "DockBuilderRemoveNode", "DockBuilderAddDockSpaceNode",
     "DockBuilderSetNodeSize", "DockBuilderSetNodePos",
@@ -133,57 +132,41 @@ let private ALLOWED_IMGUI : table<string> <- {
     // Bound via bind_imgui.das internal_allow_func.
     "ShadeVertsLinearColorGradientKeepAlpha", "ShadeVertsLinearUV",
     "ShadeVertsTransformPos",
-    // Item / layout helpers cherry-picked from imgui_internal.h (family 4).
-    // Geometry math (CalcItemSize/CalcWrapWidthForPos) plus
-    // ItemSize (reserve layout space for a custom-drawn item) — host-agnostic, no v2
-    // state. Bound via bind_imgui.das internal_allow_func; ImRect arg of ItemSize's
-    // rect overload is aliased to float4 (cb_dasIMGUI.h).
+    // Item / layout helpers cherry-picked from imgui_internal.h (family 4): geometry math
+    // (CalcItemSize/CalcWrapWidthForPos) + ItemSize (reserve space for a custom-drawn item). Host-agnostic,
+    // bound via internal_allow_func; ImRect arg of ItemSize's rect overload is aliased to float4 (cb_dasIMGUI.h).
     "CalcItemSize", "CalcWrapWidthForPos", "ItemSize",
-    // Family 1-complete — Render* helpers that take an ImRect, dropped from family 1
-    // until ImRect was aliased to float4 (#166). RenderDragDropTargetRectForItem/RenderNavCursor
-    // draw into the current window; RenderRectFilledWithHole takes an ImDrawList.
-    // Host-agnostic, no v2 state. Bound via bind_imgui.das internal_allow_func.
+    // Family 1-complete — Render* helpers taking an ImRect, dropped from family 1 until ImRect was
+    // aliased to float4 (#166). RenderDragDropTargetRectForItem/RenderNavCursor draw into the current
+    // window; RenderRectFilledWithHole takes an ImDrawList. Host-agnostic, bound via internal_allow_func.
     "RenderDragDropTargetRectForItem", "RenderNavCursor",
     "RenderRectFilledWithHole",
-    // ID-stack seed / override helpers cherry-picked from imgui_internal.h.
-    // Host-agnostic: hash/seed an ImGuiID, query the hovered/focus ID, or
-    // push a raw override onto the ID stack. Bound via bind_imgui.das
+    // ID-stack seed / override helpers cherry-picked from imgui_internal.h — hash/seed an ImGuiID,
+    // query the hovered/focus ID, or push a raw override onto the ID stack. Host-agnostic, bound via
     // internal_allow_func. GetActiveID is bound separately (das::GetActiveID wrapper).
     "GetFocusID", "GetHoveredID", "KeepAliveID", "MarkItemEdited",
     "PushOverrideID", "GetIDWithSeed", "TreePushOverrideID",
-    // Focus-scope + activation stack cherry-picked from imgui_internal.h.
-    // Host-agnostic: push/query a focus scope (nav + multi-select grouping),
-    // focus/activate an item by ID, or set the next item's selection user-data.
-    // Bound via bind_imgui.das internal_allow_func; v2 guard with_focus_scope.
+    // Focus-scope + activation stack cherry-picked from imgui_internal.h — push/query a focus scope
+    // (nav + multi-select grouping), focus/activate an item by ID, set the next item's selection
+    // user-data. Host-agnostic, bound via internal_allow_func; v2 guard with_focus_scope.
     "PushFocusScope", "PopFocusScope", "GetCurrentFocusScope",
     "FocusItem", "ActivateItemByID", "SetNextItemSelectionUserData",
-    // Internal popup / tooltip / menu *Ex one-shots cherry-picked from
-    // imgui_internal.h. Host-agnostic escape hatches below the public
-    // popup/menu/tooltip wrappers: open/query/close popups by raw ImGuiID,
-    // manage the popup stack, submit an icon/shortcut menu item. Bound via
-    // bind_imgui.das internal_allow_func. The Begin*Ex (BeginPopupEx /
-    // BeginTooltipEx / BeginTooltipHidden / BeginMenuEx) are NOT here — they
-    // pair with the public End* and are surfaced as the unbalance-proof
-    // with_popup_ex / with_tooltip_ex / with_tooltip_hidden / with_menu_ex
-    // guards (imgui_scope_builtin.das). MenuItemEx is the icon/shortcut
-    // escape hatch alongside the wrapped `menu_item` widget.
+    // Internal popup / tooltip / menu *Ex one-shots cherry-picked from imgui_internal.h — open/query/close
+    // popups by raw ImGuiID, manage the popup stack, submit an icon/shortcut MenuItemEx. Bound via internal_allow_func.
+    // Begin*Ex are NOT here — they pair with End* and ship as the unbalance-proof with_*_ex guards (imgui_scope_builtin.das).
     "OpenPopupEx", "ClosePopupToLevel", "ClosePopupsExceptModals",
     "IsPopupOpen", "MenuItemEx",
-    // Internal item hit-test / rounding geometry one-shots cherry-picked from
-    // imgui_internal.h. Host-agnostic helpers for custom-widget code: hit-test
-    // a rect (ItemHoverable), test whether it is clipped (IsClippedEx), compute
-    // which corners to round for a rect inset in another (CalcRoundingFlagsForRectInRect).
-    // Bound via bind_imgui.das internal_allow_func.
+    // Internal item hit-test / rounding geometry one-shots cherry-picked from imgui_internal.h for
+    // custom-widget code: hit-test a rect (ItemHoverable), test clipping (IsClippedEx), compute corner
+    // rounding for a rect inset in another (CalcRoundingFlagsForRectInRect). Bound via internal_allow_func.
     "ItemHoverable", "IsClippedEx", "CalcRoundingFlagsForRectInRect",
     // Internal *Ex buttons with behavior flags (Repeat / PressedOnClick / …, from the
     // ImGuiButtonFlagsPrivate_ enum combined via the imgui_enums.das cross-enum `|`).
     // Raw escape hatches next to the wrapped `button` / `arrow_button` widgets.
     "ButtonEx", "ArrowButtonEx",
-    // Custom-widget primitives — reserve layout + register an item (ItemAdd, two
-    // overloads) and run the press/hover/hold state machine over a rect
-    // (ButtonBehavior). Bound via manual C++ wrappers (dasIMGUI.main.cpp): ItemAdd's
-    // optional nav rect is a clean by-value overload, ButtonBehavior's two state
-    // outputs come back through bool& args.
+    // Custom-widget primitives — reserve+register an item (ItemAdd, 2 overloads) and run the
+    // press/hover/hold state machine over a rect (ButtonBehavior). Manual C++ wrappers (dasIMGUI.main.cpp):
+    // ItemAdd's optional nav rect is a by-value overload, ButtonBehavior's two state outputs come back via bool& args.
     "ItemAdd", "ButtonBehavior",
     // Axis-aligned interactive layout primitives. Scrollbar(axis) is raw
     // (internal_allow_func); ScrollbarEx (ImS64& scroll out-param) and
@@ -193,15 +176,13 @@ let private ALLOWED_IMGUI : table<string> <- {
     // open/closed core; TreeNodeSetOpen / TreeNodeUpdateNextOpen (raw) set / resolve
     // a node's open state by ID. Pair with the already-allowed TreePushOverrideID.
     "TreeNodeBehavior", "TreeNodeSetOpen", "TreeNodeUpdateNextOpen",
-    // Separator / low-level text. SeparatorEx (raw, ImGuiSeparatorFlags-as-int) is a
-    // separator with axis/span flags + thickness; TextEx (text_end -> nullptr wrapper,
-    // ImGuiTextFlags-as-int) and SeparatorTextEx (label_end -> nullptr wrapper) are
-    // the manual C++ wrappers.
+    // Separator / low-level text. SeparatorEx (raw, ImGuiSeparatorFlags-as-int) is a separator with
+    // axis/span flags + thickness; TextEx (text_end -> nullptr wrapper, ImGuiTextFlags-as-int) and
+    // SeparatorTextEx (label_end -> nullptr wrapper) are the manual C++ wrappers.
     "SeparatorEx", "TextEx", "SeparatorTextEx",
-    // Logging/capture. LogSetNextTextDecoration wraps the next captured text (raw);
-    // LogRenderedText (ref_pos / text_end -> nullptr wrapper) injects text into the active
-    // log. LogBegin is guard-only (with_log, imgui_scope_builtin.das). GetClipboardText
-    // reads back a Clipboard-type capture — a host-agnostic IO query.
+    // Logging/capture. LogSetNextTextDecoration wraps the next captured text (raw); LogRenderedText
+    // (ref_pos / text_end -> nullptr wrapper) injects into the active log. LogBegin is guard-only
+    // (with_log). GetClipboardText reads back a Clipboard-type capture — a host-agnostic IO query.
     "LogSetNextTextDecoration", "LogRenderedText", "GetClipboardText"
 }
 
@@ -218,10 +199,7 @@ class ImguiLintVisitor : AstVisitor {
     }
 
     def override preVisitExprCall(var expr : ExprCall?) : void {
-        // Combined skip: null guards, macro-generated function bodies, AND
-        // macro-synthesized call sites (qmacro emits ExprCalls whose `at`
-        // points at the macro template's source file, not the user's file —
-        // skip when fileInfo differs from the containing function's).
+        // Combined skip: null guards, macro-generated bodies, and macro-synthesized call sites (qmacro's ExprCall `at` points at the template file, not the user's — skip when fileInfo differs).
         if (expr.func == null || expr.func._module == null
                 || (current_function != null
                     && (current_function.flags.generated

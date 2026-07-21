@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
@@ -20,11 +21,9 @@ let STYLE_FEATURE = "modules/dasImgui/examples/features/style_override.das"
 [test]
 def test_with_style_smoke(t : T?) {
     with_imgui_app(STYLE_FEATURE) $(d) {
-        // All three buttons must reach the snapshot. STYLED_BTN sits under a
-        // 2-style with_style; NESTED_STYLED_BTN sits under nested with_style
-        // blocks; UNSTYLED_BTN sits AFTER all with_style blocks (proves
-        // pops balanced — if not, EndFrame would assert and the subprocess
-        // would die before this snapshot resolves).
+        // All three buttons must reach the snapshot: STYLED_BTN under a 2-style with_style,
+        // NESTED_STYLED_BTN under nested blocks, UNSTYLED_BTN AFTER all blocks (proves pops
+        // balanced — otherwise EndFrame asserts and the subprocess dies before this snapshot).
         var snap0 = wait_for_widget(d, "STYLE_WIN/UNSTYLED_BTN", 15.0f)
         t |> success(snap0 != null, "post-with_style button registers (pop count balanced)")
         if (snap0 == null) return

@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 
 module imgui_fonts shared
 
@@ -83,10 +84,9 @@ def private merge_unicode_source(path : string; size_px : float;
 
 def public load_unicode_ui_font(size_px : float;
                                 var loaded_sources : array<string>) : ImFont? {
-    //! Build the shared terminal/editor/Markdown font stack. Windows uses
-    //! Consolas as its primary face to match the local Terminal profile;
-    //! other platforms keep dasImgui's bundled JetBrains Mono base. Missing
-    //! fallback files are harmless and omitted from ``loaded_sources``.
+    //! Build the shared terminal/editor/Markdown font stack. Windows uses Consolas as its primary face
+    //! (matching the local Terminal profile); other platforms keep dasImgui's bundled JetBrains Mono base.
+    //! Missing fallback files are harmless and omitted from ``loaded_sources``.
     let windows_consolas = "C:/Windows/Fonts/consola.ttf"
     let base = (get_running_platform_name() == "windows" && font_file_exists(windows_consolas)
         ? windows_consolas : bundled_mono_font_path())
@@ -121,8 +121,7 @@ def public load_unicode_ui_font(size_px : float;
 
 def private merge_role_fallbacks(size_px : float;
                                  var loaded_sources : array<string>) {
-    // Each role is a separate ImFont and therefore needs its own explicit
-    // fallback stack. First face wins, so color emoji precedes symbol fonts.
+    // Each role is a separate ImFont needing its own fallback stack; first face wins, so color emoji precedes symbol fonts.
     if (get_running_platform_name() == "windows") {
         merge_unicode_source("C:/Windows/Fonts/seguiemj.ttf", size_px,
                              loaded_sources, IMGUI_FREETYPE_LOAD_COLOR)
@@ -156,10 +155,9 @@ def private load_unicode_role(primary, fallback_primary : string; size_px : floa
 
 def public load_unicode_font_roles(size_px : float;
                                    var loaded_sources : array<string>) : FontRoleSet {
-    //! Build prose regular/bold/italic/bold-italic roles and a monospace role.
-    //! Windows uses Segoe UI for prose and Consolas for code; other platforms
-    //! use common system faces when present and degrade to bundled JetBrains
-    //! Mono without changing the consuming API.
+    //! Build prose regular/bold/italic/bold-italic roles and a monospace role. Windows uses Segoe UI for
+    //! prose and Consolas for code; other platforms use common system faces when present and degrade to
+    //! bundled JetBrains Mono without changing the consuming API.
     let bundled = bundled_mono_font_path()
     var regular_path = bundled
     var bold_path = bundled

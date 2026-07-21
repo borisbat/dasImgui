@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
@@ -23,11 +24,9 @@ require math
 //! { button(REFRESH_BTN, ...) }` registers `EXPLORER/REFRESH_BTN`.
 
 struct DockSpaceState {
-    //! Backs the `dockspace` container. `dock_id` is captured from the
-    //! DockSpaceOverViewport return value on the first render; user code reads
-    //! it to drive DockBuilder*(state.dock_id) layout calls. `pending_reset`
-    //! is set by `imgui_dock_reset`; the renderer clears DockBuilder state
-    //! and `has_initial_layout` so the user's setup function runs again.
+    //! Backs the `dockspace` container. `dock_id` (captured from DockSpaceOverViewport on first render) drives
+    //! the user's DockBuilder*(state.dock_id) layout calls; `pending_reset` (from `imgui_dock_reset`) makes the
+    //! renderer clear DockBuilder state + `has_initial_layout` so the user's setup function runs again.
     @live dock_id : uint = 0u                 //! viewport dockspace id; captured on first render
     @optional has_initial_layout : bool = false //! flips true once user has seeded a layout; user reads this to gate their setup
     @optional flags : ImGuiDockNodeFlags      //! per-call flags (echoed for telemetry)
@@ -35,14 +34,9 @@ struct DockSpaceState {
 }
 
 struct DockWindowState {
-    //! Backs the `dock_window` container. `open` defaults to true and is
-    //! @live so closable windows survive reload (same convention as
-    //! WindowState). `docked` / `dock_id` are observed via
-    //! IsWindowDocked / GetWindowDockID. `pending_dock_to` / `pending_undock`
-    //! flow from live commands; applied via SetNextWindowDockID at top of
-    //! next frame. `pending_pos` / `pending_size` route through
-    //! `imgui_set_window_pos`; gated on the matching `*_set` bool so
-    //! `(0,0)` is a legitimate position request, not a sentinel.
+    //! Backs the `dock_window` container (mirrors WindowState). `open` is @live so closable windows survive
+    //! reload; the `pending_*` flags flow from live commands and apply via SetNextWindow* at the top of the next
+    //! frame — per-field semantics on the fields below (the `*_set` gates make ``(0,0)`` a valid request, not a sentinel).
     @live open : bool = true                  //! window open state; preserved across reload
     @optional flags : ImGuiWindowFlags        //! per-call window flags (echoed for telemetry)
     @optional pos : float2                    //! observed window position
@@ -61,11 +55,9 @@ struct DockWindowState {
 }
 
 // ===== Finalize helpers =====
-//
-// `dockspace_finalize` installs `imgui_dock_reset`. `dock_window_finalize`
-// installs the union of `open`/`close`/`dock`/`undock` actions on a single
-// dispatcher lambda — keeps the per-target dispatcher install single-call
-// and matches the existing `open_close_finalize` shape in containers_builtin.
+
+// `dockspace_finalize` installs `imgui_dock_reset`; `dock_window_finalize` installs the union of
+// open/close/dock/undock actions on one dispatcher lambda (matches `open_close_finalize` in containers_builtin).
 
 def private dockspace_finalize(widget_ident : string; kind : string;
                                var state : DockSpaceState) {

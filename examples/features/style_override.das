@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 
 require imgui/imgui_harness
 
@@ -48,10 +49,9 @@ def update() {
 
         separator()
         text("After with_style — baseline style restored:")
-        // If push/pop counts were off, this button would render with a stale
-        // color/rounding. ImGui's style stack auto-asserts unbalanced pops
-        // at EndFrame so the live process would crash; absent that, visual
-        // sanity says "looks like a normal button".
+        // If push/pop counts were off, this button would render with stale
+        // color/rounding — and ImGui's style stack auto-asserts unbalanced pops
+        // at EndFrame, crashing the process. A normal-looking button = balanced.
         button(UNSTYLED_BTN, (text = "Plain button"))
     }
 

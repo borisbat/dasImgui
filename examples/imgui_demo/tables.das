@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 
 module tables
@@ -60,9 +61,8 @@ def private apply_open_action() {
 }
 
 // ---- Section 1 Basic state ----
-// All three table methods iterate procedurally; per-cell text needs its own
-// NarrativeState per call site. Indexed table state keeps each cell distinct
-// in the widget registry.
+// All three methods iterate procedurally; per-cell text needs its own NarrativeState
+// per call site, so indexed table state keeps each cell distinct in the registry.
 var private TABLES_BASIC_T1_CELL : table<int; NarrativeState>
 var private TABLES_BASIC_T2_CELL : table<int; NarrativeState>
 var private TABLES_BASIC_T3_CELL : table<int; NarrativeState>
@@ -124,10 +124,8 @@ var private TABLES_PAD2_CELL_PADDING : float2 = float2(0.0f, 0.0f)
 var private TABLES_PAD2_CELL_IT      : table<int; InputTextState>
 
 // ---- Section 8 Sizing policies state ----
-// Quad of mini-tables, each with its own SizingFixed*/SizingStretch*
-// policy. The cpp helper EditTableSizingFlags is ported as
-// `def private edit_table_sizing_flags` below; it splices the policy bits
-// in/out of an int-typed flag word.
+// Quad of mini-tables, each with its own SizingFixed*/SizingStretch* policy.
+// cpp EditTableSizingFlags is ported as `edit_table_sizing_flags` below.
 var private TABLES_SIZING_FLAGS1 = ImGuiTableFlags.Resizable | ImGuiTableFlags.NoHostExtendX
 // Policy-per-row state: 4 outer iterations, each owns one flag word
 // (initialized via [init] to the 4 cpp defaults) plus two 3-col x 3-row
@@ -293,10 +291,8 @@ let private TREE_VIEW_NODES <- [
                  node_type = "Image file", size = 203512, child_idx = -1, child_count = -1)]
 
 // ---- Section 18 Item width state ----
-// 3-col table, 3-row body, 9 indexed SliderFloats. cpp shares a single
-// `dummy_f` across all 9; the boost slider state owns its own value, so
-// each cell here has its own — a benign divergence (still demonstrates
-// the per-column ItemWidth setup).
+// 3-col, 3-row, 9 indexed SliderFloats. cpp shares one `dummy_f` across all 9;
+// boost slider state owns per-cell values — benign divergence, same ItemWidth demo.
 var private TABLES_ITEM_WIDTH_SLIDER : table<int; SliderStateFloat>  // 3*3 sliders
 
 [init]
@@ -308,10 +304,8 @@ def seed_item_width_sliders() {
 }
 
 // ---- Section 19 Custom headers state ----
-// 3 per-column header checkboxes (selected[]) + 3*5 selectable cells.
-// `selectable_label` is the caller-owned-bool form (mirrors cpp
-// `Selectable(buf, column_selected[col])`); state holds click bookkeeping
-// only, the selected-appearance comes from TABLES_CHDR_SELECTED[column].
+// 3 per-column header checkboxes + 3*5 selectable cells. `selectable_label` is the
+// caller-owned-bool form; selected-appearance comes from TABLES_CHDR_SELECTED[column].
 var private TABLES_CHDR_SELECTED : table<int; bool>          // 3 entries
 var private TABLES_CHDR_CELL     : table<int; ClickState>    // 5*3 cells
 
@@ -415,10 +409,8 @@ var private TABLES_SORT_ACTION_BTN  : table<int; ClickState>
 var private TABLES_SORT_QTY_TEXT    : table<int; NarrativeState>
 
 // ---- Section 24 Advanced state ----
-// Mirrors cpp:5713-6033. Reuses TABLES_SORT_TEMPLATE_NAMES + SortItem
-// struct + TABLES_SORT_COL_* user-id constants from section 23. ITEMS
-// lifecycle is independent (items_count is user-editable, body mutates
-// quantity via Chop/Eat) so the items list lives in its own array.
+// Mirrors cpp:5713-6033; reuses section 23's SortItem + TABLES_SORT_COL_* ids.
+// ITEMS lifecycle is independent (user-editable count, Chop/Eat mutates qty).
 
 // Contents-type enum (mirror cpp ContentsType). The Combo at the bottom
 // of the Options/Other sub-tree drives this; the per-row first column
@@ -460,10 +452,9 @@ var private TABLES_ADV_INNER_WIDTH        : float  = 0.0f
 var private TABLES_ADV_OUTER_SIZE_ENABLED : bool   = true
 var private TABLES_ADV_SHOW_HEADERS       : bool   = true
 var private TABLES_ADV_SHOW_WRAPPED_TEXT  : bool   = false
-// SHOW_DEBUG_DETAILS / SCROLL_CUR / SCROLL_MAX dropped — see post-table
-// comment in show_advanced(). cpp's debug readout reads
-// ImDrawList.CmdBuffer.Size, which the daslang ImVector binding doesn't
-// surface as a readable accessor.
+// SHOW_DEBUG_DETAILS / SCROLL_CUR / SCROLL_MAX dropped — see show_advanced().
+// cpp's debug readout reads ImDrawList.CmdBuffer.Size, which the daslang
+// ImVector binding doesn't surface as a readable accessor.
 
 // items + selection. Items are owned per-section (separate lifecycle
 // from TABLES_SORT_ITEMS); selection is an unsorted int array of
@@ -471,18 +462,14 @@ var private TABLES_ADV_SHOW_WRAPPED_TEXT  : bool   = false
 var private TABLES_ADV_ITEMS     : array<SortItem>
 var private TABLES_ADV_SELECTION : array<int>
 var private TABLES_ADV_ITEMS_NEED_SORT : bool = false
-// Cache of last-seen TableSortSpec list — populated whenever the
-// sort_specs() block fires (i.e. when ImGui reports SpecsDirty),
-// consumed when TABLES_ADV_ITEMS_NEED_SORT was set last frame by
-// Chop/Eat. Mirrors cpp's `sort_specs` pointer reuse: the boost block
-// helper auto-clears SpecsDirty on return so the raw pointer isn't
-// available to the Chop/Eat-triggered re-sort path; cache instead.
+// Cache of last-seen TableSortSpec list — filled when sort_specs() fires (SpecsDirty),
+// reused by a Chop/Eat-triggered re-sort. The boost block helper auto-clears SpecsDirty
+// on return, so the raw pointer is gone by then — cache it instead.
 var private TABLES_ADV_LAST_SPECS : array<TableSortSpec>
 
-// Per-row widget state — keyed by SortItem.id so paths track items
-// across re-sorts. We do NOT pre-seed: the row helper auto-inserts on
-// first access. Items_count change (rebuild_adv_items) wipes them so
-// the registry doesn't accumulate stale entries.
+// Per-row widget state, keyed by SortItem.id so paths track items across re-sorts.
+// Not pre-seeded (the row helper auto-inserts on first access); an items_count
+// change wipes them so the registry doesn't accumulate stale entries.
 var private TABLES_ADV_ID_TEXT      : table<int; NarrativeState>  // CT_Text
 var private TABLES_ADV_ID_BTN       : table<int; ClickState>      // CT_Button / SmallButton / FillButton
 var private TABLES_ADV_ID_SEL       : table<int; ClickState>      // CT_Selectable[_SpanRow]
@@ -519,11 +506,9 @@ def seed_columns_flags() {
 
 [init]
 def seed_padding_cells() {
-    // Pre-populate the 15-cell InputText buffer with "edit me" to mirror
-    // the cpp static char text_bufs[3*5][16] + init flag pattern. The
-    // boost init= named-tuple sugar isn't supported on indexed [widget]
-    // form (per the macro's named-init-on-indexed-form diagnostic), so
-    // direct field set in [init] is the documented workaround.
+    // Pre-populate the 15 InputText cells with "edit me" (mirrors cpp's static
+    // text_bufs + init flag). The boost init= named-tuple sugar isn't supported on
+    // the indexed [widget] form, so a direct field set in [init] is the workaround.
     for (i in range(15)) {
         TABLES_PAD2_CELL_IT[i].value := "edit me"
     }
@@ -542,11 +527,9 @@ def seed_sizing_policy() {
 
 [init]
 def seed_advanced_outer_size() {
-    // cpp:5738 — `outer_size_value = ImVec2(0.0f, TEXT_BASE_HEIGHT * 12)`.
-    // GetTextLineHeightWithSpacing() requires an active ImGui frame so we
-    // cannot call it at [init] time; use a hardcoded approximation
-    // (line_h ~= 17px at default font) which the user can immediately
-    // adjust via the Other/##OuterSize DragFloat2.
+    // cpp:5738 — outer_size_value = ImVec2(0, TEXT_BASE_HEIGHT * 12).
+    // GetTextLineHeightWithSpacing() needs an active frame, so we can't call it at
+    // [init]; use a hardcoded ~17px line height, user-adjustable via the DragFloat2.
     TABLES_ADV_OUTER_SIZE_VALUE = float2(0.0f, 17.0f * 12.0f)
 }
 
@@ -573,11 +556,9 @@ def private rebuild_adv_items() {
     }
 }
 
-// Multi-key sort comparator shared with the sort_specs() block-arg below.
-// Mirrors cpp:4024-4061 MyItem::CompareWithSortSpecs — walks specs in
-// order, returns first non-zero delta with asc/desc sign applied; falls
-// back on ID tie-break (qsort is not stable, per Boris's note in the
-// strudel skill — daslang `sort()` is also qsort).
+// Multi-key sort comparator shared with the sort_specs() block-arg below (mirrors
+// cpp:4024-4061). Walks specs in order, returns the first non-zero delta with
+// asc/desc sign; falls back on an ID tie-break since daslang sort() isn't stable.
 def private adv_compare(a : SortItem; b : SortItem;
                         specs : array<TableSortSpec>) : bool {
     for (spec in specs) {
@@ -589,8 +570,7 @@ def private adv_compare(a : SortItem; b : SortItem;
         } elif (spec.column_user_id == TABLES_SORT_COL_QUANTITY) {
             delta = a.quantity - b.quantity
         } elif (spec.column_user_id == TABLES_SORT_COL_DESCRIPTION) {
-            // cpp:4048 — Description sorts by Name (description is a
-            // canned literal, no per-item field).
+            // cpp:4048 — Description sorts by Name (it's a canned literal, no per-item field).
             delta = a.name < b.name ? -1 : (a.name > b.name ? 1 : 0)
         }
         if (delta != 0) {
@@ -704,9 +684,7 @@ def private show_borders_background() {
     apply_open_action()
     tree_node(TABLES_BORDERS, (text = "Borders, background",
                                flags = ImGuiTreeNodeFlags.None)) {
-        // Borders/background flag toggles. The nested with_indent blocks
-        // mirror the cpp Indent/Unindent visual grouping (BordersH /
-        // BordersV split into Outer + Inner sub-toggles).
+        // Borders/background flag toggles; nested with_indent blocks mirror cpp's Indent/Unindent grouping.
         edit_checkbox_flags(safe_addr(TABLES_BORDERS_FLAGS),
             (id = "TBL_B_F_ROWBG", text = "ImGuiTableFlags_RowBg",
              flags_value = ImGuiTableFlags.RowBg))
@@ -794,9 +772,7 @@ def private show_resizable_stretch() {
     apply_open_action()
     tree_node(TABLES_RSTRETCH, (text = "Resizable, stretch",
                                 flags = ImGuiTreeNodeFlags.None)) {
-        // SizingStretchSame is the default when ScrollX is off; the two
-        // toggles below let you observe the effect of disabling Resizable
-        // or BordersV. _Resizable implicitly enables _BordersInnerV.
+        // SizingStretchSame is the default when ScrollX is off; note _Resizable implicitly enables _BordersInnerV.
         edit_checkbox_flags(safe_addr(TABLES_RSTRETCH_FLAGS),
             (id = "TBL_RS_F_RESIZABLE", text = "ImGuiTableFlags_Resizable",
              flags_value = ImGuiTableFlags.Resizable))
@@ -827,9 +803,7 @@ def private show_resizable_fixed() {
     apply_open_action()
     tree_node(TABLES_RFIXED, (text = "Resizable, fixed",
                               flags = ImGuiTreeNodeFlags.None)) {
-        // SizingFixedFit keeps columns at their initial width regardless of
-        // available space (subject to NoHostExtendX). Double-click a column
-        // border to auto-fit to contents.
+        // SizingFixedFit keeps columns at their initial width (subject to NoHostExtendX); double-click a border to auto-fit.
         edit_checkbox_flags(safe_addr(TABLES_RFIXED_FLAGS),
             (id = "TBL_RF_F_NOHOST", text = "ImGuiTableFlags_NoHostExtendX",
              flags_value = ImGuiTableFlags.NoHostExtendX))
@@ -857,8 +831,7 @@ def private show_resizable_mixed() {
     apply_open_action()
     tree_node(TABLES_RMIXED, (text = "Resizable, mixed",
                               flags = ImGuiTreeNodeFlags.None)) {
-        // Per-column WidthFixed / WidthStretch policy mix. The 6-col second
-        // table also demonstrates DefaultHide for initial column visibility.
+        // Per-column WidthFixed/WidthStretch mix; the 6-col table also demonstrates DefaultHide.
         let tflags = TABLES_RMIXED_FLAGS
 
         // Table 1: 3 columns (2 Fixed + 1 Stretch).
@@ -880,8 +853,7 @@ def private show_resizable_mixed() {
             }
         }
 
-        // Table 2: 6 columns (3 Fixed including DefaultHide + 3 Stretch
-        // including DefaultHide).
+        // Table 2: 6 columns (3 Fixed + 3 Stretch, one DefaultHide in each).
         data_table(TABLES_RMIXED_T2, (text = "##rm2", columns = 6, flags = tflags,
                                       outer_size = float2(0.0f, 0.0f),
                                       inner_width = 0.0f)) {
@@ -912,8 +884,7 @@ def private show_reorderable_hideable_headers() {
     apply_open_action()
     tree_node(TABLES_RHH, (text = "Reorderable, hideable, with headers",
                            flags = ImGuiTreeNodeFlags.None)) {
-        // Click + drag a header to reorder columns; right-click a header for
-        // the visibility context menu.
+        // Click+drag a header to reorder columns; right-click a header for the visibility menu.
         edit_checkbox_flags(safe_addr(TABLES_RHH_FLAGS),
             (id = "TBL_RHH_F_RESIZABLE", text = "ImGuiTableFlags_Resizable",
              flags_value = ImGuiTableFlags.Resizable))
@@ -955,8 +926,7 @@ def private show_reorderable_hideable_headers() {
             }
         }
 
-        // Table 2: outer_size.x = 0.0f + SizingFixedFit packs columns tight
-        // (valid only without ScrollX or stretch columns).
+        // Table 2: outer_size.x=0 + SizingFixedFit packs columns tight (only valid without ScrollX or stretch columns).
         let tflags2 = TABLES_RHH_FLAGS | ImGuiTableFlags.SizingFixedFit
         data_table(TABLES_RHH_T2, (text = "##rhh2", columns = 3, flags = tflags2,
                                    outer_size = float2(0.0f, 0.0f),
@@ -981,9 +951,7 @@ def private show_reorderable_hideable_headers() {
 // Section 7: Padding — cpp:4508-4613
 // =============================================================================
 def private show_padding_inputtext_grid() {
-    // Body extracted so the outer conditional FrameBg push wraps a single
-    // call (instead of duplicating the 15-cell loop in each branch). Each
-    // cell's own (text, init) seeds the buffer to "edit me" on first call.
+    // Body extracted so the conditional FrameBg push wraps one call instead of duplicating the 15-cell loop.
     for (cell in range(15)) {
         table_next_column()
         SetNextItemWidth(-FLT_MIN)
@@ -996,9 +964,8 @@ def private show_padding() {
     tree_node(TABLES_PADDING, (text = "Padding",
                                flags = ImGuiTreeNodeFlags.None)) {
         // ----- Sub-table 1: padding-flag effect on X spacing -----
-        // PadOuterX / NoPadOuterX / NoPadInnerX + BordersOuterV/InnerV.
-        // The first row's cell reads ContentRegionAvail.x so the
-        // available-width effect of each toggle is visible at a glance.
+
+        // First row reads ContentRegionAvail.x so each toggle's available-width effect is visible.
         edit_checkbox_flags(safe_addr(TABLES_PAD1_FLAGS),
             (id = "TBL_P1_F_PAD_OUT_X", text = "ImGuiTableFlags_PadOuterX",
              flags_value = ImGuiTableFlags.PadOuterX))
@@ -1045,9 +1012,8 @@ def private show_padding() {
         }
 
         // ----- Sub-table 2: explicit CellPadding style-var -----
-        // Sliderable CellPadding (0..10, %.0f) overrides ImGuiStyle for the
-        // wrapped data_table call. Optional FrameBg=0 push hides the per-
-        // InputText frame so the cell padding is visually unambiguous.
+
+        // Sliderable CellPadding overrides ImGuiStyle; optional FrameBg=0 hides the InputText frame so padding is clear.
         edit_checkbox_flags(safe_addr(TABLES_PAD2_FLAGS),
             (id = "TBL_P2_F_BORDERS", text = "ImGuiTableFlags_Borders",
              flags_value = ImGuiTableFlags.Borders))
@@ -1094,10 +1060,9 @@ def private show_padding() {
 // =============================================================================
 // Section 8: Sizing policies — cpp:4618-4722
 // =============================================================================
-// cpp helper `EditTableSizingFlags(ImGuiTableFlags*)` ported as a private
-// def. Strips the four `SizingFixed*`/`SizingStretch*` policy bits out of
-// the input flags, lets the user pick one via a Combo, and ORs it back in.
-// Pure-bits manipulation — no widget IDENT needed beyond the Combo state.
+
+// cpp helper EditTableSizingFlags ported here — strips the four Sizing* policy bits
+// out, lets the user pick one via a Combo, and ORs it back in. Pure bit manipulation.
 def private edit_table_sizing_flags(var p_flags : ImGuiTableFlags? implicit; id : string) {
     let policy_mask = ImGuiTableFlags.SizingMask_
     let values = fixed_array(ImGuiTableFlags.None,
@@ -1114,10 +1079,7 @@ def private edit_table_sizing_flags(var p_flags : ImGuiTableFlags? implicit; id 
             break
         }
     }
-    // Per-call PushID scope so the same Combo IDENT can fire under each
-    // caller. cpp:4095 also drops "ImGuiTableFlags" from the preview text,
-    // but the boost `edit_combo` shows the selected item's full label —
-    // close enough; the full names below are self-documenting.
+    // Per-call PushID scope so the same Combo IDENT can fire under each caller.
     with_id(id) {
         var items <- ["Default",
                       "ImGuiTableFlags_SizingFixedFit",
@@ -1146,11 +1108,7 @@ def private show_sizing_policies() {
             (id = "TBL_SZ_F_NOHOST", text = "ImGuiTableFlags_NoHostExtendX",
              flags_value = ImGuiTableFlags.NoHostExtendX))
 
-        // Four mini-tables, one per sizing policy. Equal-width + uneven-
-        // width content side-by-side so the policy effect is visually
-        // unambiguous. Per-table PushID via with_id("sizing_n") keeps the
-        // Combo IDs disjoint when the same edit_table_sizing_flags helper
-        // fires four times.
+        // Four mini-tables, one per sizing policy; per-table with_id keeps the four Combo IDs disjoint.
         for (table_n in range(4)) {
             with_id("sizing_{table_n}") {
                 SetNextItemWidth(GetFontSize() * 30.0f)
@@ -1286,8 +1244,7 @@ def private show_vertical_scrolling() {
             (id = "TBL_VS_F_SCROLLY", text = "ImGuiTableFlags_ScrollY",
              flags_value = ImGuiTableFlags.ScrollY))
 
-        // Outer size MUST be specified when ScrollX/ScrollY is on, or the
-        // table fills the host like a child window.
+        // Outer size MUST be specified when ScrollX/ScrollY is on, else the table fills the host like a child window.
         let line_height = GetTextLineHeightWithSpacing()
         let outer_size = float2(0.0f, line_height * 8.0f)
         data_table(TABLES_VSCROLL_T,
@@ -1301,9 +1258,7 @@ def private show_vertical_scrolling() {
             table_setup_column("Three")
             table_headers_row()
 
-            // 1000 rows via list_clipper — only the visible window is
-            // submitted per frame. The boost wrapper hides the
-            // `clipper.Begin/.Step` ceremony.
+            // 1000 rows via list_clipper — only the visible window is submitted per frame.
             list_clipper(1000) $(start, end_) {
                 for (row in range(start, end_)) {
                     table_next_row()
@@ -1366,9 +1321,7 @@ def private show_horizontal_scrolling() {
             for (row in range(20)) {
                 table_next_row()
                 for (col in range(7)) {
-                    // Skip non-visible columns past col 0 (cpp:4819-4820
-                    // optimization — relies on col 0 always visible because
-                    // of the freeze + NoHide).
+                    // Skip non-visible columns past col 0 (cpp:4819-4820 opt — col 0 is always visible via freeze + NoHide).
                     continue if (!table_set_column_index(col) && col > 0)
                     if (col == 0) {
                         text(TABLES_HSCROLL_CELL[row * 7 + col],
@@ -1479,12 +1432,7 @@ def private show_columns_flags() {
                 TABLES_COLFLAGS_OUTPUT[column] = table_get_column_flags(column)
             }
             let indent_step = float(int(text_base_width / 2.0f))
-            // cpp uses paired `Indent(step)` per row + final
-            // `Unindent(step * 8)` to accumulate one extra step at the
-            // start of every row. The block-scoped boost wrapper
-            // `with_indent(amount)` pops at body exit so accumulation
-            // needs an explicit per-row amount: row N starts with
-            // `(N + 1) * step` indent worth.
+            // with_indent pops at body exit (unlike cpp's accumulating Indent/Unindent), so each row needs an explicit (row+1)*step.
             for (row in range(8)) {
                 with_indent(indent_step * float(row + 1)) {
                     table_next_row()
@@ -1501,15 +1449,9 @@ def private show_columns_flags() {
     }
 }
 
-// edit_column_flags — port of cpp `EditTableColumnsFlags(ImGuiTableColumnFlags*)`
-// (cpp:4121-4144). 16 checkbox toggles in vertical sequence. The macro
-// requires `id =` to be a string literal so we can't splice the column
-// index in — instead the caller wraps the call in
-// `with_id("colflags_col_{column}")` and we use fixed IDs here. ImGui's
-// ID stack hashes the with_id prefix into each IDENT, keeping the
-// per-column instances disjoint without per-column IDENT splicing.
-// Width/sort mutual-exclusion bits reproduce the cpp `if (Checkbox(...))
-// flags &= ~mask` clearing.
+// edit_column_flags — port of cpp EditTableColumnsFlags (cpp:4121-4144). 16 checkbox
+// toggles; the caller wraps each in with_id("colflags_col_{column}") so ImGui's ID stack
+// keeps per-column instances disjoint. Width/sort bits reproduce cpp's mutual-exclusion clearing.
 def private edit_column_flags(var p_flags : ImGuiTableColumnFlags? implicit) {
     let stretch_mask = ImGuiTableColumnFlags.WidthMask_ ^ ImGuiTableColumnFlags.WidthStretch
     let fixed_mask   = ImGuiTableColumnFlags.WidthMask_ ^ ImGuiTableColumnFlags.WidthFixed
@@ -1558,10 +1500,9 @@ def private edit_column_flags(var p_flags : ImGuiTableColumnFlags? implicit) {
         flags_value = ImGuiTableColumnFlags.AngledHeader))
 }
 
-// show_column_status_flags — read-only display of the status bits ImGui
-// computes per frame (cpp `ShowTableColumnsStatusFlags`, cpp:4146-4152).
-// Always called inside `with_disabled(true)` so the checkboxes paint but
-// don't accept input.
+// show_column_status_flags — read-only display of the per-frame status bits
+// (cpp ShowTableColumnsStatusFlags, cpp:4146-4152). Always called inside
+// with_disabled(true) so the checkboxes paint but don't accept input.
 def private show_column_status_flags(flags : ImGuiTableColumnFlags) {
     var local = flags
     edit_checkbox_flags(unsafe(addr(local)),
@@ -1742,10 +1683,8 @@ def private show_row_height() {
         }
 
         // ----- Sub 2: SameLine(0, 0) shares line height across cells -----
-        // Two rows; each has a ColorButton in col 0 and a 2-line text in
-        // col 1. Row 1 puts an explicit `SameLine(0, 0)` before the
-        // first text line to demonstrate sharing the previous column's
-        // line height.
+
+        // Two rows (ColorButton + 2-line text); row 1's SameLine(0,0) shares the previous column's line height.
         data_table(TABLES_RH2_T,
                    (text = "##rh_share", columns = 2,
                     flags = ImGuiTableFlags.Borders,
@@ -1777,9 +1716,8 @@ def private show_row_height() {
         }
 
         // ----- Sub 3: per-row CellPadding.y mutation (every 3rd row) -----
-        // cpp uses raw `Push/PopStyleVar(CellPadding)` only on rows where
-        // `row % 3 == 2`. The boost `with_style(...)` block scopes the
-        // push to its body, so we wrap just the row-2 emit in it.
+
+        // cpp Push/PopStyleVar(CellPadding) on rows where row%3==2; boost with_style is block-scoped, so wrap just that row.
         data_table(TABLES_RH3_T,
                    (text = "##rh_cellpad_y", columns = 1,
                     flags = ImGuiTableFlags.Borders,
@@ -1912,9 +1850,7 @@ def private show_background_color() {
                     items = cell_bg_items))
         delete cell_bg_items
 
-        // Pre-tabled charpair labels so the per-cell text matches cpp's
-        // `Text("%c%c", 'A' + row, '0' + column)` — daslang has no
-        // int→char primitive.
+        // Pre-tabled charpair labels — daslang has no int→char, so we can't do cpp's Text("%c%c", 'A'+row, '0'+col).
         let row_letters = fixed_array("A", "B", "C", "D", "E", "F")
         let col_digits = fixed_array("0", "1", "2", "3", "4")
 
@@ -1925,13 +1861,11 @@ def private show_background_color() {
             for (row in range(6)) {
                 table_next_row()
                 if (TABLES_BG_ROW_BG_TYPE != 0) {
-                    // Flat red vs gradient grey (cpp:5213). Translucent so
-                    // RowBg0/RowBg1 ordering is visible.
+                    // Flat red vs gradient grey (cpp:5213), translucent so RowBg0/RowBg1 ordering is visible.
                     let row_bg_color = (TABLES_BG_ROW_BG_TYPE == 1
                         ? float4(0.7f, 0.3f, 0.3f, 0.65f)
                         : float4(0.2f + float(row) * 0.1f, 0.2f, 0.2f, 0.65f))
-                    // ImGuiTableBgTarget.RowBg0 + N — the enum is int-castable
-                    // so the offset arithmetic is direct.
+                    // ImGuiTableBgTarget.RowBg0 + N — the enum is int-castable, so the offset arithmetic is direct.
                     let target = unsafe(reinterpret<ImGuiTableBgTarget>(
                         int(ImGuiTableBgTarget.RowBg0) + TABLES_BG_ROW_BG_TARGET))
                     table_set_bg_color(target, GetColorU32(row_bg_color))
@@ -1941,8 +1875,7 @@ def private show_background_color() {
                     let key = row * 5 + col
                     text(TABLES_BG_CELL[key],
                          (text = "{row_letters[row]}{col_digits[col]}"))
-                    // Paint cells B1->C2 in the blue cell-bg color when
-                    // cell_bg_type == 1.
+                    // Paint cells B1->C2 in blue cell-bg when cell_bg_type == 1.
                     if (row >= 1 && row <= 2 && col >= 1 && col <= 2 &&
                             TABLES_BG_CELL_BG_TYPE == 1) {
                         let cell_bg_color = float4(0.3f, 0.3f, 0.7f, 0.65f)
@@ -1958,10 +1891,10 @@ def private show_background_color() {
 // =============================================================================
 // Section 17: Tree view — cpp:5242-5315
 // =============================================================================
-// Recursive descent through TREE_VIEW_NODES (folders + files), mirroring
-// cpp's inline `MyTreeNode::DisplayNode`. Folder = ChildCount > 0, opens
-// a `tree_node_ex` and recurses; file = leaf form `tree_node_ex` with
-// `Leaf | Bullet | NoTreePushOnOpen` so there's no paired `tree_pop()`.
+
+// Recursive descent through TREE_VIEW_NODES, mirroring cpp's MyTreeNode::DisplayNode.
+// Folder (child_count>0) opens a tree_node_ex and recurses; file is a leaf tree_node_ex
+// with Leaf|Bullet|NoTreePushOnOpen, so there's no paired tree_pop().
 def private display_tree_view_node(node_idx : int) {
     let node = TREE_VIEW_NODES[node_idx]
     table_next_row()
@@ -2046,13 +1979,7 @@ def private show_item_width() {
 
             for (row in range(3)) {
                 table_next_row()
-                // cpp pushes once on row 0 and relies on ImGui's per-column
-                // ItemWidth preservation across the table body. The boost
-                // surface forbids raw `PushItemWidth` (lint IMGUI002) and
-                // `with_item_width` is block-scoped (pops at exit), so we
-                // call `SetNextItemWidth` per-slider per-row instead. Same
-                // visual result; trades a few extra ImGui calls for lint
-                // compliance.
+                // Boost forbids raw PushItemWidth (IMGUI002) and with_item_width is block-scoped, so call SetNextItemWidth per-slider instead.
                 with_id("iw_row_{row}") {
                     table_set_column_index(0)
                     SetNextItemWidth(text_base_width * 3.0f)
@@ -2091,8 +2018,7 @@ def private show_custom_headers() {
             for (n in range(column_count)) {
                 table_setup_column(column_names[n])
             }
-            // Custom-header row instead of `table_headers_row()` — per
-            // cell: tight-padded Checkbox + SameLine + TableHeader(name).
+            // Custom-header row instead of table_headers_row() — per cell: tight-padded Checkbox + SameLine + TableHeader(name).
             table_next_row(ImGuiTableRowFlags.Headers)
             for (column in range(column_count)) {
                 table_set_column_index(column)
@@ -2109,9 +2035,7 @@ def private show_custom_headers() {
                     table_header(column_name)
                 }
             }
-            // Body — 3*5 selectable cells. cpp uses `Selectable(buf,
-            // column_selected[col])` (caller-owned-bool form); boost
-            // wrapper is `selectable_label(state, text, selected)`.
+            // Body — 3*5 selectable cells; boost `selectable_label(state, text, selected)` is cpp's caller-owned-bool Selectable.
             for (row in range(5)) {
                 table_next_row()
                 for (column in range(column_count)) {
@@ -2163,14 +2087,11 @@ def private show_angled_headers() {
              text = "Disable header contributing to column width",
              flags_value = ImGuiTableColumnFlags.NoHeaderWidth))
 
-        // Style settings sub-node — TableAngledHeadersAngle slider +
-        // TableAngledHeadersTextAlign 2-component slider. Both reach into
-        // the shared ImGuiStyle, so wrap pointer access in unsafe(addr(...)).
+        // Style settings sub-node — angle + text-align sliders reach into shared ImGuiStyle, so wrap pointer access in unsafe(addr(...)).
         tree_node(TABLES_AH_STYLE_NODE,
                   (text = "Style settings", flags = ImGuiTreeNodeFlags.None)) {
             SetNextItemWidth(GetFontSize() * 8.0f)
-            // SliderAngle uses degrees in the UI, radians on the pointer.
-            // Style field is in radians.
+            // SliderAngle shows degrees in the UI but the style field is radians.
             edit_slider_angle(
                 unsafe(addr(GetStyle().TableAngledHeadersAngle)),
                 (id = "TBL_AH_STYLE_ANGLE", text = "style.TableAngledHeadersAngle",
@@ -2189,8 +2110,7 @@ def private show_angled_headers() {
                     flags = TABLES_AH_TABLE_FLAGS,
                     outer_size = float2(0.0f, line_height * 12.0f),
                     inner_width = 0.0f)) {
-            // Track column (col 0) — no-hide / no-reorder. Remaining
-            // columns share the angled-header flag set.
+            // Track column (col 0) — no-hide/no-reorder; the rest share the angled-header flag set.
             table_setup_column(TABLES_AH_COLUMN_NAMES[0],
                                ImGuiTableColumnFlags.NoHide |
                                ImGuiTableColumnFlags.NoReorder)
@@ -2231,9 +2151,8 @@ def private show_context_menus() {
     tree_node(TABLES_CM, (text = "Context menus",
                           flags = ImGuiTreeNodeFlags.None)) {
         // ----- Sub-table 1: ContextMenuInBody flag toggle -----
-        // Right-clicking on the headers row OR (with the flag set) over
-        // the body opens the default table context menu (column hide,
-        // sort dir, etc.). No custom popup wiring needed.
+
+        // Right-click the headers row (or the body, with the flag) opens the default table context menu; no custom popup needed.
         edit_checkbox_flags(safe_addr(TABLES_CM1_FLAGS),
             (id = "TBL_CM1_F_CTXINBODY", text = "ImGuiTableFlags_ContextMenuInBody",
              flags_value = ImGuiTableFlags.ContextMenuInBody))
@@ -2293,11 +2212,7 @@ def private show_context_menus() {
                 }
             }
 
-            // Per-column right-click popup — cpp iterates COLUMNS_COUNT + 1
-            // (3 real columns + 1 trailing-unused space). All iterations
-            // share the str_id "MyPopup"; with_id(column) scopes ImGui's
-            // popup-id stack so each column owns its own open state.
-            // Trigger: hover-tracking + IsMouseReleased(Right) + !IsAnyItemHovered.
+            // Per-column right-click popup: all iters share str_id "MyPopup"; with_id(column) scopes ImGui's popup-id stack so each column owns its open state.
             var hovered = -1
             for (column in range(column_count + 1)) {
                 with_id("cm2_col_{column}") {
@@ -2355,15 +2270,7 @@ def private show_synced_instances() {
 
         let line_height = GetTextLineHeightWithSpacing()
         let tflags = TABLES_SYNCED_FLAGS
-        // 3 collapsing headers + a shared table id "Table". To match cpp's
-        // synced-instances behavior the 3 BeginTable calls must produce
-        // the SAME effective ImGui ID — the boost `data_table(IDENT, ...)`
-        // auto-PushIDs the IDENT, so we use ONE shared IDENT
-        // (TABLES_SYNCED_T) in the loop body. State is reused across the
-        // 3 iters (it's the same logical table, so this is correct).
-        // CollapsingHeader needs per-iter unique state so the open/close
-        // toggle is independent per header — indexed CollapsingHeaderState
-        // map keyed by `n`.
+        // Synced instances need the SAME ImGui ID, so all 3 iters share one IDENT (TABLES_SYNCED_T); only CollapsingHeader state is per-iter (keyed by n).
         for (n in range(3)) {
             let buf = "Synced Table {n}"
             collapsing_header(TABLES_SYNCED_HEADER[n],
@@ -2408,8 +2315,7 @@ def private show_sorting() {
                     flags = TABLES_SORT_FLAGS,
                     outer_size = float2(0.0f, line_height * 15.0f),
                     inner_width = 0.0f)) {
-            // user_id passes per cpp:5675-5678 so the sort comparator can
-            // distinguish columns by id (vs by index — both work).
+            // user_id (cpp:5675-5678) lets the sort comparator distinguish columns by id instead of index.
             table_setup_column("ID",
                 ImGuiTableColumnFlags.DefaultSort | ImGuiTableColumnFlags.WidthFixed,
                 0.0f, TABLES_SORT_COL_ID)
@@ -2426,9 +2332,7 @@ def private show_sorting() {
             table_setup_scroll_freeze(0, 1)
             table_headers_row()
 
-            // Sort our items when ImGui reports the specs dirty. Multi-
-            // key comparator walks `specs` in order; ColumnUserID
-            // identifies the column. Asc/Desc flips delta sign.
+            // Sort when ImGui reports specs dirty; the multi-key comparator walks specs in order, ColumnUserID picks the column, Asc/Desc flips the sign.
             sort_specs() $(specs) {
                 TABLES_SORT_ITEMS |> sort() $(a, b) {
                     for (spec in specs) {
@@ -2445,8 +2349,7 @@ def private show_sorting() {
                             return asc ? delta < 0 : delta > 0
                         }
                     }
-                    // qsort is not stable; fall back on ID so swap order
-                    // is deterministic.
+                    // qsort isn't stable; fall back on ID so the order is deterministic.
                     return a.id < b.id
                 }
             }
@@ -2479,28 +2382,18 @@ def private show_sorting() {
 
 // =============================================================================
 // Section 24: Advanced — cpp:5713-6033
-//
-// The heaviest demo by far: nearly every table flag, every contents-type
-// option, scrolling debug readout, list-clipper-virtualized data with
-// PushButtonRepeat, ID-keyed widget state, Ctrl+click multi-select, and
-// quantity-edit-triggers-resort interaction. State + helpers above; the
-// helper below mirrors the cpp source linearly.
-//
-// Skipped from cpp:
-// - PushStyleCompact / PopStyleCompact (cosmetic compaction wrapper —
-//   per the established section-wide policy in this file).
-// - All HelpMarker bubbles (per the same policy).
 // =============================================================================
+
+// The heaviest demo: nearly every table flag, all contents-types, virtualized data,
+// ID-keyed state, Ctrl+click multi-select, quantity-edit-triggers-resort.
+// Skipped from cpp: PushStyleCompact/PopStyleCompact + all HelpMarker bubbles (file-wide policy).
 def private show_advanced() {
     apply_open_action()
     tree_node(TABLES_ADV, (text = "Advanced",
                            flags = ImGuiTreeNodeFlags.None)) {
         // ---- Options sub-tree (cpp:5746-5864) ----
-        // Per-cell SetNextItemWidth(TEXT_BASE_WIDTH * 28) before each
-        // edit_drag_* call (mimics the cpp PushItemWidth(28 * width)
-        // applied once to all enclosed widgets — boost edit_* widgets
-        // don't honor PushItemWidth uniformly, so per-call SetNextItemWidth
-        // is the safer narrow-impact equivalent).
+
+        // Per-cell SetNextItemWidth(28*width) before each edit_drag_* — boost edit_* widgets don't honor PushItemWidth uniformly.
         let text_base_width = CalcTextSize("A").x
         let item_width = text_base_width * 28.0f
 
@@ -2667,8 +2560,7 @@ def private show_advanced() {
                 edit_checkbox(safe_addr(TABLES_ADV_SHOW_WRAPPED_TEXT),
                               (id = "TBL_ADV_SHOW_WRAPPED",
                                text = "show_wrapped_text"))
-                // OuterSize: DragFloat2 paired with the enable checkbox via
-                // SameLine + GetStyle().ItemInnerSpacing.x (cpp:5837-5839).
+                // OuterSize: DragFloat2 paired with the enable checkbox via SameLine + GetStyle().ItemInnerSpacing.x (cpp:5837-5839).
                 SetNextItemWidth(item_width)
                 edit_drag_float2(safe_addr(TABLES_ADV_OUTER_SIZE_VALUE),
                                  (id = "TBL_ADV_OUTERSIZE",
@@ -2679,9 +2571,7 @@ def private show_advanced() {
                 edit_checkbox(safe_addr(TABLES_ADV_OUTER_SIZE_ENABLED),
                               (id = "TBL_ADV_OUTERSIZE_EN", text = "outer_size"))
 
-                // inner_width — only takes effect when ScrollX is on; we
-                // pipe 0.0 to BeginTable otherwise (cpp:5848-5849 +
-                // inner_width_to_use below).
+                // inner_width only takes effect when ScrollX is on; otherwise we pipe 0.0 to BeginTable (cpp:5848-5849).
                 SetNextItemWidth(item_width)
                 edit_drag_float(safe_addr(TABLES_ADV_INNER_WIDTH),
                     (id = "TBL_ADV_INNER_WIDTH",
@@ -2736,10 +2626,8 @@ def private show_advanced() {
                     outer_size = effective_outer_size,
                     inner_width = inner_width_to_use)) {
             // ---- Columns (cpp:5895-5901) ----
-            // user_id passes match the sort comparator branches above.
-            // Description picks WidthStretch only when NoHostExtendX is off
-            // (cpp:5899 ternary) — otherwise the table can't grow into the
-            // stretch column. Bitfield-as-int test on TABLES_ADV_FLAGS.
+
+            // Description picks WidthStretch only when NoHostExtendX is off (cpp:5899) — else the table can't grow into the stretch column.
             let base = TABLES_ADV_COLUMNS_BASE_FLAGS
             table_setup_column("ID",
                 base | ImGuiTableColumnFlags.DefaultSort |
@@ -2768,10 +2656,8 @@ def private show_advanced() {
                                       TABLES_ADV_FREEZE_ROWS)
 
             // ---- Chop/Eat-triggered re-sort (cpp:5905-5910 items_need_sort path) ----
-            // Last frame's Chop/Eat may have set NEED_SORT (without
-            // dirtying SpecsDirty). Re-run the comparator against the
-            // cached specs so a quantity edit while sorted-by-quantity
-            // visibly re-orders next frame.
+
+            // Last frame's Chop/Eat may set NEED_SORT without dirtying SpecsDirty; re-run the comparator on cached specs so a quantity edit re-orders next frame.
             if (TABLES_ADV_ITEMS_NEED_SORT && !empty(TABLES_ADV_LAST_SPECS)) {
                 TABLES_ADV_ITEMS |> sort() $(a, b) {
                     return adv_compare(a, b, TABLES_ADV_LAST_SPECS)
@@ -2781,9 +2667,7 @@ def private show_advanced() {
 
             // ---- SpecsDirty-driven sort (cpp:5904-5912 sort_specs path) ----
             sort_specs() $(specs) {
-                // Cache specs for the next-frame Chop/Eat-triggered
-                // re-sort path above. Clear+push avoids cross-context
-                // pointer reuse — TableSortSpec is plain workhorse fields.
+                // Cache specs for the next-frame Chop/Eat re-sort; clear+push avoids cross-context pointer reuse (TableSortSpec is plain fields).
                 TABLES_ADV_LAST_SPECS |> clear
                 for (s in specs) {
                     TABLES_ADV_LAST_SPECS |> push(s)
@@ -2793,8 +2677,7 @@ def private show_advanced() {
                 }
             }
 
-            // cpp:5916 — track whether the Quantity column is currently
-            // sorted; if so, Chop/Eat triggers a re-sort on button-release.
+            // cpp:5916 — if the Quantity column is sorted, Chop/Eat triggers a re-sort on button-release.
             let sorts_specs_using_quantity = ((table_get_column_flags(3) &
                 ImGuiTableColumnFlags.IsSorted) != ImGuiTableColumnFlags.None)
 
@@ -2820,13 +2703,7 @@ def private show_advanced() {
                                            TABLES_ADV_ROW_MIN_HEIGHT)
                             // Col 0 (ID): contents-type switch (cpp:5949-5978).
                             table_set_column_index(0)
-                            // cpp:5951 — sprintf(label, "%04d", item.ID).
-                            // gen2 "{val}" interpolation has no built-in
-                            // width-pad, so we approximate via
-                            // fmt_pad_left("0", 4, "{item_id}") which is
-                            // overkill for the small range; use a plain
-                            // "{item_id}" here — the cpp 4-digit zero-pad
-                            // is purely cosmetic for the demo.
+                            // cpp:5951 zero-pads "%04d"; gen2 "{val}" has no width-pad and the demo's 4-digit pad is cosmetic, so use a plain "{item_id}".
                             let text_label = "{item_id}"
                             if (TABLES_ADV_CONTENTS_TYPE == TABLES_ADV_CT_TEXT) {
                                 text(TABLES_ADV_ID_TEXT[item_id],
@@ -2851,9 +2728,7 @@ def private show_advanced() {
                                                       selected = item_is_selected,
                                                       flags = sel_flags,
                                                       size = float2(0.0f, TABLES_ADV_ROW_MIN_HEIGHT)))) {
-                                    // cpp:5965-5976 — Ctrl+click toggles
-                                    // the item in selection; plain click
-                                    // resets to single-selection.
+                                    // cpp:5965-5976 — Ctrl+click toggles the item in selection; plain click resets to single-selection.
                                     if (GetIO().KeyCtrl) {
                                         if (item_is_selected) {
                                             let idx = find_index(TABLES_ADV_SELECTION,
@@ -2877,10 +2752,7 @@ def private show_advanced() {
                                      (text = item.name))
                             }
 
-                            // Col 2 (Action) — Chop/Eat (cpp:5987-5994).
-                            // Re-sort triggers on button-release only
-                            // (IsItemDeactivated) so holding the button
-                            // doesn't churn the table mid-press.
+                            // Col 2 (Action) — Chop/Eat (cpp:5987-5994); re-sort fires on button-release (IsItemDeactivated) so holding doesn't churn the table.
                             if (table_set_column_index(2)) {
                                 if (small_button(TABLES_ADV_CHOP_BTN[item_id],
                                                  (text = "Chop"))) {
@@ -2906,11 +2778,7 @@ def private show_advanced() {
                                      (text = "{qty}"))
                             }
 
-                            // Col 4 (Description) — wrapped or plain text
-                            // depending on the Other/show_wrapped_text
-                            // checkbox (cpp:5999-6003). cpp uses an
-                            // unconditional TableSetColumnIndex(4) here
-                            // (not `if`-guarded); mirror that.
+                            // Col 4 (Description) — wrapped or plain per the show_wrapped_text checkbox (cpp:5999-6003); TableSetColumnIndex(4) is unconditional, mirroring cpp.
                             table_set_column_index(4)
                             if (TABLES_ADV_SHOW_WRAPPED_TEXT) {
                                 text_wrapped(TABLES_ADV_DESC_TEXT[item_id],
@@ -2933,14 +2801,7 @@ def private show_advanced() {
         }
 
         // ---- Debug details (cpp:6019-6031) — NOT PORTED ----
-        // cpp here exposes a "Debug details" checkbox that prints
-        // ImDrawList::CmdBuffer.Size deltas (parent vs table draw list)
-        // and a scroll cur/max readout when the table is in its own
-        // child window. The daslang ImVector binding doesn't expose
-        // CmdBuffer.Size as a readable field (handled-type field is
-        // declared but field-of-handled-type accessor is missing —
-        // verified via mcp__daslang__find_symbol and confirmed by a
-        // compile_check). Skipping the entire debug readout (checkbox +
-        // text). Re-add when an ImVector size accessor lands.
+
+        // cpp's "Debug details" checkbox reads ImDrawList::CmdBuffer.Size, which the daslang ImVector binding doesn't expose; re-add when a size accessor lands.
     }
 }

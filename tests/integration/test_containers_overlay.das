@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
@@ -41,10 +42,8 @@ def test_containers_overlay_smoke(t : T?) {
                      "imgui_force_set steers TASK_LIST to 3 (Package)")
 
         // ----- imgui_open on a popup flips state.open via the dispatcher -----
-        // OPTIONS_POPUP starts closed; opening it via imgui_open routes
-        // through pending_open, which the next frame's body consumes by
-        // calling OpenPopup() — so the popup body runs and its leaf
-        // OPT_VSYNC appears in the snapshot.
+        // OPTIONS_POPUP starts closed; imgui_open routes through pending_open, consumed next frame
+        // by OpenPopup() — so the popup body runs and its leaf OPT_VSYNC appears in the snapshot.
         open_widget(d, "OVERLAY_WIN/OPTIONS_POPUP")
         var snap_popup_open = wait_until(d, 300) $(var snap) {
             return widget_rendered(snap, "OVERLAY_WIN/OPTIONS_POPUP/OPT_VSYNC")

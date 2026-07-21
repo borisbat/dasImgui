@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 
 module app_console
@@ -50,18 +51,15 @@ var private CONSOLE_ITEM_TEXT : table<int; NarrativeState>
 // One-shot init: seeds the welcome line on first frame after module load.
 var private CONSOLE_SEEDED = false
 
-// Set by the "Close Console" context-menu entry (right-click title bar);
-// the caller polls via `take_close_request()` after each frame and flips
-// its own visibility toggle. Kept private so the consume-and-clear API is
-// the only access path — direct reads from outside would race with the
-// reset on the next call.
+// Set by the "Close Console" context-menu entry (right-click title bar); the
+// caller polls `take_close_request()` each frame. Private so the consume-and-clear
+// API is the only path — direct reads would race with the reset on the next call.
 var private CONSOLE_REQUEST_CLOSE = false
 
 def public take_close_request() : bool {
-    //! Consume-and-clear: returns `true` once after the user picks
-    //! "Close Console" from the title-bar context menu, then resets.
-    //! Caller (`imgui_demo.das` dispatcher) gates `SHOW_APP_CONSOLE`
-    //! off the return value.
+    //! Consume-and-clear: returns `true` once after the user picks "Close Console"
+    //! from the title-bar context menu, then resets. Caller (imgui_demo.das
+    //! dispatcher) gates `SHOW_APP_CONSOLE` off the return value.
     let r = CONSOLE_REQUEST_CLOSE
     CONSOLE_REQUEST_CLOSE = false
     return r
@@ -77,9 +75,7 @@ def private add_log(line : string) {
 
 def private clear_log() {
     CONSOLE_ITEMS |> clear()
-    // Release per-row text-widget state along with the lines themselves —
-    // otherwise the indexed table retains entries up to past high-water
-    // marks (bounded but visible in snapshots after a Clear).
+    // Also release per-row text-widget state, else the indexed table retains stale entries after a Clear.
     CONSOLE_ITEM_TEXT |> clear()
 }
 
@@ -127,9 +123,7 @@ def private is_word_sep(c : int) : bool {
 def private text_edit_callback(var data : ImGuiInputTextCallbackData) : int {
     if (data.EventFlag == ImGuiInputTextFlags.CallbackCompletion) {
         // ----- TAB completion -----
-        // Snapshot the buffer as a daslang string (Buf is char*, ImGui keeps
-        // it valid for the callback's lifetime).
-        let buf_str = clone_string(data.Buf)
+        let buf_str = clone_string(data.Buf)  // Buf is char*, valid for the callback lifetime; snapshot as a daslang string
         let word_end = data.CursorPos
         var word_start = word_end
         peek_data(buf_str) $(arr) {
@@ -148,14 +142,12 @@ def private text_edit_callback(var data : ImGuiInputTextCallbackData) : int {
         if (empty(candidates)) {
             add_log("No match for \"{prefix}\"!")
         } elif (length(candidates) == 1) {
-            // Single match — replace the partial word with the full command
-            // (preserves canonical casing) and append a trailing space.
+            // Single match — replace the partial word with the full command (canonical casing) + trailing space.
             data |> DeleteChars(word_start, plen)
             InsertChars(data, data.CursorPos, candidates[0])
             InsertChars(data, data.CursorPos, " ")
         } else {
-            // Multiple matches — extend by the longest common prefix
-            // (case-insensitive), then list all candidates.
+            // Multiple matches — extend by the longest common prefix (case-insensitive), then list all.
             var match_len = plen
             var growing = true
             while (growing) {
@@ -229,10 +221,9 @@ def ShowExampleAppConsole() {
     window(CONSOLE_WIN, (text = "Example: Console", closable = false,
                           flags = ImGuiWindowFlags.None)) {
 
-        // Right-click on the title bar opens a "Close Console" menu. The
-        // selection sets CONSOLE_REQUEST_CLOSE; the caller polls via
-        // `take_close_request()` after this function returns and clears
-        // its own visibility toggle.
+        // Right-click the title bar opens a "Close Console" menu; the selection sets
+        // CONSOLE_REQUEST_CLOSE. The caller polls `take_close_request()` after this
+        // function returns and clears its own visibility toggle.
         popup_context_item(CONSOLE_TITLE_POPUP, (str_id = "", flags = ImGuiPopupFlags.MouseButtonRight)) {
             if (menu_item(CONSOLE_CLOSE_MENU, (text = "Close Console"))) {
                 CONSOLE_REQUEST_CLOSE = true

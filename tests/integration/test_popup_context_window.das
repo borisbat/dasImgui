@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
@@ -47,11 +48,9 @@ def test_popup_context_window_smoke(t : T?) {
                                            "last pick: New", 300),
                      "STATUS reflects 'New' after menu pick")
 
-        // Re-open + pick "Quit" — the case that used to race. ITEM_QUIT's registry entry persists from
-        // the first open, so wait_for_widget (exists-only) returns on the stale entry while the popup
-        // is still closed; the click then dispatches before the re-open paints and is dropped (no bbox
-        // that frame). wait_for_visible gates on rendered-this-frame, so it blocks until the popup is
-        // actually back on screen.
+        // Re-open + pick "Quit" — the case that used to race. ITEM_QUIT's registry entry persists
+        // from the first open, so wait_for_widget (exists-only) returns stale while the popup is
+        // closed and the click drops (no bbox). wait_for_visible gates on rendered-this-frame instead.
         right_click(d, "MAIN_WIN/LEAD")
         var snap_open2 = wait_for_visible(d, "MAIN_WIN/CTX/ITEM_QUIT", 5.0f)
         t |> success(snap_open2 != null, "ITEM_QUIT visible on re-open")

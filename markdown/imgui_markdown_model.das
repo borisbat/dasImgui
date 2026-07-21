@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 
 module imgui_markdown_model shared
@@ -50,10 +51,9 @@ struct public MdSelectionStyleAccumulator {
 }
 
 struct public MdSelectionExport {
-    //! Platform-neutral representations of one source-mapped selection.
-    //! All representations follow rendered inline runs (entities stay
-    //! transformed). Markdown syntax is reconstructed around partial styled
-    //! selections so copied bold/link text remains valid when pasted alone.
+    //! Platform-neutral representations of one source-mapped selection. All follow rendered inline
+    //! runs (entities stay transformed); Markdown syntax is reconstructed around partial styled
+    //! selections so copied bold/link text stays valid when pasted alone.
     plain_text : string
     markdown : string
     html : string
@@ -252,8 +252,7 @@ def private collect_inline(doc : RichDocument const; node_index : int;
     let next_strike = strike || node.kind == RichNodeKind.strikethrough
 
     if (node.kind == RichNodeKind.image) {
-        // Keep replaced content atomic in the public model. The image's child
-        // subtree is flattened only to obtain its accessible/plain-text alt.
+        // Keep replaced content atomic; the image's child subtree is flattened only for its plain-text alt.
         var alt_content = RichInlineContent()
         var child = node.first_child
         while (child >= 0) {
@@ -469,10 +468,9 @@ def private md_run_style_mask(run : RichInlineRun const) : int {
 def public md_inline_position(content : RichInlineContent const;
                               inline_node, display_byte : int;
                               trailing : bool = false) : RichTextPosition {
-    //! Convert a grapheme-boundary display caret to original Markdown bytes.
-    //! At a style boundary `trailing` selects the run on the left; otherwise
-    //! the run on the right is preferred. Transformed runs (for example an
-    //! entity displayed as one glyph) snap to the whole source token.
+    //! Convert a grapheme-boundary display caret to original Markdown bytes. At a style boundary
+    //! `trailing` selects the run on the left, else the right is preferred; transformed runs
+    //! (e.g. an entity displayed as one glyph) snap to the whole source token.
     if (empty(content.runs)) return RichTextPosition()
     let at = clamp(display_byte, 0, length(content.text))
     var chosen = -1

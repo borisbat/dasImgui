@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 
 module popups
@@ -133,11 +134,7 @@ def private PopupsSection() {
                     menu_label(POPUPS_STACKED_SUBMENU_CLICK,
                                (text = "Click me", shortcut = "",
                                 selected = false, enabled = true))
-                    // Deepest "Stacked Popup" — distinct IDENT pair so its
-                    // state global doesn't alias the outer level. ImGui's
-                    // popup-stack uses the str_id ("another popup") to track
-                    // the stack, so reusing the cpp string is fine; only the
-                    // das state ident must be unique per scope.
+                    // Deepest popup: ImGui tracks the stack by str_id (reusing "another popup" is fine); only the das state ident must be unique per scope.
                     if (button(POPUPS_DEEPEST_BTN, (text = "Stacked Popup"))) {
                         open_popup(POPUPS_DEEPEST_POPUP)
                     }
@@ -194,9 +191,7 @@ def private ContextMenusSection() {
                                  POPUPS_CTX1_SELECTED == n)) {
                 POPUPS_CTX1_SELECTED = n
             }
-            // BeginPopupContextItem() with no str_id binds to the previous
-            // item's ID. The boost container always takes a string — passing
-            // "" means "use last-item ID" (matches the C++ NULL semantics).
+            // popup_context_item with str_id="" binds to the previous item's ID (matches C++ BeginPopupContextItem NULL semantics).
             popup_context_item(POPUPS_CTX1_POPUP[n],
                                (str_id = "", flags = ImGuiPopupFlags.MouseButtonRight)) {
                 POPUPS_CTX1_SELECTED = n
@@ -230,13 +225,11 @@ def private ContextMenusSection() {
                 (id = "POPUPS_CTX2_DRAG", text = "##Value", speed = 0.1f))
         }
 
-        // Second text triggers the same popup via OpenPopupOnItemClick —
-        // string-id form since popup_context_item is stateless.
+        // Second text triggers the same popup via OpenPopupOnItemClick (string-id form, popup_context_item is stateless).
         text("(2) Or right-click this text")
         open_popup_on_item_click("my popup")
 
-        // Third trigger: a plain Button that manually opens the same popup
-        // via the stateless string-id form.
+        // Third trigger: a plain Button that opens the same popup via the stateless string-id form.
         if (button(POPUPS_CTX2_BTN, (text = "(3) Or click this button"))) {
             open_popup("my popup")
         }
@@ -249,11 +242,7 @@ def private ContextMenusSection() {
                     "a changing label + stable ID using the ### operator."))
             }
         }
-        // ### operator: label-before-### changes per frame, ID-after-### stays
-        // stable, so popup_context_item keeps binding to the same Button.
-        // The editable name lives in the input_text widget's `.value`; we
-        // read it for the dynamic label (and the C++ static-char-buffer
-        // round-trip falls away — v2 owns the buffer per-widget).
+        // ### operator: the label before ### changes per frame, the ID after ### stays stable, so the popup keeps binding to the same Button (dynamic label from input_text's .value).
         button(POPUPS_CTX3_BTN,
                (text = "Button: {POPUPS_CTX3_INPUT.value}###Button"))
         popup_context_item(POPUPS_CTX3_POPUP,
@@ -283,9 +272,7 @@ def private ModalsSection() {
         if (button(POPUPS_MODAL_DELETE_BTN, (text = "Delete.."))) {
             open_popup(POPUPS_MODAL_DELETE)
         }
-        // Center this window when appearing — compute the viewport center
-        // from Pos + Size * 0.5 (the C++ helper ImGuiViewport::GetCenter()
-        // isn't surfaced through the daslang binding).
+        // Center on appear: compute viewport center from Pos + Size*0.5 (ImGuiViewport::GetCenter() isn't surfaced through the binding).
         let vp = GetMainViewport()
         let vp_pos = vp.Pos
         let vp_size = vp.Size
@@ -330,9 +317,7 @@ def private ModalsSection() {
             text((text = "Hello from Stacked The First\n" +
                          "Using style.Colors[ImGuiCol_ModalWindowDimBg] behind it."))
 
-            // C++ inline combo + ColorEdit4 with raw bindings — keep them
-            // raw here too; this demonstrates that ordinary widgets inside
-            // a modal can still spawn their own regular popups.
+            // Raw combo + ColorEdit4: ordinary widgets inside a modal can still spawn their own regular popups.
             combo(POPUPS_MODAL_STACK1_COMBO,
                   (text = "Combo", init = 1,
                    items <- POPUPS_STACKED_COMBO_ITEMS))
@@ -343,9 +328,7 @@ def private ModalsSection() {
             if (button(POPUPS_MODAL_STACK2_BTN, (text = "Add another modal.."))) {
                 open_popup(POPUPS_MODAL_STACK2)
             }
-            // Stacked 2 — closable=true to demonstrate ImGui's X-button. The
-            // C++ passes &unused_open through to BeginPopupModal; v2 wires
-            // closable to state.open and X-button toggles it.
+            // Stacked 2: closable=true demonstrates ImGui's X-button (v2 wires closable to state.open; C++ passes &unused_open through BeginPopupModal).
             popup_modal(POPUPS_MODAL_STACK2,
                         (text = "Stacked 2", closable = true,
                          flags = ImGuiWindowFlags.None)) {

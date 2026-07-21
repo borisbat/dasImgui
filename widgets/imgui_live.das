@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
@@ -31,16 +32,9 @@ var public live_imgui_ctx : ImGuiContext?
 //! harness can drive it, and serialized across daslang-live reload alongside the context.
 var public live_imgui_gl : ImguiGlRenderer
 
-//! HDPI scale picked up from ``glfwGetWindowContentScale`` at init: 1.0 on a
-//! plain display, 2.0 on macOS retina, 1.25/1.5/2.0 on Windows DPI scaling.
-//! Set once inside :ref:`live_imgui_init <function-imgui_live_live_imgui_init>`
-//! (windowed path); stays at 1.0 in headless mode. User code can read this
-//! to scale custom drawing — line widths, viewport math, etc.
-//!
-//! Override at init by passing ``--imgui-content-scale=<float>`` after the
-//! daslang ``--`` separator. Used by :ref:`with_recording_app
-//! <function-imgui_playwright_with_recording_app>` to force 1x so APNG
-//! captures stay small and encoder-friendly even on retina.
+//! HDPI scale from ``glfwGetWindowContentScale`` at init (1.0 plain, 2.0 retina, 1.25–2.0 Windows DPI);
+//! set once in ``live_imgui_init`` (windowed), stays 1.0 headless. Read it to scale custom drawing.
+//! Override via ``--imgui-content-scale=<float>`` after ``--`` — with_recording_app forces 1x for small APNGs.
 var public live_imgui_content_scale : float = 1.0f
 
 // Lazy CLI-flag cache. `--imgui-content-scale=<float>` after `--` overrides
@@ -58,16 +52,9 @@ def private ensure_scale_parsed() {
 }
 
 def public live_imgui_init(window : GLFWwindow?) : ImGuiContext? {
-    //! Idempotent ImGui context create + backend init; safe across reload (reuses preserved ctx).
-    //! Picks content scale: ``--imgui-content-scale=<float>`` override wins;
-    //! otherwise queries ``glfwGetWindowContentScale``. Loads JetBrains Mono at
-    //! ``14 * scale`` px (crisp atlas) and applies the daslang theme. For the
-    //! auto-detected path it divides out the GL backend's framebuffer/window
-    //! ratio (``io.DisplayFramebufferScale``, already applied at render) so the
-    //! UI isn't double-scaled on macOS retina: ``ScaleAllSizes`` gets the residual
-    //! and ``io.FontGlobalScale`` compensates the oversized atlas. On Windows DPI
-    //! (framebuffer == window) and under an explicit override this is a no-op.
-    //! Call from your script's ``init()``.
+    //! Idempotent ImGui context create + backend init; reload-safe (reuses preserved ctx). Content scale:
+    //! ``--imgui-content-scale`` override else ``glfwGetWindowContentScale``; bakes JetBrains Mono at ``14*scale`` px.
+    //! Auto path divides out the GL fb/window ratio so retina isn't double-scaled (no-op on Windows DPI / override). Call from ``init()``.
     if (live_imgui_ctx != null) {
         SetCurrentContext(live_imgui_ctx)
         return live_imgui_ctx
@@ -91,13 +78,9 @@ def public live_imgui_init(window : GLFWwindow?) : ImGuiContext? {
         // Some backends report 0 if the monitor is unavailable; clamp so
         // we never divide visual sizes to nothing.
         live_imgui_content_scale = max(max(xs, ys), 1.0f)
-        // The GL backend already upscales the whole UI by framebuffer/window at
-        // render time (io.DisplayFramebufferScale). On macOS retina that ratio
-        // equals the content scale, so scaling the layout by content scale too
-        // double-counts it — the UI renders 2x too big. Divide the backend's
-        // ratio back out of the layout, and keep the font crisp by baking the
-        // atlas at full content-scale px while compensating with FontGlobalScale.
-        // On Windows DPI the framebuffer == window (ratio 1), so nothing changes.
+        // The GL backend already upscales the UI by framebuffer/window at render (io.DisplayFramebufferScale).
+        // On retina that ratio == content scale, so scaling layout by it too double-counts (UI 2x too big):
+        // divide the ratio back out, keep the font crisp by baking at full content-scale px + FontGlobalScale. Windows DPI: ratio 1, no-op.
         var fbw = 0
         var fbh = 0
         var winw = 0
@@ -120,10 +103,9 @@ def public live_imgui_init(window : GLFWwindow?) : ImGuiContext? {
     // pure-das GL renderer instead of the C++ ImGui_ImplOpenGL3_Init(glsl_version)
     imgui_gl_set_backend_flags()
     live_imgui_gl <- imgui_gl_create()
-    // Give the window a defined cursor from the instant it appears — the backend's
-    // per-frame UpdateMouseCursor only takes over from frame 1, and macOS won't
-    // refresh an inherited cursor until the mouse moves. Per-widget SetMouseCursor
-    // and the backend's resize/hand cursors still apply from the first frame on.
+    // Give the window a defined cursor from the instant it appears — the backend's per-frame
+    // UpdateMouseCursor only takes over from frame 1, and macOS won't refresh an inherited cursor until
+    // the mouse moves. Per-widget SetMouseCursor and the backend's resize/hand cursors still apply from frame 1.
     imgui_set_default_cursor(window)
     return live_imgui_ctx
 }
@@ -152,8 +134,7 @@ def private save_imgui_ctx() {
     var arch = Archive(reading = false, stream = ser)
     var ptr_val = unsafe(reinterpret<uint64>(live_imgui_ctx))
     arch |> serialize(ptr_val)
-    // the GL renderer's handles are valid across reload (the GL context persists); preserve them so the
-    // post-reload frames keep using the same program/buffers/textures instead of leaking + re-creating.
+    // GL renderer handles stay valid across reload (GL context persists); preserve them so post-reload frames reuse the same program/buffers/textures instead of leaking + re-creating.
     arch |> serialize(live_imgui_gl.program)
     arch |> serialize(live_imgui_gl.vao)
     arch |> serialize(live_imgui_gl.vbo)
@@ -189,10 +170,6 @@ def private restore_imgui_ctx() {
 
 [init]
 def private wire_glfw_real_input_toggle() {
-    // boost owns set_user_control + the synth tick but is backend-agnostic. It
-    // exposes register_real_input_toggle so a backend can suppress real input at
-    // the source. Here the windowed GLFW backend (native imgui_app) fills it, so
-    // set_user_control(false) detaches the GLFW input callbacks. Non-GLFW hosts
-    // simply never register, and user control then governs only synth ownership.
+    // boost owns set_user_control + the synth tick but is backend-agnostic; register_real_input_toggle lets the GLFW backend fill in, so set_user_control(false) detaches the GLFW input callbacks (non-GLFW hosts never register).
     register_real_input_toggle(@@(enabled : bool) { imgui_set_real_input_callbacks(enabled); })
 }

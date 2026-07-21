@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
@@ -31,11 +32,9 @@ def test_imgui_synth_keys_smoke(t : T?) {
                    "",
                    "NAME_INPUT.value initially empty")
 
-        // Focus then type via the ImGui-bypass path. Linux + macOS
-        // dispatch focus a frame later than Windows; settle on the
-        // payload's `focus` field before firing chars so they don't
-        // arrive ahead of the activation. Same shape as
-        // test_imgui_synth_ctrl_shortcuts.das:40-43.
+        // Focus then type via the ImGui-bypass path. Linux + macOS dispatch focus a frame later
+        // than Windows, so settle on the payload's `focus` field before firing chars — otherwise
+        // they arrive ahead of activation.
         focus(d, "MAIN_WIN/NAME_INPUT")
         let focused = wait_until(d, 120) $(var s) {
             return s?["globals"]?["MAIN_WIN/NAME_INPUT"]?["focus"] ?? false

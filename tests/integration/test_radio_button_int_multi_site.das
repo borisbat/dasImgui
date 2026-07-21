@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
@@ -39,10 +40,9 @@ def test_radio_int_per_site_targeting(t : T?) {
                        "{path}.kind == radio_button_int")
         }
 
-        // Gate 2: the three alias bboxes are distinct and ordered left-to-right
-        // (Easy, Normal, Hard are laid out with same_line). The bare path bbox is
-        // the LAST site (Hard), proving the aliases capture per-site geometry the
-        // shared entry can't.
+        // Gate 2: the three alias bboxes are distinct and ordered left-to-right (Easy/Normal/Hard
+        // laid out with same_line). The bare path bbox is the LAST site (Hard), proving the aliases
+        // capture per-site geometry the shared entry can't.
         let x0 = alias_x(snap0, 0)
         let x1 = alias_x(snap0, 1)
         let x2 = alias_x(snap0, 2)

@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 
 module app_log
@@ -69,10 +70,9 @@ def public clear_log() {
 // =============================================================================
 
 def ShowExampleAppLog() {
-    // Debug button row — header above the log proper. The C++ original
-    // uses two Begin()/End() pairs on the same window title to append to
-    // the existing log window; daslang's [container] window macro doesn't
-    // model that idiom, so the debug controls live inline at the top.
+    // Debug button row above the log proper. C++ uses two Begin()/End() pairs on
+    // the same window title to append; daslang's [container] window can't model
+    // that, so the debug controls live inline at the top.
     window(LOG_WIN, (text = "Example: Log", closable = false,
                       flags = ImGuiWindowFlags.None)) {
 
@@ -128,12 +128,9 @@ def ShowExampleAppLog() {
 
             with_style((ImGuiStyleVar.ItemSpacing, float2(0.0f, 0.0f))) {
                 if (!is_active(LOG_FILTER)) {
-                    // Filter inactive — clipper-cull the line range.
-                    // (Don't use `passes_filter("")` as the gate: an
-                    // exclude-only filter like `-error` has no include
-                    // terms, so `PassFilter("")` returns true even though
-                    // the filter is active — clipper path would then
-                    // render lines the user explicitly excluded.)
+                    // Filter inactive — clipper-cull the line range. Don't gate on
+                    // `passes_filter("")`: an exclude-only filter like `-error` has no
+                    // include terms, so PassFilter("") returns true and renders excluded lines.
                     list_clipper(length(LOG_ITEMS)) $(start, end_) {
                         for (i in range(start, end_)) {
                             text(LOG_ITEM_TEXT[i], (text = LOG_ITEMS[i]))

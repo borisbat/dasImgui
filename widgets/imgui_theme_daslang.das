@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 
 module imgui_theme_daslang shared
@@ -149,21 +150,19 @@ def public apply_daslang_theme() {
 }
 
 // ===== Font =====
-// JetBrains Mono lives at modules/dasImgui/font/. The .das file is one
-// level deeper (widgets/), so step up one dir then join "font/...". The
-// `get_this_module_dir()` macro returns the relocated dir for daspkg
-// release bundles (PR #2579 resolver), so this works in dev + bundle.
+
+// JetBrains Mono lives at modules/dasImgui/font/; the .das is one level deeper (widgets/), so step up
+// one dir then join "font/...". `get_this_module_dir()` returns the relocated dir for daspkg release
+// bundles (PR #2579 resolver), so this works in dev + bundle.
 
 def public daslang_font_ttf_path() : string {
-    //! Absolute path to the bundled ``JetBrainsMono-Regular.ttf`` —
-    //! resolved via :ref:`get_this_module_dir <function-module_path_get_this_module_dir>`
-    //! so daspkg-release standalone bundles pick up the relocated path.
-    //! Read directly if you want to feed your own ``AddFontFromFileTTF``
-    //! call (custom size / config / glyph ranges).
-    // On web the TTF is not on a real filesystem: `daspkg release wasm` embeds it into
-    // MEMFS at the fixed path declared by this module's .das_package release_embed_file.
-    // get_running_platform_name() (not get_platform_name, which const-folds to the
-    // compile host) so a cross-compiled in-browser exe resolves it too.
+    //! Absolute path to the bundled ``JetBrainsMono-Regular.ttf`` — resolved via ``get_this_module_dir``
+    //! so daspkg-release standalone bundles pick up the relocated path. Read it directly to feed your own
+    //! ``AddFontFromFileTTF`` (custom size / config / glyph ranges).
+
+    // On web the TTF isn't on a real filesystem: `daspkg release wasm` embeds it into MEMFS at the fixed
+    // path from this module's .das_package release_embed_file. Uses get_running_platform_name (not
+    // get_platform_name, which const-folds to the compile host) so a cross-compiled in-browser exe resolves it.
     if (get_running_platform_name() == "emscripten") {
         return "/modules/dasImgui/font/JetBrainsMono-Regular.ttf"
     }
@@ -171,13 +170,9 @@ def public daslang_font_ttf_path() : string {
 }
 
 def public load_daslang_font(size_px : float = 14.0f) : ImFont? {
-    //! Load JetBrains Mono into the current ImGui font atlas at
-    //! ``size_px``. Pass ``14 * content_scale`` for HDPI to keep the font
-    //! crisp instead of bilinear-upscaled by ``ImGuiIO.FontGlobalScale``.
-    //! Call once from ``init()`` *before* :ref:`apply_daslang_theme
-    //! <function-imgui_theme_daslang_apply_daslang_theme>`. Returns the
-    //! loaded ``ImFont?`` — null when the TTF is missing, in which case
-    //! ImGui silently falls back to ProggyClean.
+    //! Load JetBrains Mono into the current ImGui font atlas at ``size_px`` (pass ``14 * content_scale``
+    //! for HDPI to keep it crisp instead of upscaled by ``ImGuiIO.FontGlobalScale``). Call once from
+    //! ``init()`` *before* ``apply_daslang_theme``. Returns the ``ImFont?`` — null if the TTF is missing (ImGui falls back to ProggyClean).
     let ttf = daslang_font_ttf_path()
     var atlas & = unsafe(*GetIO().Fonts)
     return atlas |> AddFontFromFileTTF(ttf, size_px, null, null)

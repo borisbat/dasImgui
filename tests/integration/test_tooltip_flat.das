@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
@@ -31,10 +32,9 @@ def test_tooltip_flat_smoke(t : T?) {
         // unhovered (registered at module load), so it's always enumerable.
         t |> success(widget_exists(snap, "TOOLTIP_ON_BUTTON"),
                      "hover-gated tooltip registered (payload visible)")
-        // ...but it must report rendered=true only on the frames it actually shows. With no
-        // cursor over HOVER_BTN, its finalize is skipped, so the rendered-this-frame path key
-        // is absent. Guards the finalize-only-when-shown fix: a regression that finalizes the
-        // tooltip unconditionally would surface MAIN_WIN/TOOLTIP_ON_BUTTON as rendered here.
+        // ...but it reports rendered=true only on frames it actually shows: with no cursor over
+        // HOVER_BTN its finalize is skipped, so the rendered-this-frame key is absent. Guards the
+        // finalize-only-when-shown fix (unconditional finalize would surface it as rendered here).
         t |> success(!widget_rendered(snap, "MAIN_WIN/TOOLTIP_ON_BUTTON"),
                      "hover-gated tooltip not rendered while unhovered")
     }

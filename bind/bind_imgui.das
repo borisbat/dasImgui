@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 require cbind/cbind_boost
 require daslib/fio
 require daslib/defer

@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 
 module imgui_terminal shared
@@ -271,8 +272,7 @@ def private draw_terminal_selection(var dl : ImDrawList?;
 }
 
 def private batchable_ascii(cell : TerminalCell const) : bool {
-    // Text runs carry color only. Styled and linked ASCII stays on the sparse
-    // cell path so its attributes and OSC 8 metadata are not discarded.
+    // Styled/linked ASCII stays on the sparse-cell path so its attributes and OSC 8 metadata survive.
     if (cell.width != 1 || cell.attributes != 0 || cell.hyperlink != ""
             || length(cell.grapheme) != 1) {
         return false
@@ -328,9 +328,7 @@ def private draw_terminal_fallback_cells(var dl : ImDrawList?;
 
 def private selected_cell(cells : array<TerminalCell> const;
                           row, column, columns : int) : tuple<string; int> {
-    //! Full terminal snapshots are canonical dense row-major projections.
-    //! Preserve a defensive coordinate check so malformed external snapshots
-    //! still produce a blank cell instead of returning the wrong grapheme.
+    // Defensive coordinate check: a malformed external snapshot yields a blank cell, not a wrong grapheme.
     let index = row * columns + column
     if (index < 0 || index >= length(cells)) return (" ", 1)
     let cell = cells[index]

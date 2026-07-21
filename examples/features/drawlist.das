@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 
 require imgui/imgui_harness
 
@@ -115,10 +116,9 @@ def update() {
 
         text(DRAW_FG_LABEL, (text = "foreground swatch (overlays window):"))
     }
-    // Outside the window() block — primitives here have no DRAW_WIN/ container
-    // prefix. Foreground / background drawlists are viewport-level so they can
-    // be reached from anywhere inside the frame. Test asserts both nested (above)
-    // and unnested (here) primitives land in the registry.
+    // Outside window() — primitives here have no DRAW_WIN/ prefix. Foreground /
+    // background drawlists are viewport-level, reachable anywhere in the frame;
+    // the test asserts both nested and unnested primitives reach the registry.
     let vp_pos = GetMainViewport().Pos
     let vp_size = GetMainViewport().Size
     let red    = rgba(220u,  60u,  60u, 255u)

@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
@@ -47,11 +48,9 @@ var private mouse_playing    : bool  = false
 var private last_move_x : float = 0.0
 var private last_move_y : float = 0.0
 var private last_move_t : int   = -1
-// Frame-paced playback: when set, advance steps one t_ms-group per FRAME (t_ms read as
-// a frame index) instead of by wall-clock — so a drag delivers a per-frame cursor delta
-// regardless of frame rate. A wall-clock drag collapses press+move into a single frame
-// on a slow/stalled frame (the CI runner), landing a zero-delta gesture so a splitter
-// never moves. Mirrors key_frame_paced.
+// Frame-paced playback: advance steps one t_ms-group per FRAME (t_ms = frame index) instead of
+// wall-clock, so a drag delivers a per-frame cursor delta at any frame rate. A wall-clock drag
+// collapses press+move into one frame on a slow/stalled frame (CI), landing a zero-delta gesture. Mirrors key_frame_paced.
 var private mouse_frame_paced : bool = false
 var private mouse_frame_no    : int  = 0
 
@@ -120,10 +119,9 @@ struct MouseEventWire {
 
 struct MousePlayArgs {
     events : array<MouseEventWire>
-    // When true, t_ms is read as a FRAME index (one event-group per frame) instead of
-    // wall-clock ms — mirrors imgui_key_play's frame_paced. Keeps a drag robust on slow or
-    // stalled frames: each frame advances the gesture one step, so press and the following
-    // moves never collapse into one frame (which lands a zero-delta drag on a splitter).
+    // When true, t_ms is read as a FRAME index (one event-group per frame) not wall-clock ms —
+    // mirrors imgui_key_play's frame_paced. Keeps a drag robust on slow/stalled frames: each frame
+    // advances one step, so press and the following moves never collapse into a zero-delta drag.
     @optional frame_paced : bool = false
 }
 
@@ -221,9 +219,7 @@ def imgui_mouse_status(_input : JsonValue?) : JsonValue? {
 
 def private advance_mouse_timeline() {
     return if (!mouse_playing)
-    // Frame-paced gestures step one t_ms-group per frame; others use wall-clock. The lerp
-    // below interpolates by (now_ms - last_move_t)/span, so a frame-index `now_ms` makes it
-    // advance the cursor exactly one delta per frame — robust to any frame duration.
+    // Frame-paced gestures step one t_ms-group per frame (others wall-clock); the lerp below interpolates by (now_ms - last_move_t)/span, so a frame-index now_ms advances one cursor delta per frame.
     var now_ms = 0
     if (mouse_frame_paced) {
         now_ms = mouse_frame_no
@@ -274,7 +270,7 @@ def private advance_mouse_timeline() {
 // ---------------------------------------------------------------------------
 // Keyboard driver
 // ---------------------------------------------------------------------------
-//
+
 // State is keyed by ImGuiKey (int), NOT GLFW_KEY_*. ASCII translation tables
 // resolve characters to ImGuiKey values directly — io.AddKeyEvent receives
 // ImGuiKey, no GLFW indirection.
@@ -296,11 +292,9 @@ var private key_timeline    : array<KeyEvent>
 var private key_play_start  : float = 0.0
 var private key_play_idx    : int   = 0
 var private key_playing     : bool  = false
-// Chords advance one event-group per FRAME (t_ms read as a frame index), not by
-// wall-clock — so a discrete tap is held for exactly one frame and fires its
-// shortcut exactly once regardless of frame rate. A wall-clock hold spans a
-// variable frame count, which double-fired non-idempotent shortcuts (paste) on
-// fast/uncapped POSIX frames. Text playback keeps the wall-clock cadence.
+// Chords advance one event-group per FRAME (t_ms = frame index), not wall-clock, so a discrete tap
+// is held exactly one frame and fires once at any frame rate. A wall-clock hold spans a variable
+// frame count, which double-fired non-idempotent shortcuts (paste) on fast POSIX frames. Text keeps wall-clock.
 var private key_frame_paced : bool  = false
 var private key_frame_no    : int   = 0
 
@@ -333,11 +327,7 @@ def private needs_shift_ascii(c : int) : bool {
 }
 
 def private base_key_ascii(c : int) : int {
-    // Returns the ImGuiKey value (as int) for the base key producing `c` on a US layout.
-    // Shift handling layered on top in imgui_key_type; both letter cases share one ImGuiKey.
-    // ImGuiKey.A=546 .. ImGuiKey.Z=571 ; ImGuiKey._0=536 .. ImGuiKey._9=545 ;
-    // digit-prefixed enum values don't parse in daslang (`.0` reads as a
-    // float literal), so we anchor the digit base on `ImGuiKey.A - 10`.
+    // ImGuiKey (int) for the base key producing `c` on US layout. `.0` reads as a float literal in daslang so digit enums don't parse — anchor the digit base on `ImGuiKey.A - 10`.
     let key_a = int(ImGuiKey.A)
     let key_0 = key_a - 10
     if (c >= 'A' && c <= 'Z') return key_a + (c - 'A')   // nolint:PERF014
@@ -403,10 +393,9 @@ def imgui_key_type(input : JsonValue?) : JsonValue? {
             if (k != 0) {
                 key_timeline |> push(KeyEvent(t_ms = t, kind = KEKind.press, key = k))
             }
-            // Real backends emit a Char event only for printable codepoints; control
-            // chars arrive as a key alone (Enter -> '\n', Tab -> focus). Emitting the
-            // char too double-inserts in InputTextMultiline (the Enter key AND the 0x0A
-            // char each add a newline).
+            // Real backends emit a Char event only for printable codepoints; control chars arrive as
+            // a key alone (Enter -> '\n', Tab -> focus). Emitting the char too double-inserts in
+            // InputTextMultiline (the Enter key AND the 0x0A char each add a newline).
             if (cp >= 0x20u) {
                 key_timeline |> push(KeyEvent(t_ms = t, kind = KEKind.char_, codepoint = cp))
             }
@@ -447,16 +436,9 @@ def imgui_key_chord(input : JsonValue?) : JsonValue? {
     reset_key_timeline()
     key_frame_paced = true
     key_timeline |> reserve(length(args.mods) + 2)
-    // Frame-paced edges (t_ms = frame index): mods down (frame 0), target key down
-    // (frame 1), held CHORD_HOLD_FRAMES frames, target key up, mods up one frame later.
-    // Frame-pacing makes the hold a fixed FRAME count instead of a wall-clock span, so
-    // the editor's shortcut can't be stretched into a repeat / multi-frame level-trigger
-    // by a fast or stalled frame (the wall-clock hold double-pasted on POSIX; see the
-    // node-editor test_clipboard_tutorial regression). The hold is >1 frame so the
-    // editor reliably polls the chord-down state at least once regardless of where its
-    // input poll falls relative to our per-frame tick, but small enough to stay one
-    // discrete tap. synth_key_press auto-pairs the ImGuiMod_* alias so Shortcut() routing
-    // sees the chord (mirrors imgui_test_engine).
+    // Frame-paced edges (t_ms = frame index): mods down (frame 0), target key down (frame 1), held
+    // CHORD_HOLD_FRAMES, target up, mods up one frame later. Fixed frame count (not wall-clock) so a
+    // fast/stalled frame can't stretch it into a repeat (wall-clock double-pasted on POSIX). synth_key_press auto-pairs the ImGuiMod_* alias for Shortcut() routing.
     let CHORD_HOLD_FRAMES = 2
     var t = 0
     for (m in args.mods) {
@@ -486,13 +468,9 @@ struct KeyEventWire {
 
 struct KeyPlayArgs {
     events : array<KeyEventWire>
-    // When true, t_ms is read as a FRAME index (one event-group per frame) instead of
-    // wall-clock ms - the same pacing imgui_key_chord uses so a discrete tap is held for a
-    // fixed FRAME count and fires its shortcut exactly once regardless of frame rate. A
-    // wall-clock hold spans a variable number of frames, so on a slow frame (e.g. the
-    // recorder's synchronous-APNG capture) it crosses ImGui's key-repeat threshold and
-    // over-fires - one Tab cycling several fields. Use for non-ASCII discrete taps
-    // (Tab/Enter/arrows) that imgui_key_chord (ASCII-only) can't express.
+    // When true, t_ms is a FRAME index (one event-group per frame), not wall-clock ms — same pacing
+    // imgui_key_chord uses so a discrete tap fires once at any frame rate (a wall-clock hold crosses
+    // ImGui's key-repeat threshold on a slow frame). Use for non-ASCII taps (Tab/Enter/arrows) chord can't express.
     @optional frame_paced : bool = false
 }
 
@@ -592,7 +570,7 @@ def private advance_key_timeline() {
 // ---------------------------------------------------------------------------
 // Hook registration — plug the timeline playback into boost's per-frame tick.
 // ---------------------------------------------------------------------------
-//
+
 // The immediate primitives + the tick + user-control live in imgui_boost_runtime.
 // boost's imgui_synth_tick invokes our advance each frame and our stop on
 // set_user_control(true). advance_*_timeline call boost's synth_* primitives.

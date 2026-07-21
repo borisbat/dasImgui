@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
@@ -39,12 +40,9 @@ def test_key_hud_toggle(t : T?) {
 
 [test]
 def test_key_hud_signals_reachable(t : T?) {
-    //! `paint_key_hud` reads two signals from glfw_live: `synth_held_keys`
-    //! (size = key_status.held_count) for modifier-pill state, and
-    //! `synth_last_codepoint_t` (advances when a char event fires) for new
-    //! keycap traces. This test confirms both signals respond to the synth
-    //! driver — if `held_count` and `last_codepoint` both move, the HUD has
-    //! everything it needs to render correctly.
+    // paint_key_hud reads two glfw_live signals: synth_held_keys (size = key_status.held_count) for
+    // modifier pills, and synth_last_codepoint_t (advances on a char event) for keycap traces. This
+    // confirms both respond to the synth driver — if held_count and last_codepoint move, the HUD works.
     with_imgui_app(FEATURE) $(d) {
         var snap0 = wait_for_render(d, "MAIN_WIN/NAME_INPUT", 15.0f)
         if (snap0 == null) {
