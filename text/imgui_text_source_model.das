@@ -30,6 +30,17 @@ enum public TextSourceSyntaxStyle {
     punctuation
 }
 
+enum public TextSourceLineMarkKind {
+    added
+    removed
+    modified
+}
+
+struct public TextSourceLineMark {
+    line_index : int
+    kind : TextSourceLineMarkKind = TextSourceLineMarkKind.modified
+}
+
 struct public TextSourceSpan {
     source : TextSourceRange
     styles : TextSourceStyles
@@ -41,12 +52,18 @@ struct public TextSourceSpan {
 struct public TextSourceDocument {
     source : string
     spans : array<TextSourceSpan>
+    line_marks : array<TextSourceLineMark>
+    //! Optional display numbers per unwrapped visual line. Negative entries
+    //! reserve an aligned gap without drawing a number (side-by-side diffs).
+    line_numbers : array<int>
     revision : int = 0
     marker_count : int = 0
 }
 
 def public text_source_document_dispose(var document : TextSourceDocument) {
     delete document.spans
+    delete document.line_marks
+    delete document.line_numbers
     document = TextSourceDocument()
 }
 
@@ -98,8 +115,7 @@ def public markdown_source_document(source : string;
     //! intentionally not a second Markdown parser: it recognizes delimiter
     //! tokens while leaving all bytes visible. Structural MD4C parsing remains
     //! the authority for rendered Markdown.
-    var document = TextSourceDocument(revision = revision)
-    document.source := source
+    var document = TextSourceDocument(source = source, revision = revision)
     peek_data(source) $(bytes) {
         let n = length(bytes)
         var at = 0

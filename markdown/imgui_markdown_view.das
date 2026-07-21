@@ -1890,6 +1890,98 @@ def public markdown_view(id : string; doc : RichDocument const;
     return <- result
 }
 
+def private markdown_source_range_changed(source : TextSourceRange const;
+                                          ranges : array<TextSourceRange> const) : bool {
+    if (source.start_byte < 0 || source.end_byte <= source.start_byte
+            || empty(ranges)) return false
+    var lo = 0
+    var hi = length(ranges)
+    while (lo < hi) {
+        let mid = (lo + hi) / 2
+        if (ranges[mid].end_byte <= source.start_byte) {
+            lo = mid + 1
+        } else {
+            hi = mid
+        }
+    }
+    return (lo < length(ranges) && ranges[lo].start_byte < source.end_byte)
+}
+
+def private markdown_view_change_gutter_at(doc : RichDocument const;
+                                           state : MarkdownViewState const;
+                                           changed_ranges : array<TextSourceRange> const;
+                                           gutter_x, width : float;
+                                           color : float4) : int {
+    //! Paint a thin source-change marker beside every currently rendered rich
+    //! block whose source overlaps a changed range. Ranges must be sorted.
+    if (empty(changed_ranges)) return 0
+    var dl = GetWindowDrawList()
+    let window_pos = GetWindowPos()
+    let window_size = GetWindowSize()
+    let x0 = gutter_x
+    let x1 = x0 + max(1.0f, width)
+    let visible_top = window_pos.y
+    let visible_bottom = window_pos.y + window_size.y
+    let packed_color = GetColorU32(color)
+    var segments = 0
+    for (index in range(min(length(doc.nodes), length(state.nodes)))) {
+        let node & = unsafe(doc.nodes[index])
+        let cache & = unsafe(state.nodes[index])
+        if (!cache.layout_valid || cache.screen_revision != state.render_revision
+                || !markdown_source_range_changed(node.source, changed_ranges)) continue
+        let y0 = cache.screen_origin.y
+        let y1 = y0 + max(cache.layout.size.y, GetTextLineHeight())
+        if (y1 < visible_top || y0 > visible_bottom) continue
+        *dl |> AddRectFilled(float2(x0, y0), float2(x1, y1), packed_color,
+            0.0f, ImDrawFlags.None)
+        segments++
+    }
+    return segments
+}
+
+def public markdown_view_with_change_gutter(id : string;
+                                            doc : RichDocument const;
+                                            var state : MarkdownViewState;
+                                            var style : MarkdownViewStyle;
+                                            document_revision : int;
+                                            changed_ranges : array<TextSourceRange> const;
+                                            var gutter_segments : int&;
+                                            width : float = 2.0f;
+                                            color : float4 = float4(0.30f, 0.76f, 0.46f, 1.0f)) : MarkdownViewResult {
+    //! Reserve a dedicated strip before rich content and paint change markers
+    //! only inside it, so the gutter can never cover text.
+    let gutter_width = max(1.0f, width)
+    let gutter_space = gutter_width + max(4.0f, GetStyle().ItemSpacing.x)
+    let gutter_x = GetCursorScreenPos().x
+    Indent(gutter_space)
+    var result <- markdown_view(id, doc, state, style, document_revision)
+    Unindent(gutter_space)
+    gutter_segments = markdown_view_change_gutter_at(
+        doc, state, changed_ranges, gutter_x, gutter_width, color)
+    return <- result
+}
+
+def public markdown_view_current_layout_count(state : MarkdownViewState const) : int {
+    var count = 0
+    for (cache in state.nodes) {
+        if (cache.layout_valid && cache.screen_revision == state.render_revision) count++
+    }
+    return count
+}
+
+def public markdown_view_changed_layout_count(doc : RichDocument const;
+                                              state : MarkdownViewState const;
+                                              changed_ranges : array<TextSourceRange> const) : int {
+    var count = 0
+    for (index in range(min(length(doc.nodes), length(state.nodes)))) {
+        let node & = unsafe(doc.nodes[index])
+        let cache & = unsafe(state.nodes[index])
+        if (cache.layout_valid && cache.screen_revision == state.render_revision
+                && markdown_source_range_changed(node.source, changed_ranges)) count++
+    }
+    return count
+}
+
 def public markdown_view(id : string; doc : RichDocument const) : MarkdownViewResult {
     var style = MarkdownViewStyle()
     return <- markdown_view(id, doc, style)

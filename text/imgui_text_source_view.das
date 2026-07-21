@@ -59,9 +59,22 @@ struct public TextSourceViewStyle {
     syntax_punctuation_color : float4 = float4(0.62f, 0.65f, 0.70f, 1.0f)
     selection_color : float4 = float4(0.24f, 0.48f, 0.78f, 0.55f)
     caret_color : float4 = float4(0.92f, 0.92f, 0.94f, 1.0f)
+    added_line_color : float4 = float4(0.20f, 0.72f, 0.38f, 0.92f)
+    removed_line_color : float4 = float4(0.88f, 0.28f, 0.32f, 0.92f)
+    modified_line_color : float4 = float4(0.92f, 0.70f, 0.22f, 0.92f)
+    line_number_color : float4 = float4(0.48f, 0.50f, 0.55f, 1.0f)
+    line_mark_background_alpha : float = 0.0f
+    line_mark_width : float = 2.0f
     wrap : bool = false
     tab_cells : int = 4
     write_system_clipboard : bool = true
+}
+
+def private line_mark_color(kind : TextSourceLineMarkKind;
+                            style : TextSourceViewStyle const) : float4 {
+    if (kind == TextSourceLineMarkKind.added) return style.added_line_color
+    if (kind == TextSourceLineMarkKind.removed) return style.removed_line_color
+    return style.modified_line_color
 }
 
 struct public TextSourceCell {
@@ -89,6 +102,15 @@ struct public TextSourceViewState {
     layout_valid : bool = false
     layout : TextFlowLayout
     cells : array<TextSourceCell>
+    line_first_cell : array<int>
+    line_cell_count : array<int>
+    cells_first_line : int = -1
+    cells_last_line : int = -1
+    virtual_document_revision : int = -1
+    virtual_line_starts : array<int>
+    virtual_max_line_bytes : int
+    virtual_visible_syntax_runs : int
+    virtual_mode : bool
     screen_origin : float2
     screen_size : float2
 
@@ -177,6 +199,15 @@ def public text_source_view_invalidate(var state : TextSourceViewState) {
     delete state.layout.lines
     delete state.layout.fragments
     delete state.cells
+    delete state.line_first_cell
+    delete state.line_cell_count
+    delete state.virtual_line_starts
+    state.cells_first_line = -1
+    state.cells_last_line = -1
+    state.virtual_document_revision = -1
+    state.virtual_max_line_bytes = 0
+    state.virtual_visible_syntax_runs = 0
+    state.virtual_mode = false
     state.layout_valid = false
     state.key = TextSourceLayoutKey()
     text_source_view_clear_selection(state)
@@ -232,33 +263,60 @@ def private range_width(source : string; start_byte, end_byte, tab_cells : int;
 
 def private rebuild_cells(document : TextSourceDocument const;
                           var state : TextSourceViewState;
-                          var font : ImFont?) {
+                          var font : ImFont?;
+                          first_line, last_line : int) {
+    if (state.cells_first_line == first_line
+            && state.cells_last_line == last_line) return
     delete state.cells
-    for (fragment in state.layout.fragments) {
-        if (fragment.is_control) continue
-        var value := slice(document.source,
-            fragment.source.start_byte, fragment.source.end_byte)
-        var graphemes <- text_graphemes(value)
-        var x = fragment.rect.x
-        for (grapheme in graphemes) {
-            let start_byte = fragment.source.start_byte + grapheme.source.start_byte
-            let end_byte = fragment.source.start_byte + grapheme.source.end_byte
-            let columns = (grapheme.first_codepoint == 0x0009u
-                ? max(state.key.tab_cells, 1) : text_grapheme_cell_width(grapheme))
-            let width = float(columns) * state.key.cell_width
-            let natural_width = CalcTextSizeForFontRange(font, state.key.font_size,
-                document.source, length(document.source), start_byte, end_byte).x
-            state.cells |> push(TextSourceCell(
-                source = TextSourceRange(start_byte = start_byte, end_byte = end_byte),
-                style_id = fragment.style_id,
-                line_index = fragment.line_index,
-                rect = float4(x, fragment.rect.y, x + width, fragment.rect.w),
-                columns = columns,
-                natural_width = natural_width))
-            x += width
-        }
-        delete graphemes
+    delete state.line_first_cell
+    delete state.line_cell_count
+    state.line_first_cell |> resize(length(state.layout.lines))
+    state.line_cell_count |> resize(length(state.layout.lines))
+    state.cells |> reserve(max(0, last_line - first_line + 1) * 128)
+    for (line_index in range(length(state.layout.lines))) {
+        state.line_first_cell[line_index] = -1
+        state.line_cell_count[line_index] = 0
     }
+    if (first_line >= 0 && last_line >= first_line) {
+        for (line_index in range(first_line, min(last_line + 1,
+                                                length(state.layout.lines)))) {
+            let line = state.layout.lines[line_index]
+            for (fragment_index in range(line.first_fragment,
+                                         line.first_fragment + line.fragment_count)) {
+                let fragment = state.layout.fragments[fragment_index]
+                if (fragment.is_control) continue
+                var value := slice(document.source,
+                    fragment.source.start_byte, fragment.source.end_byte)
+                var graphemes <- text_graphemes(value)
+                var x = fragment.rect.x
+                for (grapheme in graphemes) {
+                    let start_byte = fragment.source.start_byte + grapheme.source.start_byte
+                    let end_byte = fragment.source.start_byte + grapheme.source.end_byte
+                    let columns = (grapheme.first_codepoint == 0x0009u
+                        ? max(state.key.tab_cells, 1) : text_grapheme_cell_width(grapheme))
+                    let width = float(columns) * state.key.cell_width
+                    let natural_width = CalcTextSizeForFontRange(font, state.key.font_size,
+                        document.source, length(document.source), start_byte, end_byte).x
+                    let cell_index = length(state.cells)
+                    state.cells |> push(TextSourceCell(
+                        source = TextSourceRange(start_byte = start_byte, end_byte = end_byte),
+                        style_id = fragment.style_id,
+                        line_index = fragment.line_index,
+                        rect = float4(x, fragment.rect.y, x + width, fragment.rect.w),
+                        columns = columns,
+                        natural_width = natural_width))
+                    if (state.line_first_cell[line_index] < 0) {
+                        state.line_first_cell[line_index] = cell_index
+                    }
+                    state.line_cell_count[line_index]++
+                    x += width
+                }
+                delete graphemes
+            }
+        }
+    }
+    state.cells_first_line = first_line
+    state.cells_last_line = last_line
 }
 
 def private ensure_layout(document : TextSourceDocument const;
@@ -289,28 +347,69 @@ def private ensure_layout(document : TextSourceDocument const;
     delete state.layout.lines
     delete state.layout.fragments
     var spans : array<TextFlowSpan>
+    spans |> reserve(length(document.spans))
     for (span in document.spans) {
         spans |> push(TextFlowSpan(source = span.source, style_id = style_id(span)))
     }
     state.layout <- layout_text_flow_styled_ranges(document.source, spans,
         key.max_width, key.line_height) $(text : string;
-          start_byte, end_byte, measured_style : int) : float {
+                                          start_byte, end_byte, measured_style : int) : float {
             return range_width(text, start_byte, end_byte,
                                key.tab_cells, key.cell_width)
         }
     delete spans
     state.key = key
     state.layout_valid = true
-    rebuild_cells(document, state, font)
+    state.cells_first_line = -1
+    state.cells_last_line = -1
     state.layout_misses++
 }
 
-def private line_for_y(state : TextSourceViewState const; y : float) : int {
-    for (i in range(length(state.layout.lines))) {
-        let line = state.layout.lines[i]
-        if (y >= line.y && y <= line.y + line.height) return i
+def private line_number_gutter_width(document : TextSourceDocument const;
+                                     style : TextSourceViewStyle const;
+                                     font : ImFont?; font_size : float) : float {
+    if (style.wrap || empty(document.line_numbers)) return 0.0f
+    var largest = 0
+    for (number in document.line_numbers) {
+        largest = max(largest, number)
     }
-    return -1
+    if (largest <= 0) return 0.0f
+    let number_text = "{largest}"
+    let text_width = CalcTextSizeForFontRange(
+        font, font_size, number_text, length(number_text), 0, length(number_text)).x
+    return text_width + max(8.0f, GetStyle().ItemSpacing.x)
+}
+
+def private draw_line_number(var dl : ImDrawList?; origin : float2;
+                             line_y, gutter_width : float; number : int;
+                             font : ImFont?; font_size : float;
+                             color : float4) {
+    if (number < 0 || gutter_width <= 0.0f) return
+    let number_text = "{number}"
+    let text_width = CalcTextSizeForFontRange(
+        font, font_size, number_text, length(number_text), 0, length(number_text)).x
+    let right_padding = max(4.0f, GetStyle().ItemSpacing.x * 0.5f)
+    *dl |> AddTextRange(font, font_size,
+        float2(origin.x + gutter_width - right_padding - text_width,
+            origin.y + line_y),
+        GetColorU32(color), number_text, length(number_text), 0, length(number_text))
+}
+
+def private line_for_y(state : TextSourceViewState const; y : float) : int {
+    var lo = 0
+    var hi = length(state.layout.lines)
+    while (lo < hi) {
+        let mid = (lo + hi) / 2
+        let line = state.layout.lines[mid]
+        if (line.y + line.height < y) {
+            lo = mid + 1
+        } else {
+            hi = mid
+        }
+    }
+    if (lo >= length(state.layout.lines)) return -1
+    let line = state.layout.lines[lo]
+    return y >= line.y && y <= line.y + line.height ? lo : -1
 }
 
 def private caret_for_byte(state : TextSourceViewState const; byte_offset : int) : TextFlowHit {
@@ -341,7 +440,15 @@ def private caret_for_byte(state : TextSourceViewState const; byte_offset : int)
 }
 
 def private hit_test(state : TextSourceViewState const; point : float2) : TextFlowHit {
-    for (cell_index in range(length(state.cells))) {
+    let line_index = line_for_y(state, point.y)
+    if (line_index < 0) return TextFlowHit()
+    let line = state.layout.lines[line_index]
+    let first_cell = (line_index < length(state.line_first_cell)
+        ? state.line_first_cell[line_index] : -1)
+    let cell_count = (line_index < length(state.line_cell_count)
+        ? state.line_cell_count[line_index] : 0)
+    for (offset in range(cell_count)) {
+        let cell_index = first_cell + offset
         let cell = state.cells[cell_index]
         if (point.x < cell.rect.x || point.x > cell.rect.z
                 || point.y < cell.rect.y || point.y > cell.rect.w) continue
@@ -352,22 +459,11 @@ def private hit_test(state : TextSourceViewState const; point : float2) : TextFl
             caret = float2(trailing ? cell.rect.z : cell.rect.x, cell.rect.y),
             height = cell.rect.w - cell.rect.y, trailing = trailing)
     }
-    let line_index = line_for_y(state, point.y)
-    if (line_index < 0) return TextFlowHit()
-    let line = state.layout.lines[line_index]
-    var first_cell = -1
-    var last_cell = -1
-    for (i in range(length(state.cells))) {
-        if (state.cells[i].line_index != line_index) continue
-        if (first_cell < 0) {
-            first_cell = i
-        }
-        last_cell = i
-    }
     if (first_cell < 0) {
         return TextFlowHit(valid = true, byte_offset = line.source.start_byte,
             line_index = line_index, caret = float2(0.0f, line.y), height = line.height)
     }
+    let last_cell = first_cell + cell_count - 1
     let before = point.x <= state.cells[first_cell].rect.x
     let cell = before ? state.cells[first_cell] : state.cells[last_cell]
     return TextFlowHit(valid = true,
@@ -472,25 +568,390 @@ def private selection_styles(document : TextSourceDocument const;
     return result
 }
 
+def private prepare_virtual_lines(document : TextSourceDocument const;
+                                  var state : TextSourceViewState) {
+    if (state.virtual_document_revision == document.revision) return
+    delete state.virtual_line_starts
+    state.virtual_line_starts |> push(0)
+    state.virtual_max_line_bytes = 0
+    var line_start = 0
+    peek_data(document.source) $(bytes) {
+        for (at in range(length(bytes))) {
+            if (int(bytes[at]) != '\n') continue
+            state.virtual_max_line_bytes = max(
+                state.virtual_max_line_bytes, at - line_start)
+            line_start = at + 1
+            if (line_start < length(bytes)) {
+                state.virtual_line_starts |> push(line_start)
+            }
+        }
+    }
+    state.virtual_max_line_bytes = max(state.virtual_max_line_bytes,
+        length(document.source) - line_start)
+    state.virtual_document_revision = document.revision
+}
+
+def private virtual_line_mark(document : TextSourceDocument const;
+                              line_index : int;
+                              var kind : TextSourceLineMarkKind&) : bool {
+    for (mark in document.line_marks) {
+        if (mark.line_index == line_index) {
+            kind = mark.kind
+            return true
+        }
+    }
+    return false
+}
+
+def private virtual_first_span(document : TextSourceDocument const;
+                               start_byte : int) : int {
+    var lo = 0
+    var hi = length(document.spans)
+    while (lo < hi) {
+        let mid = (lo + hi) / 2
+        if (document.spans[mid].source.end_byte <= start_byte) {
+            lo = mid + 1
+        } else {
+            hi = mid
+        }
+    }
+    return lo
+}
+
+def private virtual_line_end(document : TextSourceDocument const;
+                             state : TextSourceViewState const;
+                             line_index : int) : int {
+    var result = length(document.source)
+    if (line_index + 1 < length(state.virtual_line_starts)) {
+        result = max(state.virtual_line_starts[line_index],
+            state.virtual_line_starts[line_index + 1] - 1)
+    }
+    if (result > state.virtual_line_starts[line_index]
+            && slice(document.source, result - 1, result) == "\r") {
+        result--
+    }
+    return result
+}
+
+def private virtual_range_width(source : string; start_byte, end_byte : int;
+                                var font : ImFont?; font_size, cell_width : float;
+                                tab_cells : int) : float {
+    if (end_byte <= start_byte) return 0.0f
+    var width = 0.0f
+    peek_data(source) $(bytes) {
+        var text_start = start_byte
+        for (at in range(start_byte, end_byte)) {
+            if (int(bytes[at]) != '\t') continue
+            if (at > text_start) {
+                width += CalcTextSizeForFontRange(font, font_size, source, length(source),
+                    text_start, at).x
+            }
+            width += float(max(tab_cells, 1)) * cell_width
+            text_start = at + 1
+        }
+        if (text_start < end_byte) {
+            width += CalcTextSizeForFontRange(font, font_size, source, length(source),
+                text_start, end_byte).x
+        }
+    }
+    return width
+}
+
+def private draw_virtual_range(var dl : ImDrawList?; var font : ImFont?;
+                               font_size : float; origin : float2; color : float4;
+                               source : string; start_byte, end_byte : int;
+                               cell_width : float; tab_cells : int) : float {
+    if (end_byte <= start_byte) return 0.0f
+    var x = origin.x
+    peek_data(source) $(bytes) {
+        var text_start = start_byte
+        for (at in range(start_byte, end_byte)) {
+            if (int(bytes[at]) != '\t') continue
+            if (at > text_start) {
+                *dl |> AddTextRange(font, font_size, float2(x, origin.y),
+                    GetColorU32(color), source, length(source), text_start, at)
+                x += CalcTextSizeForFontRange(font, font_size, source, length(source),
+                    text_start, at).x
+            }
+            x += float(max(tab_cells, 1)) * cell_width
+            text_start = at + 1
+        }
+        if (text_start < end_byte) {
+            *dl |> AddTextRange(font, font_size, float2(x, origin.y),
+                GetColorU32(color), source, length(source), text_start, end_byte)
+            x += CalcTextSizeForFontRange(font, font_size, source, length(source),
+                text_start, end_byte).x
+        }
+    }
+    return x - origin.x
+}
+
+def private virtual_hit_byte(document : TextSourceDocument const;
+                             state : TextSourceViewState const;
+                             line_index : int; local_x : float;
+                             var font : ImFont?; font_size, cell_width : float;
+                             tab_cells : int) : int {
+    let start_byte = state.virtual_line_starts[line_index]
+    let end_byte = virtual_line_end(document, state, line_index)
+    if (local_x <= 0.0f || end_byte <= start_byte) return start_byte
+    let value = slice(document.source, start_byte, end_byte)
+    var graphemes <- text_graphemes(value)
+    var x = 0.0f
+    var result = end_byte
+    for (grapheme in graphemes) {
+        let grapheme_start = start_byte + grapheme.source.start_byte
+        let grapheme_end = start_byte + grapheme.source.end_byte
+        let width = (grapheme.first_codepoint == 0x0009u
+            ? float(max(tab_cells, 1)) * cell_width
+            : CalcTextSizeForFontRange(font, font_size,
+                document.source, length(document.source),
+                grapheme_start, grapheme_end).x)
+        if (local_x < x + width * 0.5f) {
+            result = grapheme_start
+            break
+        }
+        if (local_x < x + width) {
+            result = grapheme_end
+            break
+        }
+        x += width
+    }
+    delete graphemes
+    return result
+}
+
+def private text_source_virtual_view(id : string;
+                                     document : TextSourceDocument const;
+                                     var state : TextSourceViewState;
+                                     var style : TextSourceViewStyle) : TextSourceViewResult {
+    var result = TextSourceViewResult()
+    prepare_virtual_lines(document, state)
+    state.virtual_mode = true
+    state.virtual_visible_syntax_runs = 0
+    state.render_revision++
+    state.selection_changed = false
+    state.selection_screen_valid = false
+    state.caret_screen_valid = false
+    var fallback = GetFont()
+    var font = source_font(style, fallback)
+    let zoom = source_zoom(style)
+    let font_size = (style.fonts.size_px > 0.0f
+        ? style.fonts.size_px : GetFontSize()) * zoom
+    let line_height = max(font_size,
+        GetTextLineHeight() * font_size / max(GetFontSize(), 1.0f))
+    let cell_width = max(1.0f,
+        CalcTextSizeForFontRange(font, font_size, "M", 1, 0, 1).x)
+    let number_width = line_number_gutter_width(
+        document, style, font, font_size)
+    let gutter_width = (!empty(document.line_marks)
+        ? max(1.0f, style.line_mark_width * zoom) : 0.0f)
+    let mark_space = (gutter_width > 0.0f
+        ? gutter_width + max(4.0f, GetStyle().ItemSpacing.x) : 0.0f)
+    let gutter_space = number_width + mark_space
+    let available = max(GetContentRegionAvail().x - gutter_space, 1.0f)
+    let content_width = max(available,
+        float(state.virtual_max_line_bytes) * cell_width)
+    let initial_origin = GetCursorScreenPos()
+    state.screen_origin = initial_origin + float2(gutter_space, 0.0f)
+    state.screen_size = float2(content_width,
+        float(length(state.virtual_line_starts)) * line_height)
+    let local_mouse = GetMousePos() - state.screen_origin
+    var hit_byte = -1
+    if (!empty(state.virtual_line_starts)
+            && (IsWindowHovered(ImGuiHoveredFlags.None)
+                || state.selection_dragging)) {
+        let hit_line = clamp(int(floor(local_mouse.y / line_height)),
+            0, length(state.virtual_line_starts) - 1)
+        hit_byte = virtual_hit_byte(document, state, hit_line,
+            local_mouse.x, font, font_size, cell_width, style.tab_cells)
+    }
+    if (hit_byte >= 0 && IsWindowHovered(ImGuiHoveredFlags.None)
+            && IsMouseClicked(ImGuiMouseButton.Left, false)) {
+        state.anchor_byte = hit_byte
+        state.focus_byte = hit_byte
+        state.selection_dragging = true
+        state.selection_changed = true
+        state.selection_revision++
+    } elif (hit_byte >= 0 && state.selection_dragging
+            && IsMouseDown(ImGuiMouseButton.Left)) {
+        if (state.focus_byte != hit_byte) {
+            state.focus_byte = hit_byte
+            state.selection_changed = true
+            state.selection_revision++
+        }
+    }
+    if (state.selection_dragging && IsMouseReleased(ImGuiMouseButton.Left)) {
+        state.selection_dragging = false
+        state.selection_commit_revision++
+    }
+    let selection = selected_source(state)
+    let has_selection = (selection.start_byte >= 0
+        && selection.end_byte > selection.start_byte)
+    var dl = GetWindowDrawList()
+    PushID(id)
+    unsafe {
+        var clipper = ImGuiListClipper()
+        clipper |> Begin(length(state.virtual_line_starts), line_height)
+        while (clipper |> Step()) {
+            for (line_index in range(clipper.DisplayStart, clipper.DisplayEnd)) {
+                let row_origin = GetCursorScreenPos()
+                Dummy(float2(content_width + gutter_space, line_height))
+                let start_byte = state.virtual_line_starts[line_index]
+                let end_byte = virtual_line_end(document, state, line_index)
+                var mark_kind : TextSourceLineMarkKind
+                if (virtual_line_mark(document, line_index, mark_kind)) {
+                    let color = line_mark_color(mark_kind, style)
+                    if (style.line_mark_background_alpha > 0.0f) {
+                        var background = color
+                        background.w = style.line_mark_background_alpha
+                        *dl |> AddRectFilled(row_origin,
+                            row_origin + float2(content_width + gutter_space, line_height),
+                            GetColorU32(background), 0.0f, ImDrawFlags.None)
+                    }
+                    *dl |> AddRectFilled(
+                        float2(row_origin.x + number_width, row_origin.y),
+                        float2(row_origin.x + number_width + gutter_width,
+                            row_origin.y + line_height),
+                        GetColorU32(color), 0.0f, ImDrawFlags.None)
+                }
+                if (line_index < length(document.line_numbers)) {
+                    draw_line_number(dl, row_origin, 0.0f, number_width,
+                        document.line_numbers[line_index], font, font_size,
+                        style.line_number_color)
+                }
+                if (has_selection && selection.end_byte > start_byte
+                        && selection.start_byte < end_byte) {
+                    let selected_start = max(start_byte, selection.start_byte)
+                    let selected_end = min(end_byte, selection.end_byte)
+                    let selected_x0 = (row_origin.x + gutter_space
+                        + virtual_range_width(document.source, start_byte, selected_start,
+                            font, font_size, cell_width, style.tab_cells))
+                    let selected_x1 = (row_origin.x + gutter_space
+                        + virtual_range_width(document.source, start_byte, selected_end,
+                            font, font_size, cell_width, style.tab_cells))
+                    let selected_p0 = float2(selected_x0, row_origin.y)
+                    let selected_p1 = float2(max(selected_x0 + 1.0f, selected_x1),
+                        row_origin.y + line_height)
+                    *dl |> AddRectFilled(selected_p0, selected_p1,
+                        GetColorU32(style.selection_color),
+                        1.0f * zoom, ImDrawFlags.None)
+                    include_selection_rect(state,
+                        float4(selected_p0.x, selected_p0.y,
+                            selected_p1.x, selected_p1.y))
+                }
+                var x = row_origin.x + gutter_space
+                var span_index = virtual_first_span(document, start_byte)
+                while (span_index < length(document.spans)
+                        && document.spans[span_index].source.start_byte < end_byte) {
+                    let span = document.spans[span_index]
+                    let run_start = max(start_byte, span.source.start_byte)
+                    let run_end = min(end_byte, span.source.end_byte)
+                    if (run_end > run_start) {
+                        let run_style = style_id(span)
+                        x += draw_virtual_range(dl, font, font_size,
+                            float2(x, row_origin.y), source_color(run_style, style),
+                            document.source, run_start, run_end,
+                            cell_width, style.tab_cells)
+                        if (run_style > SOURCE_STYLE_MARKER) {
+                            state.virtual_visible_syntax_runs++
+                        }
+                    }
+                    span_index++
+                }
+            }
+        }
+        clipper |> End()
+    }
+    let copy_requested = state.selection_copy_pending
+    state.selection_copy_pending = false
+    if (has_selection && copy_requested) {
+        result.selection_copy_requested = true
+        result.selection_copy_text := slice(document.source,
+            selection.start_byte, selection.end_byte)
+        state.selection_copy_text := result.selection_copy_text
+        state.selection_copy_revision++
+        if (style.write_system_clipboard) {
+            result.selection_copied = (clipboard_set_text(result.selection_copy_text)
+                == ClipboardStatus.ok)
+        }
+    }
+    if (has_selection && hit_byte >= selection.start_byte
+            && hit_byte <= selection.end_byte
+            && IsMouseReleased(ImGuiMouseButton.Right)) {
+        result.selection_context_requested = true
+        result.selection_context_pos = GetMousePos()
+        state.selection_context_pos = result.selection_context_pos
+        state.selection_context_revision++
+    }
+    result.selection_changed = state.selection_changed
+    result.selection = TextSourceSelection(
+        active = has_selection,
+        source = selection,
+        styles = selection_styles(document, selection),
+        screen_valid = state.selection_screen_valid,
+        screen_bounds = state.selection_screen_bounds,
+        screen_anchor = state.selection_screen_anchor)
+    PopID()
+    return <- result
+}
+
 def public text_source_view(id : string; document : TextSourceDocument const;
                             var state : TextSourceViewState;
                             var style : TextSourceViewStyle) : TextSourceViewResult {
+    if (!style.wrap && length(document.source) >= 128 * 1024) {
+        return <- text_source_virtual_view(id, document, state, style)
+    }
+    state.virtual_mode = false
     var result = TextSourceViewResult()
     var fallback = GetFont()
     var font = source_font(style, fallback)
-    let available = max(GetContentRegionAvail().x, 1.0f)
+    let zoom = source_zoom(style)
+    let font_size = (style.fonts.size_px > 0.0f
+        ? style.fonts.size_px : GetFontSize()) * zoom
+    let number_width = line_number_gutter_width(
+        document, style, font, font_size)
+    let gutter_width = (!empty(document.line_marks)
+        ? max(1.0f, style.line_mark_width * zoom) : 0.0f)
+    let mark_space = (gutter_width > 0.0f
+        ? gutter_width + max(4.0f, GetStyle().ItemSpacing.x) : 0.0f)
+    let gutter_space = number_width + mark_space
+    let available = max(GetContentRegionAvail().x - gutter_space, 1.0f)
     ensure_layout(document, state, style, available, font)
     state.render_revision++
     state.selection_changed = false
     state.selection_screen_valid = false
     state.caret_screen_valid = false
 
-    let origin = GetCursorScreenPos()
+    let gutter_origin = GetCursorScreenPos()
+    let origin = gutter_origin + float2(gutter_space, 0.0f)
     state.screen_origin = origin
     state.screen_size = float2(max(available, state.layout.size.x),
         max(state.key.line_height, state.layout.size.y))
     PushID(id)
-    Dummy(state.screen_size)
+    Dummy(float2(state.screen_size.x + gutter_space, state.screen_size.y))
+
+    let window_pos = GetWindowPos()
+    let window_size = GetWindowSize()
+    let visible_min = window_pos
+    let visible_max = window_pos + window_size
+    let local_visible_top = visible_min.y - origin.y
+    let local_visible_bottom = visible_max.y - origin.y
+    var first_visible_line = line_for_y(state, max(0.0f, local_visible_top))
+    var last_visible_line = line_for_y(state, max(0.0f, local_visible_bottom))
+    if (!empty(state.layout.lines)) {
+        if (first_visible_line < 0) {
+            first_visible_line = (local_visible_top <= 0.0f
+                ? 0 : length(state.layout.lines) - 1)
+        }
+        if (last_visible_line < 0) {
+            last_visible_line = (local_visible_bottom <= 0.0f
+                ? 0 : length(state.layout.lines) - 1)
+        }
+        first_visible_line = max(0, first_visible_line - 2)
+        last_visible_line = min(length(state.layout.lines) - 1,
+                                last_visible_line + 2)
+    }
+    rebuild_cells(document, state, font, first_visible_line, last_visible_line)
 
     let local_mouse = GetMousePos() - origin
     let hit = hit_test(state, local_mouse)
@@ -518,12 +979,46 @@ def public text_source_view(id : string; document : TextSourceDocument const;
     let has_selection = (selection.start_byte >= 0
         && selection.end_byte > selection.start_byte)
     var dl = GetWindowDrawList()
-    let zoom = source_zoom(style)
-    let window_pos = GetWindowPos()
-    let window_size = GetWindowSize()
-    let visible_min = window_pos
-    let visible_max = window_pos + window_size
-    for (cell in state.cells) {
+    for (mark in document.line_marks) {
+        if (mark.line_index < 0 || mark.line_index >= length(state.layout.lines)) continue
+        let line = state.layout.lines[mark.line_index]
+        let p0 = gutter_origin + float2(0.0f, line.y)
+        let p1 = origin + float2(state.screen_size.x, line.y + line.height)
+        if (p1.y < visible_min.y || p0.y > visible_max.y) continue
+        let color = line_mark_color(mark.kind, style)
+        if (style.line_mark_background_alpha > 0.0f) {
+            var background = color
+            background.w = style.line_mark_background_alpha
+            *dl |> AddRectFilled(p0, p1, GetColorU32(background), 0.0f, ImDrawFlags.None)
+        }
+        *dl |> AddRectFilled(float2(p0.x + number_width, p0.y),
+            float2(p0.x + number_width + gutter_width, p1.y),
+            GetColorU32(color), 0.0f, ImDrawFlags.None)
+    }
+    if (number_width > 0.0f) {
+        for (line_index in range(min(length(document.line_numbers),
+                length(state.layout.lines)))) {
+            let line = state.layout.lines[line_index]
+            let p0 = gutter_origin + float2(0.0f, line.y)
+            if (p0.y + line.height < visible_min.y || p0.y > visible_max.y) continue
+            draw_line_number(dl, gutter_origin, line.y, number_width,
+                document.line_numbers[line_index], font, state.key.font_size,
+                style.line_number_color)
+        }
+    }
+    var first_visible_cell = 0
+    var visible_hi = length(state.cells)
+    while (first_visible_cell < visible_hi) {
+        let mid = (first_visible_cell + visible_hi) / 2
+        if (state.cells[mid].rect.w < local_visible_top) {
+            first_visible_cell = mid + 1
+        } else {
+            visible_hi = mid
+        }
+    }
+    for (cell_index in range(first_visible_cell, length(state.cells))) {
+        let cell = state.cells[cell_index]
+        if (cell.rect.y > local_visible_bottom) break
         let p0 = origin + float2(cell.rect.x, cell.rect.y)
         let p1 = origin + float2(cell.rect.z, cell.rect.w)
         if (p1.x < visible_min.x || p0.x > visible_max.x
