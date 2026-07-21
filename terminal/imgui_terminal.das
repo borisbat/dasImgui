@@ -169,10 +169,22 @@ def private draw_terminal_background_runs(var dl : ImDrawList?;
         if (display_row < 0 || display_row >= state.rows) continue
         var run_first = -1
         var run_color = style.background
+        var wide_until = -1
+        var wide_color = style.background
         for (column in range(columns + 1)) {
             var color = style.background
             if (column < columns) {
-                color = effective_background(cells[row * columns + column], style)
+                let cell = cells[row * columns + column]
+                if (cell.width > 1) {
+                    color = effective_background(cell, style)
+                    wide_until = min(columns, column + cell.width)
+                    wide_color = color
+                } elif (cell.width == 0 && column < wide_until) {
+                    color = wide_color
+                } else {
+                    color = effective_background(cell, style)
+                    wide_until = -1
+                }
             }
             if (color != style.background) {
                 state.paint_background_cells++
