@@ -115,8 +115,7 @@ def public markdown_source_document(source : string;
     //! intentionally not a second Markdown parser: it recognizes delimiter
     //! tokens while leaving all bytes visible. Structural MD4C parsing remains
     //! the authority for rendered Markdown.
-    var document = TextSourceDocument(revision = revision)
-    document.source := source
+    var document = TextSourceDocument(source = source, revision = revision)
     peek_data(source) $(bytes) {
         let n = length(bytes)
         var at = 0

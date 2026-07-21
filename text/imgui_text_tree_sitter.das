@@ -50,9 +50,16 @@ def private push_source_syntax_span(var document : TextSourceDocument;
         syntax_style = style))
 }
 
+def private ascii_upper(value : int) : bool {
+    return value >= 'A' && value <= 'Z' // nolint:PERF014
+}
+
+def private ascii_lower(value : int) : bool {
+    return value >= 'a' && value <= 'z' // nolint:PERF014
+}
+
 def private das_identifier_start(value : int) : bool {
-    return (value == '_' || value >= 'A' && value <= 'Z'
-        || value >= 'a' && value <= 'z')
+    return value == '_' || ascii_upper(value) || ascii_lower(value)
 }
 
 def private das_identifier_continue(value : int) : bool {
@@ -326,11 +333,10 @@ def private json_lexical_source_document(source : string;
                     TextSourceSyntaxStyle.number)
                 continue
             }
-            if (value >= 'a' && value <= 'z') {
+            if (ascii_lower(value)) {
                 let start = at
                 at++
-                while (at < length(bytes) && int(bytes[at]) >= 'a'
-                        && int(bytes[at]) <= 'z') {
+                while (at < length(bytes) && ascii_lower(int(bytes[at]))) {
                     at++
                 }
                 let word = slice(source, start, at)
