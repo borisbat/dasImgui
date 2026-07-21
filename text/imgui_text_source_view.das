@@ -633,6 +633,59 @@ def private virtual_line_end(document : TextSourceDocument const;
     return result
 }
 
+def private virtual_range_width(source : string; start_byte, end_byte : int;
+                                var font : ImFont?; font_size, cell_width : float;
+                                tab_cells : int) : float {
+    if (end_byte <= start_byte) return 0.0f
+    var width = 0.0f
+    peek_data(source) $(bytes) {
+        var text_start = start_byte
+        for (at in range(start_byte, end_byte)) {
+            if (int(bytes[at]) != '\t') continue
+            if (at > text_start) {
+                width += CalcTextSizeForFontRange(font, font_size, source, length(source),
+                    text_start, at).x
+            }
+            width += float(max(tab_cells, 1)) * cell_width
+            text_start = at + 1
+        }
+        if (text_start < end_byte) {
+            width += CalcTextSizeForFontRange(font, font_size, source, length(source),
+                text_start, end_byte).x
+        }
+    }
+    return width
+}
+
+def private draw_virtual_range(var dl : ImDrawList?; var font : ImFont?;
+                               font_size : float; origin : float2; color : float4;
+                               source : string; start_byte, end_byte : int;
+                               cell_width : float; tab_cells : int) : float {
+    if (end_byte <= start_byte) return 0.0f
+    var x = origin.x
+    peek_data(source) $(bytes) {
+        var text_start = start_byte
+        for (at in range(start_byte, end_byte)) {
+            if (int(bytes[at]) != '\t') continue
+            if (at > text_start) {
+                *dl |> AddTextRange(font, font_size, float2(x, origin.y),
+                    GetColorU32(color), source, length(source), text_start, at)
+                x += CalcTextSizeForFontRange(font, font_size, source, length(source),
+                    text_start, at).x
+            }
+            x += float(max(tab_cells, 1)) * cell_width
+            text_start = at + 1
+        }
+        if (text_start < end_byte) {
+            *dl |> AddTextRange(font, font_size, float2(x, origin.y),
+                GetColorU32(color), source, length(source), text_start, end_byte)
+            x += CalcTextSizeForFontRange(font, font_size, source, length(source),
+                text_start, end_byte).x
+        }
+    }
+    return x - origin.x
+}
+
 def private virtual_hit_byte(document : TextSourceDocument const;
                              state : TextSourceViewState const;
                              line_index : int; local_x : float;
@@ -771,13 +824,11 @@ def private text_source_virtual_view(id : string;
                     let selected_start = max(start_byte, selection.start_byte)
                     let selected_end = min(end_byte, selection.end_byte)
                     let selected_x0 = (row_origin.x + gutter_space
-                        + CalcTextSizeForFontRange(font, font_size,
-                            document.source, length(document.source),
-                            start_byte, selected_start).x)
+                        + virtual_range_width(document.source, start_byte, selected_start,
+                            font, font_size, cell_width, style.tab_cells))
                     let selected_x1 = (row_origin.x + gutter_space
-                        + CalcTextSizeForFontRange(font, font_size,
-                            document.source, length(document.source),
-                            start_byte, selected_end).x)
+                        + virtual_range_width(document.source, start_byte, selected_end,
+                            font, font_size, cell_width, style.tab_cells))
                     let selected_p0 = float2(selected_x0, row_origin.y)
                     let selected_p1 = float2(max(selected_x0 + 1.0f, selected_x1),
                         row_origin.y + line_height)
@@ -797,11 +848,10 @@ def private text_source_virtual_view(id : string;
                     let run_end = min(end_byte, span.source.end_byte)
                     if (run_end > run_start) {
                         let run_style = style_id(span)
-                        *dl |> AddTextRange(font, font_size, float2(x, row_origin.y),
-                            GetColorU32(source_color(run_style, style)),
-                            document.source, length(document.source), run_start, run_end)
-                        x += CalcTextSizeForFontRange(font, font_size,
-                            document.source, length(document.source), run_start, run_end).x
+                        x += draw_virtual_range(dl, font, font_size,
+                            float2(x, row_origin.y), source_color(run_style, style),
+                            document.source, run_start, run_end,
+                            cell_width, style.tab_cells)
                         if (run_style > SOURCE_STYLE_MARKER) {
                             state.virtual_visible_syntax_runs++
                         }
