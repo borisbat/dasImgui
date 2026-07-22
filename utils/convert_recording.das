@@ -160,8 +160,7 @@ def main : int {
     // inputs: 0 = video (forced CFR via -r), 1 = music bed, 2+ = voiceover wavs ("-i" <path>, order)
     let vo_inputs <- [for (k in range(n_vo * 2)); k % 2 == 0 ? "-i" : path_join(vo_dir, sc.voiceovers[k / 2].wav)]
     var fargs <- ["ffmpeg", "-y", "-r", "{fps_eff}", "-i", cfg.apng, "-i", music_wav]
-    fargs |> push_from(vo_inputs)
-    fargs |> push_from(["-filter_complex", fg, "-map", "0:v", "-map", "[aout]",
+    fargs |> push_from(vo_inputs, ["-filter_complex", fg, "-map", "0:v", "-map", "[aout]",
         "-c:v", "libx264", "-preset", cfg.preset, "-crf", "{cfg.crf}", "-pix_fmt", "yuv420p",
         "-movflags", "+faststart", "-shortest", out_mp4])
 

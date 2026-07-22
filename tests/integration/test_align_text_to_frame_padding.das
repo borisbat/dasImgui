@@ -8,7 +8,6 @@ require dastest/testing_boost public
 require imgui/imgui_playwright public
 require daslib/json public
 require daslib/json_boost public
-require math
 
 //! Integration smoke for `align_text_to_frame_padding` — vertically aligns
 //! the next text() baseline with a framed sibling (button/input/slider) on

@@ -52,7 +52,7 @@ def test_key_hud_signals_reachable(t : T?) {
 
         // Held-keys signal: press Shift, verify held_count rises.
         post_command(d, "key_press", JV((keycode = 340)))   // GLFW_KEY_LEFT_SHIFT
-        let held = wait_until(d, 180) $(var snap) {
+        let held = wait_until(d, 180) $(var _snap) {
             let s = post_command(d, "key_status", null)
             return (s?["held_count"] ?? 0) >= 1
         }
@@ -61,7 +61,7 @@ def test_key_hud_signals_reachable(t : T?) {
 
         // Codepoint signal: type one char, verify last_codepoint advances.
         post_command(d, "key_type", JV((text = "x", per_char_ms = 30)))
-        let typed = wait_until(d, 180) $(var snap) {
+        let typed = wait_until(d, 180) $(var _snap) {
             let s = post_command(d, "key_status", null)
             return (s?["last_codepoint"] ?? 0u) == uint('x')
         }

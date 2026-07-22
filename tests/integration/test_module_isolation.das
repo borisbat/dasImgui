@@ -8,7 +8,6 @@ require dastest/testing_boost public
 require daslib/fio
 require daslib/module_path
 require strings
-require math
 
 //! Source-level audit: `widgets/imgui_visual_aids.das` must not directly
 //! require any GLFW module. The Vulkan-backed ImGui case must work without

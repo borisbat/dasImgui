@@ -29,7 +29,6 @@ module imgui_harness_lint shared private
 //! same convention as ``imgui_lint.das``.
 
 require daslib/ast_boost
-require strings
 
 let private FORBIDDEN_MODULES : table<string> <- {
     "glfw_boost", "opengl_boost", "glfw_live", "opengl_live", "imgui_live"

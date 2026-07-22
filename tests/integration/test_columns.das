@@ -8,7 +8,6 @@ require dastest/testing_boost public
 require imgui/imgui_playwright public
 require daslib/json public
 require daslib/json_boost public
-require math
 
 //! §4.6 `columns(N, ${...}, ${...}, …)` integration smoke.
 //! Verifies:
