@@ -1052,7 +1052,7 @@ def public type_into_voice(app : ImguiApp; dwell : uint; target : string;
                            expected : auto(T)) {
     //! Type analog of drag_through_voice: REAL keyboard edit of ``target``, assert committed == ``expected``.
     //! CLICKS ``click_pos`` (not imgui_focus) because InputScalar's AutoSelectAll fires only on activation, so
-    //! the click focuses AND selects → typing REPLACES. Per ``cells``: type, Tab between, Enter; caller ``move_to``s ``click_pos`` first.
+    //! the click focuses AND selects → typing REPLACES. Per ``cells``: type, Tab between, Enter; caller must ``move_to`` ``click_pos`` first.
     let started_frames = record_frame_count(app)
     let lead = clamp(dwell / 3u, TYPE_LEAD_MIN_MS, TYPE_LEAD_MAX_MS)   // ~1/3 into the line
     hold_content(app, lead)                                                // PACING: land the click under the voice
@@ -1177,7 +1177,7 @@ def public toggle_tree_voice(app : ImguiApp; dwell : uint; header_target : strin
 def public close_button_voice(app : ImguiApp; dwell : uint; header_target : string; child_target : string) {
     //! Click the X-button of a CLOSABLE container header under a voice line, then assert the strip
     //! vanished (``child_target`` no longer rendered). The X sits a half header-height in from the
-    //! header's right edge (mirrors ImGui's layout). Self-verifying at teardown; caller ``move_to``s the header first.
+    //! header's right edge (mirrors ImGui's layout). Self-verifying at teardown; caller must ``move_to`` the header first.
     let started_frames = record_frame_count(app)
     let lead = clamp(dwell / 3u, TREE_LEAD_MIN_MS, TREE_LEAD_MAX_MS)   // ~1/3 into the line
     hold_content(app, lead)                                                // PACING: land the click under the voice
