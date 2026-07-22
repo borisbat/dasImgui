@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
@@ -27,10 +28,9 @@ def widget_center(var snap : JsonValue?; ident : string) : tuple<float; float> {
             ((b?["y"] ?? 0.0f) + (b?["w"] ?? 0.0f)) * 0.5f)
 }
 
-//! Click ``pt`` (``button`` 0=left/1=right) UNDER an already-posted voice line, then
-//! assert the popup body item ``probe`` is now rendered (the popup opened). The caller
-//! has posted say_begin (whose dwell is passed here) so prepare_recording can scan the
-//! literal voice line at the call site.
+//! Click ``pt`` (``button`` 0=left/1=right) under an already-posted voice line, then assert
+//! the popup body item ``probe`` is now rendered (popup opened). Caller posts say_begin first
+//! (dwell passed here) so prepare_recording can scan the voice line at the call site.
 def open_under_voice(app : ImguiApp; dwell : uint; pt : tuple<float; float>;
                      button : int; probe : string) {
     let anchor = record_frame_count(app)

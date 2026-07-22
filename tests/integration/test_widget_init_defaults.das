@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
@@ -25,10 +26,9 @@ def test_widget_init_defaults(t : T?) {
         t |> success(snap0 != null, "DEFAULTS auto-emitted (registry has it)")
         if (snap0 == null) return
 
-        // ===== Field defaults must fire — every field below has a non-zero
-        // default in DefaultsState. Pre-fix, the macro emitted `var DEFAULTS :
-        // DefaultsState` (no init); these all came back as zero/empty. Post-fix
-        // they round-trip through JV(state) -> snapshot.
+        // ===== Field defaults must fire =====
+        // Every field below has a non-zero default in DefaultsState. Pre-fix the macro emitted
+        // `var DEFAULTS : DefaultsState` (no init) and these came back zero; post-fix they round-trip.
         let count = widget_payload_field(snap0, "MAIN_WIN/DEFAULTS", "count") ?? 0
         t |> equal(count, 42, "count default fires (int = 42)")
 

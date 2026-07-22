@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
@@ -73,9 +74,7 @@ def private toggle_finalize(widget_ident : string; kind : string; var state : To
 }
 
 def private radio_int_finalize(widget_ident : string; kind : string; var state : RadioIntState; v_button : int) {
-    //! Int-form RadioButton finalize. State path; dispatch handled per-kind via [widget_dispatch].
-    //! Also registers a per-site geometry alias `<path>#<v_button>` (the shared ident collapses all
-    //! sites onto one path) so each option is independently click-/test-targetable.
+    //! Int-form RadioButton finalize; also registers a per-site geometry alias `<path>#<v_button>` so each option is independently click-/test-targetable.
     var entry : WidgetEntry
     finalize_state(widget_ident, kind, state, entry)
     register_focusable(widget_ident)
@@ -107,11 +106,9 @@ def edit_finalize(widget_ident : string; kind : string; var ptr : auto(TT)? impl
 
 def edit_finalize_subs(widget_ident : string; kind : string; var ptr : auto(TT)? implicit;
                        var subs : array<float4>) {
-    //! edit_finalize plus a caller-built per-item sub_bboxes array -- for the external-pointer combo,
-    //! whose open-popup item rects are captured one-per-Selectable via capture_current_item_rect (no
-    //! analytic rect). Empty subs (popup closed this frame) leaves sub_bboxes absent, so a driver's
-    //! widget_component_point falls back to the combo box itself. subs is moved out. Same pointer/ti
-    //! routing as edit_finalize (snapshot + dispatch go through *ptr).
+    //! edit_finalize plus a caller-built per-item sub_bboxes array (external-pointer combo): open-popup
+    //! item rects captured one-per-Selectable so a driver can target item N. Empty subs (popup closed)
+    //! falls back to the combo box itself. `subs` is moved out; pointer/ti routing as edit_finalize.
     var entry : WidgetEntry
     if (!empty(subs)) {
         entry.sub_bboxes <- subs
@@ -138,28 +135,10 @@ def edit_container_open_close_finalize(widget_ident : string; kind : string;
 }
 
 // ===== Per-state-struct dispatchers =====
-//
-// One ``[widget_dispatch]`` body per state struct — the macro keys by the
-// first parameter's struct type, so each body fires for every widget kind
-// whose state is that struct (e.g. ToggleState handles ``checkbox``/
-// ``radio_button``/``selectable``/``menu_item``). No per-kind registration
-// table: ``dispatch_or_err`` looks up by ``meta.ti.hash``.
-//
-// Non-Structure ``ti`` (scalar pointee from ``[edit_widget]``) falls through
-// to the generic ``sscan_json_at(state_addr, *ti)`` in ``dispatch_or_err`` —
-// no per-edit-pointee dispatcher needed.
-//
-// Click-only state structs (ClickState — button/small_button/arrow_button/
-// invisible_button/image_button/menu_label/selectable_label/color_button) get
-// NO dispatcher: an ``imgui_click`` is a real synthetic mouse click, handled in
-// ``dispatch_or_err`` before any dispatcher lookup, so ImGui's own activation
-// path fires (the widget behaves exactly as under a real click). Display-only
-// structs (NarrativeState, EmptyMarkerState, ProgressBarState, ImageState,
-// PlotState, LabelTextState, TextFilterState, ChildState, GroupState,
-// MenuBarState, MainMenuBarState, MenuState, TooltipState, TabBarState,
-// DragDropSourceState, DragDropTargetState, PopupContextItemState,
-// PopupContextWindowState, PopupWindowState) likewise get none —
-// ``dispatch_or_err`` silently succeeds when no entry exists for a Structure ti.
+
+// One ``[widget_dispatch]`` body per state struct — keyed by the first param's struct type, so each
+// fires for every kind sharing that struct. Click-only structs (ClickState) get none (a real synthetic
+// click is handled before dispatch); display-only structs get none (dispatch_or_err succeeds silently).
 
 [widget_dispatch]
 def _toggle_dispatch(var state : ToggleState; action : string; payload : string) {
@@ -432,11 +411,9 @@ def button(var state : ClickState; text : string;
 [widget]
 def icon_button(var state : ClickState; glyph : string;
                 tip : string = ""; size : float = 20.0f; weight : float = 1.0f) : bool {
-    //! Themed square icon button drawn from imgui_icons (no font glyph / atlas) — `glyph` is an
-    //! icon name (see imgui_icons). Snapshot-visible and playwright-drivable (kind "icon_button");
-    //! click semantics mirror `button`. A non-empty `tip` shows a hover tooltip. `size` is the
-    //! glyph box side in px (use base*content_scale for HDPI), `weight` scales stroke thickness.
-    //! Pass args in declared order (glyph, tip, size, weight) — the indexed call form is positional.
+    //! Themed square icon button from imgui_icons (`glyph` = icon name); click semantics mirror `button`.
+    //! A non-empty `tip` shows a hover tooltip. `size` is the glyph box side in px (base*content_scale
+    //! for HDPI), `weight` scales stroke thickness. Args are positional in declared order.
     let clicked = icon_button_draw(widget_ident, glyph, size, weight)
     if (!empty(tip) && BeginItemTooltip()) {
         TextUnformatted(tip)
@@ -453,11 +430,9 @@ def icon_button(var state : ClickState; glyph : string;
 [widget]
 def tab_item_button(var state : ClickState; text : string;
                     flags : ImGuiTabItemFlags = ImGuiTabItemFlags.None) : bool {
-    //! `TabItemButton(label, flags)` — a button styled as a tab. No content
-    //! pane (unlike `tab_item`); use for Leading-/Trailing-anchored controls
-    //! (e.g. "+" to add tabs, "?" to open a help popup). Click semantics
-    //! mirror `button`: returns true on click; `state.click_count`
-    //! accumulates. Must be called INSIDE a `tab_bar` body.
+    //! `TabItemButton(label, flags)` — a button styled as a tab, no content pane (unlike `tab_item`);
+    //! use for Leading-/Trailing-anchored controls (e.g. "+" to add tabs). Click semantics mirror
+    //! `button`. Must be called INSIDE a `tab_bar` body.
     let clicked = TabItemButton(text, flags)
     state.clicked = clicked
     if (clicked) {
@@ -532,10 +507,9 @@ def checkbox(var state : ToggleState; text : string) : bool {
 
 [widget]
 def radio_button(var state : ToggleState; text : string) : bool {
-    //! Bool-form RadioButton — single toggle. ImGui's RadioButton(label,bool)
-    //! does NOT mutate the bool, only returns true on click; daslang side
-    //! flips state.value on click to give "single radio = checkbox shaped
-    //! like a radio" semantics. Grouped radios use radio_button_int.
+    //! Bool-form RadioButton — single toggle. ImGui's RadioButton(label,bool) doesn't mutate the bool,
+    //! so the daslang side flips state.value on click ("single radio = checkbox shaped like a radio").
+    //! Grouped radios use radio_button_int.
     if (state.pending_toggle) {
         state.value = state.pending_value
         state.pending_toggle = false
@@ -567,12 +541,9 @@ def selectable(var state : ToggleState; text : string;
 def selectable_hover(var state : EmptyMarkerState; text : string;
                      flags : ImGuiSelectableFlags = ImGuiSelectableFlags.None;
                      size : float2 = float2(0.0f, 0.0f)) : bool {
-    //! Hover-target selectable. Renders a selectable row like `selectable`
-    //! but `selected` is pinned to `false` and never toggles — use when the
-    //! row's hover surface drives a side-effect (e.g. "while hovering this
-    //! row, set the cursor to X") and the click semantics of the regular
-    //! `selectable` would be wrong. Returns true when ImGui considers the
-    //! just-drawn item hovered this frame.
+    //! Hover-target selectable. Like `selectable` but `selected` is pinned false and never toggles —
+    //! use when the row's hover surface drives a side-effect and `selectable`'s click semantics would
+    //! be wrong. Returns true when the just-drawn item is hovered this frame.
     Selectable(text, false, flags, size)
     let hovered = IsItemHovered()
     marker_finalize(widget_ident, "selectable_hover", state)
@@ -582,11 +553,9 @@ def selectable_hover(var state : EmptyMarkerState; text : string;
 [widget]
 def menu_item(var state : ToggleState; text : string;
               shortcut : string = ""; enabled : bool = true) : bool {
-    //! Toggleable menu item — `state.value` is the check-mark state and
-    //! persists across reload; click toggles. `enabled=false` greys out
-    //! the item and disables clicks. For static (non-toggleable) menu
-    //! items — section headers or permanent-check labels — use the
-    //! sibling `menu_label` widget instead.
+    //! Toggleable menu item — `state.value` is the check-mark state (persists across reload); click
+    //! toggles, `enabled=false` greys out and disables clicks. For static (non-toggleable) items use
+    //! the sibling `menu_label`.
     if (state.pending_toggle) {
         state.value = state.pending_value
         state.pending_toggle = false
@@ -601,12 +570,9 @@ def menu_item(var state : ToggleState; text : string;
 def menu_label(var state : ClickState; text : string;
                shortcut : string = ""; selected : bool = false;
                enabled : bool = true) : bool {
-    //! Static (non-toggleable) menu item. `selected` is a plain bool —
-    //! renders a permanent check mark when true, no check when false; the
-    //! widget never mutates it. Use for section headers
-    //! (`enabled=false, selected=false`) and permanent-state labels
-    //! (`selected=true`). For toggleable menu items use `menu_item`.
-    //! State tracks click count for telemetry; no `state.value`.
+    //! Static (non-toggleable) menu item. `selected` is a caller-owned bool the widget never mutates —
+    //! use for section headers (`enabled=false`) and permanent-state labels (`selected=true`). For
+    //! toggleable items use `menu_item`.
     let clicked = MenuItem(text, shortcut, selected, enabled)
     state.clicked = clicked
     if (clicked) {
@@ -620,12 +586,9 @@ def menu_label(var state : ClickState; text : string;
 def selectable_label(var state : ClickState; text : string; selected : bool;
                      flags : ImGuiSelectableFlags = ImGuiSelectableFlags.None;
                      size : float2 = float2(0.0f, 0.0f)) : bool {
-    //! Selectable row whose selected-appearance is driven by a caller-owned
-    //! bool — the widget reports clicks but does not toggle its own state.
-    //! Use for exclusive-selection patterns (`selectable_label(ROW[i], name,
-    //! group.value == i)`) where one external int tracks the chosen index.
-    //! For the self-toggling form, use `selectable` instead. Parallels
-    //! `menu_label` (static) vs `menu_item` (toggling).
+    //! Selectable row whose selected-appearance is a caller-owned bool — reports clicks but never
+    //! toggles its own state. Use for exclusive selection (`selectable_label(ROW[i], name, group.value
+    //! == i)`); for the self-toggling form use `selectable`. Parallels `menu_label` vs `menu_item`.
     let clicked = Selectable(text, selected, flags, size)
     state.clicked = clicked
     if (clicked) {
@@ -636,19 +599,10 @@ def selectable_label(var state : ClickState; text : string; selected : bool;
 }
 
 // ===== Tree leaf form =====
-//
-// `tree_node_ex` is the [widget] counterpart to the `tree_node` [container]:
-// it wraps a bare `TreeNodeEx(text, flags)` call and returns the open bool
-// without claiming a matching `TreePop()`. The caller is responsible for
-// `TreePop()` when the node opened AND `flags` don't include
-// `NoTreePushOnOpen` (the Leaf+NoTreePushOnOpen variant emits no push, so no
-// pop is needed either).
-//
-// Reach for `tree_node_ex` when you need the post-header most-recent-item
-// state (`IsItemClicked`, `drag_drop_source`, inline `same_line` + button) —
-// the container form hides the TreeNodeEx call site so those queries would
-// attach to the wrong item. For straightforward "open body, render kids,
-// close" use the container.
+
+// `tree_node_ex` wraps a bare `TreeNodeEx` and returns the open bool WITHOUT claiming a `TreePop()`:
+// the caller must pair `TreePop()` when the node opened AND `flags` lack `NoTreePushOnOpen`. Choose it
+// over the `tree_node` container when you need post-header most-recent-item state (IsItemClicked, etc.).
 
 [widget]
 def tree_node_ex(var state : TreeNodeState; text : string;
@@ -676,12 +630,9 @@ def tree_node_ex(var state : TreeNodeState; text : string;
 
 [widget]
 def radio_button_int(var state : RadioIntState; text : string; v_button : int) : bool {
-    //! Grouped-radio form. Each call site picks `v_button`; click writes
-    //! state.value = v_button. Multiple radio_button_int calls sharing the
-    //! same RadioIntState ident form one logical group. Because the sites share
-    //! one ident (hence one snapshot path), each also registers a per-site
-    //! geometry alias `<path>#<v_button>` so an individual option is independently
-    //! click-/test-targetable; the shared state stays at the bare `<path>`.
+    //! Grouped-radio form. Each call site picks `v_button`; click writes state.value = v_button, and
+    //! calls sharing one RadioIntState ident form a logical group. Since the sites share one snapshot
+    //! path, each registers a per-site geometry alias `<path>#<v_button>` for independent targeting.
     if (state.pending_set) {
         state.value = state.pending_value
         state.pending_set = false
@@ -1043,13 +994,9 @@ def vslider_int(var state : SliderStateInt; text : string;
 }
 
 // ===== Stateful inputs (input numeric family) =====
-//
-// InputFloat/Int/Double don't clamp — no bounds field. Scalar forms
-// expose step / step_fast (imgui's keyboard +/- buttons); vector forms
-// don't (imgui doesn't support them on 2/3/4-component inputs). Int
-// vectors don't take format either (imgui hardcodes "%d"). All flags
-// are ImGuiInputTextFlags (NOT ImGuiSliderFlags) — Input* shares the
-// text-edit widget machinery with InputText.
+
+// InputFloat/Int/Double don't clamp (no bounds field). Scalar forms expose step/step_fast; vector
+// forms don't, and int vectors hardcode "%d". Flags are ImGuiInputTextFlags (NOT SliderFlags).
 
 [widget]
 def input_float(var state : InputStateFloat; text : string;
@@ -1180,11 +1127,9 @@ def input_double(var state : InputStateDouble; text : string;
 }
 
 // ===== Stateful inputs (color family) =====
-//
-// ColorEdit3/ColorPicker3 share ColorState3 (RGB float3); ColorEdit4 /
-// ColorPicker4 share ColorState4 (RGBA float4). ColorButton is a click
-// trigger — caller passes the swatch color per-frame, state holds only
-// click bookkeeping (reuses ClickState).
+
+// ColorEdit3/ColorPicker3 share ColorState3 (RGB); ColorEdit4/ColorPicker4 share ColorState4 (RGBA).
+// ColorButton is a click trigger (caller passes the swatch per-frame; reuses ClickState).
 
 [widget]
 def color_edit3(var state : ColorState3; text : string;
@@ -1230,10 +1175,9 @@ def color_picker4(var state : ColorState4; text : string;
                   flags : ImGuiColorEditFlags = ImGuiColorEditFlags.None;
                   ref_col : float4 = float4(0.0f, 0.0f, 0.0f, 0.0f);
                   has_ref_col : bool = false) : bool {
-    //! Optional reference color. Pass `has_ref_col=true` plus `ref_col`
-    //! to surface ImGui's "[ref]" swatch alongside the picker; default is
-    //! null (no reference). Local copy gives the addr a frame-stable
-    //! address; ImGui reads ref_col synchronously inside ColorPicker4.
+    //! Optional reference color: pass `has_ref_col=true` + `ref_col` to surface ImGui's "[ref]" swatch
+    //! alongside the picker (default null). The local copy gives `addr` a frame-stable address; ImGui
+    //! reads it synchronously inside ColorPicker4.
     if (state.has_pending) {
         state.value = state.pending_value
         state.has_pending = false
@@ -1247,21 +1191,13 @@ def color_picker4(var state : ColorState4; text : string;
 }
 
 // ===== Stateful inputs (choice family) =====
-//
-// Both widgets take `items : array<string>` and marshal it C-side without
-// a shim. `combo` packs a zero-separated buffer on `state.items_buf`
-// (capacity reuses across frames) and reinterprets the byte addr as
-// `string#` for ImGui's null-separated Combo overload — daslang `string`
-// can't itself carry embedded nulls (heap is sized via strlen), but a raw
-// pointer into an `array<uint8>` bypasses that entirely. `list_box` passes
-// the daslang array storage directly: each `array<string>` element IS a
-// `char *`, so `addr(items[0])` already matches `const char* const items[]`.
-// Block-arg surfaces (BeginCombo + manual Selectable loop, BeginListBox)
-// are container-shaped and land in 0b.3.
+
+// Both take `items : array<string>` and marshal C-side with no shim. `combo` packs a zero-separated
+// buffer (daslang `string` can't carry embedded nulls); `list_box` passes the array storage directly
+// (each element IS a `char *`, so `addr(items[0])` matches `const char* const items[]`).
 
 def private constrain_combo_popup(max_items : int) {
-    // Mirror ImGui's Combo() popup-height cap from an item count — only when the caller asked for one
-    // (the default -1 lets ImGui size the popup). Height = N text lines + the popup's window padding.
+    // Cap popup height to N item rows (default -1 lets ImGui size it): N text lines + window padding.
     if (max_items <= 0) return
     let h = GetTextLineHeightWithSpacing() * float(max_items) + GetStyle().WindowPadding.y * 2.0f
     SetNextWindowSizeConstraints(float2(0.0f, 0.0f), float2(FLT_MAX, h))
@@ -1270,10 +1206,9 @@ def private constrain_combo_popup(max_items : int) {
 [widget]
 def combo(var state : ComboState; text : string; items : array<string>;
           popup_max_height_in_items : int = -1) : bool {
-    //! `imgui_force_set {"value": N}` selects the N-th item next frame.
-    //! `popup_max_height_in_items = -1` lets ImGui pick a default.
-    //! Built as BeginCombo + a Selectable loop (not the all-in-one Combo) so each open-popup item's
-    //! rect is captured into sub_bboxes — lets a driver click item N via widget_component_point.
+    //! `imgui_force_set {"value": N}` selects the N-th item next frame; `popup_max_height_in_items = -1`
+    //! lets ImGui pick a default. Built as BeginCombo + a Selectable loop (not all-in-one Combo) so each
+    //! item rect is captured into sub_bboxes — a driver clicks item N via widget_component_point.
     if (state.has_pending) {
         state.value = state.pending_value
         state.has_pending = false
@@ -1307,12 +1242,9 @@ def color_button(var state : ClickState; desc_id : string;
                  col : float4;
                  size : float2 = float2(0.0f, 0.0f);
                  flags : ImGuiColorEditFlags = ImGuiColorEditFlags.None) : bool {
-    //! Click-trigger swatch. The displayed color is per-call (caller
-    //! controls it externally — typical use is a row of style swatches);
-    //! state holds only click bookkeeping. `size = (0, 0)` lets ImGui
-    //! pick a default square. Param order puts size before flags so
-    //! callers can pass `(desc_id, col, size = …)` without an explicit
-    //! `flags = None` middle arg (named-tuple positional dispatch).
+    //! Click-trigger swatch. The displayed color is per-call (state holds only click bookkeeping);
+    //! `size = (0, 0)` lets ImGui pick a default square. Param order puts size before flags so callers
+    //! can pass `(desc_id, col, size = …)` without a `flags = None` middle arg.
     let clicked = ColorButton(desc_id, col, flags, size)
     state.clicked = clicked
     if (clicked) {
@@ -1327,11 +1259,9 @@ def color_button_hover(var state : EmptyMarkerState; desc_id : string;
                        col : float4;
                        size : float2 = float2(0.0f, 0.0f);
                        flags : ImGuiColorEditFlags = ImGuiColorEditFlags.None) : bool {
-    //! Hover-target swatch. Renders a color swatch like `color_button` but
-    //! never registers a click trigger — use when the swatch is the surface
-    //! on which a hover-driven side-effect is mounted at the call site
-    //! (e.g. "while hovering this, override io.WantCaptureMouse"). Returns
-    //! true when ImGui considers the just-drawn item hovered this frame.
+    //! Hover-target swatch. Like `color_button` but never registers a click trigger — use when the
+    //! swatch is the surface for a hover-driven side-effect at the call site. Returns true when the
+    //! just-drawn item is hovered this frame.
     ColorButton(desc_id, col, flags, size)
     let hovered = IsItemHovered()
     marker_finalize(widget_ident, "color_button_hover", state)
@@ -1339,19 +1269,10 @@ def color_button_hover(var state : EmptyMarkerState; desc_id : string;
 }
 
 // ===== Text-input family (Phase 0b.4) =====
-//
-// The buffer-as-pointer path: state owns `array<uint8> buffer`, the widget
-// passes `addr(buffer[0])` to the C extern, and ImGui mutates it in place.
-// `value` mirrors the buffer; we re-clone after every frame ImGui reports
-// `changed`. `state.buffer` is `@optional`, so it's dropped on hot-reload —
-// the (re)allocate-and-sync below covers both first-frame init and post-
-// reload restore.
-//
-// `input_text_growable` is the one callback variant we ship — uses
-// `_builtin_InputText_cb` with a CallbackResize lambda that grows
-// `state.buffer` past the initial capacity. All other ImGui callback
-// flavors (history / completion / always / char-filter) stay in the v1
-// `daslib/imgui_boost` surface.
+
+// Buffer-as-pointer: state owns `array<uint8> buffer`, the widget passes `addr(buffer[0])` to the C
+// extern, ImGui mutates in place, `value` mirrors it (re-cloned on `changed`). `buffer` is `@optional`
+// (dropped on hot-reload), so the init below covers both first-frame and post-reload restore.
 
 def private input_text_buffer_init(var state : InputTextState) {
     if (length(state.buffer) != state.capacity) {
@@ -1361,8 +1282,7 @@ def private input_text_buffer_init(var state : InputTextState) {
 }
 
 def private sync_buffer_from_value(var state : InputTextState) {
-    // Zero the buffer then copy bytes-of-`value` (clamped to capacity-1
-    // so the trailing null is preserved). `length(string)` is byte count.
+    // Zero the buffer, then copy value's bytes clamped to capacity-1 (preserves the trailing null).
     for (i in range(state.capacity)) {
         state.buffer[i] = 0u8
     }
@@ -1444,13 +1364,9 @@ def input_text_multiline(var state : InputTextState; text : string;
 [widget]
 def input_text_growable(var state : InputTextState; text : string;
                         flags : ImGuiInputTextFlags = ImGuiInputTextFlags.None) : bool {
-    //! Single-line input that grows `state.buffer` whenever the user types
-    //! past `state.capacity`. Plumbs ImGui's CallbackResize through a daslang
-    //! lambda that resizes the array and re-points `data.Buf`. The thunk
-    //! holding (Context*, LineInfo*, lambda) lives on the C call stack —
-    //! ImGui invokes the callback synchronously inside InputText, so no
-    //! ABI pin needed. `imgui_force_set` with a value larger than `state.capacity`
-    //! also grows — without that the user-visible "growable" promise leaks.
+    //! Single-line input that grows `state.buffer` when the user types past `state.capacity`, via
+    //! ImGui's CallbackResize plumbed through a daslang lambda (invoked synchronously inside InputText,
+    //! so no ABI pin). `imgui_force_set` past capacity also grows.
     input_text_buffer_init(state)
     if (state.has_pending) {
         state.value := state.pending_value
@@ -1490,15 +1406,9 @@ def input_text_growable(var state : InputTextState; text : string;
 def input_text_callback(var state : InputTextState; text : string;
                         flags : ImGuiInputTextFlags;
                         cb : lambda<(var data : ImGuiInputTextCallbackData) : int>) : bool {
-    //! Single-line input with a user-supplied event callback. Use this when
-    //! `CallbackCompletion` (TAB completion), `CallbackHistory` (Up/Down
-    //! arrow), `CallbackAlways`, or `CallbackCharFilter` is needed —
-    //! the REPL pattern in `examples/imgui_demo/app_console.das` is the
-    //! canonical consumer. ImGui invokes the callback synchronously inside
-    //! `InputText` on the same thread; the `data` pointer is valid only
-    //! for that one call. For grow-on-overflow buffer resize use
-    //! `input_text_growable` instead — it wires `CallbackResize` internally
-    //! and shouldn't be combined with this wrapper.
+    //! Single-line input with a user-supplied event callback — use for CallbackCompletion/History/
+    //! Always/CharFilter (canonical consumer: the REPL in `examples/imgui_demo/app_console.das`). The
+    //! `data` pointer is valid only during the synchronous call. For resize use `input_text_growable`.
     input_text_buffer_init(state)
     apply_pending_text(state)
     var changed : bool
@@ -1525,19 +1435,9 @@ def private text_filter_finalize(widget_ident : string; kind : string; var state
 [widget]
 def text_filter(var state : TextFilterState; text : string = "Filter (\"incl,-excl\") (\"error\")";
                 width : float = 0.0f) : bool {
-    //! Boost wrapper over `ImGuiTextFilter::Draw` — renders the inline
-    //! InputText editor and parses comma-separated include/exclude
-    //! tokens (`-prefix` excludes). Returns `true` on the frame the
-    //! filter expression changed. Pair with `passes_filter(state, line)`
-    //! in a loop to gate visible items. Empty filter = match-all.
-    //! The C++ `ImGuiTextFilter` value lives inline in the state — no
-    //! daslang-side buffer needed (the editor's storage is `InputBuf[256]`
-    //! on the bound struct). `state.value` mirrors the editor text after
-    //! every edit; on the first frame after a live-reload (when
-    //! `archive::serialize` restored `state.value` but the C++ filter is
-    //! zero-init), the widget body re-applies `state.value` via a fresh
-    //! `ImGuiTextFilter(default_filter)` so `Draw()` and `passes_filter()`
-    //! see the restored expression without forcing the user to retype.
+    //! Boost wrapper over `ImGuiTextFilter::Draw` — renders the inline editor and parses comma-separated
+    //! include/exclude tokens (`-prefix` excludes). Returns `true` the frame the expression changed; pair
+    //! with `passes_filter(state, line)` to gate items. Empty filter = match-all.
     var buf_view : string
     unsafe {
         buf_view = reinterpret<string>(addr(state.filter.InputBuf))
@@ -1556,23 +1456,15 @@ def text_filter(var state : TextFilterState; text : string = "Filter (\"incl,-ex
 }
 
 def public passes_filter(var state : TextFilterState; line : string) : bool {
-    //! Predicate companion to `text_filter`. Delegates to the hand-bound
-    //! `PassFilter(filter, text)` standalone helper at
-    //! `src/dasIMGUI.main.cpp:305`. While the editor is empty the
-    //! underlying `Filters` `ImVector` is empty too and PassFilter returns
-    //! true for all lines. NB: an exclude-only filter (e.g. `-error`) has
-    //! no include terms either, so `passes_filter(state, "")` returns
-    //! `true` even though the filter is active — use `is_active(state)`,
-    //! not `passes_filter(state, "")`, to detect the active/inactive
-    //! transition.
+    //! Predicate companion to `text_filter` (delegates to the bound `PassFilter`). Empty filter matches
+    //! all lines. NB: an exclude-only filter (e.g. `-error`) also has no include terms, so
+    //! `passes_filter(state, "")` returns true even when active — use `is_active(state)` to detect that.
     return PassFilter(state.filter, line)
 }
 
 def public is_active(state : TextFilterState) : bool {
-    //! `ImGuiTextFilter::IsActive()` — true iff parsing produced at least
-    //! one include OR exclude term. Use this to gate filter-active vs
-    //! filter-inactive code paths (e.g. clipper-cull vs sequential scan
-    //! in scrolling log views).
+    //! `ImGuiTextFilter::IsActive()` — true iff parsing produced at least one include OR exclude term.
+    //! Use to gate filter-active vs -inactive paths (e.g. clipper-cull vs sequential scan in log views).
     return state.filter |> IsActive()
 }
 
@@ -1583,14 +1475,9 @@ def combo_getter(var state : ComboState; text : string;
                  items_count : int;
                  getter : lambda<(idx : int; var result : string&) : bool>;
                  popup_max_height_in_items : int = -1) : bool {
-    //! Procedural combo — the dropdown items are produced by a per-frame
-    //! lambda instead of an `array<string>`. Useful when the list is
-    //! large, virtualized, or computed (filter results, RTTI enums).
-    //! `getter(idx, result)` should set `result` to the idx-th item label
-    //! and return true; return false to stop. The lambda fires
-    //! synchronously inside the ImGui call.
-    //! BeginCombo + a Selectable loop (each label pulled from `getter`) so popup item rects land in
-    //! sub_bboxes — a driver clicks item N via widget_component_point, same as the array-form combo.
+    //! Procedural combo — items come from a per-frame lambda instead of an `array<string>` (for large,
+    //! virtualized, or computed lists). `getter(idx, result)` sets `result` to the idx-th label and
+    //! returns true (false stops); fires synchronously. Popup item rects land in sub_bboxes for drivers.
     if (state.has_pending) {
         state.value = state.pending_value
         state.has_pending = false
@@ -1628,12 +1515,9 @@ def combo_getter(var state : ComboState; text : string;
 }
 
 // ===== Display: text_show =====
-//
-// Read-only display widget (master plan §4.3a). The standard serializer
-// surfaces `state.value`, so playwright tests can `expect_value(STATUS,
-// "saved")` without any extra plumbing. The dispatcher accepts "set" so
-// tests can also drive the value externally — handy for setting up
-// fixtures programmatically.
+
+// Read-only display widget. The serializer surfaces `state.value` (so tests `expect_value(STATUS,
+// "saved")` with no plumbing); the dispatcher accepts "set" so tests can drive the value externally.
 
 def private text_show_finalize(widget_ident : string; kind : string; var state : TextShowState) {
     //! Display-only widget finalize with a "set" action handled by the per-kind [widget_dispatch] (writes state.value).
@@ -1643,13 +1527,9 @@ def private text_show_finalize(widget_ident : string; kind : string; var state :
 
 [widget]
 def text_show(var state : TextShowState; value : string = "") {
-    //! Display-only widget surfaced through telemetry. Two forms:
-    //!   1. `text_show(STATUS, value="saved")` — sets state.value to the
-    //!      argument every frame (call-site is the source of truth).
-    //!   2. `text_show(STATUS)` — displays whatever's in state.value
-    //!      (set programmatically by `STATUS.value = compute()` or
-    //!      remotely via `imgui_force_set`).
-    //! Either form serializes `state.value` for `expect_value` assertions.
+    //! Display-only widget surfaced through telemetry. `text_show(STATUS, value="saved")` sets
+    //! state.value every frame (call-site is source of truth); `text_show(STATUS)` displays whatever's
+    //! in state.value (set via `STATUS.value = …` or `imgui_force_set`). Serializes for `expect_value`.
     if (!empty(value)) {
         state.value := value
     }
@@ -1658,14 +1538,10 @@ def text_show(var state : TextShowState; value : string = "") {
 }
 
 // ===== Display: narrative =====
-//
-// Read-only display widgets that surface text or decoration to the user.
-// Standard serializer (`JV(state)`) emits payload for telemetry:
-//   - NarrativeState   → {value: "<text>"}
-//   - LabelTextState   → {key: "<left>", value: "<right>"}
-//   - EmptyMarkerState → {}  (placeholder elides at zero)
-// All dispatchers are no-ops — these widgets don't accept commands.
-// `register_focusable` is NOT called (display widgets are not focusable).
+
+// Read-only display widgets (text/decoration). The serializer emits telemetry payload (NarrativeState
+// → {value}, LabelTextState → {key, value}, EmptyMarkerState → {}); dispatchers are no-ops and
+// `register_focusable` is NOT called (display widgets aren't focusable).
 
 def private narrative_finalize(widget_ident : string; kind : string; var state : NarrativeState) {
     //! Read-only narrative finalize. State payload via sprint_json_at; dispatch is a registered no-op.
@@ -1778,12 +1654,9 @@ def separator_text(var state : NarrativeState; text : string) {
 }
 
 // ===== Display: layout =====
-//
-// Cursor-repositioning primitives. They don't draw glyphs themselves but
-// they ARE visible — every widget's bbox depends on where the cursor
-// lands. Wrapping them as `[widget]`s lets playwright assert "button X
-// is on the same row as label Y" by their telemetry idents instead of
-// fragile bbox arithmetic. All four use `EmptyMarkerState` + `marker_finalize`.
+
+// Cursor-repositioning primitives — they draw no glyphs but ARE visible (every widget's bbox depends
+// on the cursor). Wrapping as `[widget]`s lets playwright assert relative placement by telemetry ident.
 
 [widget]
 def same_line(var state : EmptyMarkerState;
@@ -1846,9 +1719,8 @@ def unindent(var state : EmptyMarkerState; indent_w : float = 0.0f) {
 }
 
 // ===== Display: progress / image =====
-//
-// Content display widgets — `progress_bar` shows a fraction in [0,1] (or
-// indeterminate when `fraction < 0`); `image` blits a texture handle.
+
+// `progress_bar` shows a fraction in [0,1] (indeterminate when < 0); `image` blits a texture handle.
 // Per-call args echo into state for telemetry; no dispatcher (read-only).
 
 def private progress_bar_finalize(widget_ident : string; kind : string; var state : ProgressBarState) {
@@ -1883,13 +1755,9 @@ def image(var state : ImageState; user_texture_id : ImTextureRef; size : float2;
           uv1 : float2 = float2(1.0f, 1.0f);
           tint_col : float4 = float4(1.0f, 1.0f, 1.0f, 1.0f);
           border_col : float4 = float4(0.0f, 0.0f, 0.0f, 0.0f)) {
-    //! Blit `user_texture_id` (an ``ImTextureRef`` — e.g. ``GetIO().Fonts.TexRef``)
-    //! into a `size`-pixel rect with `uv0`/`uv1` sampling coordinates. `tint_col`
-    //! modulates texel color. `border_col` is telemetry-only: ``Image`` takes no
-    //! per-call border color (the border comes from the ``ImGuiCol_Border`` style
-    //! at ``ImGuiStyleVar_ImageBorderSize`` thickness).
-    //! The texture handle is not part of telemetry; the rest of the args echo
-    //! for snapshot assertions.
+    //! Blit `user_texture_id` (an ``ImTextureRef``) into a `size`-pixel rect with `uv0`/`uv1` sampling;
+    //! `tint_col` modulates texel color. `border_col` is telemetry-only — ``Image`` takes no per-call
+    //! border (it comes from the ``ImGuiCol_Border`` style). Args echo into state for snapshot assertions.
     state.size = size
     state.uv0 = uv0
     state.uv1 = uv1
@@ -1907,15 +1775,10 @@ def public image_texture_id(texture : ImTextureRef const) : uint64 {
 }
 
 // ===== Display: tooltip (flat form) =====
-//
-// Stateless one-liner tooltips. `set_tooltip` always shows the tooltip
-// (override any previous SetTooltip in the same frame). `set_item_tooltip`
-// only shows when the immediately-preceding widget is hovered — ImGui's
-// `if (IsItemHovered(ForTooltip)) SetTooltip(text)` shortcut.
-//
-// Block-form tooltips (drawing arbitrary widgets inside the tooltip
-// window) live in `imgui_containers_builtin.das` as the `tooltip` and
-// `item_tooltip` [container]s. Use flat form for simple text-only popups.
+
+// Stateless one-liner tooltips: `set_tooltip` always shows; `set_item_tooltip` shows only when the
+// preceding widget is hovered. Block-form tooltips (arbitrary widgets inside) live in
+// `imgui_containers_builtin.das` as the `tooltip` / `item_tooltip` [container]s.
 
 [widget]
 def set_tooltip(var state : NarrativeState; text : string) {
@@ -1929,15 +1792,9 @@ def set_tooltip(var state : NarrativeState; text : string) {
 [widget]
 def set_item_tooltip(var state : NarrativeState; text : string;
                      flags : ImGuiHoveredFlags = ImGuiHoveredFlags.ForTooltip) {
-    //! Show `text` as a tooltip when the immediately-preceding widget is
-    //! hovered. Default `flags = ForTooltip` pulls per-style delay/stationary;
-    //! override with `DelayNone`, `Stationary`, `DelayNormal | NoSharedDelay`
-    //! etc. for custom hover semantics. ImGui's `if (IsItemHovered(flags))
-    //! SetTooltip(text)` idiom — `SetItemTooltip` isn't in the daslang
-    //! bindings, so we inline. The widget is finalized (and so reports
-    //! `rendered: true` to the snapshot) only on the frames the tooltip
-    //! actually shows, so the telemetry tracks visibility — a recording can
-    //! self-verify "the tooltip fired on hover" via record_check_rendered.
+    //! Show `text` as a tooltip when the preceding widget is hovered; default `flags = ForTooltip` pulls
+    //! per-style delay/stationary. Finalized (reports `rendered: true`) only on frames the tooltip
+    //! actually shows, so telemetry tracks visibility — a recording self-verifies via record_check_rendered.
     state.value := text
     if (IsItemHovered(flags)) {
         SetTooltip(text)
@@ -1951,22 +1808,9 @@ def set_item_tooltip(var state : NarrativeState; text : string;
 }
 
 // ===== Plot lines / histogram (array form) =====
-//
-// Display widgets backed by `PlotState`. Plotted values come per-frame as
-// an `array<float>` parameter (not stored on state) — same shape as
-// daslib v1 and imgui_test_engine. State tracks last-frame's call args
-// (title, bounds, sample count) for telemetry. No dispatcher.
-//
-// Lambda-driven getter form (plot_lines_getter / plot_histogram_getter):
-// deferred to Phase 2. Audit outcome (1.6): the existing C++
-// ImGuiPlotGetter struct in src/dasIMGUI.main.cpp is still wired into
-// the v1 daslib/imgui_boost.das + example/imgui_demo.das via the
-// older `vec4f igpg` reinterpret pattern, and per master plan §9.4 we
-// keep v1 installable until users migrate. So the right move is NOT to
-// rewrite the existing struct but to add a parallel lambda-thunk
-// binding (mirroring 0b.4 ComboCb) when the new public API surface
-// lands in Phase 2 — at which point the new boost gets its own
-// _builtin_PlotLines_cb / _builtin_PlotHistogram_cb forwarders.
+
+// Display widgets backed by `PlotState`. Values come per-frame as an `array<float>` param (not stored
+// on state); state tracks last-frame call args (title, bounds, sample count) for telemetry. No dispatcher.
 
 def private plot_finalize(widget_ident : string; kind : string; var state : PlotState) {
     //! Read-only plot finalize. Same shape as narrative.
@@ -2017,12 +1861,9 @@ def plot_histogram(var state : PlotState; text : string;
 }
 
 // ===== Plot getters (callback) =====
-//
-// Procedural variants of plot_lines / plot_histogram — `getter(idx) :
-// float` produces sample values per frame instead of a backing
-// `array<float>`. Useful for synthesized signals, virtualized buffers, or
-// computed series. The lambda fires synchronously inside the C call;
-// thunk lifetime is bounded by the call.
+
+// Procedural variants of plot_lines / plot_histogram — `getter(idx) : float` produces samples per
+// frame instead of a backing `array<float>`. The lambda fires synchronously inside the C call.
 
 [widget]
 def plot_lines_getter(var state : PlotState; text : string;
@@ -2057,12 +1898,10 @@ def plot_histogram_getter(var state : PlotState; text : string;
 }
 
 // ===== External-pointer rail (edit_* family) =====
-//
-// Sibling shape to the state-backed `[widget]` defs: caller owns the value
-// via `safe_addr(local)` / `unsafe(addr(struct.field))` and the renderer
-// reads/writes through the pointer directly. No auto-emit, no state struct,
-// no `@live` preservation — the external owner controls persistence.
-// Required `id="..."` at the call site keys the telemetry path.
+
+// Caller owns the value via `safe_addr(local)` / `unsafe(addr(struct.field))`; the renderer reads/writes
+// through the pointer directly. No state struct, no `@live` preservation (external owner controls
+// persistence). Required `id="..."` at the call site keys the telemetry path.
 
 [edit_widget]
 def edit_checkbox(var ptr : bool? implicit; text : string = "") : bool {
@@ -2199,13 +2038,10 @@ def edit_input_int(var ptr : int? implicit; text : string = "";
 }
 
 // ===== External-pointer rail (10b: vectors) =====
-//
-// Vector overloads (float2/3/4 + int2/3/4) for slider and drag. Each
-// `T2?`/`T3?`/`T4?` pointer is reinterpret-cast to `T?` at the ImGui call
-// site since ImGui's Slider* / Drag* family signatures all take a single
-// `T*` and treat it as a contiguous 2/3/4-component layout — no separate
-// vector binding. `edit_finalize` still takes the full vector pointer so
-// the serializer/dispatcher round-trip the whole tuple via from_JV.
+
+// Vector overloads (float2/3/4 + int2/3/4) for slider/drag. Each `TN?` is reinterpret-cast to `T?` at
+// the call site (ImGui's Slider*/Drag* take a single `T*` as contiguous components — no vector binding);
+// `edit_finalize` keeps the full vector pointer so the serializer round-trips the whole tuple.
 
 [edit_widget]
 def edit_slider_float2(var ptr : float2? implicit; text : string = "";
@@ -2370,13 +2206,10 @@ def edit_drag_int4(var ptr : int4? implicit; text : string = "";
 }
 
 // ===== External-pointer rail (10c: input vectors, color, combo, special) =====
-//
-// Remaining external-pointer overloads: ``input_*`` vector forms (no clamp,
-// 2/3/4 component), ``input_double`` scalar, the color family (3/4 + picker
-// variants), ``combo`` (array-of-string-pointers form so no per-frame buffer
-// packing — the C side reads ``items[i]`` lazily), plus ``slider_angle``
-// (float radians, displayed degrees) and ``checkbox_flags`` (bit-mask
-// toggle on an ``int?``).
+
+// Remaining external-pointer overloads: input vector forms, input_double, the color family, combo
+// (array-of-string-pointers form — C reads `items[i]` lazily, no per-frame buffer packing),
+// slider_angle (radians in, degrees shown), and checkbox_flags (bit-mask toggle on an `int?`).
 
 [edit_widget]
 def edit_input_float2(var ptr : float2? implicit; text : string = "";
@@ -2455,15 +2288,10 @@ def edit_input_double(var ptr : double? implicit; text : string = "";
 }
 
 // ===== Generic scalar rail (edit_drag_scalar / edit_slider_scalar / edit_input_scalar) =====
-//
-// Single wrapper per family covering ImGui's typed void*-routed `DragScalar` /
-// `SliderScalar` / `InputScalar` C entry points. Compile-time dispatch via
-// `typeinfo stripped_typename(T)` maps the daslang scalar type onto the
-// matching `ImGuiDataType` enum value and a sensible default `printf` format.
-//
-// Supported T: int8, uint8, int16, uint16, int (S32), uint (U32), int64,
-// uint64, float, double. Any other instantiation fails at compile time via
-// `concept_assert` so unsupported types surface with a clear error.
+
+// One wrapper per family over ImGui's void*-routed DragScalar/SliderScalar/InputScalar. Compile-time
+// dispatch via `typeinfo stripped_typename(T)` picks the ImGuiDataType + default format. Supported T:
+// int8/uint8/int16/uint16/int/uint/int64/uint64/float/double; anything else fails via `concept_assert`.
 
 def private scalar_data_type(t : type<auto(T)>) : ImGuiDataType {
     static_if (typeinfo stripped_typename(t) == "int8") {
@@ -2514,10 +2342,9 @@ def edit_drag_scalar(var ptr : auto(T)? implicit;
                      v_max : T = default<T>;
                      format : string = "";
                      flags : ImGuiSliderFlags = ImGuiSliderFlags.None) : bool {
-    //! ``DragScalar`` against a caller-owned ``T?`` (any supported scalar
-    //! type). When ``v_min == v_max`` (default) ImGui's no-clamp behavior is
-    //! selected; otherwise both bounds are passed through. Empty ``format``
-    //! falls back to the type-specific default ("%d" / "%u" / "%.3f" / "%.6f").
+    //! ``DragScalar`` against a caller-owned ``T?`` (any supported scalar). ``v_min == v_max`` (default)
+    //! selects ImGui's no-clamp behavior; otherwise both bounds pass through. Empty ``format`` falls back
+    //! to the type-specific default.
     let lbl = empty(text) ? widget_ident : text
     let fmt = empty(format) ? scalar_default_format(type<T>) : format
     var lo = v_min
@@ -2635,10 +2462,9 @@ def edit_color_picker4(var ptr : float4? implicit; text : string = "";
 def edit_combo(var ptr : int? implicit; text : string = "";
                items : array<string>;
                popup_max_height_in_items : int = -1) : bool {
-    //! ``BeginCombo`` + a ``Selectable`` loop against a caller-owned ``int?`` index. Built this way
-    //! (not the all-in-one ``Combo()``) so each open-popup item's rect is captured into sub_bboxes,
-    //! letting a driver click item N via widget_component_point -- exactly like the state-managed
-    //! ``combo``. The picked index is written straight through ``*ptr``.
+    //! ``BeginCombo`` + a ``Selectable`` loop against a caller-owned ``int?`` index. Built this way (not
+    //! all-in-one ``Combo()``) so each open-popup item rect lands in sub_bboxes for driver targeting,
+    //! like the state-managed ``combo``. The picked index writes straight through ``*ptr``.
     let lbl = empty(text) ? widget_ident : text
     let n = length(items)
     let cur = unsafe(*ptr)
@@ -2693,13 +2519,9 @@ def edit_checkbox_flags(var ptr : auto(FLAGT)? implicit; text : string = "";
 [edit_widget]
 def edit_collapsing_header(var ptr : bool? implicit; text : string = "";
                            flags : ImGuiTreeNodeFlags = ImGuiTreeNodeFlags.None) : bool {
-    //! ``CollapsingHeader(label, p_visible, flags)`` against a caller-owned
-    //! ``bool?`` p_open. While ``*ptr == false`` the header (and its body)
-    //! is hidden entirely. While ``*ptr == true`` the X close-button on the
-    //! header writes ``*ptr = false`` when clicked. Body of the
-    //! conditional ``if (edit_collapsing_header(...))`` runs only when the
-    //! section is both visible AND expanded. The state-owned sibling is the
-    //! ``collapsing_header(closable=true)`` container.
+    //! ``CollapsingHeader(label, p_visible, flags)`` against a caller-owned ``bool?`` p_open. `*ptr ==
+    //! false` hides the header entirely; the X close-button writes `*ptr = false`. The `if (...)` body
+    //! runs only when visible AND expanded. State-owned sibling: `collapsing_header(closable=true)`.
     let lbl = empty(text) ? widget_ident : text
     var im_open : bool = false
     if (unsafe(*ptr)) {
@@ -2710,25 +2532,21 @@ def edit_collapsing_header(var ptr : bool? implicit; text : string = "";
 }
 
 // ===== Imperative commands (scroll / focus / clipboard) =====
-//
-// These are non-`[widget]` helpers — plain `def public` aliases over raw
-// ImGui calls that user code shouldn't reach for directly under the
-// default-on lint. They take no block and produce no state, so they
-// don't fit the [widget] / [container] mold.
+
+// Non-`[widget]` `def public` aliases over raw ImGui calls — they take no block and produce no state,
+// so they don't fit the [widget] / [container] mold.
 
 def public set_scroll_here_y(center_y_ratio : float = 1.0f) {
-    //! `SetScrollHereY(center_y_ratio)` — scrolls the current window so the
-    //! recently-submitted item is anchored at the given vertical ratio
-    //! (0=top, 0.5=middle, 1=bottom). Common pattern: tail-follow scrolling
-    //! regions call `set_scroll_here_y(1.0f)` after the last entry.
+    //! `SetScrollHereY(center_y_ratio)` — scrolls so the recently-submitted item is anchored at the
+    //! given vertical ratio (0=top, 0.5=middle, 1=bottom). Tail-follow regions call
+    //! `set_scroll_here_y(1.0f)` after the last entry.
     SetScrollHereY(center_y_ratio)
 }
 
 def public set_keyboard_focus_here(offset : int = 0) {
-    //! `SetKeyboardFocusHere(offset)` — moves keyboard focus to the
-    //! item N items ahead (`offset = 0`) or behind (`offset = -1`, the
-    //! item that was just submitted). REPL-style inputs use `-1` after
-    //! Enter to refocus the editbox for the next command.
+    //! `SetKeyboardFocusHere(offset)` — moves keyboard focus to the item `offset` ahead (`0`) or behind
+    //! (`-1` = the item just submitted). REPL-style inputs use `-1` after Enter to refocus the editbox
+    //! for the next command.
     SetKeyboardFocusHere(offset)
 }
 

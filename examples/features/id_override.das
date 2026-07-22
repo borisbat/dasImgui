@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 
 require imgui/imgui_harness
 
@@ -72,11 +73,9 @@ def update() {
 
         separator()
         text("Per-call id= and path= overrides:")
-        // id="hashed_v1" — telemetry path stays "MAIN_WIN/HASHED_BTN"; ImGui's
-        // hash for the button is mangled with "hashed_v1" via PushID/PopID
-        // wrapping. button is bool-returning, but id= wraps in a void block
-        // so we call as a statement (intentional restriction; use with_id for
-        // the bool-return form).
+        // id="hashed_v1" — telemetry path stays "MAIN_WIN/HASHED_BTN" but ImGui's
+        // hash is mangled with "hashed_v1" via PushID/PopID. id= wraps the button
+        // in a void block, so call it as a statement (use with_id for bool-return).
         button(HASHED_BTN, (text = "Hashed via id=", id = "hashed_v1"))
 
         // path="rps_v1" — telemetry path becomes "MAIN_WIN/rps_v1"; the bare

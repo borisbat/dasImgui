@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 
 require imgui
 require imgui_app
@@ -72,9 +73,9 @@ def update() {
         }
 
         // ---- tab_bar — three tabs, each its own block ----
-        // Only the active tab's block runs each frame; inactive tabs don't
-        // even enter their body, so widgets in inactive tabs aren't in
-        // the registry that frame.
+
+        // Only the active tab's block runs each frame; inactive tabs never enter
+        // their body, so their widgets aren't in the registry that frame.
         tab_bar(MAIN_TABS, (text = "MainTabs", flags = ImGuiTabBarFlags.None)) {
             tab_item(GENERAL_TAB, (text = "General", closable = false,
                                    flags = ImGuiTabItemFlags.None)) {
@@ -96,10 +97,10 @@ def update() {
         separator(CT_SEP_1)
 
         // ---- popup — opened by a pending flag ----
-        // The button only flips the flag; the popup itself renders on the
-        // next frame when ImGui sees `pending_open = true` and runs its
-        // OpenPopup() call. The same channel handles imgui_open from
-        // outside (curl example in the DRIVE block).
+
+        // The button only flips the flag; the popup renders next frame when ImGui
+        // sees `pending_open = true` and runs OpenPopup(). The same channel handles
+        // imgui_open from outside (curl example in the DRIVE block).
         text("Popup - open via pending_open or imgui_open:")
         if (button(OPEN_POPUP_BTN, (text = "Open options"))) {
             OPTIONS_POPUP.pending_open = true

@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 
 module app_small
@@ -128,12 +129,10 @@ def ShowExampleAppLayout() : bool {
 // =============================================================================
 // Property Editor — cpp:7759-7795 + helper cpp:7710-7755
 // =============================================================================
-//
-// The recursive `ShowPlaceholderObject` calls itself with the SAME uid (424242)
-// for the i<2 child rows, relying on ImGui's `PushID(uid)` + `PushID(i)` for
-// per-instance ID disambiguation. The daslang port mirrors this via `with_id`
-// scopes; each tree-node's daslang state aliases across recursive instances
-// (state-store keys differ by container-path, NOT by state-global identity).
+
+// Recursive ShowPlaceholderObject reuses the SAME uid (424242) for child rows;
+// ImGui's PushID(uid)+PushID(i) disambiguates. The port mirrors this with `with_id`
+// scopes — tree-node state keys by container-path, not state-global identity.
 
 // Static shared float[8] mirroring cpp's `static float placeholder_members[8]`.
 // All ShowPlaceholderObject instances write to the same array — matches cpp.
@@ -362,11 +361,9 @@ var private SMALL_CONSTR_DISPLAY_LINES = 10
 
 var SMALL_CONSTR_LINES : table<int; NarrativeState>
 
-// Module-scope holders for the three callback-bearing constraints. ImGui
-// stores the callback pointer + user-data and invokes it from inside the
-// NEXT Begin() — including the synchronous auto-fit pass. The wrapper
-// struct's address must outlive the SetNextWindowSizeConstraints call,
-// so we can't use stack-local temps. Seeded once at [init] below.
+// Module-scope holders for the three callback-bearing constraints: ImGui invokes
+// the stored callback from the NEXT Begin() (incl. the auto-fit pass), so the
+// wrapper's address must outlive SetNextWindowSizeConstraints — no stack temps.
 var private SMALL_CONSTR_ASPECT_CN : ImGuiSizeConstraints
 var private SMALL_CONSTR_SQUARE_CN : ImGuiSizeConstraints
 var private SMALL_CONSTR_STEP_CN : ImGuiSizeConstraints
@@ -630,7 +627,7 @@ def ShowExampleAppFullscreen() : bool {
 // =============================================================================
 // Manipulating Window Titles — cpp:8080-8107
 // =============================================================================
-//
+
 // All three windows pass `bool* p_open = nullptr` in cpp (closable=false).
 // `##` / `###` separators in the `text` argument flow unchanged into Begin()
 // per imgui_containers_builtin.das:139 — IDENT controls daslang state only.

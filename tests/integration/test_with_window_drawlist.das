@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
@@ -47,17 +48,15 @@ def test_with_window_drawlist_nests(t : T?) {
         var snap = wait_for_widget(d, "DRAW_WIN/DRAW_BAND_SLOT", 15.0f)
         t |> success(snap != null, "feature renders")
         if (snap == null) return
-        // with_window_drawlist runs INSIDE the window() block; every primitive
-        // call site is lexically nested under DRAW_WIN. 8 primitives are
-        // exercised in the feature; expect ≥5 to land (compile-time-stable
-        // floor that survives small feature edits).
+        // with_window_drawlist runs INSIDE the window() block, so every primitive call site nests
+        // under DRAW_WIN. The feature exercises 8 primitives; expect ≥5 to land (a stable floor
+        // that survives small feature edits).
         let nested = count_primitives_under(snap, "DRAW_WIN/")
         t |> success(nested >= 5,
                      "with_window_drawlist primitives nest under DRAW_WIN/ (got {nested})")
-        // with_foreground_drawlist / with_background_drawlist run OUTSIDE the
-        // window() block in this feature, so their primitives register at the
-        // top level (no container prefix). Foreground + background each fire
-        // one add_rect_filled — expect ≥2 unnested entries.
+        // with_foreground_drawlist / with_background_drawlist run OUTSIDE the window() block here,
+        // so their primitives register at top level (no container prefix). Foreground + background
+        // each fire one add_rect_filled — expect ≥2 unnested entries.
         let unnested = count_primitives_under(snap, "")
         t |> success(unnested >= 2,
                      "with_foreground_drawlist / with_background_drawlist primitives are unnested (got {unnested})")

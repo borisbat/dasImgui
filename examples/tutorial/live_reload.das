@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 
 require imgui
 require imgui_app
@@ -88,12 +89,10 @@ def reset_counter(_input : JsonValue?) : JsonValue? {
 }
 
 // ---- Reload hooks — fire on reload boundary ----
-// [before_reload] runs in the OLD program after the file edit is detected
-// but before the new program loads. Use it to stash non-`@live` data that
-// the new program will pick up in `[after_reload]`. Frequently it's
-// enough to mark the relevant var `@live` instead, but hooks are the
-// escape hatch when serialization isn't possible (raw pointers, file
-// handles, GL textures...).
+
+// [before_reload] runs in the OLD program before the new one loads — stash
+// non-`@live` data for [after_reload] to restore. Usually marking a var `@live`
+// suffices; hooks are the escape hatch for raw pointers, file handles, GL textures.
 [before_reload]
 def private on_before_reload() {
     print("[live_reload tutorial] before_reload fired. g_custom_counter = {g_custom_counter}\n")
@@ -106,10 +105,9 @@ def private on_after_reload() {
 
 [export]
 def init() {
-    // Both functions are idempotent on reload — cold start creates the
-    // window + ImGui context, reload re-uses the preserved ImGui context
-    // and skips the duplicate CreateContext call (see live_imgui_init
-    // body in imgui_live.das).
+    // Both calls are idempotent on reload — cold start creates the window + ImGui
+    // context; reload reuses the preserved context and skips the duplicate
+    // CreateContext (see live_imgui_init in imgui_live.das).
     live_create_window("dasImgui live_reload tutorial", 1040, 720)
     live_imgui_init(live_window)
     DisableIniPersistence()
@@ -147,9 +145,9 @@ def update() {
         separator(LR_SEP_1)
 
         // ---- The custom counter, driven from outside via [live_command] ----
-        // Mirror the @live counter into a text_show so the snapshot can address
-        // it (the recording asserts the [live_command]s moved it). g_custom_counter
-        // is still the plain @live var; this is just the readout.
+
+        // Mirror the @live counter into text_show so the snapshot can address it;
+        // g_custom_counter stays the plain @live var, this is just the readout.
         CTR_TEXT.value := "g_custom_counter = {g_custom_counter}"
         text_show(CTR_TEXT)
         text("  - @live, preserved across reload")

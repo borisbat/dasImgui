@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 
 require imgui
 require imgui_app
@@ -18,6 +19,7 @@ require imgui/imgui_visual_aids
 let PRESETS : array<string> <- ["Calm", "Mellow", "Active", "Frantic"]
 var PRESET_ROW : table<int; ClickState>
 
+// nolint:STYLE014 — file-header tutorial banner (curl driving recipes) displaced below decls
 // =============================================================================
 // TUTORIAL: driving_outside — every boost widget is also a JSON endpoint.
 //

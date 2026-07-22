@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
@@ -22,11 +23,9 @@ let SORT_FEATURE = "modules/dasImgui/examples/features/sort_specs.das"
 [test]
 def test_sort_specs_table_renders(t : T?) {
     with_imgui_app(SORT_FEATURE) $(d) {
-        // Wait for the DEEPEST widget so the snapshot is taken AFTER the
-        // table has done its layout-then-render two-pass. Waiting on
-        // SORT_WIN/LEAD races on CI's headless framebuffer — LEAD appears
-        // on the first frame but the table body only drains on the second
-        // (ImGui computes column widths in pass 1, renders cells in pass 2).
+        // Wait for the DEEPEST widget so the snapshot lands AFTER the table's layout-then-render
+        // two-pass. Waiting on SORT_WIN/LEAD races on CI's headless framebuffer: LEAD appears in
+        // pass 1 but the table body only drains in pass 2 (widths computed then cells rendered).
         var snap = wait_for_widget(d, "SORT_WIN/SORT_TABLE/SORT_ROW_ID[0]", 15.0f)
         t |> success(snap != null,
                      "SORT_WIN renders with first inventory row's ID cell (sort_specs feature drained through table_next_row + table_set_column_index)")

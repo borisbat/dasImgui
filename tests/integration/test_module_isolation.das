@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
@@ -7,7 +8,6 @@ require dastest/testing_boost public
 require daslib/fio
 require daslib/module_path
 require strings
-require math
 
 //! Source-level audit: `widgets/imgui_visual_aids.das` must not directly
 //! require any GLFW module. The Vulkan-backed ImGui case must work without
@@ -28,8 +28,7 @@ def private starts_with_require(line : string) : bool {
 }
 
 def private require_token(line : string) : string {
-    //! Strip the leading `require ` and any trailing ` public`/`private`
-    //! modifiers, return just the module path (e.g. "glfw/glfw_boost").
+    // Strip `require ` and any trailing ` public`/`private`, return the module path.
     var tok = slice(line, 8, length(line))
     // Drop trailing modifiers.
     for (suffix in ["public", "private"]) {
@@ -58,12 +57,9 @@ def private file_lines(path : string; var lines : array<string>) : bool {
 
 [test]
 def test_imgui_visual_aids_has_no_direct_glfw_require(t : T?) {
-    // Resolve the target off this test file's own location (3-tier walk),
-    // not cwd — `get_this_module_dir()` returns <root>/tests/integration, so
-    // two dir_name hops give the module root. Mirrors how with_imgui_app
-    // resolves feature paths; works under both CI's installed-junction layout
-    // and a local `-load_module` checkout. Must be called inside a function
-    // (module_path caveat re: -exe top-level let baking).
+    // Resolve the target off this file's own location, not cwd: get_this_module_dir() returns
+    // <root>/tests/integration, so two dir_name hops give the module root (works under both CI's
+    // junction layout and a local -load_module). Must be inside a function (-exe top-level let baking).
     let target = "{dir_name(dir_name(get_this_module_dir()))}/widgets/imgui_visual_aids.das"
     var lines : array<string>
     let ok = file_lines(target, lines)

@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
@@ -29,10 +30,9 @@ def test_child_scroll_reenter_moves_scroll(t : T?) {
         // SCROLLY.scroll.y starts at 0.0 — the child opens scrolled to top.
         let y0 : double = find_widget(snap0, "MAIN_WIN/SCROLLY")?["payload"]?["scroll"]?["y"] ?? 0.0lf
         t |> equal(y0, 0.0lf, "initial SCROLLY.scroll.y == 0")
-        // One click should fire child_scroll_reenter once and move scroll
-        // by `delta = 8.0f` (per the feature file). Click several times to
-        // get a clearly-non-zero observation that's robust to single-frame
-        // jitter / button-repeat timing.
+        // One click fires child_scroll_reenter once, moving scroll by `delta = 8.0f` (per the
+        // feature file). Click several times for a clearly-non-zero observation robust to
+        // single-frame jitter / button-repeat timing.
         for (_i in range(5)) {
             click(d, "MAIN_WIN/BTN_DOWN")
         }

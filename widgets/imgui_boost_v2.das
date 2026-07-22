@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
@@ -19,11 +20,9 @@ require daslib/templates_boost
 
 let private VALID_FLAGS : array<string> = ["PUBLIC", "PRIVATE", "NOTLIVE"]
 
-// Named-arg sugar that flows into the auto-emitted state global's
-// initializer instead of the widget render call. `init=` is a rename
-// (sugar for `value`); `bounds=` matches the state field name verbatim.
-// `range=` is reserved in daslang's grammar and unusable as a record
-// name, hence the rename pair. Per API_REWORK §4.2 + §9.1.
+// Named-arg sugar flowing into the auto-emitted state global's initializer,
+// not the render call. `init=` renames to `value`; `bounds=` is verbatim;
+// `range=` is a reserved grammar word, hence the rename. API_REWORK §4.2 + §9.1.
 def private init_arg_to_field(name : string) : string {
     return "value" if (name == "init")
     return "bounds" if (name == "bounds")
@@ -57,14 +56,9 @@ class ContainerFunctionMacro : AstFunctionAnnotation {
     }
 }
 
-// `[drawlist_prim]` mirrors `[widget]` but skips state-global synthesis.
-// The annotation injects `widget_ident : string` at position 0 of the
-// function's arguments; the per-kind `DrawlistPrimCallMacro` rewrites
-// each call site, prepending a fresh `ExprConstString("<mod>:<line>:<col>")`
-// as the first positional arg. No `__widget_<line>_<col>` global is
-// emitted; the registry entry alone is enough for mouse-cards / playwright
-// targeting because drawlist primitives don't carry interactive state
-// worth pinning across `@live` reload.
+// `[drawlist_prim]` mirrors `[widget]` but skips state-global synthesis: it
+// injects `widget_ident : string` at position 0, and DrawlistPrimCallMacro
+// prepends a synthesized `<mod>:<line>:<col>` path key at each call site.
 
 class DrawlistPrimCallMacro : AstCallMacro {
     kind_name : string
@@ -121,9 +115,7 @@ def private apply_widget_or_container(var func : FunctionPtr; var errors : das_s
         return false
     }
     let kind = string(func.name)
-    // forward_argument: arg0 is a plain value forwarded into the render call
-    // (an entity id), not a state struct — skip the struct check and emit no
-    // state global. The path key is synthesized at runtime from arg0 in visit().
+    // forward_argument: arg0 is a forwarded value (entity id), not a state struct — no state global; path key synthesized at runtime in visit().
     var stateTypeName = ""
     var stateStruct : Structure const? = null
     if (!forward_argument) {
@@ -136,22 +128,14 @@ def private apply_widget_or_container(var func : FunctionPtr; var errors : das_s
         stateStruct = stateArg._type.structType
     }
     func.flags.generated = true
-    // Inject widget_ident : string. Normally at index 1 (between state/forwarded
-    // value and the rest); for verbatim forward, at index 0 — arg0 (the path
-    // string) IS widget_ident, so there's no separate forwarded param. The body
-    // references `widget_ident` literally for widget_finalize / container_finalize.
+    // Inject widget_ident : string — index 1 normally, index 0 for verbatim forward (arg0 IS the path string, no separate forwarded param).
     let identIndex = forward_verbatim ? 0 : 1
     var widthIdentVar = new Variable(at = func.at,
         name := "widget_ident",
         _type <- new TypeDecl(baseType = Type.tString, at = func.at))
     widthIdentVar.flags.generated = true
     func.arguments |> emplace(widthIdentVar, identIndex)
-    // Wrap the body: prepend widget_prelude(widget_ident) and, for containers,
-    // container_path_push(widget_ident). The container path push runs every
-    // frame BEFORE the user body so `invoke(blk)` sees self in g_container_path
-    // and any leaves rendered inside get hierarchical registry keys. The
-    // matching pop lives in body.finalList (always-runs on normal return).
-    // PopID lives in widget_finalize / container_finalize at the bottom.
+    // Prepend widget_prelude(widget_ident); for containers also container_path_push BEFORE the user body so invoke(blk) leaves nest under it (matching pop in finalList; PopID lives in widget_finalize / container_finalize).
     var fblk = new ExprBlock(at = func.body.at)
     fblk.list |> push(qmacro(imgui_boost_runtime::widget_prelude($i("widget_ident"))))
     if (is_container) {
@@ -168,12 +152,7 @@ def private apply_widget_or_container(var func : FunctionPtr; var errors : das_s
         fblk.finalList |> push(qmacro(imgui_boost_runtime::container_path_pop()))
     }
     func.body = fblk
-    // Register the per-kind call macro instance. The same WidgetCallMacro
-    // class works for both widgets and containers: it rewrites `kind(IDENT, ...)`
-    // to `kind(IDENT, "IDENT", ...)` and auto-emits the global. The body
-    // wrapping (path push/pop) is the only macro-side difference between the
-    // two annotations. Duplicate-name collisions trigger a C++-side panic in
-    // add_call_macro.
+    // Register the per-kind call macro (one WidgetCallMacro serves both widget and container). Duplicate-name collisions trigger a C++-side panic in add_call_macro.
     var inst = new WidgetCallMacro(
         kind_name = kind,
         state_type_name = stateTypeName,
@@ -182,10 +161,7 @@ def private apply_widget_or_container(var func : FunctionPtr; var errors : das_s
         is_container = is_container,
         forward_argument = forward_argument,
         forward_verbatim = forward_verbatim)
-    // Stash the widget def's user-facing args (positions 2..N, after the
-    // injected widget_ident at position 1). The indexed-form wrapper
-    // generator mirrors this signature for each (kind, IDENT) pair so the
-    // user's call site forwards args unchanged into the underlying widget.
+    // Stash the widget's user-facing args (positions 2..N, after widget_ident) so the indexed-form wrapper mirrors the signature per (kind, IDENT).
     let userArgN = length(func.arguments) - 2
     if (userArgN > 0) {
         inst.render_fn_args |> reserve(userArgN)
@@ -193,12 +169,7 @@ def private apply_widget_or_container(var func : FunctionPtr; var errors : das_s
     for (i in range(2, length(func.arguments))) {
         inst.render_fn_args |> push(func.arguments[i])
     }
-    // Stash the underlying FunctionPtr (long-lived; lives in the widget's
-    // module). The indexed-form wrapper reads .arguments and .result at
-    // visit time, sidestepping the lifetime issue we saw when caching a
-    // cloned TypeDecl on the WidgetCallMacro instance (the clone aliased
-    // to whatever the gc heap reused that slot for, giving the wrapper
-    // wrong return types like `double`/`tuple<>`/`GroupState`).
+    // Stash the long-lived FunctionPtr (read .arguments/.result at visit) — caching a cloned TypeDecl here gc-aliased and gave the wrapper wrong return types.
     inst.render_fn = func
     compiling_module() |> add_call_macro(make_call_macro(kind, inst))
     return true
@@ -219,34 +190,30 @@ class WidgetCallMacro : AstCallMacro {
         // forward_argument: arg0 is a plain value forwarded into the render
         // call — resolve it (and everything else) normally before visit().
         return true if (forward_argument)
-        // The first argument is the IDENT (which doesn't yet exist as a
-        // global); telling the typer not to pre-resolve it lets us see the
-        // raw ExprVar in visit(), parse the dotted-flag chain, emit the
-        // global, and rewrite. Other args resolve normally before we see them.
+        // The first argument is the IDENT (not yet a global); tell the typer
+        // not to pre-resolve it so visit() sees the raw ExprVar to parse the
+        // dotted-flag chain and emit the global. Other args resolve normally.
         return argIndex != 0
     }
 
-    // Auto-gen state-global identifier for no-ident call forms. `__widget_`
-    // prefix + line + column packs a unique-within-module name into a legal
-    // daslang identifier. Two widget calls on the same line use different
-    // columns so they don't collide.
+    // Auto-gen state-global identifier for no-ident call forms: `__widget_` +
+    // line + column, a unique-within-module legal identifier (same-line calls
+    // differ by column so they don't collide).
     def private synth_bare_name(at : LineInfo) : string {
         return "__widget_{at.line:d}_{at.column:d}"
     }
 
-    // Auto-gen telemetry path key: `<module>:<line>:<column>`. Surfaces in
-    // imgui_snapshot under `<window>/<this>`. Shifts on edits — explicit
-    // idents remain the right answer when path stability matters
-    // (interactive widgets driven by test commands).
+    // Auto-gen telemetry path key `<module>:<line>:<column>`, surfaced in
+    // imgui_snapshot. Shifts on edits — use explicit idents when path
+    // stability matters (interactive widgets driven by test commands).
     def private synth_path_key(mod : Module?; at : LineInfo) : string {
         let modName = mod == null ? "anon" : string(mod.name)
         return "{modName}:{at.line:d}:{at.column:d}"
     }
 
-    // Positional-string sugar (`text("hello")` etc.) is only valid when the
-    // user-facing signature is exactly a single `string` argument — i.e. the
-    // narrative-text family. Signature after widget_ident injection:
-    // (state; widget_ident; text : string) — length 3, last arg is string.
+    // Positional-string sugar (`text("hello")`) is valid only when the signature
+    // after widget_ident injection is exactly (state; widget_ident; text : string)
+    // — length 3, last arg string (the narrative-text family).
     def private accepts_positional_string() : bool {
         return false if (render_fn == null || length(render_fn.arguments) != 3)
         let argT = render_fn.arguments[2]._type
@@ -268,11 +235,7 @@ class WidgetCallMacro : AstCallMacro {
     def private emit_user_args(prog : ProgramPtr; expr : ExprCallMacro?;
                                var newCall : ExprCall?; firstUserArg : int;
                                renderArgStart : int) : bool {
-        // Destructure the user's call args (positions firstUserArg..N) into the
-        // render fn's declaration order, filling defaults for skipped optionals.
-        // `renderArgStart` = first user-facing param index in render_fn (2 after
-        // [state|forwarded-value, widget_ident]; 1 for verbatim forward where
-        // arg0 is consumed as widget_ident with no separate forwarded param).
+        // Destructure user call args into render_fn decl order, filling skipped defaults. renderArgStart = first user param index (2 normally; 1 for verbatim forward).
         var namedFields : table<string; ExpressionPtr>
         var hasNamedTuple = false
         var maxNamedArgIdx = -1
@@ -300,15 +263,7 @@ class WidgetCallMacro : AstCallMacro {
             }
         }
         if (is_container) {
-            // Containers end in `blk : block`. daslang won't auto-fill mid-
-            // position defaults around a block-as-last-arg (the block misaligns
-            // into the skipped slot — see imgui_containers_builtin.das notes), so
-            // the macro emits a FULLY-explicit positional config list: each config
-            // param [renderArgStart .. last-non-block] takes the named-tuple value
-            // if present, else the next positional arg, else its `init` default —
-            // then the trailing block is appended. Call sites that pass all config
-            // stay byte-identical; the new capability is omitting defaulted config
-            // (e.g. `node(id) {…}` ≡ `node(id, (color = …)) {…}`).
+            // Containers end in `blk : block`, and daslang won't auto-fill mid-position defaults around a trailing block — so emit a FULLY-explicit positional config list, then append the block.
             if (length(expr.arguments) <= firstUserArg) {
                 macro_error(prog, expr.at, "{kind_name}(...): container requires a body block")
                 return false
@@ -394,13 +349,7 @@ class WidgetCallMacro : AstCallMacro {
     }
 
     def private emit_forward_call(prog : ProgramPtr; expr : ExprCallMacro?) : ExpressionPtr {
-        // forward_argument rewrite. Two shapes:
-        //   prefixed (default): kind(VALUE, ...) -> render(VALUE, "{kind}_{VALUE}", ...)
-        //       arg0 (an id) is forwarded as render-param-0 AND drives the runtime
-        //       path key "{kind}_{VALUE}". User args start at render index 2.
-        //   verbatim_path:      kind(NAME, ...)  -> render(NAME, ...)
-        //       arg0 (a string) is consumed as widget_ident verbatim (no separate
-        //       forwarded param, no prefix). User args start at render index 1.
+        // forward_argument rewrite. Prefixed: kind(VAL,…)→render(VAL,"{kind}_{VAL}",…), user args at render index 2. Verbatim: kind(NAME,…)→render(NAME,…), arg0 is widget_ident, user args at index 1.
         if (empty(expr.arguments)) {
             macro_error(prog, expr.at, "{kind_name}(id, ...): missing forwarded first argument")
             return <- default<ExpressionPtr>
@@ -423,14 +372,9 @@ class WidgetCallMacro : AstCallMacro {
 
     def override visit(prog : ProgramPtr; mod : Module?; var expr : ExprCallMacro?) : ExpressionPtr {
         return <- emit_forward_call(prog, expr) if (forward_argument)
-        // Four call forms:
-        //   1. EXPLICIT      kind(IDENT, (...))              — leading ident drives state global
-        //   2. AUTO-GEN      kind((...))                     — first arg is a named-tuple; ident synthesized from source location
-        //   3. POSITIONAL    kind("string") / kind("{n}")    — single-string (or string_builder) sugar for narrative-text family; rewrites to AUTO-GEN
-        //   4. BARE          kind()                          — zero args; only valid when the widget signature has no user args (state + widget_ident only). Ident synthesized.
-        // When the user wants to read state (`.value`/`.click_count`), they
-        // must use form 1; the synthesized name in forms 2/3/4 is internal and
-        // shifts on edits. Documented as "want state, name state".
+        // Four call forms: 1 EXPLICIT kind(IDENT,(...)) drives the state global;
+        // 2 AUTO-GEN kind((...)) and 3 POSITIONAL kind("str") synth the ident from
+        // source location; 4 BARE kind() (all args defaulted). Read state ⇒ form 1.
         var bareName : string
         var widgetIdentOverride : string
         var rawName : string
@@ -438,10 +382,9 @@ class WidgetCallMacro : AstCallMacro {
         var indexExpr : ExpressionPtr
         var firstUserArg = 1
         if (empty(expr.arguments)) {
-            // Form 4: bare no-arg. Valid when every user arg (positions 2..N)
-            // has a default initializer — stateless layout primitives
-            // (separator/spacing/new_line/align_text_to_frame_padding) have
-            // none; same_line / indent / unindent have all-defaulted args.
+            // Form 4: bare no-arg — valid only when every user arg (positions
+            // 2..N) has a default initializer (e.g. same_line / indent, but not
+            // separator / spacing which have none).
             if (render_fn == null || !all_user_args_defaulted()) {
                 macro_error(prog, expr.at, "{kind_name}(...): missing widget body — pass `(named=arg, …)` or, for narrative widgets, a single string literal")
                 return <- default<ExpressionPtr>
@@ -452,10 +395,9 @@ class WidgetCallMacro : AstCallMacro {
         } else {
             let head = expr.arguments[0]
             if (head is ExprConstString || head is ExprStringBuilder) {
-                // Form 3: positional-string sugar. Accepts a string literal
-                // (`text("foo")`) or an interpolated string_builder
-                // (`text("count: {n}")`). Valid only when the widget signature
-                // is exactly (state; widget_ident; text : string).
+                // Form 3: positional-string sugar — a string literal or
+                // interpolated string_builder, valid only when the signature is
+                // exactly (state; widget_ident; text : string).
                 if (!accepts_positional_string()) {
                     macro_error(prog, head.at, "{kind_name}: positional-string form `{kind_name}(\"…\")` is only valid for single-string narrative widgets (text/text_unformatted/text_wrapped/text_disabled/bullet_text/separator_text). Use the named-tuple form `{kind_name}((…))` instead.")
                     return <- default<ExpressionPtr>
@@ -463,10 +405,9 @@ class WidgetCallMacro : AstCallMacro {
                 bareName = synth_bare_name(expr.at)
                 widgetIdentOverride = synth_path_key(mod, expr.at)
                 firstUserArg = 0
-                // Rewrite expr.arguments[0] from the bare string/builder to a
-                // synthesized named-tuple `(text = <head>)` so the destructure
-                // loop below emits a single positional `text` arg into the
-                // rewritten call.
+                // Rewrite arg0 from the bare string/builder to a synthesized
+                // named-tuple `(text = <head>)` so the destructure loop emits a
+                // single positional `text` arg.
                 var synth = new ExprMakeTuple(at = head.at)
                 synth.recordNames.resize(1)
                 synth.recordNames[0] := "text"
@@ -475,16 +416,9 @@ class WidgetCallMacro : AstCallMacro {
             } elif (head is ExprMakeTuple && (head as ExprMakeTuple) != null
                     && length((head as ExprMakeTuple).recordNames) == length((head as ExprMakeTuple).values)
                     && !empty((head as ExprMakeTuple).recordNames)) {
-                // STYLE001 — verbose `kind((field="literal"))` where positional `kind("literal")` works.
-                // Three gates, ALL must match:
-                //   1. Single arg, single named-tuple field (no other call args).
-                //   2. The lone field's value is a string literal or string-builder
-                //      — positional sugar at line 222 only accepts those, so an ExprVar
-                //      arg has NO positional alternative (would silently become Form 1
-                //      and treat the var as the widget IDENT).
-                //   3. Wrapper accepts positional-string form AND the field name matches
-                //      the wrapper's first user param.
-                //   4. `_allow_imgui_legacy = true` is NOT set on the consumer file.
+                // STYLE001: flag verbose `kind((field="lit"))` when positional
+                // `kind("lit")` works — a lone string-literal field matching the
+                // first user param, unless `_allow_imgui_legacy` is set on the file.
                 let mtCheck = head as ExprMakeTuple
                 if (length(expr.arguments) == 1 && length(mtCheck.recordNames) == 1
                         && (mtCheck.values[0] is ExprConstString || mtCheck.values[0] is ExprStringBuilder)
@@ -534,10 +468,9 @@ class WidgetCallMacro : AstCallMacro {
                 macro_error(prog, expr.at, "{kind_name}({bareName}[k]): dotted flags (.PUBLIC/.NOTLIVE) not supported on indexed form — declare the table global with required annotations directly")
                 return <- default<ExpressionPtr>
             }
-            // Indexed (table-form) widget: distinct path from single-global —
-            // table global is user-declared, wrapper helper is generated per
-            // (kind, IDENT), no init=/bounds= sugar (use [init] for imperative
-            // pre-population). Returns the wrapper-call rewrite.
+            // Indexed (table-form) widget: table global is user-declared, wrapper
+            // helper generated per (kind, IDENT), no init=/bounds= sugar (use
+            // [init] for imperative pre-population).
             return <- emit_indexed_call(prog, mod, expr, bareName, indexExpr) if (indexExpr != null)
             // Reconstruct rawName for error messages (source order).
             rawName = build_string() $(var w) {
@@ -595,18 +528,14 @@ class WidgetCallMacro : AstCallMacro {
             macro_error(prog, expr.at, "{kind_name}(IDENT...): cannot combine PUBLIC and PRIVATE in '{rawName}'")
             return <- default<ExpressionPtr>
         }
-        // Extract init-mapped named-tuple args (e.g. `init=0.5f`, `range=(0,1)`)
-        // BEFORE emit / destructure. These flow into the state global's
-        // initializer; the call itself never sees them. Collected into
-        // initFieldNames/Exprs (parallel arrays so insertion order is
-        // preserved — matches source order at the call site).
+        // Extract init-mapped named-tuple args (`init=`, `range=`) BEFORE emit —
+        // these flow into the state global's initializer and the call never sees
+        // them. Parallel initFieldNames/Exprs preserve source order.
         var initFieldNames : array<string>
         var initFieldExprs : array<ExpressionPtr>
-        // §4.8 per-call overrides — string literals (must be ExprConstString)
-        // pulled out of the named-tuple args. `id=` wraps the render call in
-        // PushID/PopID (ImGui hash override only). `path=` replaces bareName
-        // as the widget_ident second arg (both telemetry path AND ImGui hash
-        // change, since widget_prelude does PushID(widget_ident) inside).
+        // §4.8 per-call overrides (string literals). `id=` wraps the render call
+        // in PushID/PopID (ImGui hash only). `path=` replaces widget_ident —
+        // changes both telemetry path AND ImGui hash (widget_prelude PushID's it).
         var idOverride : string
         var idOverridePresent = false
         var pathOverride : string
@@ -643,24 +572,18 @@ class WidgetCallMacro : AstCallMacro {
                 }
             }
         }
-        // Auto-emit gate: only emit if not already declared at module scope.
-        // find_variable is module-scope ONLY — re-uses existing globals.
-        // Type built from the captured Structure pointer (NOT Type.alias on
-        // the qualified name — that doesn't resolve at the caller's scope
-        // when the state struct lives in another module).
-        // Initializer = `T()` so struct field defaults fire (without it the
-        // global is bare zero-init and `field : T = default` declarations are
-        // silently lost — see useInitializer flag, equivalent to gen2 `T()`).
+        // Auto-emit gate: emit only if not already a module-scope global
+        // (find_variable). Type from the captured Structure pointer, not a
+        // qualified alias (won't resolve cross-module); init `T()` fires defaults.
         if (find_variable(mod, bareName) == null) {
             var typeRef <- new TypeDecl(baseType = Type.tStructure,
                                         structType = unsafe(reinterpret<Structure?>(state_struct)),
                                         at = expr.at)
             var initCall = new ExprMakeStruct(at = expr.at, makeType = clone_type(typeRef))
             initCall.makeStructFlags.useInitializer = true
-            // Seed named-init fields (init=/range= sugar) into the initializer.
-            // `useInitializer=true` keeps struct defaults firing for un-seeded
-            // fields; field LineInfo points at the call site so a wrong field
-            // (e.g. `range=` on a button) reports against the user's arg.
+            // Seed named-init fields (init=/range=) into the initializer.
+            // useInitializer=true keeps defaults firing for un-seeded fields;
+            // field LineInfo points at the call site so wrong-field errors are local.
             if (!empty(initFieldNames)) {
                 var mkS = new MakeStruct(uninitialized)
                 for (j in range(length(initFieldNames))) {
@@ -683,16 +606,9 @@ class WidgetCallMacro : AstCallMacro {
                 v.annotation |> add_annotation_argument("live", true)
             }
             mod |> add_variable(v)
-            // Phase 1: append a register_widget call into the per-module
-            // shared [init] function. setup_call_list creates the function
-            // on first call and returns its body block on subsequent ones,
-            // so all widgets in this module funnel into a single init
-            // function. Pattern from daslib/decs_boost.das:585.
-            //
-            // First widget in this module: prepend a clear_module_widgets
-            // call so reload re-fires the init and replaces stale entries
-            // (including removed widgets and stale captured lambdas) with
-            // fresh ones. Other modules' entries stay untouched.
+            // Append register_widget into the per-module shared [init] via
+            // setup_call_list (all widgets funnel into one init function). The
+            // first widget prepends clear_module_widgets so reload drops stale entries.
             var reg <- setup_call_list("register`imgui`widgets", expr.at, true, true)
             let kindLit = kind_name
             let identLit = bareName
@@ -702,12 +618,9 @@ class WidgetCallMacro : AstCallMacro {
                     imgui_boost_runtime::clear_module_widgets($v(modLit))
                 ))
             }
-            // Pass the state global's address + TypeInfo directly to
-            // register_widget — no per-widget getter/serializer thunks. The
-            // address is a stable inline expression; the TypeInfo resolves
-            // through ``rtti_typeinfo`` to a static-table pointer. Snapshot
-            // and dispatcher paths use these via ``sprint_json_at`` /
-            // ``sscan_json_at`` (zero per-call-site daslang code).
+            // Pass the global's address + TypeInfo directly to register_widget —
+            // no per-widget getter/serializer thunks. Snapshot and dispatcher
+            // paths use these via ``sprint_json_at`` / ``sscan_json_at``.
             reg.list |> push(qmacro(
                 imgui_boost_runtime::register_widget(
                     $v(modLit),
@@ -718,22 +631,9 @@ class WidgetCallMacro : AstCallMacro {
                 )
             ))
         }
-        // Rewrite to `<kind>(IDENT, "IDENT", args...)`. The function lives
-        // in imgui_widgets_builtin (or user module). After macro expansion
-        // the typer resolves the call against the (macro-expanded) signature
-        // `def kind(var state : T; widget_ident : string; ...)`.
-        //
-        // Named-tuple args `(name = val, ...)` carry the call's named-arg
-        // ergonomic; daslang's square-bracket `[name = val]` form builds an
-        // ExprNamedCall and bypasses call_macro dispatch entirely. We emit
-        // ExprCall (positional) here, but REORDER tuple fields into the
-        // render_fn's argument declaration order and FILL DEFAULTS for any
-        // earlier optional args the user skipped. Without the reorder,
-        // destructuring values positionally would mis-map skipped-earlier
-        // cases — e.g. `same_line((spacing = 24.0f))` would land `24.0f` in
-        // `offset_from_start_x` (first optional), not `spacing`.
-        // widgetIdent precedence: user `path=` override → auto-gen
-        // `mod:line:col` synthesized at the top → fallback to bareName.
+        // Rewrite to positional `<kind>(IDENT,"IDENT",args)`, REORDERing tuple
+        // fields into decl order + FILLing skipped defaults (else mis-maps, e.g.
+        // spacing→offset_from_start_x). widgetIdent: `path=` → auto-gen → bareName.
         var widgetIdent = bareName
         if (!empty(widgetIdentOverride)) {
             widgetIdent = widgetIdentOverride
@@ -750,12 +650,9 @@ class WidgetCallMacro : AstCallMacro {
         newCall.arguments |> push(new ExprConstString(at = expr.at, value := widgetIdent))
         return <- default<ExpressionPtr> if (!emit_user_args(prog, expr, newCall, firstUserArg, 2))
         if (idOverridePresent) {
-            // Wrap in a void block: PushID(idLit); call(); PopID(). Because
-            // the block evaluates to void, capturing the widget's return
-            // value while id= is in play won't compile — that's intentional
-            // for first cut (rare combo; users can use `with_id(idLit) { let
-            // r = button(...) }` for the bool-return form). Same wrapping
-            // shape mirrors `with_id` exactly.
+            // Wrap in a void block: PushID(idLit); call(); PopID(). Void ⇒ can't
+            // capture the widget's return while id= is in play (rare; use
+            // `with_id(idLit) { let r = button(...) }` for the bool-return form).
             let idLit = idOverride
             return qmacro_block() {
                 PushID($v(idLit))
@@ -817,10 +714,7 @@ class WidgetCallMacro : AstCallMacro {
         // Qualify the inner call to the widget impl so the wrapper can't pick
         // up a same-named function in another module.
         let qualifiedKind = "{render_fn._module.name}::{kind_name}"
-        // Key-type-aware fn-ptr emit. Int and string keys go through parallel
-        // register_widget overloads (register_widget / register_widget_str);
-        // the per-(kind, IDENT) addr-getter + serializer are typed accordingly
-        // and shared across every call site for the same (kind, IDENT).
+        // Key-type-aware emit: int/string keys use parallel register_widget / register_widget_str overloads; the addr-getter is typed per key and shared per (kind, IDENT).
         let keyIsString = tabType.firstType != null && tabType.firstType.baseType == Type.tString
         if (tabType.firstType == null ||
             (tabType.firstType.baseType != Type.tInt && tabType.firstType.baseType != Type.tString)) {
@@ -830,10 +724,7 @@ class WidgetCallMacro : AstCallMacro {
         }
         let indexedAddrFnName = "__widget_addr$indexed${kind_name}${bareName}"
         if (find_unique_function(mod, indexedAddrFnName, true) == null) {
-            // Shared per-(kind, IDENT) addr-getter. Still needed for indexed
-            // widgets because table slots may be erased between frames — we
-            // re-resolve per-call. JV-getter is gone; ``sprint_json_at`` reads
-            // the resolved addr + ``ti`` directly.
+            // Shared per-(kind, IDENT) addr-getter — re-resolves per call because table slots may be erased between frames (erased keys surface as null).
             var addrFn : FunctionPtr
             if (keyIsString) {
                 addrFn = qmacro_function(indexedAddrFnName) $(k : string) : void? {
@@ -870,12 +761,7 @@ class WidgetCallMacro : AstCallMacro {
             }
             let keyType = clone_type(tabType.firstType)
             let retType = clone_type(render_fn.result)
-            // bare = "<bareName>[<k>]" — runtime interp builds the path component.
-            // Do NOT push to container_path here even for containers — the
-            // called [container]'s own macro-injected `container_path_push
-            // (widget_ident)` does that with the same `bare` value. A wrapper
-            // push would double-nest the path (`.../DYN_TAB[0]/DYN_TAB[0]`).
-            // path = container-aware key (matches what widget_finalize computes).
+            // Do NOT container_path_push here: the called [container] does it with the same `bare`; a wrapper push would double-nest the path (`.../DYN_TAB[0]/DYN_TAB[0]`).
             var bodyStmts <- [
                 qmacro_expr(${
                     let bare = "{$v(bareNameLit)}[{k}]"
@@ -883,14 +769,7 @@ class WidgetCallMacro : AstCallMacro {
                 qmacro_expr(${
                     let path = imgui_boost_runtime::widget_path_key(bare)
                 })]
-            // First-touch / post-reload register. ``addr_getter`` is the
-            // per-(kind, IDENT) shared fn-ptr (re-resolves the live table
-            // slot per-call so erased keys surface as null). ``ti`` is the
-            // element ``TypeInfo`` resolved from a typed ``IDENT[k]`` lookup
-            // — the typer walks back through ``IDENT``'s table type to the
-            // element type, then ``rtti_typeinfo`` resolves to a static-table
-            // pointer at compile time (the runtime expression is never
-            // evaluated). No per-call-site daslang code path.
+            // First-touch / post-reload register. `ti` from rtti_typeinfo(IDENT[k]) is resolved at compile time (the runtime expression is never evaluated).
             if (keyIsString) {
                 bodyStmts |> push <| qmacro_expr(${
                     if (!imgui_boost_runtime::widget_registered(path)) {
@@ -935,10 +814,7 @@ class WidgetCallMacro : AstCallMacro {
                 return <- default<ExpressionPtr>
             }
         }
-        // Rewrite call: wrapperName(indexExpr, ...remaining args). Use `__::`
-        // to constrain overload resolution to the user module (where we just
-        // installed the wrapper via add_function); also rules out collisions
-        // with any same-named function in other loaded modules.
+        // Rewrite call to wrapperName(indexExpr, …). `__::` constrains overload resolution to the user module where we just installed the wrapper.
         var newCall = new ExprCall(at = expr.at, name := "__::{wrapperName}")
         newCall.arguments |> push(indexExpr)
         for (i in range(1, length(expr.arguments))) {
@@ -958,13 +834,9 @@ class WidgetCallMacro : AstCallMacro {
     }
 }
 
-// `[edit_widget]` annotation — external-pointer sibling of `[widget]`. The
-// annotated function takes (ptr : T?, ...named args...). No state struct,
-// no auto-emit, no init=/bounds= sugar. The macro extracts the call-site
-// `id="..."` (required, string literal) and rewrites to a positional call;
-// the renderer captures `ptr` in serializer/dispatcher closures so snapshot
-// reads dereference `*ptr` live. Caller picks `safe_addr(local)` vs
-// `unsafe(addr(struct.field))` and owns the pointee lifetime.
+// `[edit_widget]` — external-pointer sibling of `[widget]`: fn takes (ptr : T?,
+// ...named...); no state struct / auto-emit / init= sugar. Requires a call-site
+// `id="..."` literal; renderer captures `ptr` for live `*ptr` snapshot reads.
 
 [function_macro(name = "edit_widget")]
 class EditWidgetFunctionMacro : AstFunctionAnnotation {
@@ -1002,18 +874,13 @@ def private apply_edit_widget_or_container(var func : FunctionPtr; var errors : 
     }
     let kind = string(func.name)
     func.flags.generated = true
-    // Inject widget_ident : string at index 1 (between ptr and the rest).
-    // Mirrors the [widget] macro injection so the user body can reference
-    // `widget_ident` literally when calling widget_finalize / edit_finalize.
+    // Inject widget_ident : string at index 1 (between ptr and the rest), so the user body can reference it for widget_finalize / edit_finalize.
     var widthIdentVar = new Variable(at = func.at,
         name := "widget_ident",
         _type <- new TypeDecl(baseType = Type.tString, at = func.at))
     widthIdentVar.flags.generated = true
     func.arguments |> emplace(widthIdentVar, 1)
-    // Wrap the body: prepend widget_prelude(widget_ident). For containers
-    // also push the container path before the user body runs (so leaves
-    // emitted inside `invoke(blk)` nest under our ident); matching pop
-    // lives in body.finalList so it always runs on normal return.
+    // Prepend widget_prelude(widget_ident); for containers also container_path_push BEFORE the user body so invoke(blk) leaves nest under our ident (matching pop in finalList).
     var fblk = new ExprBlock(at = func.body.at)
     fblk.list |> push(qmacro(imgui_boost_runtime::widget_prelude($i("widget_ident"))))
     if (is_container) {
@@ -1045,13 +912,10 @@ def private apply_edit_widget_or_container(var func : FunctionPtr; var errors : 
 }
 
 class EditExternalCallMacro : AstCallMacro {
-    //! Call macro installed by ``[edit_widget]``. Recognizes ``edit_kind(ptr, (id="...", ...))``, requires an explicit ``id=`` string literal, destructures the rest of the named-tuple to positional args (source order — match parameter order, like ``WidgetCallMacro``), and rewrites to a direct call into the renderer.
-    //! Name of the ``[edit_widget]``-decorated function — used as the rewritten call's target and in macro_error messages.
-    //! Underlying ``[edit_widget]`` function pointer; lives in the user module and is read at visit time.
-    //! User-facing args (positions 2..N after ``ptr`` + injected ``widget_ident``); cloned from ``render_fn`` so the wrapper preserves names/defaults.
-    kind_name : string
-    render_fn : FunctionPtr
-    render_fn_args : array<VariablePtr>
+    //! Call macro installed by ``[edit_widget]`` — recognizes ``edit_kind(ptr, (id="...", ...))``, requires an explicit ``id=`` string literal, destructures the rest of the named-tuple to positional args (source order), and rewrites to a direct renderer call.
+    kind_name : string  //!< Name of the ``[edit_widget]``-decorated function; the rewritten call's target and macro_error subject.
+    render_fn : FunctionPtr  //!< Underlying ``[edit_widget]`` function pointer; lives in the user module, read at visit time.
+    render_fn_args : array<VariablePtr>  //!< User-facing args (positions 2..N after ``ptr`` + ``widget_ident``); cloned from ``render_fn`` to preserve names/defaults.
 
     def override visit(prog : ProgramPtr; mod : Module?; var expr : ExprCallMacro?) : ExpressionPtr {
         if (empty(expr.arguments)) {
@@ -1114,27 +978,10 @@ class EditExternalCallMacro : AstCallMacro {
 }
 
 // ===== [widget_dispatch] — per-state-struct dispatcher registration =====
-//
-// Applied to a top-level function with signature
-//   def <name>(var state : T; action : string; payload : string) { ... }
-// keyed by the FIRST PARAMETER'S STRUCT TYPE (T), not by the function name.
-// One ``[widget_dispatch]`` per state struct covers every widget kind whose
-// state is that struct — e.g. the single ToggleState dispatcher fires for
-// ``checkbox``/``radio_button``/``selectable``/``menu_item``. Macro emits:
-//   - a type-erased wrapper that casts ``state_addr : void?`` to ``T?`` and
-//     delegates to the user body, and
-//   - an init registration via
-//       imgui_boost_runtime::register_widget_dispatch_for_type(
-//           reinterpret<TypeInfo const?>(typeinfo rtti_typeinfo(type<T>)),
-//           @@<wrapper>)
-//     pushed into the shared per-module ``register`imgui`widget_kinds`` init
-//     block (same setup_call_list pattern as [widget]'s register_widget at L518).
-//
-// External widget kinds defined in user modules use this same annotation. The
-// function NAME is irrelevant — what matters is the first parameter's struct
-// type. Built-in dispatchers live in ``imgui_widgets_builtin.das`` /
-// ``imgui_containers_builtin.das`` / ``imgui_docking_builtin.das`` /
-// ``imgui_layout_builtin.das`` alongside the existing ``_finalize`` helpers.
+
+// Applied to `def <name>(var state : T; action : string; payload : string)`,
+// keyed by T (the first param's struct type, NOT the function name) — one body
+// covers every widget kind whose state is T. Emits a type-erased wrapper + init register.
 
 [function_macro(name = "widget_dispatch")]
 class WidgetDispatchFunctionMacro : AstFunctionAnnotation {
@@ -1160,11 +1007,9 @@ class WidgetDispatchFunctionMacro : AstFunctionAnnotation {
             errors := "[widget_dispatch] third parameter must be `payload : string`"
             return false
         }
-        // Key the dispatcher by the state struct's name (not the function
-        // name). This collapses N kinds sharing a state struct down to one
-        // body — and the macro can be re-applied to multiple bodies for the
-        // same struct (last wins, with a setup_call_list dedup keeping the
-        // init block idempotent).
+        // Key the dispatcher by the state struct's name, not the function name
+        // — collapses N kinds sharing a struct to one body. Re-applying for the
+        // same struct is last-wins (setup_call_list dedup keeps init idempotent).
         let structName = string(stateArg._type.structType.name)
         func.name := "__dispatch_body_{structName}"
         func.flags.generated = true
@@ -1173,10 +1018,9 @@ class WidgetDispatchFunctionMacro : AstFunctionAnnotation {
         let wrapperName = "__dispatch_wrap_{structName}"
         let bodyName = "__dispatch_body_{structName}"
         if (find_unique_function(mod, wrapperName, true) == null) {
-            // Type-erased wrapper. Casts addr to ``T -const?`` and delegates
-            // to the renamed user body. One wrapper per state struct;
-            // registered against the struct's ``TypeInfo`` hash via the
-            // init block below.
+            // Type-erased wrapper: casts addr to ``T -const?`` and delegates to
+            // the renamed user body. One per state struct, registered against
+            // the struct's ``TypeInfo`` hash via the init block below.
             var wrapper = qmacro_function(wrapperName) $(state_addr : void?; action : string; payload : string) {
                 unsafe {
                     var s & = *reinterpret<$t(stateArg._type) -const?>(state_addr)

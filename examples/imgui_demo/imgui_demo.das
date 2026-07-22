@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 
 module imgui_demo
@@ -69,11 +70,9 @@ var SHOW_TOOL_ID_STACK = false
 var SHOW_TOOL_STYLE_EDITOR = false
 var SHOW_TOOL_ABOUT = false
 
-// Window-options toggles — 12 booleans wired into DEMO_WIN's ImGuiWindowFlags.
-// cpp:335-346 — each `no_*` ORs the matching WindowFlag bit (or, for no_menu,
-// inverts since the default is to render the menu bar). DEMO_WIN's `closable`
-// param is false in this port so `no_close` is informational only (cpp uses
-// it to swap p_open=NULL; we don't surface a close button on this window).
+// Window-options toggles (cpp:335-346) — 12 booleans wired into DEMO_WIN's flags;
+// each `no_*` ORs the matching WindowFlag bit (no_menu inverts, since the default
+// renders the menu bar). `no_close` is informational only — this port isn't closable.
 var WO_NO_TITLEBAR = false
 var WO_NO_SCROLLBAR = false
 var WO_NO_MENU = false
@@ -286,8 +285,6 @@ def RunImGuiDemo() {
 
 // =============================================================================
 // Help — cpp:444-462
-// Bullet-text overview of the demo + a SeparatorText divider per section
-// (ABOUT / PROGRAMMER GUIDE / USER GUIDE), then ShowUserGuide bullets.
 // =============================================================================
 def private ShowDemoWindowHelp() {
     collapsing_header(DEMO_HELP_HEADER, (text = "Help",
@@ -315,13 +312,10 @@ def private ShowDemoWindowHelp() {
 
 // =============================================================================
 // Configuration — cpp:465-616
-// Sub-TreeNode "Configuration##2" body with 5 SeparatorText groups: General /
-// Docking / Multi-viewports / Widgets / Debug. CheckboxFlags on io.ConfigFlags
-// for nav/no-mouse/docking/viewport bits; plain Checkbox on the boolean
-// io.Config* / io.MouseDrawCursor fields. Help markers (cpp:473..) are
-// dropped here — they're "(?)"+item_tooltip chains and add a lot of state for
-// a debug-helper section. Easy to add later if needed.
 // =============================================================================
+
+// Help markers (cpp:473..) are dropped — "(?)"+item_tooltip chains add a lot of
+// state for a debug-helper section; easy to add later if needed.
 def private ShowDemoWindowConfiguration() {
     collapsing_header(DEMO_CONFIG_HEADER, (text = "Configuration",
                                              closable = false,
@@ -344,9 +338,7 @@ def private ShowDemoWindowConfiguration() {
             edit_checkbox_flags(cf_ptr,
                 (id = "CFG_NO_MOUSE", text = "io.ConfigFlags: NoMouse",
                  flags_value = ImGuiConfigFlags.NoMouse))
-            // cpp:481-489 — when NoMouse is on, flash a "press SPACE" reminder
-            // and consume Space to unset the bit; matches cpp behavior so a
-            // tester can't lock themselves out.
+            // cpp:481-489 — when NoMouse is on, flash a "press SPACE" reminder and consume Space to unset it, so a tester can't lock themselves out.
             if (bool(io.ConfigFlags & ImGuiConfigFlags.NoMouse)) {
                 if (fmod(float(GetTime()), 0.40f) < 0.20f) {
                     same_line(DEMO_CFG_NOMOUSE_SL)
@@ -433,9 +425,7 @@ def private ShowDemoWindowConfiguration() {
             edit_checkbox(unsafe(addr(io.ConfigDebugIsDebuggerPresent)),
                 (id = "CFG_DBG_DEBUGGER_PRESENT",
                  text = "io.ConfigDebugIsDebuggerPresent"))
-            // cpp:552 — wraps the next checkbox in BeginDisabled/EndDisabled
-            // because the option must be set at boot to mean anything; the
-            // grey-out is purely advisory.
+            // cpp:552 — grey out (BeginDisabled) the next checkbox: the option only means anything if set at boot, so it's advisory.
             with_disabled(true) {
                 edit_checkbox(unsafe(addr(io.ConfigDebugBeginReturnValueOnce)),
                     (id = "CFG_DBG_BEGIN_RETVAL_ONCE",
@@ -455,8 +445,6 @@ def private ShowDemoWindowConfiguration() {
 
 // =============================================================================
 // Window options — cpp:619-637
-// 3-column table of 12 checkboxes that drive DEMO_WIN's ImGuiWindowFlags via
-// the compute_demo_window_flags() helper above. Order matches cpp.
 // =============================================================================
 def private ShowDemoWindowWindowOptions() {
     collapsing_header(DEMO_WIN_OPTS_HEADER,

@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 
 module imgui_text_tree_sitter shared
@@ -118,9 +119,7 @@ def private push_das_fallback(var spans : array<TextSourceSpan>;
 }
 
 def private das_lexical_fallback(source : string) : array<TextSourceSpan> {
-    //! Tree-sitter remains authoritative. This small lexer only fills query
-    //! gaps caused by incomplete snippets or recovery nodes, which is common
-    //! in compact Git hunks.
+    // Fills query gaps from incomplete snippets / recovery nodes (common in compact Git hunks); tree-sitter stays authoritative.
     var result : array<TextSourceSpan>
     var expect_function = false
     var expect_type = false
@@ -283,10 +282,7 @@ def private push_json_span(var document : TextSourceDocument;
 
 def private json_lexical_source_document(source : string;
                                          revision : int) : TextSourceDocument {
-    //! Diffs are often incomplete JSON fragments, so a validating parser is
-    //! the wrong producer here. This lexer preserves exact byte coordinates
-    //! and colors every useful token it can recognize, including an
-    //! unterminated string at the edge of a hunk.
+    // Diffs are often incomplete JSON, so this lexer preserves exact byte coords and colors every token it can, even an unterminated string at a hunk edge.
     var document = TextSourceDocument(source = source, revision = revision)
     var covered_until = 0
     peek_data(source) $(bytes) {

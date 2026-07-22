@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
@@ -81,21 +82,9 @@ def test_imgui_synth_ctrl_shortcuts(t : T?) {
         }
         reset(d)
 
-        //! The canary for the click-then-Ctrl+A bug. Synth-clicks NAME_INPUT
-        //! to activate it, types text, then select-all → Backspace expects the
-        //! buffer to be empty.
-        //!
-        //! Under the legacy glfw_live driver, the synth click left Shortcut()
-        //! routing broken — Ctrl+A no-opped, Backspace deleted only the last
-        //! char, and the buffer ended up "ab" instead of "". imgui_live's
-        //! bypass purges the backend's queue contribution so NavId is
-        //! established correctly at activation.
-        //!
-        //! Platform note: ImGui sets io.ConfigMacOSXBehaviors=true on macOS
-        //! (via #ifdef __APPLE__ in ImGuiIO ctor). When set, the "shortcut key"
-        //! is Super (Cmd), not Ctrl — so "select all" is Cmd+A, not Ctrl+A.
-        //! We read config_macos_behaviors from the io snapshot and pick the
-        //! right modifier accordingly.
+        // Canary for the click-then-Ctrl+A bug: synth-click NAME_INPUT, type text, select-all →
+        // Backspace, expect an empty buffer (legacy glfw_live left Shortcut() routing broken, so
+        // Ctrl+A no-opped and the buffer ended "ab"). macOS uses Cmd not Ctrl (config_macos_behaviors).
         t |> run("click_then_ctrl_a_clears_input") <| @(t : T?) {
             var snap0 = wait_for_render(d, "MAIN_WIN/NAME_INPUT", 15.0f)
             t |> success(snap0 != null, "NAME_INPUT renders")

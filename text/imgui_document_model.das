@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 
 module imgui_document_model shared
@@ -220,8 +221,8 @@ def public text_document_install_bytes(var document : TextDocumentSource;
     let has_bom = length(bytes) >= 3 && contains_utf8_bom(bytes)
     let content = has_bom ? slice(bytes, 3) : bytes
     if (!is_utf8_string_valid(content)) return TextDocumentStatus.invalid_utf8
-    document.text := content
-    document.path := path
+    document.text = content
+    document.path = path
     document.has_utf8_bom = has_bom
     document.revision = max(revision, 1)
     document.saved_revision = document.revision
@@ -232,8 +233,8 @@ def public text_document_install_text(var document : TextDocumentSource;
                                       text, path : string;
                                       revision : int = 1) : TextDocumentStatus {
     if (!is_utf8_string_valid(text)) return TextDocumentStatus.invalid_utf8
-    document.text := text
-    document.path := path
+    document.text = text
+    document.path = path
     document.has_utf8_bom = false
     document.revision = max(revision, 1)
     document.saved_revision = document.revision
@@ -251,7 +252,7 @@ def public text_document_dirty(document : TextDocumentSource const) : bool {
 def public text_document_mark_saved(var document : TextDocumentSource;
                                     path : string = "") {
     if (!empty(path)) {
-        document.path := path
+        document.path = path
     }
     document.saved_revision = document.revision
 }
@@ -282,7 +283,7 @@ def public text_document_apply_edit(var document : TextDocumentSource;
     result.status = TextDocumentStatus.ok
     result.applied = true
     result.revision = document.revision
-    result.removed := removed
+    result.removed = removed
     result.inverse = TextEdit(
         source = TextSourceRange(start_byte = start_byte,
                                  end_byte = start_byte + length(edit.replacement)),

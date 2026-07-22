@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
@@ -161,11 +162,9 @@ def split_v(var state : SliderStateFloat; top_blk : block; bottom_blk : block) {
     if (bottom_h < 0.0f) {
         bottom_h = 0.0f
     }
-    // Group the whole vertical split so it is ONE layout item. Without this, when
-    // split_v is composed after dock_left's trailing SameLine, the top child shares
-    // a line with the full-height sidebar; closing it then advances the cursor by the
-    // sidebar's line height (not top_h), dropping the handle + bottom pane below the
-    // fold. The group makes the splitter stack internally regardless of the outer line.
+    // BeginGroup makes the whole vertical split ONE layout item. Without it, when split_v is composed after
+    // dock_left's trailing SameLine, the top child shares a line with the full-height sidebar; closing it then
+    // advances the cursor by the sidebar's height (not top_h), dropping the handle + bottom pane below the fold.
     BeginGroup()
     BeginChild("{widget_ident}__T", ImVec2(total_w, top_h),
                ImGuiChildFlags.None, ImGuiWindowFlags.None)
@@ -220,11 +219,9 @@ def dock_left(var state : SliderStateFloat; blk : block) {
 // ===== columns =====
 
 def public columns_open(n : int; id : string = ""; border : bool = true) {
-    //! Open an N-column block. `id` (default empty) is the ImGui id-stack
-    //! tag used for column-width persistence; `border` (default on) draws
-    //! the vertical dividers. Primitive emitted by the ``columns(N, …)``
-    //! call_macro; callable directly when the column count or shape is
-    //! dynamic.
+    //! Open an N-column block. `id` (default empty) is the ImGui id-stack tag for column-width persistence;
+    //! `border` (default on) draws the vertical dividers. Primitive emitted by the ``columns(N, …)``
+    //! call_macro; callable directly when the column count or shape is dynamic.
     Columns(n, id, border)
 }
 
@@ -242,20 +239,15 @@ def public columns_close() {
 
 def public tree_node_open(text : string;
                           flags : ImGuiTreeNodeFlags = ImGuiTreeNodeFlags.None) : bool {
-    //! `TreeNodeEx(label, flags) : bool` — open form WITHOUT auto-pair TreePop.
-    //! Use when the body needs to render outside the conditional (e.g.
-    //! ``same_line()`` immediately after the header trigger). Caller MUST
-    //! invoke ``tree_pop()`` when the return value is true AND the
-    //! ``NoTreePushOnOpen`` flag was NOT set (passing that flag skips the
-    //! TreePush, so a matching TreePop would underflow the stack).
+    //! `TreeNodeEx(label, flags) : bool` — open form WITHOUT auto-pair TreePop (use when the body renders
+    //! outside the conditional, e.g. ``same_line()`` after the header). Caller MUST invoke ``tree_pop()`` when the
+    //! return is true AND ``NoTreePushOnOpen`` was NOT set (that flag skips TreePush, so a TreePop would underflow).
     return TreeNodeEx(text, flags)
 }
 
 def public tree_pop() {
-    //! Pair with `tree_node_open` (or the leaf-bool TreeNodeEx overload) when
-    //! the return value is true AND the `NoTreePushOnOpen` flag was NOT set.
-    //! The `tree_node` container auto-pairs TreePop; this wrapper covers the
-    //! manual case.
+    //! Pair with `tree_node_open` (or the leaf-bool TreeNodeEx overload) when the return is true AND
+    //! `NoTreePushOnOpen` was NOT set. The `tree_node` container auto-pairs TreePop; this covers the manual case.
     TreePop()
 }
 

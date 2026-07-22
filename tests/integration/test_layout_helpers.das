@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
@@ -75,11 +76,9 @@ def test_layout_helpers(t : T?) {
             t |> success(bb_y0 > lb_y1,
                          "split_v: BOTTOM_BTN.top ({bb_y0}) > LEFT_BTN.bottom ({lb_y1})")
 
-            // Fit (regression guard for the dock_left -> split_v line-height overflow):
-            // the bottom pane must render INSIDE the content region, not pushed below the
-            // fold. dock_left's handle spans the full content height, so its bbox bottom
-            // (bbox.w) is the content-region floor. Before split_v was grouped, the top
-            // pane shared the sidebar's full-height line and the bottom pane dropped past it.
+            // Fit (regression guard for the dock_left -> split_v line-height overflow): the bottom
+            // pane must render INSIDE the content region. dock_left's handle spans full content
+            // height, so its bbox bottom (bbox.w) is the region floor the bottom pane must stay above.
             let region_floor = find_widget(snap0, "LAYOUT_WIN/SIDEBAR/HANDLE")?["bbox"]?["w"] ?? 0.0f
             let bb_y1 = bb?["w"] ?? 0.0f
             t |> success(region_floor > 0.0f && bb_y1 <= region_floor + 1.0f,
@@ -106,11 +105,9 @@ def test_layout_helpers(t : T?) {
                             "value", 0.7f, 300)
             t |> success(landed, "SPLIT_MAIN.value -> 0.7 after imgui_force_set")
 
-            // Geometry follows: RIGHT_BTN sits at the start of the right pane;
-            // when left fraction grows from 0.3 to 0.7 the pane boundary (and so
-            // RIGHT_BTN.left) shifts rightward. LEFT_BTN's bbox tracks the BUTTON
-            // (left-aligned inside the left pane), not the pane edge, so it
-            // doesn't move much.
+            // Geometry follows: RIGHT_BTN sits at the right pane's start, so growing the left
+            // fraction 0.3 → 0.7 shifts the pane boundary (and RIGHT_BTN.left) rightward. LEFT_BTN
+            // tracks the left-aligned button, not the pane edge, so it barely moves.
             var snap_lt = snapshot(d)
             let rb_x0_orig = find_widget(snap0, "LAYOUT_WIN/SPLIT_VERT/SPLIT_MAIN/RIGHT_BTN")?["bbox"]?["x"] ?? 0.0f
             let rb_x0_now = find_widget(snap_lt, "LAYOUT_WIN/SPLIT_VERT/SPLIT_MAIN/RIGHT_BTN")?["bbox"]?["x"] ?? 0.0f

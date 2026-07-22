@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 
 module layout
@@ -124,11 +125,9 @@ var private LAYOUT_LOOP_SL_CLIP : table<int; EmptyMarkerState>
 var private LAYOUT_TBA_NODE1_BT : table<int; NarrativeState>
 var private LAYOUT_TBA_NODE2_BT : table<int; NarrativeState>
 var private LAYOUT_CLIP_BTN : table<int; ClickState>
-// PR-B2 raw-sweep additions — indexed-state tables for loop bodies. Singleton
-// widget idents (LAYOUT_SECTION / LAYOUT_CHILD_MENUBAR / LAYOUT_CHILD_MENU /
-// LAYOUT_CHILD_TABLE / LAYOUT_HSZ_TABLE) are auto-emitted by the [container]
-// macro on first reference at the call site; tables are explicit because the
-// macro does NOT auto-emit indexed-form globals.
+// Indexed-state tables for loop bodies. Singleton widget idents are auto-emitted
+// by the [container] macro on first reference; indexed-form globals are NOT,
+// so these tables are declared explicitly.
 var private LAYOUT_CHILD_TABLE_BTN : table<int; ClickState>
 var private LAYOUT_BHL_WRAP_BTN : table<int; ClickState>
 var private LAYOUT_VS_SL : table<int; EmptyMarkerState>
@@ -312,8 +311,7 @@ def private ChildWindowsSection() {
             LAYOUT_CHILD_OVERRIDE_BG = false
         }
         SetCursorPosX(GetCursorPosX() + float(LAYOUT_CHILD_OFFSET_X))
-        // PushStyleColor wraps as with_style; bool gate inverts to two arms so
-        // both branches push the same body shape.
+        // PushStyleColor wraps as with_style; the bool gate splits into two arms pushing the same body shape.
         if (LAYOUT_CHILD_OVERRIDE_BG) {
             with_style((ImGuiCol.ChildBg, 0x64_00_00_FFu)) {
                 child(LAYOUT_CHILD_RED,
@@ -725,10 +723,7 @@ def private TextBaselineAlignmentSection() {
             }
 
             align_text_to_frame_padding()
-            // Common mistake to avoid: same_line after TreeNode must come
-            // before any contents below the node. Uses the manual
-            // `tree_node_open` / `tree_pop` pair because the node body
-            // renders OUTSIDE the conditional (button between header & body).
+            // same_line after TreeNode must precede any contents below it; manual tree_node_open/tree_pop pair since the body renders outside the conditional (button between header & body).
             let node_open = tree_node_open("Node##2")
             same_line((offset_from_start_x = 0.0f, spacing = spacing_x))
             button(LAYOUT_TBA_B2, (text = "Button##2"))
@@ -891,9 +886,7 @@ def private ScrollingSection() {
                             text("Item {item}")
                         }
                     }
-                    // scroll_to_off/scroll_to_pos for horizontal omitted to
-                    // keep this child read-only — the C++ reads them post
-                    // BeginChild, which is the same shape.
+                    // Horizontal scroll_to_off/scroll_to_pos omitted to keep this child read-only (C++ reads them post-BeginChild, same shape).
                     if (hit_track) {}
                 }
                 same_line(LAYOUT_HS_SL[i])
@@ -967,10 +960,7 @@ def private ScrollingSection() {
         let fb_state & = LAYOUT_SCROLL_FB_CHILD
         text("{fmt_0f(fb_state.scroll.x)}/{fmt_0f(fb_state.scroll_max.x)}")
         if (scroll_x_delta != 0.0f) {
-            // Re-enter the child by name to nudge its scroll position. The
-            // wrapper replicates the `child` container's PushID(IDENT) frame
-            // so BeginChild hashes to the SAME window — without it ImGui
-            // creates a phantom sibling and SetScrollX has no visible effect.
+            // Re-enter the child by name to nudge scroll; the wrapper replays the child's PushID frame so BeginChild hashes to the SAME window (else a phantom sibling makes SetScrollX a no-op).
             child_scroll_reenter("LAYOUT_SCROLL_FB_CHILD", "scrolling") {
                 SetScrollX(GetScrollX() + scroll_x_delta)
             }
@@ -1031,8 +1021,7 @@ def private HorizontalContentsSizeDemo() {
                 SetNextItemWidth(100.0f)
                 edit_drag_float(safe_addr(LAYOUT_HSZ_CONTENTS_SIZE_X),
                     (id = "LAYOUT_HSZ_CSX", text = "##csx", speed = 1.0f))
-                // Two 10x10 white markers at the left/right edge of the
-                // explicit content rect — visualizes the content-size span.
+                // Two 10x10 white markers at the content rect's left/right edges visualize the content-size span.
                 let p = GetCursorScreenPos()
                 with_window_drawlist() $(var dl) {
                     dl |> add_rect_filled(p, float2(p.x + 10.0f, p.y + 10.0f),
@@ -1112,9 +1101,7 @@ def private HorizontalContentsSizeDemo() {
                    window_flags = ImGuiWindowFlags.None)) {}
         }
     }
-    // The closable window state propagates via the [container] WindowState
-    // — when the user clicks X, LAYOUT_HSZ_WIN.open flips false and Begin/End
-    // skip. We mirror it into the section's bool here for consistency.
+    // Closable window state lives in [container] WindowState (X flips LAYOUT_HSZ_WIN.open false); mirror it into the section bool here.
     if (!LAYOUT_HSZ_WIN.open) {
         LAYOUT_SCROLL_SHOW_HSZ_DEMO = false
         LAYOUT_HSZ_WIN.open = true
@@ -1150,11 +1137,7 @@ def private TextClippingSection() {
             }
         }
 
-        // Three InvisibleButton canvases — each renders the same text with a
-        // different clipping strategy. Match cpp:3617-3658:
-        //   n=0 — ImGui::PushClipRect      (affects hit-testing + drawlist)
-        //   n=1 — draw_list->PushClipRect  (drawlist clip stack only)
-        //   n=2 — draw_list->AddText(...clip_rect) (per-call rasterization clip)
+        // Three InvisibleButton canvases, each clipping the same text differently: n=0 PushClipRect (hit-test+drawlist), n=1 drawlist PushClipRect (drawlist only), n=2 AddText clip_rect (per-call raster).
         let text_str = "Line 1 hello\nLine 2 clip me!"
         for (n in range(3)) {
             if (n > 0) same_line(LAYOUT_LOOP_SL_CLIP[n])
@@ -1238,9 +1221,7 @@ def private OverlapModeSection() {
 
 
 // =============================================================================
-// Tabs section — the C++ has no "Tabs" sub-section in Layout; the imgui_demo
-// Tabs demo lives under "Widgets". Layout ends at OverlapMode (cpp:3692). This
-// section is a no-op placeholder to match the masterplan's section list.
+// Tabs section — placeholder; imgui_demo's Tabs demo lives under Widgets (Layout ends at OverlapMode, cpp:3692).
 // =============================================================================
 
 def private TabsSection() {
@@ -1258,8 +1239,7 @@ def private fmt_0f(v : float) : string {
 }
 
 def private fmt_1f(v : float) : string {
-    // "%.1f" — one decimal place. daslang has no fixed-point printf; format
-    // by scaling and trimming.
+    // "%.1f" — daslang has no fixed-point printf, so scale and trim to one decimal.
     let scaled = int(v * 10.0f)
     return "{scaled / 10}.{abs(scaled % 10)}"
 }

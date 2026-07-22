@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 
 require imgui/imgui_harness
 
@@ -24,13 +25,10 @@ def init() {
     unsafe(GetStyle()).FontScaleMain = 1.5
 }
 
+// Never called at runtime, but the [widget] macro fires at COMPILE time on the
+// slider below — auto-emitting NEVER_RENDERED as a global and appending a
+// register_widget(...) line to [init], so it's in g_widgets though never painted.
 def private register_only_never_rendered() {
-    //! Never called at runtime, but the [widget] macro fires at compile
-    //! time on this slider call. That auto-emits NEVER_RENDERED as a
-    //! module-scope global AND appends a register_widget(...) line into
-    //! the per-module register`imgui`widgets() [init] function. So at
-    //! module load NEVER_RENDERED is registered in g_widgets, even
-    //! though imgui never paints it.
     slider_float(NEVER_RENDERED, (text = "Hidden — never painted"))
 }
 

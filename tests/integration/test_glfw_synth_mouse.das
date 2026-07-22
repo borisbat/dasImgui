@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
@@ -84,10 +85,9 @@ def test_mouse_move_to_animates(t : T?) {
         post_command(d, "mouse_pos", JV((x = 50.0f, y = 50.0f)))
         post_command(d, "mouse_move_to", JV((x = 350.0f, y = 250.0f, duration_ms = 400)))
 
-        // Mid-flight: cursor_x somewhere between start and end (via mouse_status).
-        // Wide window — under suite load a single slow frame can advance the
-        // timeline a lot, but anywhere strictly between start and end proves
-        // the tick is interpolating rather than snapping straight to the end.
+        // Mid-flight: cursor_x somewhere between start and end (via mouse_status). Wide window —
+        // under suite load one slow frame can advance the timeline a lot, but anywhere strictly
+        // between start and end proves the tick interpolates rather than snapping to the end.
         let midflight = wait_until(d, 180) $(var _snap) {
             let s = post_command(d, "mouse_status", null)
             let mx = s?["cursor_x"] ?? -1.0f
@@ -172,12 +172,9 @@ def test_mouse_stop_aborts(t : T?) {
 
 [test]
 def test_synth_cursor_ownership_sticky(t : T?) {
-    // Cursor sprite disappearing mid-recording: get_synth_cursor previously
-    // returned (playing, x, y) — after a mouse_play timeline drained, playing
-    // flipped false, effective_cursor_pos fell back to GetMousePos(), and the
-    // sprite jumped to the real OS cursor (off-screen if the user is in
-    // another window). Fix is sticky ownership: any synth event flips
-    // cursor_owned true; mouse_status now exposes it.
+    // Cursor sprite vanished mid-recording: after a mouse_play timeline drained, playing flipped
+    // false and effective_cursor_pos fell back to GetMousePos(), jumping the sprite to the real OS
+    // cursor. Fix is sticky ownership: any synth event flips cursor_owned true (mouse_status exposes it).
     with_imgui_app(FEATURE) $(d) {
         var snap0 = wait_for_render(d, "SYNTH_WIN", 15.0f)
         if (snap0 == null) {
@@ -214,11 +211,9 @@ def test_synth_cursor_ownership_sticky(t : T?) {
 
 [test]
 def test_mouse_stop_releases_held_buttons(t : T?) {
-    // Parity with key_stop (PR #2633 review, copilot r3229531303): an
-    // interrupted mouse_play sequence that pressed a button without queuing
-    // its release would leave ImGui believing the button is still held.
-    // Press button 0 manually, verify ImGui sees it held, mouse_stop, then
-    // verify both held_count and io.mouse_buttons[0] clear.
+    // Parity with key_stop: an interrupted mouse_play that pressed a button without queuing its
+    // release leaves ImGui believing the button is held. Press button 0 manually, verify ImGui
+    // sees it held, mouse_stop, then verify held_count and io.mouse_buttons[0] both clear.
     with_imgui_app(FEATURE) $(d) {
         var snap0 = wait_for_render(d, "SYNTH_WIN", 15.0f)
         if (snap0 == null) {

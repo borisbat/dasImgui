@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 
 require imgui
 require imgui_app
@@ -72,11 +73,10 @@ def update() {
                        flags = ImGuiWindowFlags.None)) {
 
         // ---- Auto-emit + read-anywhere ----
-        // No top-of-file `var SAVE_BTN : ClickState`. The macro emits the
-        // global the first time it sees `button(SAVE_BTN, ...)`. The
-        // struct's fields are then read directly:
-        //   SAVE_BTN.click_count : cumulative (@live → preserved across reload)
-        //   SAVE_BTN.clicked     : true on the frame the button fired
+
+        // No top-of-file `var SAVE_BTN : ClickState` — the macro emits the global
+        // on first `button(SAVE_BTN, ...)`. Read its fields directly: .click_count
+        // (cumulative, @live-preserved) and .clicked (true the frame it fired).
         text("Auto-emit: SAVE_BTN is the macro-emitted global.")
         if (button(SAVE_BTN, (text = "Save"))) {
             // `button(...)` returns bool — clicked-this-frame. Same info
@@ -87,14 +87,14 @@ def update() {
         separator(ST_SEP_1)
 
         // ---- Dotted flags ----
-        // SPEED.PUBLIC: emit the global with `variable public` instead of
-        // the default `variable private`. Other modules requiring this one
-        // can then read SPEED.value. Telemetry path stays "SPEED" — flags
+
+        // SPEED.PUBLIC: emit the global `variable public` (not the default private)
+        // so requiring modules can read SPEED.value. Path stays "SPEED" — flags
         // don't leak into the registry path.
-        //
-        // VOLUME.NOTLIVE: skip @live on the emitted global. On live-reload
-        // the source-side initial value wins (helps when you change bounds
-        // and want them to take effect immediately, not be preserved).
+
+        // VOLUME.NOTLIVE: skip @live on the emitted global, so on reload the
+        // source-side initial value wins (useful when you change bounds and want
+        // them to take effect immediately rather than be preserved).
         text("Dotted flags tune visibility and live-reload behavior:")
         slider_int(SPEED.PUBLIC,   (text = "Speed (int, PUBLIC)"))
         slider_float(VOLUME.NOTLIVE, (text = "Volume (NOTLIVE)"))
@@ -103,11 +103,10 @@ def update() {
         separator(ST_SEP_2)
 
         // ---- text_show: app-side value mirror ----
-        // text_show is the read-only mirror of text_input. The state's
-        // .value string is what gets displayed; imgui_force_set can drive it
-        // from outside, and the snapshot exposes it under the standard
-        // payload.value field — so integration tests can assert against
-        // computed status strings the same way they assert slider values.
+
+        // text_show is the read-only mirror of text_input: its state.value string
+        // is displayed, imgui_force_set drives it from outside, and the snapshot
+        // exposes it under payload.value so tests can assert computed strings.
         text("text_show - app-driven status reaches the snapshot:")
         text_show(STATUS_TEXT)
 

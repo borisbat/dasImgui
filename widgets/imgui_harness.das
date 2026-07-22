@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
@@ -92,8 +93,7 @@ var private g_headless_last_uptime : float = -1.0f
 var private g_headless_first_uptime : float = -1.0f
 
 def private ensure_parsed() {
-    // Lazy CLI parse on first harness_* call. clargs `find_*` helpers don't
-    // error on unknown args, so future test-side clargs structs coexist.
+    // Lazy CLI parse on first harness_* call; clargs `find_*` don't error on unknown args, so future test-side clargs structs coexist.
     return if (g_parsed)
     g_parsed = true
     let args <- get_user_args()
@@ -102,9 +102,7 @@ def private ensure_parsed() {
     g_headless = (raw_headless |> unwrap_or("false")) == "true"
     let raw_frames = find_flag_raw_value(args, "--headless-frames")
     g_headless_max_frames = to_int(raw_frames |> unwrap_or("0"))
-    // Wall-clock self-exit timer. 0 = disabled (preserves standalone usage).
-    // Playwright passes a value < its popen watchdog so a panicked test still
-    // releases the live-API port before the parent gives up (cascade guard).
+    // Wall-clock self-exit timer (0 = disabled). Playwright sets it below its popen watchdog so a panicked test still releases the live-API port before the parent gives up (cascade guard).
     let raw_timeout = find_flag_raw_value(args, "--headless-timeout-sec")
     g_headless_max_uptime_sec = to_float(raw_timeout |> unwrap_or("0"))
 }
@@ -116,21 +114,17 @@ def public harness_is_headless() : bool {
 }
 
 def public harness_wants_no_ini() : bool {
-    //! True if ``--no-imgui-ini`` was on the command line (``with_imgui_app``
-    //! passes it for every test spawn). ``harness_init`` calls
-    //! ``DisableIniPersistence`` when set, so ImGui never loads or saves
-    //! imgui.ini. Apps that gate default-layout setup on ``fexist("imgui.ini")``
-    //! must also check this: with persistence off, ImGui restores nothing, so a
-    //! stale imgui.ini on disk is NOT a reason to skip building the default layout.
+    //! True if ``--no-imgui-ini`` was on the command line (``with_imgui_app`` passes it per test spawn);
+    //! ``harness_init`` then calls ``DisableIniPersistence`` so ImGui never loads/saves imgui.ini. Apps
+    //! gating default-layout setup on ``fexist("imgui.ini")`` must check this — a stale ini is no reason to skip it.
     ensure_parsed()
     return g_no_ini
 }
 
 def public harness_init(title : string; width : int = 800; height : int = 600) {
-    //! Windowed: ``live_create_window`` + ``live_imgui_init`` (which also applies
-    //! the daslang theme + JetBrains Mono font). Headless: ``CreateContext`` +
-    //! ``apply_daslang_theme`` + font atlas build + ``DisplaySize`` — no window,
-    //! no GL context, no TTF (the headless atlas uses ProggyClean).
+    //! Windowed: ``live_create_window`` + ``live_imgui_init`` (applies the daslang theme + JetBrains
+    //! Mono font). Headless: ``CreateContext`` + ``apply_daslang_theme`` + font atlas build + ``DisplaySize``
+    //! — no window, no GL context, no TTF (the headless atlas uses ProggyClean).
     if (harness_is_headless()) {
         g_headless_ctx = CreateContext(null)
         InstallCoreClipboardBackend()
@@ -142,23 +136,17 @@ def public harness_init(title : string; width : int = 800; height : int = 600) {
         }
         return
     }
-    // Per-monitor DPI (GLFW_SCALE_TO_MONITOR): on desktop glfwCreateWindow scales the requested size by
-    // the monitor scale, and live_imgui_init reads glfwGetWindowContentScale for fonts + theme. On web
-    // emscripten honors it too -- it then renders the backing store at canvas-size x devicePixelRatio, so
-    // the UI is DPR-crisp + native-sized instead of a small fixed backing magnified by CSS. The hint MUST
-    // be set AFTER glfwInit (emscripten's GLFW.hints is null before glfwInit -> crash if set pre-init), so
-    // init here first; glfwInit is idempotent so live_create_window's own glfwInit is a no-op and its
-    // glfwCreateWindow inherits the hint.
+    // Per-monitor DPI (GLFW_SCALE_TO_MONITOR): desktop scales the window by monitor scale (live_imgui_init
+    // reads glfwGetWindowContentScale); web emscripten renders the backing store at canvas-size × DPR for a
+    // crisp native-sized UI. Hint MUST be set AFTER glfwInit (emscripten crashes if pre-init); glfwInit is idempotent.
     if (glfwInit() != 0) {
         glfwWindowHint(int(GLFW_SCALE_TO_MONITOR), 1)
     }
     var w = width
     var h = height
-    // On web, create the window at the largest card-aspect box that fits the on-page viewport (the
-    // examples iframe) so the UI fills the card box at native scale. Done ONCE, at creation:
-    // glfwCreateWindow sizes the canvas BEFORE the GL context exists, so there is no mid-run canvas
-    // resize -- a runtime resize recreates/invalidates the WebGL context and aborts the wasm. Desktop:
-    // glfw_canvas_css_* return 0, so the requested size is used unchanged.
+    // On web, size the window at creation to the largest card-aspect box fitting the on-page viewport so
+    // the UI fills the card at native scale. Done ONCE: a mid-run canvas resize invalidates the WebGL
+    // context and aborts the wasm. Desktop: glfw_canvas_css_* return 0, so the requested size is used as-is.
     let vw = glfw_canvas_css_width()
     let vh = glfw_canvas_css_height()
     if (vw > 0 && vh > 0 && width > 0 && height > 0) {
@@ -174,10 +162,9 @@ def public harness_init(title : string; width : int = 800; height : int = 600) {
     live_create_window(title, w, h)
     live_imgui_init(live_window)
     InstallCoreClipboardBackend()
-    // --no-imgui-ini (with_imgui_app passes it for every test spawn): null the
-    // ini AFTER live_imgui_init creates the context, BEFORE the first NewFrame,
-    // so a windowed GL test starts from the app's default layout and never
-    // reads/writes a stale imgui.ini in the spawn CWD.
+    // --no-imgui-ini (with_imgui_app passes it per test spawn): null the ini AFTER live_imgui_init
+    // creates the context, BEFORE the first NewFrame, so a windowed GL test starts from the app's
+    // default layout and never reads/writes a stale imgui.ini in the spawn CWD.
     if (g_no_ini) {
         DisableIniPersistence()
     }
@@ -191,10 +178,9 @@ def public harness_maximize_window() {
 }
 
 def public harness_begin_frame() : bool {
-    //! Returns false to skip update (window closed in windowed mode; auto-exit
-    //! cap reached in headless). Windowed: ``live_begin_frame`` + ``begin_frame``
-    //! + ``Impl_OpenGL3_NewFrame`` + ``Impl_Glfw_NewFrame``. Headless:
-    //! ``begin_frame`` + ``imgui_headless_advance_dt`` (real wall-clock dt).
+    //! Returns false to skip update (window closed windowed; auto-exit cap reached headless). Windowed:
+    //! ``live_begin_frame`` + ``begin_frame`` + ``Impl_OpenGL3_NewFrame`` + ``Impl_Glfw_NewFrame``.
+    //! Headless: ``begin_frame`` + ``imgui_headless_advance_dt`` (real wall-clock dt).
     if (harness_is_headless()) {
         if (g_headless_max_frames > 0 && g_headless_frame >= g_headless_max_frames) {
             request_exit()
@@ -238,21 +224,16 @@ def public harness_begin_frame() : bool {
 }
 
 def public harness_maybe_collect_gc() {
-    //! Standalone application GC boundary. Call from ``main`` immediately after
-    //! ``update()`` returns, never from inside a frame. JIT collection cannot
-    //! trace collectable values held in ordinary stack locals, so the caller's
-    //! ``main`` frame must not keep any across this call. The entry program must
-    //! declare both ``options persistent_heap`` and ``options gc``. Under
-    //! daslang-live this is a no-op because the host already collects between
-    //! update calls.
+    //! Standalone GC boundary — call from ``main`` right after ``update()`` returns, never inside a frame.
+    //! JIT collection can't trace collectable values in stack locals, so ``main`` must keep none across this
+    //! call. Entry program needs ``options persistent_heap`` + ``options gc``. No-op under daslang-live (host collects).
     maybe_collect_gc()
 }
 
 def public harness_new_frame() {
-    //! Runs the boost synth tick — so synthetic mouse/keyboard and ``set_user_control``
-    //! work on every harness app with no opt-in — then ``ImGui::NewFrame()``. The tick
-    //! sits between the backend's ``*_NewFrame()`` (in ``harness_begin_frame``) and
-    //! ``NewFrame()`` here, the slot synthetic input must drain in. Both modes.
+    //! Runs the boost synth tick (synthetic mouse/keyboard + ``set_user_control`` work with no opt-in),
+    //! then ``ImGui::NewFrame()``. The tick sits between the backend's ``*_NewFrame()`` (in
+    //! ``harness_begin_frame``) and ``NewFrame()`` here — the slot synthetic input must drain in. Both modes.
     imgui_synth_tick()
     NewFrame()
     // F11 -> toggle fullscreen (windowed only; IsKeyPressed needs the post-NewFrame input state). Web:
@@ -293,6 +274,7 @@ def public harness_end_frame() {
 def public harness_shutdown() {
     //! Windowed: ``live_imgui_shutdown`` + ``live_destroy_window``.
     //! Headless: ``DestroyContext`` (the harness owns the ctx in headless mode).
+
     // Final GC-pressure summary (no-op unless imgui_debug_memory was enabled). Runs
     // before context teardown so the numbers reflect the steady-state app, not cleanup.
     imgui_memory_report()

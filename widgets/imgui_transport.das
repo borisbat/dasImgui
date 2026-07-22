@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
@@ -20,10 +21,9 @@ typedef Transport = lambda<(action : string; var payload : JsonValue?) : JsonVal
 let DEFAULT_AWAIT_POLL_MS : uint = 50u
 let DEFAULT_AWAIT_TIMEOUT_SEC : float = 5.0f
 
-// Per-request HTTP timeout (seconds). Every client call below sets it so a wedged
-// host — one that accepts the connection but stops answering, e.g. the GLFW main
-// thread (which also serves the live API) blocked mid-command — fails in seconds
-// instead of blocking the caller all the way to the popen watchdog.
+// Per-request HTTP timeout (seconds). Every client call sets it so a wedged host — one that accepts
+// the connection but stops answering (e.g. the GLFW main thread, which also serves the live API,
+// blocked mid-command) — fails in seconds instead of blocking the caller to the popen watchdog.
 let public DEFAULT_REQUEST_TIMEOUT_SEC : int = 10
 
 struct public HttpReply {
@@ -32,8 +32,7 @@ struct public HttpReply {
 }
 
 def private clamp_timeout_sec(sec : int) : uint16 {
-    // libhv's HttpRequest.timeout is uint16 seconds; clamp so a negative or oversized
-    // value can't wrap into a near-zero or multi-hour timeout that defeats fail-fast.
+    // libhv's HttpRequest.timeout is uint16 seconds; clamp so a negative/oversized value can't wrap into a near-zero or multi-hour timeout that defeats fail-fast.
     return uint16(clamp(sec, 1, 65535))
 }
 

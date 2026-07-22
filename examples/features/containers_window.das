@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 
 require imgui/imgui_harness
 
@@ -70,8 +71,7 @@ def update() {
 
     // A second, closable window — driveable via imgui_open / imgui_close.
     // Initial state.open is false (auto-emit zero); enqueue open via
-    //   curl -X POST -d '{"name":"imgui_open","args":{"target":"DETAIL_WIN"}}' \
-    //                localhost:9090/command
+    //   curl -X POST -d '{"name":"imgui_open","args":{"target":"DETAIL_WIN"}}' localhost:9090/command
     SetNextWindowPos(ImVec2(460.0f, 20.0f), ImGuiCond.FirstUseEver)
     SetNextWindowSize(ImVec2(300.0f, 240.0f), ImGuiCond.FirstUseEver)
     window(DETAIL_WIN, (text = "Detail (closable)", closable = true,

@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 
 module imgui_icons shared
@@ -241,9 +242,7 @@ def private ic_snap(var ctx : IconCtx) {
 }
 
 // ============================================================
-// Expansion set — synth, scene tools/objects, arrange, view, file, general
-// Curvy glyphs (solo S, sine, bell, rotate, refresh, help, palette) are
-// polyline/arc approximations; swap for AddBezierCubic if you want exact curves.
+// Expansion set (synth, scene, arrange, view, file, general) — curvy glyphs are polyline/arc approximations (swap for AddBezierCubic for exact curves).
 // ============================================================
 
 // --- Synth ---
@@ -505,6 +504,7 @@ def private ic_clock(var ctx : IconCtx) {
 }
 
 // ===== Catalog (single source of truth) =====
+
 // One row per glyph drives the dispatch table below, the public catalog
 // accessors, the doc generator (utils/imgui2rst), and utils/make_icon_doc.
 // To add a glyph: write an `ic_*` routine above, then add ONE row here.
@@ -661,11 +661,9 @@ def public icon(name : string; size : float = 20.0f; weight : float = 1.0f) {
 }
 
 def public icon_button_draw(id : string; glyph : string; size : float = 20.0f; weight : float = 1.0f) : bool {
-    //! Low-level icon button: `InvisibleButton(id)` + themed chrome (ImGuiCol.Button*) + amber
-    //! glyph (Text when pressed); returns true on click. NOT a registered widget — for the
-    //! snapshot-visible, playwright-drivable form use the `icon_button` [widget] in
-    //! imgui_widgets_builtin (`icon_button(STATE, (glyph=..., tip=...))`). Use this directly only
-    //! for transient chrome that no test drives by path. `id` must be unique per call site.
+    //! Low-level icon button: `InvisibleButton(id)` + themed chrome + amber glyph (Text when pressed);
+    //! returns true on click. NOT a registered widget — for the snapshot/playwright form use the `icon_button`
+    //! [widget] in imgui_widgets_builtin. Use this only for transient chrome no test drives; `id` unique per call site.
     let style & = GetStyle()
     let pad = style.FramePadding
     let full = float2(size + pad.x * 2.0f, size + pad.y * 2.0f)
@@ -693,10 +691,9 @@ def public icon_button_draw(id : string; glyph : string; size : float = 20.0f; w
 def public icon_button_draw_at(id : string; glyph : string; pos : float2;
                                size : float = 20.0f; weight : float = 1.0f;
                                visible : bool = true) : bool {
-    //! Fixed-position counterpart for overlay/inline chrome. It registers a
-    //! real ImGui item through ItemAdd + ButtonBehavior but deliberately does
-    //! not call ItemSize or mutate the layout cursor. `visible=false` keeps the
-    //! reserved hit target invisible until hovered or activated.
+    //! Fixed-position counterpart for overlay/inline chrome. Registers a real ImGui item via ItemAdd +
+    //! ButtonBehavior but deliberately does NOT call ItemSize or mutate the layout cursor. `visible=false`
+    //! keeps the reserved hit target invisible until hovered or activated.
     let style & = GetStyle()
     let pad = style.FramePadding
     let full = float2(size + pad.x * 2.0f, size + pad.y * 2.0f)

@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 
 require imgui/imgui_harness
 require math
@@ -78,10 +79,10 @@ def update() {
         separator()
 
         // ----- Live render of every current key -----
-        // Snapshot keys to an array first — the wrapper's `CHANNEL_VOL[k]`
-        // access would trip "can't insert to a locked table" if iterated
-        // directly through `keys(...)`, since table[k] auto-inserts and the
-        // iterator holds the table lock.
+
+        // Snapshot keys to an array first — `CHANNEL_VOL[k]` would trip "can't
+        // insert to a locked table" if iterated through keys() directly, since
+        // table[k] auto-inserts while the iterator holds the table lock.
         let live_keys <- [for (k in keys(CHANNEL_VOL)); k]
         for (k in live_keys) {
             slider_float(CHANNEL_VOL[k], (text = "ch{k}"))

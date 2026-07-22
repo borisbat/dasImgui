@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
@@ -15,7 +16,7 @@ let TRIGGERS_FEATURE = "modules/dasImgui/examples/features/triggers.das"
 
 [test]
 def test_spawn_and_shutdown(t : T?) {
-    with_imgui_app(TRIGGERS_FEATURE) $(d) {
+    with_imgui_app(TRIGGERS_FEATURE) $(_d) {
         // Body intentionally empty. with_imgui_app's prelude already gated
         // on /status; the postlude POSTs /shutdown and drains. If we get
         // here, daslang-live is alive and answering HV.

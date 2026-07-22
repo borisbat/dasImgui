@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options rtti                                 // dasOPENAI needs rtti so @optional fields serialize correctly
 
@@ -65,9 +66,8 @@ class ScanVisitor : AstVisitor {
         let name = string(expr.name)
         if (name == "say" || name == "say_begin") {
             // say[_begin](app, text, target, read_ms, voice) — by compile time all 5 are positional
-            // (defaults materialized): caption at [1], voice at [4] (empty "" when omitted). Both
-            // are scanned because a click-under-voice driver calls say_begin directly (with literal
-            // caption + voice) and splits the dwell around the click itself.
+            // (defaults materialized): caption at [1], voice at [4] (empty "" when omitted). Both are
+            // scanned because a click-under-voice driver calls say_begin directly with literal args.
             if (length(expr.arguments) >= 5) {
                 let caption = const_str(expr.arguments[1])
                 let voice = const_str(expr.arguments[4])
@@ -158,9 +158,8 @@ def main : int {
     to_log(LOG_INFO, "[prepare] scanned {cfg.driver}: apng={g_apng}, {length(g_lines)} say() line(s)\n")
     let apng_stem = stem(g_apng)
     // Manifest + wavs must land beside where the APNG will be written (arm_voiceovers reads
-    // dir_name(apng)/voiceover at record time). dasImgui drivers root the APNG under dasImgui's
-    // module root; a consumer package (e.g. dasImguiNodeEditor) roots it under its own, so it
-    // passes --asset-root to point the voiceover dir there.
+    // dir_name(apng)/voiceover at record time). dasImgui drivers root it under dasImgui's module
+    // root; a consumer package roots it under its own and passes --asset-root to redirect there.
     let root = empty(cfg.asset_root) ? dasimgui_module_root() : cfg.asset_root
     let vo_dir = path_join(path_join(root, RECORD_ASSET_REL), "voiceover")
     mkdir_rec(vo_dir)

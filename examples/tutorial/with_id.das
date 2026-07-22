@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 
 require imgui
 require imgui_app
@@ -72,11 +73,10 @@ def update() {
                     flags = ImGuiWindowFlags.None)) {
 
         // ---- with_id scope: same widget, two render sites ----
-        // SAVE_BTN is a single-global widget. Without with_id, rendering it
-        // twice would panic at end-of-frame (registry detects N>1). Each
-        // scope contributes a path segment AND a PushID, so the registry
-        // sees ID_WIN/section_a/SAVE_BTN and ID_WIN/section_b/SAVE_BTN as
-        // distinct entries with distinct ImGui hashes.
+
+        // SAVE_BTN is a single-global widget; rendering it twice without with_id
+        // panics at end-of-frame (registry N>1). Each scope adds a path segment +
+        // PushID, so ID_WIN/section_a/SAVE_BTN and .../section_b/... stay distinct.
         text("Same SAVE_BTN, two scopes:")
         with_id("section_a") {
             button(SAVE_BTN, (text = "Save in A"))
@@ -100,21 +100,20 @@ def update() {
         separator(WI_SEP_2)
 
         // ---- id= per-call: stable ImGui hash across label renames ----
-        // The button's daslang identifier (HASHED_BTN) controls visibility
-        // and live-reload; the imgui hash is mangled by "stable_v1" so
-        // scripts targeting the widget by hex_id, and imgui.ini state for
-        // this button, stay stable even if HASHED_BTN is later renamed.
-        // Telemetry path stays ID_WIN/HASHED_BTN.
+
+        // HASHED_BTN (the daslang identifier) drives visibility + live-reload; the
+        // imgui hash is mangled by "stable_v1", so hex_id-targeting scripts and
+        // imgui.ini state survive a rename. Telemetry path stays ID_WIN/HASHED_BTN.
         text("Per-call id= - script-stable ImGui hash:")
         button(HASHED_BTN, (text = "Hashed via id=", id = "stable_v1"))
 
         separator(WI_SEP_3)
 
         // ---- path= per-call: stable telemetry path across renames ----
-        // RPS_PATH is the daslang global (rename it and the variable
-        // reference breaks). "rps_stable" is the registry path leaf — the
-        // imgui_force_set / imgui_click string used by external drivers. Both the
-        // path AND the ImGui hash adopt "rps_stable".
+
+        // RPS_PATH is the daslang global (rename breaks the reference). "rps_stable"
+        // is the registry path leaf — the imgui_force_set / imgui_click string for
+        // external drivers; both the path AND the ImGui hash adopt "rps_stable".
         text("Per-call path= - script-stable telemetry path:")
         slider_float(RPS_PATH, (text = "Speed (path=)",
                                 path = "rps_stable"))

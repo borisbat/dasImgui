@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 
 module imgui_text_source_model shared
@@ -111,10 +112,9 @@ def private push_marker(var document : TextSourceDocument; var covered_until : i
 
 def public markdown_source_document(source : string;
                                     revision : int = 0) : TextSourceDocument {
-    //! Lightweight Markdown lexical styling for source presentation. This is
-    //! intentionally not a second Markdown parser: it recognizes delimiter
-    //! tokens while leaving all bytes visible. Structural MD4C parsing remains
-    //! the authority for rendered Markdown.
+    //! Lightweight Markdown lexical styling for source presentation. Not a second Markdown parser:
+    //! it recognizes delimiter tokens while leaving all bytes visible. Structural MD4C parsing
+    //! remains the authority for rendered Markdown.
     var document = TextSourceDocument(source = source, revision = revision)
     peek_data(source) $(bytes) {
         let n = length(bytes)

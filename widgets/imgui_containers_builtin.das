@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
@@ -69,49 +70,26 @@ def public stateless_finalize(widget_ident : string; kind : string; var state : 
 }
 
 def private current_item_bbox() : float4 {
-    //! Snapshot ``GetItemRectMin/Max`` for the "last item" — meaningful for
-    //! containers whose Begin* call emits a clickable header into the parent
-    //! (``menu`` / ``tab_item``). Returns the captured rect in its native space; the
-    //! finalizers route it through ``capture_item_bbox``, which maps it to screen (and
-    //! records ``canvas_bbox``) when a snapshot item-transform is active.
+    // GetItemRectMin/Max for the "last item" — the clickable header a container's Begin* emits (menu/tab_item); finalizers map it to screen via capture_item_bbox.
     let rmin = GetItemRectMin()
     let rmax = GetItemRectMax()
     return float4(rmin.x, rmin.y, rmax.x, rmax.y)
 }
 
 // ===== Notes on ergonomics =====
-//
-// `[container]` defs follow the same named-tuple convention as `[widget]`:
-// per-call config goes through the tuple, e.g.
-//
-//   window(MAIN_WIN, (text="Main", closable=false, flags=ImGuiWindowFlags.None)) <| ${body}
-//
-// The CallMacro destructures the named-tuple positionally (matching the
-// function's parameter declaration order — see mouse card
-// `dasimgui-widget-named-tuple-args-positional-not-named`). The block-as-
-// last-arg sugar appends the block at the trailing slot, so the function
-// signature is `(state, widget_ident, …named-tuple positional args…, blk)`.
-//
-// Defaults at the end DON'T work for [container] (they'd land the block in
-// the wrong slot — daslang positional resolution doesn't auto-fill mid-
-// position defaults to align a trailing block-arg). All per-call config args
-// are required; the user passes them all in the named-tuple. The default
-// values from imgui (e.g. ImGuiWindowFlags.None) are spelled out at the
-// call site, mirroring how other dasImgui widgets surface flag args.
+
+// `[container]` defs take per-call config via a named-tuple (like `[widget]`), destructured
+// positionally: window(MAIN_WIN, (text="Main", closable=false, flags=ImGuiWindowFlags.None)) <| ${body}.
+// All config args are required — mid-position defaults can't align the trailing block-arg slot.
 
 // ===== Window family =====
 
 [container]
 def window(var state : WindowState; text : string; closable : bool;
            flags : ImGuiWindowFlags; blk : block) {
-    //! `Begin(name, p_open, flags)` paired with `End()` whenever Begin was
-    //! called. When `closable=true` and `state.open` is false, we SKIP
-    //! Begin/End entirely (the ImGui idiom — a closable window stops being
-    //! drawn once the X-button or imgui_close fires; the application is
-    //! expected to stop calling Begin, not continue with `*p_open=false`).
-    //! `imgui_open` / `imgui_close` route through pending_open/close.
-    //! `state.open` defaults to true (see WindowState) so closable windows
-    //! render from frame 1.
+    //! `Begin(name, p_open, flags)` paired with `End()` whenever Begin was called. With
+    //! `closable=true` and `state.open` false we SKIP Begin/End entirely (ImGui idiom: a closed window
+    //! stops being drawn). `imgui_open`/`imgui_close` route through pending_open/close.
     if (state.pending_open) {
         state.open = true
         state.pending_open = false
@@ -155,11 +133,10 @@ def window(var state : WindowState; text : string; closable : bool;
 }
 
 // ===== Window mutation / viewport helpers =====
-//
-// `SetWindowSize` mid-frame mutation (operates on the current/last window),
-// the `GetCenter()` viewport method, and `IsMousePosValid` mouse query are
-// thin pass-throughs — caller-driven, no widget host needed. Wrapped (not
-// allow-listed) so consumer code stays free of raw `imgui::*` calls.
+
+// `SetWindowSize` (current/last window), the `GetCenter()` viewport method, and `IsMousePosValid`
+// are thin caller-driven pass-throughs. Wrapped (not allow-listed) so consumer code stays free of
+// raw `imgui::*` calls.
 
 def public set_window_size(size : float2; cond : ImGuiCond = ImGuiCond.None) {
     //! `SetWindowSize(size, cond)` — resize the current/last window. Pair with
@@ -202,15 +179,9 @@ def child(var state : ChildState; text : string; size : float2;
 }
 
 def public child_scroll_reenter(widget_ident : string; text : string; blk : block) {
-    //! Re-enter an existing child window (created earlier this frame by
-    //! `child(IDENT, (text = ...))`) to nudge its scroll position via
-    //! `SetScrollX` / `SetScrollY` inside `blk`. Replicates the original
-    //! container's `PushID(IDENT)` frame (emitted by `widget_prelude`) so
-    //! `BeginChild(text, ...)` hashes to the SAME window — without it ImGui
-    //! creates a phantom sibling and the scroll nudge silently has no visible
-    //! effect. `widget_ident` MUST be the literal IDENT string the original
-    //! `child` was called with — typo = silent miss. No registry entry; this
-    //! is a scroll-nudge, not a container.
+    //! Re-enter an existing child (from `child(IDENT, …)`) to nudge scroll via `SetScrollX`/`SetScrollY`
+    //! in `blk`. MUST replay the original `PushID(IDENT)` so `BeginChild` hashes to the SAME window —
+    //! without it ImGui makes a phantom sibling and the nudge silently no-ops. No registry entry.
     PushID(widget_ident)
     BeginChild(text, float2(0.0f, 0.0f), ImGuiChildFlags.None, ImGuiWindowFlags.None)
     invoke(blk)
@@ -245,10 +216,9 @@ def menu_bar(var state : MenuBarState; blk : block) {
 
 [container]
 def main_menu_bar(var state : MainMenuBarState; blk : block) {
-    //! `BeginMainMenuBar()` / `EndMainMenuBar()` — screen-top persistent menu
-    //! bar; only-on-true pairing. Unlike `menu_bar` this does NOT require an
-    //! enclosing `window(...)` with the MenuBar flag — call it directly at
-    //! the top of the per-frame body (after NewFrame, before any window).
+    //! `BeginMainMenuBar()` / `EndMainMenuBar()` — screen-top persistent menu bar; only-on-true
+    //! pairing. Unlike `menu_bar` it needs NO enclosing `window(...)` with the MenuBar flag — call
+    //! it directly at the top of the per-frame body (after NewFrame, before any window).
     let im_open = BeginMainMenuBar()
     if (im_open) {
         invoke(blk)
@@ -265,11 +235,9 @@ def menu(var state : MenuState; text : string; enabled : bool; blk : block) {
     state.enabled = enabled
     let im_open = BeginMenu(text, enabled)
     state.opened = im_open
-    //! Capture the menu HEADER rect right after BeginMenu — the header is the
-    //! parent-strip clickable item that ``IsItem*`` resolves against. If we
-    //! defer to ``stateless_finalize`` after EndMenu, the "last item" is
-    //! something inside the cascade body (or popped state), which renders the
-    //! bbox useless for recording drivers / playwright clicks.
+    // Capture the menu HEADER rect right after BeginMenu — it's the parent-strip clickable item
+    // ``IsItem*`` resolves against. Deferring to ``stateless_finalize`` after EndMenu would capture
+    // something inside the cascade body, useless for recording drivers / playwright clicks.
     let header_bbox = current_item_bbox()
     if (im_open) {
         invoke(blk)
@@ -283,10 +251,9 @@ def menu(var state : MenuState; text : string; enabled : bool; blk : block) {
 [container]
 def popup(var state : PopupState; text : string;
           flags : ImGuiWindowFlags; blk : block) {
-    //! `BeginPopup(name, flags)` / `EndPopup()` — only-on-true pairing.
-    //! `imgui_open` enqueues OpenPopup(text) on the next frame; the popup
-    //! then opens via ImGui's internal stack. `imgui_close` enqueues a
-    //! CloseCurrentPopup inside the active popup body.
+    //! `BeginPopup(name, flags)` / `EndPopup()` — only-on-true pairing. `imgui_open` enqueues
+    //! `OpenPopup(text)` next frame (opens via ImGui's internal stack); `imgui_close` enqueues a
+    //! `CloseCurrentPopup` inside the active popup body.
     if (state.pending_open) {
         OpenPopup(text, ImGuiPopupFlags.None)
         state.open = true
@@ -327,12 +294,9 @@ def popup_context_item(var state : PopupContextItemState; str_id : string;
 [container]
 def popup_context_window(var state : PopupContextWindowState; str_id : string;
                          flags : ImGuiPopupFlags; blk : block) {
-    //! `BeginPopupContextWindow(str_id, flags)` / `EndPopup()` — right-click
-    //! anywhere inside the enclosing window opens a context popup. ImGui
-    //! drives open/close internally; body runs only while open. `str_id`
-    //! is the popup's stack id — pass a unique non-empty string per
-    //! consumer (the C-level `"##ContextWindow"` default fires only on a
-    //! NULL `const char*` which daslang's string binding doesn't expose).
+    //! `BeginPopupContextWindow(str_id, flags)` / `EndPopup()` — right-click inside the enclosing
+    //! window opens a context popup; ImGui drives open/close, body runs only while open. Pass a
+    //! unique non-empty `str_id` (the C `"##ContextWindow"` default needs a NULL daslang can't pass).
     let im_open = BeginPopupContextWindow(str_id, flags)
     if (im_open) {
         invoke(blk)
@@ -344,25 +308,9 @@ def popup_context_window(var state : PopupContextWindowState; str_id : string;
 [container]
 def popup_window(var state : PopupWindowState; str_id : string;
                  flags : ImGuiWindowFlags; blk : block) {
-    //! `BeginPopup(str_id, flags)` / `EndPopup()` — stateless manual-trigger
-    //! pairing. Unlike `popup_context_item`/`popup_context_window` (which
-    //! attach an auto-trigger to a preceding item or the enclosing window),
-    //! `popup_window` does NOT open itself. Caller drives opening via
-    //! `open_popup(str_id, flags)` — typically on a hover + mouse-release
-    //! check, or any other custom predicate. Body runs only while ImGui
-    //! reports the popup as open under `str_id`.
-    //!
-    //! When the same `str_id` is reused under different `PushID` scopes
-    //! (e.g. one logical popup per loop iteration with shared text), each
-    //! scope keeps its own open state — see `examples/features/popup_window.das`.
-    //!
-    //! IDENT-vs-str_id ID stacking: the boost ``[container]`` prelude
-    //! pushes ``widget_ident`` onto ImGui's ID stack before the body runs,
-    //! but ``OpenPopup(str_id)`` was called by the caller OUTSIDE that
-    //! push. To keep BeginPopup's hash matching the caller's OpenPopup
-    //! hash, ``popup_window`` peels ``widget_ident`` off the ID stack just
-    //! around ``BeginPopup``/``EndPopup`` — the body still renders under
-    //! the pushed IDENT so child widgets remain disambiguated.
+    //! `BeginPopup(str_id, flags)` / `EndPopup()` — stateless manual-trigger; caller drives opening via
+    //! `open_popup(str_id, flags)`, body runs only while ImGui reports it open. Peels `widget_ident` off
+    //! the ID stack around Begin/EndPopup so BeginPopup's hash matches the caller's OpenPopup (called outside the IDENT push).
     PopID()
     let im_open = BeginPopup(str_id, flags)
     if (im_open) {
@@ -415,10 +363,9 @@ def popup_modal(var state : PopupState; text : string; closable : bool;
 // ===== Popup control (trigger paired with popup / popup_modal containers) =====
 
 def open_popup(var state : PopupState) : void {
-    //! Queue `OpenPopup(state.text)` for the next visit of the paired
-    //! `popup` / `popup_modal` container — the container reads
-    //! `pending_open` before `BeginPopup`, so the linkage button-click →
-    //! popup is observable as a state mutation (visible to live/mouse-cards).
+    //! Queue `OpenPopup(state.text)` for the paired `popup`/`popup_modal` container's next visit —
+    //! it reads `pending_open` before `BeginPopup`, so the button-click → popup linkage is observable
+    //! as a state mutation (visible to live/mouse-cards).
     state.pending_open = true
 }
 
@@ -438,17 +385,9 @@ def open_popup_on_item_click(str_id : string;
 
 def open_popup_on_item_click(var state : PopupState;
                              flags : ImGuiPopupFlags = ImGuiPopupFlags.MouseButtonRight) : void {
-    //! Stateful right-click trigger paired with `popup` / `popup_modal`
-    //! containers. Checks ``IsMouseReleased`` + ``IsItemHovered`` on the
-    //! previously-submitted item, then queues ``state.pending_open`` so the
-    //! container's NEXT visit opens the popup INSIDE its own
-    //! ``PushID(IDENT)`` scope. The string-id form
-    //! (:ref:`open_popup_on_item_click(str_id, …) <function-imgui_containers_builtin_open_popup_on_item_click_string_ImGuiPopupFlags>`)
-    //! computes ``GetID(str_id)`` at the call-site ID stack, which DOES NOT
-    //! match a registered ``popup`` container's ``BeginPopup`` ID (the
-    //! container does its own ``PushID(IDENT)`` first) — so the popup never
-    //! opens. Use this overload whenever the target popup is a
-    //! ``popup(IDENT, …)`` / ``popup_modal(IDENT, …)`` container.
+    //! Stateful right-click trigger for `popup`/`popup_modal` containers: checks ``IsMouseReleased`` +
+    //! ``IsItemHovered``, then queues ``state.pending_open`` so the container opens the popup inside its own
+    //! ``PushID(IDENT)`` scope. Use this — the str_id form's ``GetID(str_id)`` won't match the container's push.
     let mb = int(flags) & int(ImGuiPopupFlags.MouseButtonMask_)
     if (IsMouseReleased(unsafe(reinterpret<ImGuiMouseButton>(mb)))
             && IsItemHovered(ImGuiHoveredFlags.AllowWhenBlockedByPopup)) {
@@ -495,10 +434,9 @@ def tab_bar(var state : TabBarState; text : string;
 [container]
 def tab_item(var state : TabItemState; text : string; closable : bool;
              flags : ImGuiTabItemFlags; blk : block) {
-    //! `BeginTabItem(label, p_open, flags)` / `EndTabItem()` — only-on-true.
-    //! With `closable=true` the X-button toggles `state.open`; we skip
-    //! BeginTabItem entirely once `state.open` is false. `state.open` defaults
-    //! to true (see TabItemState) so closable tabs render from frame 1.
+    //! `BeginTabItem(label, p_open, flags)` / `EndTabItem()` — only-on-true. With `closable=true` the
+    //! X-button toggles `state.open`, and we skip BeginTabItem entirely once it's false. `state.open`
+    //! defaults to true (see TabItemState) so closable tabs render from frame 1.
     if (state.pending_open) {
         state.open = true
         state.pending_open = false
@@ -540,15 +478,9 @@ def tab_item(var state : TabItemState; text : string; closable : bool;
 [edit_container]
 def edit_tab_item(var p_open : bool? implicit; text : string;
                   flags : ImGuiTabItemFlags; blk : block) {
-    //! ``BeginTabItem(label, p_open, flags)`` / ``EndTabItem()`` against a
-    //! caller-owned ``bool?``. External-pointer sibling of :ref:`tab_item
-    //! <function-imgui_containers_builtin_tab_item>`: when ``*p_open == false``
-    //! the tab is skipped entirely (chrome + body); the X close button on the
-    //! header writes ``*p_open = false``. Use when a second UI surface
-    //! (checkbox row, menu toggle, etc.) needs to drive the same visibility
-    //! flag the X button writes — the canonical "shared open state" pattern
-    //! that ``tab_item``'s internal-only ``state.open`` doesn't expose. Same
-    //! ``id="..."`` literal requirement as other ``edit_*`` rails.
+    //! ``BeginTabItem(label, p_open, flags)`` / ``EndTabItem()`` against a caller-owned ``bool?``.
+    //! External-pointer sibling of ``tab_item``: ``*p_open == false`` skips the tab (chrome + body); the
+    //! X button writes ``*p_open = false``. For shared open state a second surface drives. Same ``id="..."`` rule.
     var header_bbox = float4(0.0f, 0.0f, 0.0f, 0.0f)
     if (unsafe(*p_open)) {
         let im_open = BeginTabItem(text, p_open, flags)
@@ -565,13 +497,10 @@ def edit_tab_item(var p_open : bool? implicit; text : string;
 }
 
 // ===== Wrapping tab bar (multi-row) =====
-// ImGui's native TabBar shrinks tabs to fit (ellipsizing labels) or scrolls
-// them behind arrows; it never wraps to multiple rows. `wrap_tab_bar` /
-// `wrap_tab_item` draw the tab headers as a wrapped strip of highlighted
-// buttons (as many rows as the width needs) and render only the active tab's
-// body. The body renders AFTER the whole strip, so the strip is laid out from
-// the labels collected on the PREVIOUS frame — a label-set change appears one
-// frame late (never visible for a stable category list after frame 1).
+
+// ImGui's native TabBar shrinks/ellipsizes or scrolls tabs; it never wraps to rows.
+// `wrap_tab_bar`/`wrap_tab_item` draw the headers as a wrapped button strip and render only the
+// active tab's body. The strip lays out from the PREVIOUS frame's labels, so a change is one frame late.
 
 struct private WrapCtx {
     value : int               // active tab index for this bar
@@ -614,9 +543,7 @@ def private draw_wrap_strip(var state : WrapTabBarState) {
         if (Button(lbl, ImVec2(0.0f, 0.0f))) {
             state.value = i
         }
-        // Surface each header as <bar>/<label> so a real synth click can select
-        // a tab by name (not just imgui_force_set the index). Selection lands in
-        // state.value, which the container serializes for verification.
+        // Surface each header as <bar>/<label> so a real synth click can select a tab by name (lands in state.value, which the container serializes for verification).
         register_clickable_bbox(lbl, lbl, "wrap_tab_item")
         if (is_active) {
             PopStyleColor(1)
@@ -628,13 +555,9 @@ def private draw_wrap_strip(var state : WrapTabBarState) {
 
 [container]
 def wrap_tab_bar(var state : WrapTabBarState; blk : block) {
-    //! A multi-row, wrapping tab bar — the container ImGui's native `tab_bar`
-    //! isn't: when tabs overflow the width it shrinks/ellipsizes or scrolls,
-    //! while this one wraps the header strip onto as many rows as needed and
-    //! shows only the active tab's body. Active tab is an index;
-    //! `imgui_force_set {"value":N}` selects tab N next frame. Pair with
-    //! `wrap_tab_item`. The header strip lays out from the labels seen on the
-    //! previous frame, so a changed label set appears one frame late.
+    //! A multi-row, wrapping tab bar (native `tab_bar` shrinks/ellipsizes/scrolls instead). Active
+    //! tab is an index; `imgui_force_set {"value":N}` selects tab N next frame. Pair with `wrap_tab_item`.
+    //! The header strip lays out from the previous frame's labels, so a changed label set is one frame late.
     if (state.has_pending) {
         state.value = state.pending_value
         state.has_pending = false
@@ -670,11 +593,9 @@ def public wrap_tab_item(text : string; blk : block) {
 
 [container]
 def tooltip(var state : TooltipState; blk : block) {
-    //! `BeginTooltip()` / `EndTooltip()` — only-on-true pairing in modern ImGui.
-    //! Caller is responsible for the IsItemHovered gate (or any other gate)
-    //! around invoking this widget — tooltips render every frame they're
-    //! reached otherwise. For the "show only when item hovered" idiom, use
-    //! `item_tooltip` instead.
+    //! `BeginTooltip()` / `EndTooltip()` — only-on-true pairing. Caller owns the IsItemHovered (or
+    //! other) gate around invoking it, else the tooltip renders every frame it's reached. For the
+    //! "show only when item hovered" idiom use `item_tooltip` instead.
     let im_open = BeginTooltip()
     if (im_open) {
         invoke(blk)
@@ -701,10 +622,9 @@ def item_tooltip(var state : TooltipState; blk : block) {
 [container]
 def tree_node(var state : TreeNodeState; text : string;
               flags : ImGuiTreeNodeFlags; blk : block) {
-    //! `TreeNodeEx(label, flags) : bool` paired with `TreePop()` only when
-    //! the node returned true (i.e. the user expanded it). `imgui_open` /
-    //! `imgui_close` route through `SetNextItemOpen` so the next frame's
-    //! TreeNodeEx call already reflects the requested state.
+    //! `TreeNodeEx(label, flags) : bool` paired with `TreePop()` only when the node returned true
+    //! (user expanded it). `imgui_open`/`imgui_close` route through `SetNextItemOpen` so the next
+    //! frame's TreeNodeEx already reflects the requested state.
     if (state.pending_open) {
         SetNextItemOpen(true, ImGuiCond.Always)
         state.pending_open = false
@@ -730,12 +650,9 @@ def tree_node(var state : TreeNodeState; text : string;
 [container]
 def collapsing_header(var state : CollapsingHeaderState; text : string;
                       closable : bool; flags : ImGuiTreeNodeFlags; blk : block) {
-    //! `CollapsingHeader(label, p_visible, flags) : bool` — same shape as
-    //! TreeNode but WITHOUT a TreePop pair (ImGui handles the close on its
-    //! own). When `closable=true`, ImGui renders an X-button that flips
-    //! `state.open` to false; while `state.open` is false the section is
-    //! hidden entirely. Body runs only when the header is expanded AND
-    //! (for closable headers) still open.
+    //! `CollapsingHeader(label, p_visible, flags) : bool` — like TreeNode but WITHOUT a TreePop pair
+    //! (ImGui closes it itself). With `closable=true` the X-button flips `state.open` false and the
+    //! section hides entirely. Body runs only when expanded AND (if closable) still open.
     if (state.pending_open) {
         SetNextItemOpen(true, ImGuiCond.Always)
         state.open = true
@@ -747,11 +664,9 @@ def collapsing_header(var state : CollapsingHeaderState; text : string;
     }
     state.flags = flags
     var im_open : bool
-    // The clickable header strip (chevron + label, plus the X-button when
-    // closable) is the IsItem* target right after CollapsingHeader; capture
-    // its rect before the body pushes inner items so a driver can click the
-    // header/arrow like a human (mirrors tree_node). Stays zero while a
-    // closable section is hidden (no header rendered, nothing to click).
+    // The header strip (chevron + label, + X when closable) is the IsItem* target right after
+    // CollapsingHeader; capture its rect before the body pushes inner items so a driver can click
+    // the header/arrow (mirrors tree_node). Stays zero while a closable section is hidden.
     var header_bbox = float4(0.0f, 0.0f, 0.0f, 0.0f)
     if (closable) {
         if (state.open) {
@@ -775,14 +690,10 @@ def collapsing_header(var state : CollapsingHeaderState; text : string;
 }
 
 // ===== Choice block-arg family =====
-//
-// `combo_select` is the BeginCombo counterpart to the leaf `combo` widget.
-// `list_box` is unified on the BeginListBox/EndListBox form — the legacy
-// items-array `[widget] def list_box` was dropped (modern ImGui idiom is
-// Begin/End + Selectable). Both reuse selection state structs (ComboState /
-// ListBoxState) — `value : int` is the user-driven selection index. Body
-// code emits Selectable items; the dispatcher's "set" action writes
-// `state.value` for the next frame. Per-call args follow the named-tuple convention.
+
+// `combo_select` is the BeginCombo counterpart to the leaf `combo`; `list_box` is unified on
+// BeginListBox/EndListBox (legacy items-array form dropped). Both reuse selection state (ComboState/
+// ListBoxState) — `value : int` is the selection index; the dispatcher's "set" writes it for next frame.
 
 [container]
 def combo_select(var state : ComboState; text : string; preview_value : string;
@@ -830,13 +741,10 @@ def list_box(var state : ListBoxState; text : string; size : float2; blk : block
 }
 
 // ===== Drag-drop family =====
-//
-// Both bodies are gated on ImGui's internal drag-drop state machine:
-// `drag_drop_source` body runs only when the previous item has been picked
-// up for drag; `drag_drop_target` body runs only when a payload-bearing
-// drag is hovering. Payload set/accept are raw `SetDragDropPayload` /
-// `AcceptDragDropPayload` calls inside the body — no boost wrapper, since
-// the payload data is caller-owned and crosses widget boundaries.
+
+// Both bodies gate on ImGui's internal drag-drop state: `drag_drop_source` runs only while the
+// previous item is picked up; `drag_drop_target` runs only while a payload-bearing drag hovers.
+// Payload set/accept are raw `SetDragDropPayload`/`AcceptDragDropPayload` (caller-owned, cross-widget data).
 
 [container]
 def drag_drop_source(var state : DragDropSourceState; flags : ImGuiDragDropFlags;
@@ -854,11 +762,9 @@ def drag_drop_source(var state : DragDropSourceState; flags : ImGuiDragDropFlags
 
 [container]
 def drag_drop_target(var state : DragDropTargetState; blk : block) {
-    //! `BeginDragDropTarget()` / `EndDragDropTarget()` — only-on-true.
-    //! Body calls `AcceptDragDropPayload(type, flags)` to receive the payload
-    //! when the drag releases over this target. `state.accepted` counts the
-    //! drops ImGui actually delivers here — the body's accept is raw user code,
-    //! invisible to telemetry, so this is the rail a driver/test asserts against.
+    //! `BeginDragDropTarget()` / `EndDragDropTarget()` — only-on-true. Body calls `AcceptDragDropPayload`
+    //! to receive the payload on drop. `state.accepted` counts the drops ImGui delivers here — the body's
+    //! accept is raw user code invisible to telemetry, so this is the rail a driver/test asserts against.
     let im_open = BeginDragDropTarget()
     if (im_open) {
         invoke(blk)
@@ -875,14 +781,10 @@ def drag_drop_target(var state : DragDropTargetState; blk : block) {
 }
 
 // ===== Per-state-struct dispatchers (containers) =====
-//
-// One [widget_dispatch] body per state struct. Dispatch keyed by ti.hash
-// fires for every container kind whose state is that struct (popup +
-// popup_modal share PopupState etc.). TreeNodeState/ComboState/ListBoxState
-// dispatchers live in imgui_widgets_builtin.das; their dispatchers also
-// cover the container forms (tree_node, combo_select, list_box) without
-// extra registration. Stateless containers (group/menu/popup_context*/
-// tab_bar/tooltip/drag_drop_*) get no dispatcher and silently no-op.
+
+// One [widget_dispatch] body per state struct, keyed by ti.hash, fires for every container kind
+// sharing that struct (popup + popup_modal share PopupState, etc.). TreeNode/Combo/ListBox dispatchers
+// live in imgui_widgets_builtin. Stateless containers get no dispatcher and silently no-op.
 
 [widget_dispatch]
 def _window_dispatch(var state : WindowState; action : string; payload : string) {
@@ -891,10 +793,9 @@ def _window_dispatch(var state : WindowState; action : string; payload : string)
     } elif (action == "close") {
         state.pending_close = true
     } elif (action == "set_window_size") {
-        // Payload: ``{w, h}`` — both optional, falling back to the current
-        // observed size. Used by record_window_size_constraints to demonstrate
-        // SetNextWindowSizeConstraints callbacks (snap/aspect/quantize) by
-        // requesting odd sizes and watching the constraint reshape them.
+        // Payload `{w, h}` (both optional, else current size). Used by record_window_size_constraints
+        // to demo SetNextWindowSizeConstraints callbacks (snap/aspect/quantize): request odd sizes and
+        // watch the constraint reshape them.
         var perr : string
         let v = read_json(payload, perr)
         if (v != null) {

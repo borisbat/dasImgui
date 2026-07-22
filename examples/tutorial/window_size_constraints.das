@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 
 require imgui
 require imgui_app
@@ -61,10 +62,9 @@ var private STEP_CN : ImGuiSizeConstraints
 def init() {
     live_create_window("dasImgui window_size_constraints tutorial", 980, 560)
     live_imgui_init(live_window)
-    // This tutorial relies on FirstUseEver window sizes; disable imgui.ini so the
-    // documented layout (and the recording) is deterministic every run instead of
-    // restoring whatever a prior session left. Tutorial-scoped on purpose — not a
-    // blanket change to live_imgui_init.
+    // Relies on FirstUseEver window sizes; disable imgui.ini so the documented
+    // layout (and recording) is deterministic every run instead of restoring a
+    // prior session. Tutorial-scoped on purpose — not a live_imgui_init change.
     DisableIniPersistence()
     let io & = unsafe(GetIO())
     GetStyle().FontScaleMain = 1.2

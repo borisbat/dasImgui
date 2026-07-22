@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
@@ -34,12 +35,9 @@ require math
 // ===== Telemetry helper =====
 
 def public drawlist_register(widget_ident : string; kind : string; bbox : float4) {
-    //! Publish a drawlist primitive's per-frame snapshot. Path key is
-    //! ``container_path/widget_ident``; ``widget_ident`` is the
-    //! ``<mod>:<line>:<col>`` synthesized by ``[drawlist_prim]``.
-    //! No unique-render guard — drawlist primitives are decorative;
-    //! a loop calling the same site N times is fine (last write wins
-    //! on bbox; mouse-cards targeting hits the last-painted rect).
+    //! Publish a drawlist primitive's per-frame snapshot. Path key is ``container_path/widget_ident``,
+    //! where ``widget_ident`` is the ``<mod>:<line>:<col>`` synthesized by ``[drawlist_prim]``. No unique-render
+    //! guard — decorative primitives; a loop hitting the same site N times is fine (last write wins on bbox).
     let path = widget_path_key(widget_ident)
     var entry = WidgetEntry(kind = kind, hex_id = 0u, bbox = bbox)
     g_registry[path] <- entry
@@ -166,11 +164,9 @@ def public add_text(var dl : ImDrawList?; pos : float2; col : uint; text : strin
 [drawlist_prim]
 def public add_text_clipped(var dl : ImDrawList?; pos : float2; col : uint;
                             text : string; clip_rect : float4) {
-    //! Render ``text`` at ``pos`` with a per-call CPU-side clip rect — only
-    //! glyphs intersecting ``clip_rect = (xmin, ymin, xmax, ymax)`` are
-    //! rasterized. Uses the current font/size; no drawlist clip-stack push,
-    //! no PushClipRect mutation. Equivalent to ``ImDrawList::AddText(font,
-    //! size, pos, col, text, NULL, 0.0f, &clip_rect)``.
+    //! Render ``text`` at ``pos`` with a per-call CPU-side clip rect — only glyphs intersecting
+    //! ``clip_rect = (xmin, ymin, xmax, ymax)`` are rasterized. Current font/size; no clip-stack push or
+    //! PushClipRect mutation. Equivalent to ``ImDrawList::AddText(font, size, pos, col, text, NULL, 0.0f, &clip_rect)``.
     var cr = clip_rect
     unsafe {
         *dl |> AddText(GetFont(), GetFontSize(), pos, col, text, 0.0f, addr(cr))
@@ -242,10 +238,9 @@ def public add_ngon_filled(var dl : ImDrawList?; center : float2; radius : float
 def public add_polyline(var dl : ImDrawList?; points : array<float2>; col : uint;
                         flags : ImDrawFlags = ImDrawFlags.None;
                         thickness : float = 1.0f) {
-    //! Stroked polyline through ``points``. ``flags`` (typically
-    //! ``ImDrawFlags.Closed`` for closed polygons) controls open / closed
-    //! shape. Pass ``points`` as a ``array<float2>``; the wrapper hands
-    //! the underlying pointer to ImGui.
+    //! Stroked polyline through ``points``. ``flags`` (typically ``ImDrawFlags.Closed`` for closed
+    //! polygons) controls open / closed shape. Pass ``points`` as an ``array<float2>``; the wrapper
+    //! hands the underlying pointer to ImGui.
     let n = length(points)
     return if (n < 2)
     unsafe {
@@ -297,16 +292,9 @@ def public add_bezier_quadratic(var dl : ImDrawList?; p1 : float2; p2 : float2;
 }
 
 // ===== Path-building primitives =====
-//
-// Operate on the drawlist's internal path stack. Typical sequence:
-//
-//   dl |> path_clear()
-//   dl |> path_line_to(p0)
-//   dl |> path_arc_to(center, r, a0, a1, 32)
-//   dl |> path_stroke(col, ImDrawFlags.None, 2.0f)
-//
-// No per-call registry entry — the final ``path_stroke`` /
-// ``path_fill_convex`` / ``path_fill_concave`` is what renders.
+
+// Operate on the drawlist's internal path stack (path_clear → path_line_to / path_arc_to → path_stroke).
+// No per-call registry entry — the final ``path_stroke`` / ``path_fill_convex`` / ``path_fill_concave`` renders.
 
 def public path_clear(var dl : ImDrawList?) {
     //! Clear the drawlist's path stack — discards any pending path_line_to /
@@ -355,18 +343,10 @@ def public path_stroke(var dl : ImDrawList?; col : uint;
 }
 
 // ===== Channel-splitter primitives =====
-//
-// Split the drawlist into N independent layers, draw onto each, then merge
-// back into a single z-ordered output. Use this when a later draw needs to
-// land UNDER an earlier draw (typical: card background painted AFTER the
-// card contents are submitted but rendered behind them).
-//
-//   dl |> channels_split(2)
-//   dl |> channels_set_current(1)   // foreground layer
-//   // ... draw widgets / content ...
-//   dl |> channels_set_current(0)   // background layer
-//   dl |> add_rect_filled(p0, p1, bg_col)
-//   dl |> channels_merge()
+
+// Split the drawlist into N z-ordered layers, draw onto each, then merge — so a later draw can land
+// UNDER an earlier one (typical: a card background painted after the contents but rendered behind them).
+// Sequence: channels_split(n) → channels_set_current(i) → draw → channels_merge().
 
 def public channels_split(var dl : ImDrawList?; count : int) {
     //! Split the drawlist into ``count`` channels. Subsequent draws land on
@@ -397,11 +377,9 @@ def public with_drawlist_clip_rect(var dl : ImDrawList?; clip_rect_min : float2;
                                    clip_rect_max : float2;
                                    intersect_with_current : bool;
                                    blk : block) {
-    //! Run ``blk`` with ``dl->PushClipRect(min, max, intersect)`` applied to
-    //! THIS drawlist's clip stack; matching ``dl->PopClipRect()`` on return.
-    //! Scope only affects subsequent primitives on ``dl`` — ImGui hit-testing
-    //! and other drawlists are unaffected. For the ImGui-wide variant (affects
-    //! widget hit-testing too) use ``with_clip_rect`` in ``imgui_scope_builtin``.
+    //! Run ``blk`` with ``dl->PushClipRect(min, max, intersect)`` on THIS drawlist's clip stack;
+    //! matching ``dl->PopClipRect()`` on return. Only affects subsequent primitives on ``dl`` (ImGui
+    //! hit-testing + other drawlists unaffected). For the ImGui-wide variant use ``with_clip_rect`` (imgui_scope_builtin).
     *dl |> PushClipRect(clip_rect_min, clip_rect_max, intersect_with_current)
     invoke(blk)
     *dl |> PopClipRect()

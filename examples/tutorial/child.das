@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 
 require imgui
 require imgui_app
@@ -17,6 +18,7 @@ require imgui/imgui_visual_aids
 
 var private SCROLL_ROW : table<int; NarrativeState>
 
+// nolint:STYLE014 — file-header tutorial banner displaced below a var decl
 // =============================================================================
 // TUTORIAL: child — BeginChild/EndChild sub-windows.
 //

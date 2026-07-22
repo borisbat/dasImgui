@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 
 require imgui/imgui_harness
 
@@ -48,12 +49,9 @@ def update() {
             text("Dragging int: {PAYLOAD_VALUE}")
         }
 
-        // 40 px gap between the source and target buttons.
-        // Note: same_line's named-tuple destructure is POSITIONAL; the
-        // first field is offset_from_start_x, the second is spacing.
-        // `(spacing = 40.0f)` alone would bind 40 to offset_from_start_x
-        // and let TARGET overlap SOURCE -- the source/target hit-test
-        // tie breaks toward TARGET, so the drag fails to start.
+        // 40 px gap: same_line's named-tuple destructure is POSITIONAL
+        // (offset_from_start_x, spacing). `(spacing = 40.0f)` alone binds 40 to
+        // offset and overlaps TARGET onto SOURCE, so the drag never starts.
         same_line((offset_from_start_x = 0.0f, spacing = 40.0f))
 
         // Target: a normal button. Body runs only when payload-bearing drag hovers.

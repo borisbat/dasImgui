@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
@@ -56,10 +57,9 @@ def test_anchor_clears_triple(t : T?) {
 
 [test]
 def test_hard_avoid_beats_incidental_crowding(t : T?) {
-    // Discriminating case: the sibling sits in the only otherwise-clear direction (right of the
-    // anchor), while one incidental widget crowds each of left/below/above (soft +1). With soft-only
-    // avoidance all four candidates tie at +1 and the right tiebreak lands the box ON the sibling;
-    // hard-avoiding the group (+1000) forces the box off it. Would FAIL pre-fix.
+    // Discriminating case: the sibling sits in the only otherwise-clear direction (right), while an
+    // incidental widget crowds left/below/above (soft +1). Soft-only avoidance ties all four at +1
+    // and the right tiebreak lands the box ON the sibling; hard-avoid (+1000) forces it off. FAILs pre-fix.
     let left  = float4(300.0f, 200.0f, 330.0f, 230.0f)
     let right = float4(334.0f, 200.0f, 364.0f, 230.0f)
     var avoid <- [right]

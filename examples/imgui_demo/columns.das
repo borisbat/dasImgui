@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 
 module columns
@@ -96,8 +97,7 @@ def ShowDemoWindowColumns() {
 def private BasicSection() {
     tree_node(COLUMNS_BASIC, (text = "Basic", flags = ImGuiTreeNodeFlags.None)) {
         text("Without border:")
-        // 3-way, no border. Dynamic 14-item loop ⇒ call columns_open/next_col
-        // directly (the columns(N, ...) macro requires N literal blocks).
+        // 3-way no border, dynamic 14-item loop ⇒ use columns_open/next_col (the columns(N,...) macro needs N literal blocks).
         columns_open(3, "mycolumns3", false)
         separator(COLUMNS_BASIC_SEP_TOP)
         for (n in range(14)) {
@@ -108,8 +108,7 @@ def private BasicSection() {
         separator(COLUMNS_BASIC_SEP_MID)
 
         text("With border:")
-        // 4-way, with border. Header row + 3 data rows; structure is regular
-        // but still loop-driven on row count.
+        // 4-way with border: header row + 3 loop-driven data rows.
         columns_open(4, "mycolumns")
         separator(COLUMNS_BASIC_SEP_HDR_TOP)
         text("ID"); next_col()
@@ -120,9 +119,7 @@ def private BasicSection() {
         let names = fixed_array("One", "Two", "Three")
         let paths = fixed_array("/path/one", "/path/two", "/path/three")
         for (i in range(3)) {
-            // Per-row independent toggle (see file header — single-select
-            // C++ semantics deliberately not preserved). SpanAllColumns flag
-            // makes the row's selectable cover all four columns.
+            // Per-row independent toggle (C++'s single-select not preserved); SpanAllColumns makes the selectable cover all four columns.
             selectable(COLUMNS_BASIC_SEL2[i],
                 (text = "{i}",
                  flags = ImGuiSelectableFlags.SpanAllColumns))
@@ -162,8 +159,7 @@ def private BordersSection() {
             if (COLUMNS_BORDERS_H && GetColumnIndex() == 0) {
                 separator(COLUMNS_BORDERS_ROW_SEP[i])
             }
-            // C++ uses ImGui::Text("%c%c%c", 'a' + i, ...); daslang has no
-            // int→char primitive — splice via a precomputed alphabet table.
+            // C++ does Text("%c%c%c", 'a'+i, ...); daslang has no int→char primitive, so splice via a precomputed alphabet table.
             let alphabet = fixed_array(
                 "a", "b", "c", "d", "e", "f", "g", "h", "i", "j",
                 "k", "l", "m", "n", "o", "p", "q", "r", "s", "t",
@@ -210,12 +206,7 @@ def private MixedItemsSection() {
                 (id = "COLUMNS_MIXED_BAR", text = "blue",
                  step = 0.05f, step_fast = 0.0f, format = "%.3f"))
         })
-        // Second 3-column row: three CollapsingHeader cells. Each header
-        // is independent state, so we want three separate columns blocks
-        // executed in sequence — but the columns macro also closes the
-        // columns block between calls, which is exactly the C++ pattern of
-        // "open columns, render a row, close" except C++ stays open across
-        // two rows. Here we keep one columns() per row.
+        // Second 3-column row of independent CollapsingHeaders; one columns() per row (the macro closes between calls, where C++ stays open across rows).
         columns(3, ${
             collapsing_header(COLUMNS_MIXED_CHA,
                 (text = "Category A", closable = false,
@@ -271,8 +262,7 @@ def private HorizontalScrollingSection() {
              child_flags = ImGuiChildFlags.None,
              window_flags = ImGuiWindowFlags.HorizontalScrollbar)) {
             columns_open(10)
-            // Cull the 2000 virtual rows to the visible region via the
-            // list_clipper boost helper (wraps ImGuiListClipper Begin/Step/End).
+            // Cull 2000 virtual rows to the visible region via list_clipper (wraps ImGuiListClipper Begin/Step/End).
             list_clipper(2000) $(start, end_) {
                 for (i in range(start, end_)) {
                     for (j in range(10)) {
@@ -312,21 +302,14 @@ def private TreeSection() {
                         next_col()
                     }
                     if (!COLUMNS_TREE_INNER[inner_key].opened) {
-                        // The outer next_col pair is owned by the open
-                        // branch in C++ (gated by `if (open2)`). Mirror that:
-                        // when the inner tree was NOT expanded, the outer
-                        // already advanced once for the title; we still need
-                        // to fill the body column.
+                        // Inner tree collapsed: outer already advanced for the title (C++ gates this on if(open2)); fill the body column.
                         next_col()
                         text("Node contents")
                         next_col()
                     }
                 }
             }
-            // C++ structure: the outer next_col pair inside the open-branch
-            // already advanced when expanded. When the outer tree was NOT
-            // expanded, we still need to skip past its two columns to land
-            // on the next row.
+            // Outer tree collapsed: skip past its two columns to land on the next row (when expanded, the open-branch already advanced).
             if (!COLUMNS_TREE_OUTER[x].opened) {
                 next_col()
                 next_col()

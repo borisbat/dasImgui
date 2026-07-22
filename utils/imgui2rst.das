@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options rtti = true
 
 require daslib/fio
@@ -201,11 +202,9 @@ def dasimgui_root() : string {
     return dir_name(dir_name(string(m.fileName)))
 }
 
-// dasImgui icon catalog — a hand-built visual reference page. imgui_icons draws
-// runtime vector geometry (no asset files), so the catalog images are rendered
-// offline by utils/make_icon_doc.das into _static/icons/<name>.png (committed)
-// and laid out here grouped by category. Enumeration comes straight from the
-// module's public catalog accessors, so the page can never drift from the set.
+// dasImgui icon catalog — a hand-built visual reference page. imgui_icons draws runtime vector
+// geometry (no asset files), so catalog images are rendered offline by utils/make_icon_doc.das into
+// _static/icons/ (committed); enumeration uses the module's catalog accessors so the page can't drift.
 let RULE = "----------------------------------------"
 
 def generate_icon_catalog() {

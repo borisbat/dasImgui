@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 
 require imgui/imgui_harness
 require imgui/imgui_table_builtin
@@ -27,10 +28,9 @@ var private GRID_ROW_NAME : table<int; NarrativeState>
 var private GRID_ROW_QTY : table<int; NarrativeState>
 var private GRID_ROW_PRICE : table<int; NarrativeState>
 
-// Module-scope inventory rows — hoisted out of update() so the three
-// dynamic arrays allocate once at module init instead of leaking a fresh
-// allocation every frame (local `var array<T>` in a hot path doesn't
-// finalize on scope exit).
+// Module-scope inventory rows — hoisted out of update() so these arrays
+// allocate once at init instead of leaking a fresh allocation every frame
+// (a local `var array<T>` in a hot path never finalizes on scope exit).
 let private GRID_NAMES <- ["Widget", "Sprocket", "Gizmo", "Doohickey", "Thingamajig",
                            "Whatsit", "Doodad", "Gadget"]
 let private GRID_QTY <- [12, 4, 7, 33, 1, 9, 22, 5]

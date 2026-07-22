@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
@@ -51,9 +52,8 @@ def test_triggers_smoke(t : T?) {
                      "imgui_force_set picks DIFFICULTY=2 (Hard)")
 
         // ----- Snapshot envelope — required common fields per widget -----
-        // QUICK_SAVE.bbox is per-frame; gate on the menu_item being painted so the
-        // snapshot carries its geometry instead of reading a bare snapshot that may
-        // land on a frame before the menu bar painted.
+        // QUICK_SAVE.bbox is per-frame; gate on the menu_item being painted so the snapshot carries
+        // its geometry, not a bare snapshot from a frame before the menu bar painted.
         var snap_final = wait_for_visible(d, "MAIN_WIN/QUICK_SAVE", 5.0f)
         t |> success(snap_final != null, "QUICK_SAVE painted")
         var menu = find_widget(snap_final, "MAIN_WIN/QUICK_SAVE")

@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 
 require imgui/imgui_harness
 require imgui/imgui_scope_builtin    // with_button_repeat

@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 
 module imgui_enums shared
@@ -34,15 +35,9 @@ def public operator ~(a : ImGuiItemFlags) : ImGuiItemFlags {
     return unsafe(reinterpret<ImGuiItemFlags>(~int(a)))
 }
 
-//! Cross-enum ``|`` for the button-flag pair. ``ImGuiButtonFlags`` (public — the 3
-//! mouse-button selectors) and ``ImGuiButtonFlagsPrivate`` (internal — the behavior
-//! flags ``Repeat`` / ``PressedOnClick`` / …) are one conceptual flag set split across
-//! two C++ ``enum`` blocks. These overloads let either combine into the single
-//! ``ImGuiButtonFlags`` that ``ButtonEx`` / ``ArrowButtonEx`` accept:
-//!
-//!   ``ButtonEx("x", size, ImGuiButtonFlags.MouseButtonRight | ImGuiButtonFlagsPrivate.Repeat)``
-//!
-//! A lone private flag uses ``ImGuiButtonFlags.None | ImGuiButtonFlagsPrivate.X``.
+//! Cross-enum ``|`` for the button-flag pair — ``ImGuiButtonFlags`` (public, the 3 mouse-button selectors)
+//! and ``ImGuiButtonFlagsPrivate`` (internal behavior flags) are one flag set split across two C++ enums; these
+//! overloads combine either into the ``ImGuiButtonFlags`` ``ButtonEx``/``ArrowButtonEx`` accept (lone private: ``.None | ...Private.X``).
 
 def public operator |(a : ImGuiButtonFlags; b : ImGuiButtonFlagsPrivate) : ImGuiButtonFlags {
     return unsafe(reinterpret<ImGuiButtonFlags>(int(a) | int(b)))
@@ -57,10 +52,9 @@ def public operator |(a, b : ImGuiButtonFlagsPrivate) : ImGuiButtonFlags {
     return unsafe(reinterpret<ImGuiButtonFlags>(int(a) | int(b))) // nolint:PERF019
 }
 
-//! Cross-enum ``|`` for the item-flag pair. The private item flags
-//! (``MixedValue`` / ``ReadOnly`` / ``AllowOverlap`` / …) in ``ImGuiItemFlagsPrivate``
-//! combine with the public ``ImGuiItemFlags`` that ``with_item_flag`` / ``PushItemFlag``
-//! accept. A lone private flag uses ``ImGuiItemFlags.None | ImGuiItemFlagsPrivate.X``.
+//! Cross-enum ``|`` for the item-flag pair — the private item flags (``MixedValue`` / ``ReadOnly`` /
+//! ``AllowOverlap`` / …) in ``ImGuiItemFlagsPrivate`` combine with the public ``ImGuiItemFlags`` that
+//! ``with_item_flag`` / ``PushItemFlag`` accept. A lone private flag uses ``ImGuiItemFlags.None | ...Private.X``.
 
 def public operator |(a : ImGuiItemFlags; b : ImGuiItemFlagsPrivate) : ImGuiItemFlags {
     return unsafe(reinterpret<ImGuiItemFlags>(int(a) | int(b)))

@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
@@ -60,9 +61,8 @@ def test_inputs_text_smoke(t : T?) {
                      "imgui_force_set steers BIO.value with embedded newline")
 
         // ----- input_text_growable — long string forces CallbackResize -----
-        // 400 bytes overflows the default 256-byte capacity; the trampoline
-        // lambda must resize state.buffer + repoint data.Buf for ImGui to
-        // accept the assignment.
+        // 400 bytes overflows the default 256-byte capacity; the trampoline lambda must resize
+        // state.buffer + repoint data.Buf for ImGui to accept the assignment.
         var long_text = ""
         for (_ in range(400)) {
             long_text += "x"

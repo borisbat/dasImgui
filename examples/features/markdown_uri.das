@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 
 require imgui/imgui_harness
 require imgui/imgui_fonts
@@ -32,8 +33,7 @@ def private report_result(name, target : string; result : MarkdownUriResult) {
     if (result.copied) {
         g_status = "Copied {name}: {target}"
     } elif (result.activated) {
-        // Deliberately no ShellExecute/open call here. The containing app owns
-        // navigation policy and consumes this semantic action.
+        // No ShellExecute/open here — the containing app owns navigation policy.
         g_status = "Open requested for {name}: {target}"
     }
 }

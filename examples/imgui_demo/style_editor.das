@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 
 module style_editor
@@ -25,23 +26,9 @@ var private STYLE_CIRCLE_GROUP : table<int; GroupState>
 var private STYLE_CIRCLE_SL : table<int; EmptyMarkerState>
 var private STYLE_CIRCLE_TEXT : table<int; NarrativeState>
 
-// Mirrors imgui_demo.cpp:6680-6962 — void ImGui::ShowStyleEditor(ImGuiStyle* ref).
-//
-// Scope notes for the daslang port:
-//   - This function does NOT open its own window; the caller is expected to
-//     wrap it in a Begin/End (or boost `window(...)`). Same shape as C++.
-//   - All sliders here edit fields of ImGui's live style struct via the
-//     boost-v2 `edit_*` rail (caller-owned `T?` pointer). `safe_addr` is
-//     local-var-only and rejects struct-field-via-reference lvalues, so we
-//     use `unsafe(addr(style.X))` to take the address of each field.
-//   - Skipped vs C++ (each cited at the relevant location below):
-//       - CheckboxFlags TreeNodeEx block for HoverFlagsForTooltipMouse/Nav
-//         (enum-typed flags need a bounce-buffer; pending follow-up)
-//       - "Save Ref" / "Revert Ref" buttons (ref-style param is null in this
-//         demo; the buttons are a no-op without it)
-//       - Colors tab: Export-to-clipboard + Filter + alpha-flags radios
-//         (cpp:6798-6831; needs ImGuiTextFilter binding + bounce-buffer)
-//       - Fonts tab: ShowFontAtlas (cpp:6872; debug helper)
+// Mirrors imgui_demo.cpp:6680-6962 — ShowStyleEditor(ImGuiStyle* ref).
+// Caller wraps this in Begin/End; sliders edit ImGui's live style via edit_* (safe_addr rejects struct fields, so unsafe(addr(style.X))).
+// Skipped vs C++: HoverFlags CheckboxFlags, Save/Revert Ref, Colors export/filter/alpha radios, Fonts ShowFontAtlas — all need bounce-buffer/binding work.
 def ShowStyleEditor() {
     var style & = unsafe(GetStyle())
 
@@ -171,9 +158,7 @@ def ShowStyleEditor() {
             tab_item(STYLE_TAB_COLORS, (text = "Colors", closable = false,
                                         flags = ImGuiTabItemFlags.None)) {
                 // Stripped-down color editor: one ColorEdit4 per ImGuiCol entry.
-                // Skipped vs C++: filter widget, export-to-clipboard, alpha-mode
-                // radio group, and per-color Save/Revert buttons (see file-level
-                // doc comment).
+                // Skipped vs C++: filter, export-to-clipboard, alpha-mode radios, per-color Save/Revert (see file-level doc).
                 child(STYLE_COLORS_CHILD,
                       (text = "##colors", size = float2(0.0f, 0.0f),
                        child_flags = ImGuiChildFlags.Borders,

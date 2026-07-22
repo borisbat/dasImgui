@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
@@ -51,10 +52,9 @@ def test_key_type_lands_in_input(t : T?) {
         t |> success(snap0 != null, "NAME_INPUT renders")
         if (snap0 == null) return
 
-        // Auto-focus on first render reaches keyboard focus but doesn't reliably
-        // settle io.active_widget by the time we poll, so drive explicit focus
-        // via playwright. Same pattern as `test_imgui_type_text_buffer_fills`,
-        // which goes through `type_text` (which calls focus internally).
+        // Auto-focus on first render reaches keyboard focus but doesn't reliably settle
+        // io.active_widget by the time we poll, so drive explicit focus via playwright (same
+        // pattern as test_imgui_type_text_buffer_fills, which focuses internally via type_text).
         focus(d, "MAIN_WIN/NAME_INPUT")
         let focused = wait_until(d, 300) $(var snap) {
             return snap?["globals"]?["MAIN_WIN/NAME_INPUT"]?["focus"] ?? false
@@ -156,12 +156,10 @@ def test_key_stop_aborts(t : T?) {
     }
 }
 
-// DISABLED 2026-05-13: depended on `legacy_glfw_io_override` (now removed
-// when `imgui_visual_aids` was decoupled from glfw_live). The glfw-driven
-// synth chord path no longer makes ImGuiMod_Ctrl visible to ImGui after
-// the impl drain. For Ctrl-shortcut testing use `imgui_synth_keys` (see
-// `test_imgui_synth_ctrl_shortcuts.das` — the canonical chord-visibility
-// test through the ImGui bypass driver). Kept here for documentation.
+// DISABLED 2026-05-13: depended on `legacy_glfw_io_override` (removed when imgui_visual_aids was
+// decoupled from glfw_live), so the glfw synth chord path no longer makes Ctrl visible to ImGui.
+// Use imgui_synth_keys (test_imgui_synth_ctrl_shortcuts.das) for Ctrl-shortcut testing instead.
+
 // [test]
 def test_key_chord_ctrl_visible_to_imgui(t : T?) {
     with_imgui_app(FEATURE) $(d) {
@@ -187,11 +185,9 @@ def test_key_chord_ctrl_visible_to_imgui(t : T?) {
 
 [test]
 def test_key_stop_releases_held_modifiers(t : T?) {
-    // PR #2633 review (copilot r3229531303): key_stop must release any
-    // synth-pressed keys, or ImGui inherits stuck modifier state. Simulate
-    // an interrupted key_chord by manually pressing LEFT_CONTROL (no paired
-    // release queued) and then calling key_stop — the held_count must drop
-    // to 0 and the stop response must report released=1.
+    // key_stop must release any synth-pressed keys, or ImGui inherits stuck modifier state.
+    // Simulate an interrupted key_chord: manually press LEFT_CONTROL (no paired release) then
+    // key_stop — held_count must drop to 0 and the stop response must report released=1.
     with_imgui_app(FEATURE) $(d) {
         var snap0 = wait_for_render(d, "MAIN_WIN/NAME_INPUT", 15.0f)
         if (snap0 == null) {

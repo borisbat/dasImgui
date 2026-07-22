@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 
 require imgui/imgui_harness
 require strings
@@ -26,9 +27,7 @@ def private completion_cb(var data : ImGuiInputTextCallbackData) : int {
             data |> DeleteChars(0, data.BufTextLen)
             data |> InsertChars(0, matches[0])
         }
-        // Local arrays don't finalize on scope exit; without an explicit
-        // delete each TAB-completion leaks the candidate buffer. Matches
-        // app_console.das's completion callback pattern.
+        // Local arrays don't finalize on scope exit — without this delete each TAB-complete leaks the buffer.
         delete matches
     }
     return 0

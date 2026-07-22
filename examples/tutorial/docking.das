@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 
 require imgui
 require imgui_app
@@ -47,18 +48,9 @@ require imgui/imgui_visual_aids
 // =============================================================================
 
 def setup_default_layout(dock_id : uint) {
-    //! Seed a 3-pane layout on the first frame:
-    //!     +-----------+--------------------+
-    //!     |           |                    |
-    //!     |           |       Source       |
-    //!     | Explorer  |                    |
-    //!     |           +--------------------+
-    //!     |           |                    |
-    //!     |           |       Output       |
-    //!     +-----------+--------------------+
-    //! Each pane's window-title string MUST match the corresponding
-    //! `dock_window`'s `text=` field; that's how ImGui ties dockable windows
-    //! to dock nodes.
+    //! Seed a 3-pane layout on the first frame: Explorer (left, full height) |
+    //! Source over Output (right column, split). Each pane's window-title string
+    //! MUST match its dock_window's `text=` — that's how ImGui ties windows to nodes.
     DockBuilderRemoveNode(dock_id)
     DockBuilderAddDockSpaceNode(dock_id, ImGuiDockNodeFlags.None)
     let vp = GetMainViewport()

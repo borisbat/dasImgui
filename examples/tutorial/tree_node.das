@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 
 require imgui
 require imgui_app
@@ -105,10 +106,10 @@ def update() {
         }
 
         // ---- C: OpenOnArrow — clicking the label doesn't expand ----
-        // DefaultOpen so ASSETS_HINT is in the registry from frame 1 (the
-        // recording driver narrates against it). The OpenOnArrow flag is
-        // still demonstrated: collapse via chevron, then try clicking the
-        // label — it stays collapsed. Only the arrow toggles.
+
+        // DefaultOpen keeps ASSETS_HINT in the registry from frame 1. OpenOnArrow
+        // is still shown: collapse via chevron, then click the label — it stays
+        // collapsed; only the arrow toggles.
         tree_node(ASSETS_TREE, (text = "Assets (OpenOnArrow + DefaultOpen)",
                                 flags = ImGuiTreeNodeFlags.OpenOnArrow | ImGuiTreeNodeFlags.DefaultOpen)) {
             text(ASSETS_HINT, (text = "OpenOnArrow flag - clicking the LABEL doesn't toggle."))

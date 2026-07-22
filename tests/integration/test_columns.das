@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
@@ -7,7 +8,6 @@ require dastest/testing_boost public
 require imgui/imgui_playwright public
 require daslib/json public
 require daslib/json_boost public
-require math
 
 //! §4.6 `columns(N, ${...}, ${...}, …)` integration smoke.
 //! Verifies:

@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
@@ -68,10 +69,8 @@ def test_containers_window_smoke(t : T?) {
                      "imgui_force_set on a leaf nested in window>group works")
 
         // ----- imgui_open on a closable window flips state.open -----
-        // DETAIL_WIN starts closed (state.open zero-init). Open it, expect
-        // its first leaf (PING) to start rendering. Phase 1 moved long-lived
-        // existence into `widget_exists` (registered at module [init]) so
-        // we test for paint via `widget_rendered` instead.
+        // DETAIL_WIN starts closed (state.open zero-init); open it, expect its first leaf (PING)
+        // to paint. Existence is registered at [init], so we test paint via widget_rendered.
         open_widget(d, "DETAIL_WIN")
         var snap_open = wait_until(d, 300) $(var snap) {
             return widget_rendered(snap, "DETAIL_WIN/PING")

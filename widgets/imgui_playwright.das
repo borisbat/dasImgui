@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
@@ -35,20 +36,13 @@ let READY_POLL_REQUEST_TIMEOUT_SEC : int = 2         // per-poll http timeout fo
 let FRAME_POLL_INTERVAL_MS : uint = 100u             // ms between snapshot polls — 10 req/sec; under libhv's Windows
                                                      // event-loop cap (~16 req/sec) that previously stalled the test
                                                      // sweep on heavy imgui_demo harnesses (see tests.yml comment).
-                                                     // ~1.5 polls/frame at 60fps — still snappy in practice; most
-                                                     // wait_for_widget calls complete in 1-2 polls anyway.
+                                                     // ~1.5 polls/frame at 60fps — snappy; most calls finish in 1-2.
 
 // ===== Centralized recording timing =====
-//
-// One knob set for every record_*.das. Drivers used to redeclare these as
-// per-file lets (NARRATE_FRAMES / READ_MS / SETTLE_MS / CLICK_DWELL_MS) with
-// inconsistent values across the corpus. RECORD_FPS is the nominal capture +
-// playback grid: the synchronous APNG writer (daScript-side) never drops, and
-// convert_recording reclocks the mp4 to the measured effective rate, so 30 keeps
-// assets light without risking timeline drift.
-//
-// NARRATE_FRAMES is gone — the unified `narrate()` helper derives it from
-// RECORD_FPS * NARRATE_READ_MS / 1000 so only one knob remains.
+
+// One knob set for every record_*.das. RECORD_FPS is the nominal capture+playback
+// grid: the synchronous APNG writer never drops, and convert_recording reclocks the
+// mp4 to the measured rate, so 30 keeps assets light without timeline drift.
 
 let public RECORD_FPS : int = 30                     // capture + playback grid; synchronous writer never drops, so APNG frame N == N/30s
 let public NARRATE_READ_MS : uint = 4500u            // narrative on-screen window — long enough to read with audio muted
@@ -62,16 +56,10 @@ struct ImguiApp {
 }
 
 // ===== Driver-side mouse helpers (record_*.das) =====
-//
-// Tutorial drivers script smooth cursor motion via ``imgui_mouse_play``.
-// The host's ``advance_mouse_timeline`` (imgui_live_core) interpolates
-// linearly between adjacent move waypoints with distinct ``t_ms``, so we
-// only get visible cursor travel + a useful mouse trail when each call
-// emits at least two move events spanning a real time window.
-//
-// We track the previous cursor target in a module-scope pair so each
-// helper can lerp from there to the next target without the driver
-// having to thread the state by hand.
+
+// The host's ``advance_mouse_timeline`` interpolates linearly between adjacent move
+// waypoints with distinct ``t_ms``, so each call must emit at least two move events
+// spanning a real time window to get visible cursor travel + a mouse trail.
 
 var private last_cursor_x : float = 0.0f
 var private last_cursor_y : float = 0.0f
@@ -84,10 +72,9 @@ def public reset_cursor_pos(pos : tuple<float; float> = (0.0f, 0.0f)) {
 }
 
 def public move_to(app : ImguiApp; pos : tuple<float; float>; duration_ms : int = 600) {
-    //! Post a lerped cursor move from the last tracked position to ``pos``, with a brief dwell pin
-    //! afterwards. Updates the tracked position. ``duration_ms`` is a FLOOR: the actual duration
-    //! scales with distance (≈0.325 px/ms ≈ constant cursor speed) so a long move doesn't cover its
-    //! span in the same time as a short one and read as a teleport; short moves keep the floor.
+    //! Post a lerped cursor move from the last tracked position to ``pos`` (updates the tracked
+    //! position). ``duration_ms`` is a FLOOR: actual duration scales with distance (≈0.325 px/ms,
+    //! constant cursor speed) so a long move doesn't cover its span as fast as a short one and read as a teleport.
     let dist = max(abs(pos._0 - last_cursor_x), abs(pos._1 - last_cursor_y))
     let dur = max(duration_ms, int(dist / 0.325f))
     var events <- [
@@ -106,10 +93,9 @@ def public click_at(var events : array<JsonValue?>;
                     pos : tuple<float; float>;
                     travel_ms : int = 500;
                     button : int = 0) {
-    //! Append lerp-from-last + press + release + dwell to ``events``.
-    //! Cursor travels from the tracked previous position to ``pos`` over
-    //! ``travel_ms``, then mouse button ``button`` is pressed and released.
-    //! Updates the tracked position.
+    //! Append lerp-from-last + press + release + dwell to ``events``: cursor travels from the
+    //! tracked previous position to ``pos`` over ``travel_ms``, then button ``button`` is pressed
+    //! and released. Updates the tracked position.
     events |> push(JV((t_ms = t_ms,                   kind = "move",   x = last_cursor_x, y = last_cursor_y)))
     events |> push(JV((t_ms = t_ms + travel_ms,       kind = "move",   x = pos._0,        y = pos._1)))
     events |> push(JV((t_ms = t_ms + travel_ms + 200, kind = "button", button = button,   action = "press")))
@@ -126,17 +112,14 @@ def public drag_along(var events : array<JsonValue?>;
                       drag_ms : int;
                       approach_ms : int = 400;
                       button : int = 0) {
-    //! Append lerp-to-start + press + drag + release + dwell to ``events``.
-    //! Cursor first travels from the tracked previous position to
-    //! ``from_pos`` over ``approach_ms``, then presses and drags to
-    //! ``to_pos`` over ``drag_ms``. Updates the tracked position to
-    //! ``to_pos``.
+    //! Append lerp-to-start + press + drag + release + dwell to ``events``: cursor travels from the
+    //! tracked position to ``from_pos`` over ``approach_ms``, then presses and drags to ``to_pos``
+    //! over ``drag_ms``. Updates the tracked position to ``to_pos``.
     events |> push(JV((t_ms = t_ms,                                kind = "move",   x = last_cursor_x, y = last_cursor_y)))
     events |> push(JV((t_ms = t_ms + approach_ms,                  kind = "move",   x = from_pos._0,   y = from_pos._1)))
-    // Dwell at from_pos, then press 1ms later. Timestamps STAY strictly increasing —
-    // the host sorts the timeline by t_ms with no tie-break, so a press sharing the
-    // dwell's t_ms could sort first and slip the press off a thin (8px) handle. The
-    // 1ms offset into a drag_ms-long segment is sub-pixel, so the press still lands on target.
+    // Dwell at from_pos, then press 1ms later — timestamps STAY strictly increasing. The host sorts
+    // by t_ms with no tie-break, so a press sharing the dwell's t_ms could sort first and slip off a
+    // thin (8px) handle; the 1ms offset into a drag_ms segment is sub-pixel, so the press still lands.
     events |> push(JV((t_ms = t_ms + approach_ms + 100,            kind = "move",   x = from_pos._0,   y = from_pos._1)))
     events |> push(JV((t_ms = t_ms + approach_ms + 101,            kind = "button", button = button,   action = "press")))
     events |> push(JV((t_ms = t_ms + approach_ms + 101 + drag_ms,  kind = "move",   x = to_pos._0,     y = to_pos._1)))
@@ -155,22 +138,17 @@ def private daslang_live_exe() : string {
 }
 
 def public dasimgui_module_root() : string {
-    //! dasImgui's module root resolved via `daslib/module_path`'s 3-tier walk.
-    //! `get_this_module_dir()` returns the directory hosting this `.das` source
-    //! (i.e. `<root>/widgets/`); one `dir_name` up gives the module root.
-    //! Works in both layouts: CI's `<das_root>/modules/dasImgui/...` and the
-    //! local-fix layout `D:/DASPKG/dasImgui/...` with no `modules/dasImgui`
-    //! junction in `<das_root>`.
+    //! dasImgui's module root resolved via `daslib/module_path`. `get_this_module_dir()` returns
+    //! `<root>/widgets/`; one `dir_name` up gives the module root. Works in both layouts: CI's
+    //! `<das_root>/modules/dasImgui/...` and the local-fix `D:/DASPKG/dasImgui/...`.
     return dir_name(get_this_module_dir())
 }
 
 def private resolve_feature_path(path : string; feature_root : string; feature_prefix : string) : string {
     if (is_absolute(path)) return path
-    // Caller-supplied root/prefix first — lets another package (e.g. dasImguiNodeEditor)
-    // resolve its own feature files under its own module root via `with_imgui_app`.
+    // Caller-supplied root/prefix first — lets another package resolve its own feature files.
     if (feature_prefix != "" && path |> starts_with(feature_prefix)) return path_join(feature_root, slice(path, length(feature_prefix)))
-    // Then dasImgui's own layout: strip `modules/dasImgui/` and resolve under the
-    // runtime module root so tests find feature files regardless of layout.
+    // Then dasImgui's own layout: strip `modules/dasImgui/` and resolve under the runtime module root.
     let prefix = "modules/dasImgui/"
     if (path |> starts_with(prefix)) return path_join(dasimgui_module_root(), slice(path, length(prefix)))
     return path_join(get_das_root(), path)
@@ -178,10 +156,8 @@ def private resolve_feature_path(path : string; feature_root : string; feature_p
 
 def public wait_until_ready(app : ImguiApp; timeout_sec : float) : bool {
     //! Poll GET /status until 200 OK or timeout. Returns true on ready.
-    // `ref_time_ticks()` is platform-specific (QPC on Windows, nanoseconds on
-    // Linux/macOS), so absolute-deadline arithmetic with `* 1_000_000` is wrong
-    // on POSIX (gives 30 ms instead of 30 s). `get_time_usec(start)` is the
-    // portable elapsed-microseconds helper.
+    // `ref_time_ticks()` is platform-specific (QPC vs nanoseconds), so absolute-deadline math with
+    // `* 1_000_000` is wrong on POSIX; `get_time_usec(start)` is the portable elapsed-usec helper.
     let start = ref_time_ticks()
     let timeout_usec = int(timeout_sec * 1000000.0f)
     while (get_time_usec(start) < timeout_usec) {
@@ -192,10 +168,7 @@ def public wait_until_ready(app : ImguiApp; timeout_sec : float) : bool {
 }
 
 def private host_ready_timeout_sec() : float {
-    //! Readiness gate for a spawned daslang-live host. Bumped on macOS: the free
-    //! Apple-Silicon CI runners (3 vCPU, serial sweep) occasionally take ~40s before
-    //! the host's libhv loop serves /status, which trips the 30s default and errors a
-    //! random test in the sweep. Win/Linux start in <3s, so they keep the tight gate.
+    // Bumped on macOS: free Apple-Silicon CI runners can take ~40s to serve /status, tripping the 30s default.
     return get_platform_name() == "darwin" ? MACOS_READY_TIMEOUT_SEC : DEFAULT_READY_TIMEOUT_SEC
 }
 
@@ -205,8 +178,7 @@ def public get_text(app : ImguiApp; uri : string) : string {
 }
 
 def private post_signal(app : ImguiApp; uri : string) {
-    // Caller polls /status to confirm the effect; the response is dropped, but the
-    // per-request timeout still bounds a wedged host.
+    // Response is dropped (caller polls /status); the per-request timeout still bounds a wedged host.
     let _ = http_post("{app.base_url}{uri}", "")
 }
 
@@ -243,11 +215,9 @@ def public widget_payload_field(var snap : JsonValue?; ident : string; field : s
 }
 
 def public widget_click_point(var snap : JsonValue?; ident : string) : tuple<float; float> {
-    //! The point ``imgui_click`` aims at for ``ident``: the left glyph (square check / radio
-    //! circle) for the toggle family — checkbox / radio_button / radio_button_int — and the bbox
-    //! center otherwise. Mirrors ``resolve_target_bbox`` in imgui_boost_runtime so a recording's
-    //! ``move_to`` lands exactly where the click fires (no mid-row → glyph hop). Keep the kind list
-    //! in sync with that resolver.
+    //! The point ``imgui_click`` aims at for ``ident``: the left glyph for the toggle family
+    //! (checkbox / radio_button / radio_button_int), the bbox center otherwise. Mirrors
+    //! ``resolve_target_bbox`` in imgui_boost_runtime — keep the kind list in sync with that resolver.
     var g = find_widget(snap, ident)
     let x0 = g?["bbox"]?["x"] ?? 0.0f
     let y0 = g?["bbox"]?["y"] ?? 0.0f
@@ -260,12 +230,9 @@ def public widget_click_point(var snap : JsonValue?; ident : string) : tuple<flo
 }
 
 def public widget_component_point(var snap : JsonValue?; ident : string; component : int) : tuple<float; float> {
-    //! Center of multi-component widget ``ident``'s sub-rect ``component`` (slider_float2/3/4,
-    //! slider_int2/3/4, drag_float2/3/4, drag_int2/3/4, drag_*_range2), read from the ``sub_bboxes``
-    //! telemetry — the deterministic way to target a single handle of a vector/range widget, instead
-    //! of guessing an x within the combined bbox. Falls back
-    //! to ``widget_click_point`` when ``sub_bboxes`` is absent (single-component widget, component out
-    //! of range, or a host predating the field).
+    //! Center of multi-component widget ``ident``'s sub-rect ``component`` (slider/drag _2/3/4,
+    //! drag_*_range2), read from ``sub_bboxes`` telemetry — the deterministic way to target one handle
+    //! of a vector/range widget. Falls back to ``widget_click_point`` when ``sub_bboxes`` is absent.
     let sub = find_widget(snap, ident)?["sub_bboxes"]?[component]
     if (sub == null) return widget_click_point(snap, ident)
     let x0 = sub?["x"] ?? 0.0f
@@ -276,18 +243,16 @@ def public widget_component_point(var snap : JsonValue?; ident : string; compone
 }
 
 def public widget_rendered(var snap : JsonValue?; ident : string) : bool {
-    //! True iff ``globals[ident]`` EXISTS and painted this frame. Registered-but-unpainted entries
-    //! carry ``"rendered": false``; painted widgets omit the field (``?? true``). The leading
-    //! existence check is load-bearing: an absent (or misspelled) path yields ``null ?? true`` — a
-    //! false pass — so a never-registered ident must report not-rendered, not silently "rendered".
+    //! True iff ``globals[ident]`` EXISTS and painted this frame. Unpainted entries carry
+    //! ``"rendered": false``; painted widgets omit it (``?? true``). The leading existence check is
+    //! load-bearing: an absent/misspelled path yields ``null ?? true`` — a false pass — so it must report not-rendered.
     return widget_exists(snap, ident) && (snap?["globals"]?[ident]?["rendered"] ?? true)
 }
 
 def public log_snapshot(app : ImguiApp; note : string = "") : void {
-    //! Dump the live UI state to the log (LOG_WARNING) — for every registered widget: its
-    //! ident, kind, ``rendered`` flag, bbox, and ``payload.value`` when present. The way to
-    //! see what a headless/CI run actually painted when you can't watch the window; pair it
-    //! with a failed assertion (dump on the failure path) so a red run is self-explaining.
+    //! Dump the live UI state to the log (LOG_WARNING) — per registered widget: ident, kind,
+    //! ``rendered`` flag, bbox, and ``payload.value``. The way to see what a headless/CI run actually
+    //! painted; pair it with a failed assertion so a red run is self-explaining.
     var snap = snapshot(app)
     let g = snap?["globals"]
     if (g == null || !(g is _object)) {
@@ -315,19 +280,16 @@ def public log_snapshot(app : ImguiApp; note : string = "") : void {
 var private g_auto_dump_on_timeout = true
 
 def public set_auto_dump_on_timeout(enabled : bool) : void {
-    //! Toggle the wait-family auto-dump (default **on**). When on, any ``wait_*`` helper that
-    //! gives up logs the live UI state once via ``log_snapshot`` before returning ``null`` / ``false``,
-    //! so a red headless or slow-CI run is self-explaining with zero per-test dump code. Turn it
-    //! **off** around a *negative* wait — one where the timeout is the asserted, expected outcome
-    //! (e.g. confirming a widget never appears) — so the log isn't spammed with an expected miss.
+    //! Toggle the wait-family auto-dump (default **on**): any ``wait_*`` that gives up logs the UI
+    //! state once via ``log_snapshot``, so a red run is self-explaining. Turn it **off** around a
+    //! *negative* wait (the timeout is the expected outcome) so the log isn't spammed with an expected miss.
     g_auto_dump_on_timeout = enabled
 }
 
 def public auto_dump_on_timeout_enabled() : bool => g_auto_dump_on_timeout
 
 def private dump_on_timeout(app : ImguiApp; what : string) : void {
-    // One full UI dump on the wait-family timeout path: `what` labels which wait gave up, the dump
-    // body (log_snapshot) shows what the frame actually painted. Gated by the public toggle.
+    // One UI dump on a wait-family timeout: `what` labels which wait gave up. Gated by the public toggle.
     if (g_auto_dump_on_timeout) {
         log_snapshot(app, "wait timeout: {what}")
     }
@@ -338,11 +300,9 @@ def private dump_on_timeout(app : ImguiApp; what : string) : void {
 def public wait_until_sec(app : ImguiApp;
                           timeout_sec : float;
                           pred : block<(var snap : JsonValue?) : bool>) : JsonValue? {
-    //! Wall-clock variant of ``wait_until``: poll ``pred(snap)`` until it returns true,
-    //! up to ``timeout_sec`` real seconds. Returns the matching snapshot or null on timeout.
-    //! Prefer this over ``wait_until`` for tests gated on time-driven server work
-    //! (timeline completion, fixed-duration animations) — the frame-budget form fires
-    //! prematurely in headless mode where server frames run at multi-kHz with no vsync.
+    //! Wall-clock variant of ``wait_until``: poll ``pred(snap)`` until true, up to ``timeout_sec``
+    //! real seconds; returns the matching snapshot or null on timeout. Prefer over ``wait_until`` for
+    //! time-driven server work — the frame-budget form fires prematurely in headless (multi-kHz, no vsync).
     let start = ref_time_ticks()
     let timeout_usec = int(timeout_sec * 1000000.0f)
     while (get_time_usec(start) < timeout_usec) {
@@ -357,12 +317,9 @@ def public wait_until_sec(app : ImguiApp;
 def public wait_cond(app : ImguiApp;
                      timeout_sec : float;
                      pred : block<() : bool>) : bool {
-    //! Bare wall-clock condition poll — no snapshot, no widget coupling. Polls ``pred()`` until it
-    //! returns true, up to ``timeout_sec`` real seconds; returns true on match, false on timeout.
-    //! The ``cmd_*`` sibling of ``wait_until_sec``: for state gated on a command round-trip (sim
-    //! tick, camera mode, scene count) rather than a widget snapshot field. Replaces the hand-rolled
-    //! ``for (_ in range(N)) { if (cond) break }`` busy-poll, which bounds by frame count with no
-    //! sleep and so expires prematurely against the multi-kHz headless server (see ``wait_until``).
+    //! Bare wall-clock condition poll — no snapshot, no widget coupling. Polls ``pred()`` until true,
+    //! up to ``timeout_sec`` real seconds; returns true on match, false on timeout. Use for state gated
+    //! on a command round-trip; the frame-count busy-poll it replaces expires prematurely on the multi-kHz headless server.
     let start = ref_time_ticks()
     let timeout_usec = int(timeout_sec * 1000000.0f)
     while (get_time_usec(start) < timeout_usec) {
@@ -376,15 +333,9 @@ def public wait_cond(app : ImguiApp;
 def public wait_until(app : ImguiApp;
                       max_frames : int;
                       pred : block<(var snap : JsonValue?) : bool>) : JsonValue? {
-    //! Poll ``pred(snap)`` up to ``max_frames`` 60 fps-equivalent server frames (``max_frames/60`` seconds).
-    //! Returns the matching snapshot or null on timeout.
-    //!
-    //! The legacy semantics treated ``max_frames`` as "server frame counter delta", which fired
-    //! prematurely under headless: the server advances ``g_frame`` at multi-kHz, so ``max_frames=240``
-    //! could expire in ~24 ms — far short of any time-driven server work (timeline completion,
-    //! fixed-duration animations, ImGui state convergence). The translation to wall-clock at the
-    //! conventional 60 fps preserves the headed-mode budget every test was tuned against, without
-    //! the per-mode skew. For new code that's natively expressed in seconds, prefer ``wait_until_sec``.
+    //! Poll ``pred(snap)`` up to ``max_frames`` 60fps-equivalent server frames (``max_frames/60`` s);
+    //! returns the matching snapshot or null on timeout. ``max_frames`` is translated to wall-clock at
+    //! 60fps (not a raw frame-counter delta, which expires in ~ms on the multi-kHz headless server); prefer ``wait_until_sec`` for new code.
     return wait_until_sec(app, float(max_frames) / 60.0f, pred)
 }
 
@@ -407,10 +358,7 @@ def public wait_for_visible(app : ImguiApp; widget_ident : string;
                             timeout_sec : float = DEFAULT_FRAME_WAIT_SEC) : JsonValue? {
     //! Poll snapshot until ``widget_ident`` is registered AND painted this frame (``widget_rendered``).
     //! The robust gate for a widget that can hide and re-show: ``wait_for_widget`` returns on a stale
-    //! registry entry left from a prior appearance (e.g. a re-opened popup / menu) while the widget
-    //! is currently off-screen, so a click fired right after can dispatch before the widget
-    //! re-renders and be silently dropped (no bbox this frame). Use this whenever the click target
-    //! may have been shown before.
+    //! registry entry (re-opened popup/menu) while it's off-screen, so a click fired right after can be silently dropped.
     let start = ref_time_ticks()
     let timeout_usec = int(timeout_sec * 1000000.0f)
     while (get_time_usec(start) < timeout_usec) {
@@ -432,18 +380,9 @@ def public wait_for_render(app : ImguiApp; widget_ident : string;
 
 def public wait_for_hover(app : ImguiApp; widget_ident : string; expected : bool = true;
                           timeout_sec : float = DEFAULT_FRAME_WAIT_SEC) : JsonValue? {
-    //! Poll snapshot until registered widget ``widget_ident``'s hover state (``IsItemHovered``, the
-    //! per-widget ``hover`` field) equals ``expected``. The sync gate for a reliable synthetic click:
-    //! ``move_to(point)`` then ``wait_for_hover(target)`` then ``click`` guarantees the press lands a
-    //! frame AFTER hover is established. Without it, a synthetic ``move``+``press`` can batch into one
-    //! windowed-vsync frame and the press fires before ``HoveredId`` is set — the press-before-hover
-    //! race a real continuous-hover mouse never hits (synthetic != real). Bounded by ``timeout_sec``;
-    //! returns the matching snapshot or null on timeout. ``null`` is a real failure — gate it with
-    //! ``record_check`` (recording) or ``success`` (test); never proceed to the click silently.
-    //! The ``widget_exists`` guard is load-bearing for ``expected=false``: an absent / misspelled
-    //! ident yields a null ``hover`` that ``?? false`` would coalesce to ``false``, so a missing
-    //! widget would false-pass as "not hovered" and mask a sync failure — same guard as
-    //! ``widget_rendered``.
+    //! Poll until widget ``widget_ident``'s ``hover`` (``IsItemHovered``) equals ``expected``. Sync gate for
+    //! synthetic clicks: without it a batched ``move``+``press`` fires before ``HoveredId`` is set (the press-before-hover
+    //! race real mice never hit). The ``widget_exists`` guard stops an absent ident false-passing ``expected=false``.
     return wait_until_sec(app, timeout_sec) $(var snap) {
         return widget_exists(snap, widget_ident) && (find_widget(snap, widget_ident)?["hover"] ?? false) == expected
     }
@@ -541,14 +480,8 @@ def public click(app : ImguiApp; target : string) : JsonValue? {
 
 def public double_click(app : ImguiApp; target : string) : JsonValue? {
     //! Faithful double-click on ``target``'s bbox center: two press/release taps so
-    //! ``IsMouseDoubleClicked`` fires — e.g. enter-directory / open-file in a file dialog.
-    //! Re-snapshots to resolve the center client-side (like ``drag``); the target must be rendered.
-    //! Frame-paced (``t_ms`` = frame index, like ``drag``): the host advances exactly one event
-    //! per frame, so the two taps are guaranteed to land on distinct frames a couple of frames
-    //! apart — well inside ``MouseDoubleClickTime`` at any frame rate, and never collapsed into one
-    //! frame the way a wall-clock timeline can be on a slow/stalled host (which drops the double-click).
-    //! Returns ``{ok=false, error}`` when ``target`` isn't in the snapshot or isn't rendered this
-    //! frame (``widget_click_point`` would otherwise default the bbox to (0,0) and click nowhere).
+    //! ``IsMouseDoubleClicked`` fires. Frame-paced (``t_ms`` = frame index): the host advances one event
+    //! per frame, so the two taps land on distinct frames — never collapsed into one the way a wall-clock timeline is on a slow host (which drops the double-click).
     var snap = snapshot(app)
     if (!(snap |> widget_exists(target))) return JV((ok = false, error = "double_click target unresolved: {target}"))
     if (!(snap |> widget_rendered(target))) return JV((ok = false, error = "double_click target not rendered this frame: {target}"))
@@ -566,10 +499,9 @@ def public double_click(app : ImguiApp; target : string) : JsonValue? {
     unsafe { delete events; }
     last_cursor_x = pos._0
     last_cursor_y = pos._1
-    // SYNC: let the two-tap timeline fully play (both releases must fire) before returning —
-    // a following command (imgui_click / a second imgui_mouse_play) would otherwise drive the
-    // synth mouse while this timeline is still in flight, stomping it: the double-click is lost
-    // and the next click lands in a corrupted mouse state. Mirrors every other mouse_play poster.
+    // SYNC: let the two-tap timeline fully play (both releases must fire) before returning — a following
+    // command would otherwise drive the synth mouse while this timeline is in flight, stomping it (the
+    // double-click is lost, next click lands in a corrupted mouse state). Mirrors every other mouse_play poster.
     wait_for_mouse_idle(app)
     return r
 }
@@ -586,26 +518,17 @@ def public force_set_value(app : ImguiApp; target : string; var value : JsonValu
 }
 
 def public force_set_verified(app : ImguiApp; target : string; value : auto(T); max_frames : int = 120) {
-    //! Recording-as-test ``force_set``: set ``target.value`` to the typed ``value`` and verify it
-    //! took. Accumulates a self-verification miss (surfaced as a loud panic at ``with_recording_app``
-    //! teardown) rather than panicking mid-body — so the recording still stops + shuts the host
-    //! down cleanly. For force_set-driven tutorial stages (slider / drag / input / color); the
-    //! verified counterpart of the clicks ``hold_through_voice`` checks automatically. Use only
-    //! inside a ``with_recording_app`` body — raw tests want the panicking ``expect_value``.
+    //! Recording-as-test ``force_set``: set ``target.value`` to the typed ``value`` and verify it took,
+    //! accumulating a miss (surfaced at ``with_recording_app`` teardown) rather than panicking mid-body.
+    //! Use only inside a ``with_recording_app`` body — raw tests want the panicking ``expect_value``.
     force_set_value(app, target, JV(value))
     record_check_value(app, target, "value", value, max_frames)
 }
 
 def public resize_window(app : ImguiApp; target : string; w : float; h : float) : JsonValue? {
-    //! Resize the window named by ``target`` to (``w``, ``h``) on the next frame.
-    //! Routes through ``imgui_set_window_size`` (regular ``window`` container);
-    //! the dispatcher feeds ``state.pending_size`` and ``window()`` calls
-    //! ``SetNextWindowSize`` on the next frame. SetNextWindowSizeConstraints
-    //! callbacks (snap/aspect/quantize) reshape the request — used by the
-    //! window_size_constraints recording driver to demonstrate exactly that.
-    //! Named ``resize_window`` (not ``set_window_size``) to avoid the
-    //! overload-resolution collision with imgui_containers_builtin's
-    //! in-frame ``set_window_size(size : float2; cond : ImGuiCond)``.
+    //! Resize the window named by ``target`` to (``w``, ``h``) on the next frame, via
+    //! ``imgui_set_window_size`` (feeds ``state.pending_size`` → ``SetNextWindowSize``). Named
+    //! ``resize_window`` (not ``set_window_size``) to avoid the overload collision with imgui_containers_builtin's in-frame form.
     return send_imgui_command(app.transport, "imgui_set_window_size",
                               JV((target = target, value = JV((w = w, h = h)))))
 }
@@ -629,12 +552,9 @@ def public select_widget(app : ImguiApp; target : string) : JsonValue? {
 def public drag(app : ImguiApp; target : string;
                 dx : float; dy : float;
                 steps : int = 4; button : int = 0) : JsonValue? {
-    //! Synthesize a mouse-drag on ``target``'s bbox center: warp → press → drag to
-    //! ``center+(dx,dy)`` → release, composed as an ``imgui_mouse_play`` timeline. Resolves
-    //! the bbox client-side from a fresh snapshot. Returns ``{ok, value=target}`` (``ok=false``
-    //! when the target isn't in the snapshot, isn't rendered this frame, or the command post
-    //! fails — a stale/unrendered widget would otherwise drag from a defaulted (0,0) bbox).
-    //! ``steps`` scales the drag duration.
+    //! Synthesize a mouse-drag on ``target``'s bbox center: warp → press → drag to ``center+(dx,dy)``
+    //! → release, as an ``imgui_mouse_play`` timeline (bbox resolved client-side). Returns ``{ok, value}``
+    //! (``ok=false`` if the target is absent/unrendered — else it would drag from a defaulted (0,0) bbox). ``steps`` scales duration.
     var snap = snapshot(app)
     if (!(snap |> widget_exists(target))) return JV((ok = false, error = "drag target unresolved: {target}"))
     if (!(snap |> widget_rendered(target))) return JV((ok = false, error = "drag target not rendered this frame: {target}"))
@@ -643,12 +563,9 @@ def public drag(app : ImguiApp; target : string;
     let cy = ((bb?["y"] ?? 0.0f) + (bb?["w"] ?? 0.0f)) * 0.5f
     let ex = cx + dx
     let ey = cy + dy
-    // Frame-paced drag: t_ms is a FRAME index, so the host advances one cursor delta per
-    // frame and the press never collapses into the same frame as the sweep — a wall-clock
-    // drag does exactly that on a slow/stalled host (a coarse dt fires press + the full move
-    // together), landing a zero-delta gesture that never moves a splitter. ``steps`` is the
-    // number of sweep frames. A 2-frame dwell pins (cx,cy) on the handle before the press so
-    // it lands dead-center on a thin (8px) handle; timestamps stay strictly increasing.
+    // Frame-paced drag: t_ms is a FRAME index, so the host advances one cursor delta per frame and the
+    // press never collapses into the sweep frame — a wall-clock drag does that on a slow host (press + full
+    // move together = a zero-delta gesture). A 2-frame dwell pins (cx,cy) on the thin (8px) handle before the press.
     let dframes = steps > 0 ? steps : 8
     var events <- [
         JV((t_ms = 0,           kind = "move",   x = cx, y = cy)),
@@ -685,14 +602,9 @@ def public focus(app : ImguiApp; target : string) : JsonValue? {
 }
 
 def public key_tap(app : ImguiApp; key : int; hold_frames : int = 2) {
-    //! Synthesize a discrete press+release of an ImGuiKey by integer code, FRAME-PACED: the key
-    //! is held for ``hold_frames`` frames then released via ``imgui_key_play``'s frame-index
-    //! pacing, so it fires its shortcut/navigation exactly once regardless of frame rate. The
-    //! old wall-clock press+release pair spanned a variable number of frames, so on a slow frame
-    //! (e.g. the recorder's synchronous-APNG capture) the hold crossed ImGui's key-repeat
-    //! threshold and over-fired — one Tab cycling several fields, one Enter committing twice.
-    //! Mirrors ``imgui_key_chord``'s frame-pacing but for any key (no ASCII / modifier restriction).
-    //! Use ``int(ImGuiKey.Tab)`` / ``int(ImGuiKey.Enter)`` / etc. at the call site.
+    //! Synthesize a discrete press+release of an ImGuiKey by integer code, FRAME-PACED: held for
+    //! ``hold_frames`` frames then released via ``imgui_key_play``, so it fires exactly once regardless
+    //! of frame rate (a wall-clock hold crosses ImGui's key-repeat threshold on a slow frame and over-fires). Use ``int(ImGuiKey.Tab)`` etc.
     post_command(app, "imgui_key_play", JV((frame_paced = true, events = [
         JV((t_ms = 0,           kind = "press",   key = key)),
         JV((t_ms = hold_frames, kind = "release", key = key))
@@ -700,10 +612,10 @@ def public key_tap(app : ImguiApp; key : int; hold_frames : int = 2) {
 }
 
 // ===== Voiceover sync (record-time, opt-in via a prepared manifest) =====
-// prepare_recording.das pre-renders each say() line to a wav and writes
-// voiceover/<stem>.manifest.json beside the APNG. with_recording_app auto-arms when that
-// manifest exists; say() then paces each line by its wav duration and records the wall-clock
-// offset where the caption (hence the voice) begins. No manifest -> unchanged behavior.
+
+// prepare_recording.das pre-renders each say() line to a wav + a voiceover/<stem>.manifest.json;
+// with_recording_app auto-arms when it exists, and say() paces each line by its wav duration.
+// No manifest -> unchanged behavior.
 
 struct public VoEntry {
     hash  : string      //!< say_hash(spoken) — links a narration line to its wav
@@ -762,16 +674,8 @@ def private format_value_mismatch(app : ImguiApp; target : string; field : strin
 
 def public record_check_value(app : ImguiApp; target : string; field : string; expected : auto(T); max_frames : int = 120) : bool {
     //! Recording-safe verifier: assert ``target.payload[field] == expected`` within ``max_frames``,
-    //! accumulating a miss instead of panicking. This is the public rail for self-verifying a NON-CLICK
-    //! effect in a recording — drive the real gesture (``move_to`` to hover, ``drag`` / ``drag_to``,
-    //! ``type_text``) then call this to assert the effect landed (the hover status updated, the slider
-    //! value moved, the field took the text). Clicks already verify through ``hold_through_voice`` /
-    //! ``verify_click_effect``, which call this internally; ``force_set_verified`` uses it too.
-    //! A recording body must NOT panic mid-run: daslang panic is fatal and can't be recovered-and-continued,
-    //! so a mid-body panic would skip the clean record_stop + /shutdown and orphan the host. So on a
-    //! mismatch we push the same diagnostic ``expect_value`` would panic with onto ``g_record_failures``
-    //! and return false; the body runs to its normal teardown, then ``with_recording_app`` fails loudly
-    //! after the host is drained. Returns true when the value matched.
+    //! accumulating a miss instead of panicking (a mid-body panic would skip record_stop + /shutdown and
+    //! orphan the host). The public rail for self-verifying a NON-CLICK effect; returns true on match.
     if (wait_for_payload_value(app, target, field, expected, max_frames)) return true
     g_record_failures |> push(format_value_mismatch(app, target, field, expected, max_frames))
     return false
@@ -780,11 +684,8 @@ def public record_check_value(app : ImguiApp; target : string; field : string; e
 def public record_check_changed(app : ImguiApp; target : string; field : string;
                                 before : string; max_frames : int = 120) : bool {
     //! Recording-safe "the gesture moved it" verifier: assert ``target.payload[field]``'s JSON now
-    //! DIFFERS from ``before`` (the value captured before the gesture) within ``max_frames``. This is
-    //! the honest self-test for a continuous drag — a human drag lands on no exact pixel value, so we
-    //! assert the value CHANGED rather than equals a brittle pixel-derived target. Accumulate-on-miss
-    //! (surfaced as a teardown panic), mirroring ``record_check_value``; ``drag_through_voice`` uses it.
-    //! Returns true once the value differs.
+    //! DIFFERS from ``before`` within ``max_frames`` — the honest self-test for a continuous drag (a human
+    //! drag lands on no exact pixel, so assert CHANGED not equals). Accumulate-on-miss; returns true once it differs.
     let moved = wait_until(app, max_frames) $(var snap) {
         let v = widget_payload_field(snap, target, field)
         return v != null && write_json(v) != before
@@ -798,13 +699,9 @@ def public record_check_changed(app : ImguiApp; target : string; field : string;
 }
 
 def public record_check_unchanged(app : ImguiApp; target : string; field : string; before : string) : bool {
-    //! Recording-safe "the gesture left it alone" verifier - the mirror of ``record_check_changed``.
-    //! Asserts ``target.payload[field]``'s JSON still EQUALS ``before`` (the value captured before the
-    //! gesture). This is the honest self-test for a NEGATIVE claim - e.g. a node OUTSIDE a group does
-    //! NOT move when the group is dragged. Unlike ``record_check_changed`` there is no event to wait
-    //! for, so the caller must settle the gesture first (``wait_for_mouse_idle``); this then compares
-    //! once. Accumulate-on-miss (surfaced as a teardown panic), mirroring ``record_check_changed``.
-    //! Returns true when the value is still ``before``.
+    //! Recording-safe "the gesture left it alone" verifier — mirror of ``record_check_changed``: assert
+    //! ``target.payload[field]`` still EQUALS ``before``, the honest self-test for a NEGATIVE claim. No
+    //! event to wait for, so the caller must settle first (``wait_for_mouse_idle``); compares once. Accumulate-on-miss.
     var snap = snapshot(app)
     let v = widget_payload_field(snap, target, field)
     let now = v != null ? write_json(v) : ""
@@ -819,13 +716,8 @@ def public record_check_unchanged(app : ImguiApp; target : string; field : strin
 
 def public record_check_rendered(app : ImguiApp; target : string; expected : bool; max_frames : int = 120) : bool {
     //! Recording-safe "did the gesture show/hide it" verifier: assert ``target``'s rendered-this-frame
-    //! state (``widget_rendered``) equals ``expected`` within ``max_frames``. The robust signal for a
-    //! container whose body is gated on open/close (``tree_node`` / ``collapsing_header``): collapsing a
-    //! tree stops its body drawing, so a child leaf flips to ``rendered:false`` — exactly the "body runs
-    //! only while open" behavior the widget teaches, and readable even when the container's own
-    //! ``opened``/``flags`` are absent from the payload (``@optional`` omits a false ``opened``; an
-    //! OR-combined flag enum currently serializes to nothing). Accumulate-on-miss (surfaced as a
-    //! teardown panic), mirroring ``record_check_value``; ``toggle_tree_voice`` uses it. Returns true on match.
+    //! state (``widget_rendered``) equals ``expected`` — the robust open/close signal for a container
+    //! (collapsing a tree flips its child to ``rendered:false``), readable even when ``opened``/``flags`` are absent. Accumulate-on-miss.
     let ok = wait_until(app, max_frames) $(var snap) {
         return widget_rendered(snap, target) == expected
     } != null
@@ -851,12 +743,9 @@ def private count_registry_kind(snap : JsonValue?; kind_prefix : string) : int {
 }
 
 def public record_check_kind_count(app : ImguiApp; kind_prefix : string; min_count : int; max_frames : int = 120) : bool {
-    //! Recording-safe "did the rail paint" verifier for entries that register under SYNTHESIZED path
-    //! keys rather than a caller-declared ident — drawlist primitives (``[drawlist_prim]``, kind
-    //! ``"add_*"``). Asserts the snapshot registry holds at least ``min_count`` entries whose ``kind``
-    //! starts with ``kind_prefix`` within ``max_frames``. ``record_check_rendered`` targets one ident;
-    //! this counts a kind family — the only honest signal when the call sites have no stable ident.
-    //! Accumulate-on-miss (surfaced as a teardown panic), mirroring ``record_check_rendered``. Returns true on match.
+    //! Recording-safe "did the rail paint" verifier for entries under SYNTHESIZED path keys (drawlist
+    //! primitives, kind ``"add_*"``): assert the registry holds ≥ ``min_count`` entries whose ``kind``
+    //! starts with ``kind_prefix`` — the only honest signal when the call sites have no stable ident. Accumulate-on-miss.
     let ok = wait_until(app, max_frames) $(var snap) {
         return count_registry_kind(snap, kind_prefix) >= min_count
     } != null
@@ -869,21 +758,16 @@ def public record_check_kind_count(app : ImguiApp; kind_prefix : string; min_cou
 
 [unused_argument(app)]
 def public record_check(app : ImguiApp; desc : string; ok : bool) : bool {
-    //! Recording-safe verifier for a condition the CALLER already evaluated — the escape hatch for
-    //! an effect the field-based record_check_* can't reach: a value nested in a payload ARRAY (a
-    //! per-series legend ``shown``), a cross-widget invariant, any composed predicate. Pass the
-    //! boolean you computed (typically a ``wait_for_*(...) != null`` gate); on false it accumulates
-    //! ``desc`` into the recording's failure ledger, surfaced as a teardown panic by
-    //! with_recording_app — same accumulate-don't-panic discipline as the rest of the family.
-    //! ``app`` is unused (the caller did the polling) but kept for call-site symmetry. Returns ``ok``.
+    //! Recording-safe verifier for a condition the CALLER already evaluated — the escape hatch for an
+    //! effect the field-based record_check_* can't reach (a value nested in a payload ARRAY, a cross-widget
+    //! invariant). Pass the bool you computed; on false it accumulates ``desc`` into the failure ledger. Returns ``ok``.
     if (ok) return true
     g_record_failures |> push("record_check failed: {desc}")
     return false
 }
 
 def private arm_voiceovers(apng_path : string) : bool {
-    //! Load voiceover/<stem>.manifest.json beside apng_path. On success fill g_vo_dur, set
-    //! g_vo_active, clear the collection. Returns true when armed.
+    // Load voiceover/<stem>.manifest.json beside apng_path; fill g_vo_dur, set g_vo_active. True when armed.
     g_vo_active = false
     g_vo_stem = stem(apng_path)
     g_vo_dur |> clear()
@@ -932,11 +816,7 @@ def private flush_voiceovers(stopped : JsonValue?; apng_path : string; fps : int
 
 def private say_begin_impl(app : ImguiApp; text : string; targets : array<string>;
                            read_ms : uint; voice : string) : uint {
-    // Shared body for both say_begin forms — posts imgui_narrate with the targets list (first is
-    // the anchor, all hard-avoided) and returns the dwell WITHOUT holding. In voiceover mode the
-    // dwell is the wav length (+gap), held by wall-clock duration_s (render fps diverges from the
-    // capture grid, so a tick budget would drain early and the box would vanish mid-voiceover);
-    // otherwise read_ms.
+    // Shared say_begin body. In voiceover mode the dwell is the wav length (+gap), held by wall-clock (render fps diverges from the capture grid, so a tick budget would drain early); else read_ms.
     let spoken = voice != "" ? voice : text
     if (g_vo_active) {
         let h = say_hash(spoken)
@@ -956,36 +836,23 @@ def private say_begin_impl(app : ImguiApp; text : string; targets : array<string
 }
 
 def public say_begin(app : ImguiApp; text : string; target : string = ""; read_ms : uint = NARRATE_READ_MS; voice : string = "") : uint {
-    //! Non-blocking ``say``: post the narration overlay (+ record the voiceover anchor) and
-    //! RETURN the dwell in milliseconds WITHOUT holding. The caller then holds the returned
-    //! dwell (content-time under recording) — splitting it around a ``click`` / ``drag`` so the
-    //! action lands visibly under the voice (cursor lands -> say_begin -> short lead -> click ->
-    //! hold the remainder). For plain narration with no mid-dwell action, use ``say`` which posts
-    //! + holds in one call.
-    //! ``text`` is the on-screen caption; ``voice`` (when set) is the spoken line — write
-    //! captions for the eye (terse) and voice for the ear (natural sentences). Empty voice
-    //! falls back to text. For a step spanning sibling controls, use the ``targets`` overload.
+    //! Non-blocking ``say``: post the narration overlay (+ record the voiceover anchor) and RETURN the
+    //! dwell in ms WITHOUT holding — the caller splits it around a ``click``/``drag`` so the action lands
+    //! under the voice. ``text`` is the caption; ``voice`` (when set) is the spoken line; use ``say`` to post+hold in one call.
     return say_begin_impl(app, text, [target], read_ms, voice)
 }
 
 def public say_begin(app : ImguiApp; text : string; targets : array<string>; read_ms : uint = NARRATE_READ_MS; voice : string = "") : uint {
-    //! Multi-target ``say_begin``: the caption points at ``targets[0]`` and is placed to HARD-avoid
-    //! the union of all ``targets``' bboxes — pass the same list ``hold_through_voice`` will click so
-    //! the box never covers a sibling control (e.g. an arrow_button pair). Otherwise identical to the
-    //! single-target form (returns the dwell; the caller holds it).
+    //! Multi-target ``say_begin``: the caption points at ``targets[0]`` and HARD-avoids the union of all
+    //! ``targets`` bboxes — pass the same list ``hold_through_voice`` will click so the box never covers a
+    //! sibling control. Otherwise identical to the single-target form.
     return say_begin_impl(app, text, targets, read_ms, voice)
 }
 
 def public say(app : ImguiApp; text : string; target : string = ""; read_ms : uint = NARRATE_READ_MS; voice : string = "") {
-    //! Pop a narration overlay (``imgui_narrate`` verb), then hold for the dwell so the
-    //! recorder captures the on-screen window. The overlay's ``duration_s`` is consumed on the
-    //! same clock as the hold (the app's dt — content-time under recording), not a tick budget,
-    //! so it lingers exactly across the beat even though render fps and capture fps diverge. In voiceover mode the dwell is the
-    //! wav length (+gap) instead, so the caption stays up exactly while the voice speaks.
-    //! Named ``say`` (not ``narrate``) to avoid overload-resolution churn with
-    //! imgui_visual_aids::narrate (the host-side overlay function), which differs
-    //! only in the first arg type (string vs ImguiApp). For a click/drag that must land under
-    //! the voice, use ``say_begin`` + a manual dwell split instead.
+    //! Pop a narration overlay (``imgui_narrate`` verb), then hold the dwell so the recorder captures the
+    //! window. Named ``say`` (not ``narrate``) to avoid overload churn with imgui_visual_aids::narrate. For
+    //! a click/drag that must land under the voice, use ``say_begin`` + a manual dwell split.
     hold_content(app, say_begin(app, text, target, read_ms, voice))
 }
 
@@ -996,20 +863,18 @@ def public say(app : ImguiApp; text : string; targets : array<string>; read_ms :
 }
 
 // ===== Lockstep content-time gating =====
-// During a recording session the host clock runs in fixed-dt lockstep (1/fps per
-// captured frame), decoupled from wall-clock — so a beat must be held by CONTENT
-// time (captured-frame count), not sleep(ms): the app may render faster or slower
-// than realtime, but every captured frame is exactly 1/fps of video. These poll
-// record_status.frames; outside a recording session they fall back to sleep.
+
+// During a recording session the host clock runs in fixed-dt lockstep (1/fps per captured frame),
+// so a beat must be held by CONTENT time (captured-frame count), not sleep(ms) — the app may render
+// faster or slower than realtime, but every captured frame is exactly 1/fps of video.
 
 var private g_record_fps : int = 0   // > 0 while a with_recording_app session is active
 var private g_stall_warned = false   // one-shot per session: capture-stall -> wall-clock degrade
 
 let private RECORD_POLL_MS = 4u
 let private RECORD_HOLD_TIMEOUT_US = 120 * 1000000   // 120s wall-clock safety cap
-// Frames idle this long => capture isn't advancing (the app isn't rendering during this
-// input-less hold — e.g. an OS-throttled unfocused window, as on headless macOS CI). Stop
-// waiting on content and degrade to wall-clock for the remaining beat so CI never hangs.
+// Frames idle this long => capture isn't advancing (app not rendering during an input-less hold, e.g.
+// an OS-throttled unfocused window on headless macOS CI). Degrade to wall-clock so CI never hangs.
 // See https://github.com/borisbat/dasImgui/issues/190.
 let private RECORD_STALL_US = 2 * 1000000
 
@@ -1021,8 +886,7 @@ def private warn_capture_stalled() {
 }
 
 def private record_frames_now(app : ImguiApp) : int {
-    // Captured-frame counter from a VALID active status. Tolerates a transient null read
-    // (a 0 here would corrupt a hold anchor) by briefly retrying; 0 only if never valid.
+    // Captured-frame counter from a VALID active status; retries a transient null (a 0 would corrupt a hold anchor). 0 only if never valid.
     let start = ref_time_ticks()
     while (get_time_usec(start) < RECORD_STALL_US) {
         let st = post_command(app, "record_status", null)
@@ -1033,12 +897,9 @@ def private record_frames_now(app : ImguiApp) : int {
 }
 
 def public wait_content_frames(app : ImguiApp; frames : int) {
-    //! Block until the recorder captures `frames` more frames (= frames/fps seconds of video).
-    //! No-op outside a recording session. The target is anchored on the first VALID status
-    //! read (a transient null never lowers it), and a null read keeps polling rather than
-    //! ending the hold early. If capture stalls (frames don't advance for RECORD_STALL_US —
-    //! the app isn't rendering during this hold), degrade to a wall-clock sleep for the
-    //! remaining span so the beat still lands and CI never hangs.
+    //! Block until the recorder captures `frames` more frames (= frames/fps s of video); no-op outside a
+    //! recording session. Anchored on the first VALID status read (a null keeps polling, never ends early).
+    //! If capture stalls for RECORD_STALL_US, degrade to a wall-clock sleep so the beat lands and CI never hangs.
     if (g_record_fps <= 0 || frames <= 0) return
     let start = ref_time_ticks()
     var target = -1                        // resolved from the first valid status read
@@ -1086,10 +947,9 @@ def public record_frame_count(app : ImguiApp) : int {
 }
 
 def public hold_remainder_content(app : ImguiApp; dwell_ms : uint; start_frames : int) {
-    //! Pad a beat to `dwell_ms` of CONTENT time: wait until the recorder reaches
-    //! start_frames + dwell_ms/1000*fps (start_frames from record_frame_count right after
-    //! say_begin). Work done mid-dwell consumes content frames; this holds the rest. The
-    //! content-clock replacement for a driver's wall-clock hold_remainder. No-op when idle.
+    //! Pad a beat to `dwell_ms` of CONTENT time: wait until the recorder reaches start_frames +
+    //! dwell_ms/1000*fps (start_frames from record_frame_count right after say_begin). Work done mid-dwell
+    //! consumes content frames; this holds the rest. No-op when idle.
     if (g_record_fps <= 0) return
     let target = start_frames + int((float(dwell_ms) / 1000.0f) * float(g_record_fps) + 0.5f)
     wait_content_frames(app, target - record_frames_now(app))
@@ -1109,11 +969,7 @@ def private split_alias(target : string) : tuple<string; int> {
 }
 
 def private verify_click_effect(app : ImguiApp; target : string; var pre : JsonValue?) {
-    //! Verify the kind-appropriate effect of clicking ``target`` actually happened — a recording is
-    //! also a test, so a no-op click (landed off, or nothing changed) is recorded as a failure (via
-    //! ``record_check_value``, surfaced at teardown). Effect-by-kind doubles as a landing check: if
-    //! the click missed, the state wouldn't move. Kinds with no click-tracked field (sliders etc. —
-    //! recordings don't click them) skip.
+    // Verify the kind-appropriate effect of clicking ``target`` — a no-op click (landed off) leaves the state unmoved, so effect-by-kind doubles as a landing check. Untracked kinds skip.
     let (ground, vb) = split_alias(target)
     let kind = find_widget(pre, ground)?["kind"] ?? ""
     if (empty(kind)) return
@@ -1129,15 +985,9 @@ def private verify_click_effect(app : ImguiApp; target : string; var pre : JsonV
 }
 
 def public hold_through_voice(app : ImguiApp; dwell : uint; clicks : array<string>) {
-    //! Pace the click(s) in ``clicks`` UNDER an already-posted voice line: a short lead lets the
-    //! box + voice start, then each click lands (ripple + state change visible while the voice
-    //! plays), then hold the caption for the rest of its voice. ``dwell`` is the value returned
-    //! by ``say_begin``; pass the caption/voice LITERALS to ``say_begin`` at the call site (so
-    //! prepare_recording can scan them) and forward its result here. The caller must have already
-    //! moved the cursor onto the first target. Each click is VERIFIED (the effect must register,
-    //! or the recording aborts) and the tracked cursor is advanced to the click's resolved point
-    //! so the next move_to starts there (no teleport). Multi-click stages dwell a beat between
-    //! picks so each state is visible.
+    //! Pace the click(s) in ``clicks`` UNDER an already-posted voice line: a short lead, then each click
+    //! lands (verified, or the recording aborts), then hold the caption for the rest. ``dwell`` is
+    //! ``say_begin``'s return; the caller must have moved the cursor onto the first target.
     let lead = dwell > 1200u ? 500u : dwell / 3u
     hold_content(app, lead)
     let n = length(clicks)
@@ -1154,19 +1004,9 @@ def public hold_through_voice(app : ImguiApp; dwell : uint; clicks : array<strin
 
 def public drag_through_voice(app : ImguiApp; dwell : uint; target : string;
                               to_pos : tuple<float; float>; drag_ms : int = 0; field : string = "value") {
-    //! Drag analog of ``hold_through_voice``: scrub from the CURRENT tracked cursor to ``to_pos`` UNDER
-    //! an already-posted voice line, then assert the drag CHANGED ``target.payload[field]``. The caller
-    //! must have ``move_to``'d onto the handle first — the press starts at the tracked cursor, so there
-    //! is no re-position jump. The lead scales with the voice line (~1/3 in, bounded 700..3000ms) so the
-    //! scrub lands WHILE the narrator describes it instead of always firing ~0.6s in — a continuous drag
-    //! is timing-sensitive in a way a point click is not. The handle scrubs slowly (constant ~0.30 px/ms
-    //! so short and long drags read the same), then the caption holds for the rest of the voice. The
-    //! effect is VERIFIED as a CHANGE from the pre-drag value (record_check_changed) — a no-op drag
-    //! (landed off, force_set removed, widget frozen) aborts the recording at teardown. ``drag_ms``
-    //! overrides the auto-scaled duration when > 0. ``field`` is the payload key to watch — the default
-    //! ``"value"`` covers sliders/drags; docking passes ``"size"`` (splitter resize, where ``target`` is
-    //! a NEIGHBOR window) or ``"dock_id"`` (tab re-dock, where ``target`` is the dragged window itself),
-    //! since a dock_window has no ``value`` but its pos/size/dock node move under the drag.
+    //! Drag analog of ``hold_through_voice``: scrub from the tracked cursor to ``to_pos`` under a voice
+    //! line, then assert the drag CHANGED ``target.payload[field]`` (a no-op drag aborts at teardown). The
+    //! caller must ``move_to`` the handle first. ``field`` defaults to ``"value"``; docking passes ``"size"``/``"dock_id"``.
     let before_jv = widget_payload_field(snapshot(app), target, field)
     let before = before_jv != null ? write_json(before_jv) : ""
     let from_pos = (last_cursor_x, last_cursor_y)
@@ -1202,8 +1042,7 @@ let CLICK_RELEASE_MS   : int   = 130     // press->release gap of the focusing c
 let TYPE_EFFECT_FRAMES : int   = 120     // poll budget for focus / active-id / value effects
 
 def private snapshot_active_id(var snap : JsonValue?) : string {
-    // io.active_id as a JSON string ("" when nothing is active). String, not int: the id is a hash
-    // that overflows int32, and we only ever compare it for change, never do arithmetic on it.
+    // io.active_id as a JSON string ("" when none). String not int: the id is a hash that overflows int32, only ever compared for change.
     let v = snap?["io"]?["active_id"]
     return v != null ? write_json(v) : ""
 }
@@ -1211,17 +1050,9 @@ def private snapshot_active_id(var snap : JsonValue?) : string {
 def public type_into_voice(app : ImguiApp; dwell : uint; target : string;
                            click_pos : tuple<float; float>; cells : array<string>;
                            expected : auto(T)) {
-    //! Type analog of drag_through_voice: under an already-posted voice line, drive a REAL keyboard
-    //! edit of ``target`` and assert the committed value == ``expected``. CLICKS ``click_pos`` to focus
-    //! the (first) field — a real click, NOT imgui_focus, because ImGui's InputScalar AutoSelectAll
-    //! fires only on activation, so the click both focuses AND selects the existing text (typing then
-    //! REPLACES rather than inserts). Then per ``cells`` entry: type it, Tab to the next field BETWEEN
-    //! entries (vector inputs cycle their components on Tab), and finally Enter to commit. A scalar is
-    //! one cell (``["12.5"]``); a float3 is three. The lead scales with the voice (~1/3 in, bounded)
-    //! so the typing lands while the narrator describes it; the caption holds the rest. A wrong or
-    //! uncommitted value aborts the recording at teardown (record_check_value). The caller must have
-    //! ``move_to``'d ``click_pos`` first so the cursor is already on the field (no teleport).
-    //! Every hold here is PACING; focus, focus-moved and value-committed are each POLLED, not guessed.
+    //! Type analog of drag_through_voice: REAL keyboard edit of ``target``, assert committed == ``expected``.
+    //! CLICKS ``click_pos`` (not imgui_focus) because InputScalar's AutoSelectAll fires only on activation, so
+    //! the click focuses AND selects → typing REPLACES. Per ``cells``: type, Tab between, Enter; caller must ``move_to`` ``click_pos`` first.
     let started_frames = record_frame_count(app)
     let lead = clamp(dwell / 3u, TYPE_LEAD_MIN_MS, TYPE_LEAD_MAX_MS)   // ~1/3 into the line
     hold_content(app, lead)                                                // PACING: land the click under the voice
@@ -1273,13 +1104,9 @@ let COMBO_TRAVEL_MS   : int  = 450     // cursor travel to the combo box, then d
 let COMBO_POLL_FRAMES : int  = 120     // poll budget: popup-items-rendered, then value-committed
 
 def public combo_pick_voice(app : ImguiApp; dwell : uint; target : string; item : int) {
-    //! Open combo ``target`` and click item ``item`` from its popup, under an already-posted voice
-    //! line, then assert ``target.value == item``. Clicks the combo box (inset from the left so it
-    //! never lands on the trailing label), POLLS until the popup renders its per-item ``sub_bboxes``
-    //! (combos are built as BeginCombo + a Selectable loop, so each item has a real rect), travels the
-    //! cursor onto item ``item`` via ``widget_component_point`` and clicks it, then verifies the
-    //! selection. Self-verifying: a missed open or wrong pick aborts the recording at teardown. Every
-    //! hold is PACING; the open and the commit are polled, not guessed.
+    //! Open combo ``target`` and click item ``item`` from its popup under a voice line, then assert
+    //! ``target.value == item``. Clicks the box (inset from the left, off the label), POLLS until the
+    //! popup renders per-item ``sub_bboxes``, then clicks item ``item``. Self-verifying at teardown.
     let started_frames = record_frame_count(app)
     let lead = clamp(dwell / 3u, COMBO_LEAD_MIN_MS, COMBO_LEAD_MAX_MS)   // ~1/3 into the line
     hold_content(app, lead)                                                // PACING: open under the voice
@@ -1324,16 +1151,9 @@ let CLOSE_BTN_FRAC   : float = 0.5f    // X-button click x = header.z - header_h
 
 def public toggle_tree_voice(app : ImguiApp; dwell : uint; header_target : string; on_arrow : bool;
                              child_target : string; expect_child_rendered : bool) {
-    //! Click a ``tree_node`` (or ``collapsing_header``) header UNDER an already-posted voice line, then
-    //! assert the toggle landed by checking ``child_target``'s rendered state — the body-runs-only-while-open
-    //! signal (a collapsed node stops drawing its children). ``on_arrow=true`` clicks the chevron (a small
-    //! inset from the header's left edge, scaled by header height); ``on_arrow=false`` clicks the header
-    //! center / label. The distinction is the whole point of ``OpenOnArrow``: arrow toggles, label is a
-    //! no-op — drive both for real and verify each. Requires the header bbox in telemetry (``tree_node``
-    //! captures it via ``current_item_bbox`` since this rail). Self-verifying via ``record_check_rendered``:
-    //! a missed toggle (or a label click that wrongly toggled) aborts the recording at teardown. The caller
-    //! should ``move_to`` the header first so the cursor is already near it. Every hold is PACING; the
-    //! toggle effect is polled, not guessed.
+    //! Click a ``tree_node``/``collapsing_header`` header under a voice line, then assert the toggle via
+    //! ``child_target``'s rendered state (a collapsed node stops drawing children). ``on_arrow=true`` clicks
+    //! the chevron, ``on_arrow=false`` the label — the ``OpenOnArrow`` distinction (arrow toggles, label no-op). Self-verifying at teardown.
     let started_frames = record_frame_count(app)
     let lead = clamp(dwell / 3u, TREE_LEAD_MIN_MS, TREE_LEAD_MAX_MS)   // ~1/3 into the line
     hold_content(app, lead)                                                // PACING: land the click under the voice
@@ -1355,13 +1175,9 @@ def public toggle_tree_voice(app : ImguiApp; dwell : uint; header_target : strin
 }
 
 def public close_button_voice(app : ImguiApp; dwell : uint; header_target : string; child_target : string) {
-    //! Click the X-button of a CLOSABLE container header (``collapsing_header`` with ``closable=true``,
-    //! or any closable strip whose header bbox is in telemetry) UNDER an already-posted voice line, then
-    //! assert the whole strip vanished by checking ``child_target`` is no longer rendered — a closable
-    //! header that closes stops drawing its entire body. The X sits a half header-height in from the
-    //! header's right edge (mirrors how ImGui lays the close button out). Self-verifying via
-    //! ``record_check_rendered`` (expect=false): a missed close aborts the recording at teardown. The
-    //! caller should ``move_to`` the header first. Every hold is PACING; the close is polled, not guessed.
+    //! Click the X-button of a CLOSABLE container header under a voice line, then assert the strip
+    //! vanished (``child_target`` no longer rendered). The X sits a half header-height in from the
+    //! header's right edge (mirrors ImGui's layout). Self-verifying at teardown; caller must ``move_to`` the header first.
     let started_frames = record_frame_count(app)
     let lead = clamp(dwell / 3u, TREE_LEAD_MIN_MS, TREE_LEAD_MAX_MS)   // ~1/3 into the line
     hold_content(app, lead)                                                // PACING: land the click under the voice
@@ -1383,15 +1199,9 @@ def public close_button_voice(app : ImguiApp; dwell : uint; header_target : stri
 
 def public click_render_voice(app : ImguiApp; dwell : uint; click_target : string;
                               watch_target : string; expect_rendered : bool) {
-    //! Real-click ``click_target`` UNDER an already-posted voice line, then assert ``watch_target``'s
-    //! rendered state == ``expect_rendered`` — the reveal/dismiss rail. ``expect_rendered=true`` is a
-    //! REVEAL (a button that opens a popup/modal: watch a body widget appear); ``expect_rendered=false``
-    //! is a DISMISS (a Yes/No/Apply/menu-item that closes the popup: watch a body widget — often the
-    //! click target itself — disappear). A button whose own click closes the popup can't be verified by
-    //! its click-count (it's gone next frame); the watch-target's render state is the durable signal.
-    //! Self-verifying via ``record_check_rendered``: a missed reveal/dismiss aborts the recording at
-    //! teardown. The caller should ``move_to`` the click target first. Every hold is PACING; the
-    //! reveal/dismiss is polled, not guessed.
+    //! Real-click ``click_target`` under a voice line, then assert ``watch_target``'s rendered state ==
+    //! ``expect_rendered`` — the reveal (true) / dismiss (false) rail. A button whose own click closes the
+    //! popup can't be verified by click-count (gone next frame); the watch-target's render state is the durable signal.
     let started_frames = record_frame_count(app)
     let lead = clamp(dwell / 3u, TREE_LEAD_MIN_MS, TREE_LEAD_MAX_MS)   // ~1/3 into the line
     hold_content(app, lead)                                                // PACING: land the click under the voice
@@ -1401,17 +1211,9 @@ def public click_render_voice(app : ImguiApp; dwell : uint; click_target : strin
 }
 
 def public menu_pick_voice(app : ImguiApp; dwell : uint; header_target : string; item_target : string) {
-    //! Open a menu-bar menu (``header_target``, e.g. ``MAIN_BAR/FILE_MENU``) and pick an item inside it
-    //! (``item_target``) UNDER an already-posted voice line, navigating the way a human does: click the
-    //! header, then drop STRAIGHT DOWN the menu's column onto the item. A direct click on the item would
-    //! travel diagonally from the header across the menu bar and clip a SIBLING menu header — ImGui
-    //! hover-switches the open menu mid-travel and the click lands in the wrong menu. The vertical drop
-    //! stays inside the open menu's column (menu items span the full menu width, so the header's center-x
-    //! lands on the item) and never crosses a sibling. Self-verifying via ``record_check_rendered``: the
-    //! item must render after the header click (menu opened) and stop rendering after the item click (pick
-    //! landed + menu closed), or the recording aborts at teardown. The caller should ``move_to`` the
-    //! header's column (directly below the header, below the bar) first so the open-click travels vertically.
-    //! Every hold is PACING; the open/close are polled, not guessed.
+    //! Open a menu-bar menu (``header_target``) and pick ``item_target`` under a voice line, navigating
+    //! like a human: click the header, then drop STRAIGHT DOWN the column. A diagonal click would cross a
+    //! SIBLING header mid-travel and ImGui hover-switches the open menu, landing the click in the wrong one. Self-verifying at teardown.
     let started_frames = record_frame_count(app)
     let lead = clamp(dwell / 3u, TREE_LEAD_MIN_MS, TREE_LEAD_MAX_MS)   // ~1/3 into the line
     hold_content(app, lead)                                                // PACING: land the clicks under the voice
@@ -1470,10 +1272,9 @@ def public await_probe(app : ImguiApp; until : string = "quiescent") : JsonValue
 def public type_text(app : ImguiApp; target : string; text : string;
                      focus_max_frames : int = 120;
                      duration_s : float = 0.0f) : JsonValue? {
-    //! Auto-focus ``target``, wait up to ``focus_max_frames`` for focus to settle, then stream
-    //! ``text`` as synthetic key+char events via ``imgui_key_type`` (into whichever widget holds
-    //! focus). Returns ``{ok, value=target}`` (``ok=false`` on empty text or if focus never settles). ``duration_s > 0``
-    //! paces typing over wall-clock; default uses ``imgui_key_type``'s per-char cadence.
+    //! Auto-focus ``target``, wait up to ``focus_max_frames`` for focus, then stream ``text`` as synthetic
+    //! key+char events via ``imgui_key_type`` (into whichever widget holds focus). Returns ``{ok, value}``
+    //! (``ok=false`` on empty text or if focus never settles). ``duration_s > 0`` paces typing over wall-clock.
     if (empty(text)) return JV((ok = false, error = "missing text"))
     focus(app, target)
     let focused = wait_until(app, focus_max_frames) $(var snap) {
@@ -1488,11 +1289,9 @@ def public type_text(app : ImguiApp; target : string; text : string;
 }
 
 def public pause(app : ImguiApp) : void {
-    //! POST ``/pause`` to halt the host's update() (skips advance_coroutines + render).
-    //! POST /command continues to dispatch and POSTs still get drained by ``server.tick()``
-    //! (which runs from the debug agent's onTick, gated by auto_tick_agents — not by paused).
-    //! Useful for deterministic observation: spawn an L1 coroutine, probe ``imgui_await``
-    //! while the world is frozen, then ``unpause`` to let it run.
+    //! POST ``/pause`` to halt the host's update() (skips advance_coroutines + render). POST /command
+    //! still dispatches and POSTs still drain via ``server.tick()``. Useful for deterministic observation:
+    //! probe ``imgui_await`` while the world is frozen, then ``unpause``.
     post_signal(app, "/pause")
 }
 
@@ -1502,10 +1301,9 @@ def public unpause(app : ImguiApp) : void {
 }
 
 def public with_paused(app : ImguiApp; body : block<() : void>) {
-    //! Scope: ``pause`` the host, invoke ``body``, ``unpause``. Body observes a frozen
-    //! world — coroutines spawned by ``imgui_click`` sit unadvanced until unpause, so
-    //! ``imgui_await`` reports ``pending_coroutines >= 1`` deterministically even in
-    //! headless mode where the per-frame advance otherwise races the next HTTP POST.
+    //! Scope: ``pause`` the host, invoke ``body``, ``unpause``. Body observes a frozen world — coroutines
+    //! spawned by ``imgui_click`` sit unadvanced until unpause, so ``imgui_await`` reports
+    //! ``pending_coroutines >= 1`` deterministically even in headless mode (where the advance races the next POST).
     pause(app)
     body |> invoke()
     unpause(app)
@@ -1538,9 +1336,7 @@ struct private StatusReading {
 }
 
 def private read_status(app : ImguiApp) : StatusReading {
-    // gen = -1 when /status is unreadable / unparseable / omits generation (e.g.
-    // a daslang-live without POST /reset). `?? -1` collapses a null parsed and a
-    // JSON-null alike, so callers never mistake a missing field for generation 0.
+    // gen = -1 when /status is unreadable/unparseable/omits generation; `?? -1` keeps callers from mistaking a missing field for generation 0.
     let raw = get_text(app, "/status")
     return StatusReading(gen = -1, has_err = false) if (empty(raw))
     var err : string
@@ -1550,19 +1346,14 @@ def private read_status(app : ImguiApp) : StatusReading {
 }
 
 def public reset(app : ImguiApp; timeout_sec : float = DEFAULT_RELOAD_TIMEOUT_SEC) : void {
-    //! POST ``/reset`` — re-simulate the already-compiled program into a fresh context
-    //! (no parse / no infer), clearing ``@live`` state for a clean slate. ~100x cheaper
-    //! than ``reload``; use between subtests of one feature instead of respawning the host.
-    //! Polls ``/status`` until the ``generation`` counter advances (a deterministic done
-    //! signal). Panics if the host never reports a baseline generation (e.g. a daslang-live
-    //! without POST /reset support), if a reset advanced generation but left ``has_error``
-    //! set, or on timeout.
+    //! POST ``/reset`` — re-simulate the already-compiled program into a fresh context (no parse/infer),
+    //! clearing ``@live`` state. ~100x cheaper than ``reload``; use between subtests instead of respawning.
+    //! Polls ``/status`` until ``generation`` advances; panics if no baseline generation, has_error, or timeout.
     let start = ref_time_ticks()
     let timeout_usec = int(timeout_sec * 1000000.0f)
-    // Baseline: require a real generation BEFORE issuing the reset. The host is
-    // already up, so this reads immediately; staying at -1 means /status never
-    // produced a usable generation — surfaced as a hard, fast failure rather
-    // than guessing a baseline (which would mask an unsupported /status schema).
+    // Baseline: require a real generation BEFORE the reset. Staying at -1 means /status never produced a
+    // usable generation — surfaced as a hard, fast failure rather than guessing a baseline (which would
+    // mask an unsupported /status schema).
     var gen0 = -1
     while (gen0 < 0 && get_time_usec(start) < timeout_usec) {
         gen0 = read_status(app).gen
@@ -1590,11 +1381,7 @@ var private g_headless_parsed : bool = false
 var private g_headless_cached : bool = false
 
 def private playwright_wants_headless() : bool {
-    //! ``--headless`` forwarded from the dastest (or daslang.exe) invocation.
-    //! Lazily parsed once; subsequent calls hit the cache. CI passes
-    //! ``--headless`` on the dastest command line, every spawned daslang-live
-    //! inherits it via ``-- --headless`` in argv. Local interactive runs
-    //! omit the flag and stay windowed.
+    // ``--headless`` forwarded from dastest's argv, lazily parsed once. Local interactive runs omit it and stay windowed.
     if (g_headless_parsed) return g_headless_cached
     g_headless_parsed = true
     let args <- get_user_args()
@@ -1607,12 +1394,7 @@ var private g_worker_index_parsed : bool = false
 var private g_worker_index_cached : int = 0
 
 def private playwright_worker_index() : int {
-    //! ``--worker-index N`` forwarded from dastest's isolated-mode worker.
-    //! Lazily parsed once. Used by ``with_imgui_app`` to derive a per-worker
-    //! live-API port (DEFAULT_LIVE_PORT + worker_index), so N parallel
-    //! dastest workers don't collide on the same TCP port. Defaults to 0
-    //! when absent (sequential mode), giving the same port the codebase has
-    //! always used.
+    // ``--worker-index N`` from dastest, lazily parsed. Derives a per-worker live-API port (DEFAULT_LIVE_PORT + N) so parallel workers don't collide; defaults to 0.
     if (g_worker_index_parsed) return g_worker_index_cached
     g_worker_index_parsed = true
     let args <- get_user_args()
@@ -1623,11 +1405,9 @@ def private playwright_worker_index() : int {
 
 def public with_imgui_app(feature_path : string;
                           body : block<(app : ImguiApp) : void>) {
-    //! Spawn ``daslang-live <feature_path>`` with the dasImgui module loaded; runs
-    //! ``body`` while alive, then POSTs ``/shutdown`` and drains stdout. Panics on
-    //! non-zero exit code, ready-timeout, or test-timeout so the surrounding
-    //! ``[test]`` fails. The common case — for a feature whose ``require`` chain
-    //! needs ONLY dasImgui. Delegates to the 5-arg overload with no extra modules.
+    //! Spawn ``daslang-live <feature_path>`` with dasImgui loaded; run ``body`` while alive, then POST
+    //! ``/shutdown`` and drain stdout. Panics on non-zero exit / ready-timeout / test-timeout. The common
+    //! case (require chain needs ONLY dasImgui); delegates to the 5-arg overload.
     let no_extra : array<string>
     with_imgui_app(feature_path, no_extra, "", "", body)
 }
@@ -1637,36 +1417,17 @@ def public with_imgui_app(feature_path : string;
                           feature_root : string;
                           feature_prefix : string;
                           body : block<(app : ImguiApp) : void>) {
-    //! Full form — spawn ``daslang-live`` for a feature whose ``require`` chain
-    //! needs dasImgui PLUS the modules at ``extra_module_roots`` (each gets its own
-    //! ``-load_module``, appended after dasImgui's so dependency order holds). A
-    //! relative ``feature_path`` starting with ``feature_prefix`` resolves under
-    //! ``feature_root`` (pass ``""``/``""`` to use dasImgui's default resolution).
-    //! This is how another package (e.g. dasImguiNodeEditor) drives its own app
-    //! without duplicating the spawn/port/headless/ready/shutdown machinery — the
-    //! extra-module config is threaded through args, not module globals.
-    //!
-    //! Port is always DEFAULT_LIVE_PORT + worker_index — sequential runs (no
-    //! --worker-index in argv) get 9090; dastest's isolated mode brands each
-    //! worker's subprocess argv with --worker-index N so N parallel workers
-    //! land on distinct ports (9090..9090+N-1) and don't collide.
-    //!
-    //! Forwards ``--headless`` (read from this process's ``get_user_args()``)
-    //! into the spawn so the harness's headless arm fires inside the subprocess.
+    //! Full form — spawn ``daslang-live`` for a feature whose ``require`` chain needs dasImgui PLUS the
+    //! ``extra_module_roots`` (each ``-load_module``'d after dasImgui's, dependency order). Port is always
+    //! DEFAULT_LIVE_PORT + worker_index, so N ``--worker-index``-branded parallel workers land on distinct ports. Forwards ``--headless`` into the spawn.
     let exe = daslang_live_exe()
     let port = DEFAULT_LIVE_PORT + playwright_worker_index()
     let ready_timeout_sec = host_ready_timeout_sec()
     let test_timeout_sec = DEFAULT_TEST_TIMEOUT_SEC
     let app_path = resolve_feature_path(feature_path, feature_root, feature_prefix)
-    // -load_module points the spawned daslang-live at the dasImgui module so
-    // the feature's `require imgui/...` chain resolves regardless of layout.
-    // In CI dasImgui is in the standard module search path so this is a
-    // harmless duplicate; locally it's load-bearing. Extra roots follow, so a
-    // dependent module (e.g. node-editor, which requires dasImgui) loads after it.
-    //
-    // --live-port pins the spawned daslang-live's HTTP API to the same port
-    // playwright's base_url targets, so daslang-live's single-instance-lock
-    // keys off the same port playwright dials.
+    // -load_module points the spawned host at dasImgui so the feature's `require imgui/...` resolves
+    // regardless of layout (harmless duplicate in CI, load-bearing locally); extra roots follow in
+    // dependency order. --live-port pins the HTTP API to the port playwright dials (single-instance lock).
     var argv <- [exe, "-load_module", dasimgui_module_root()]
     argv |> reserve(length(argv) + length(extra_module_roots) * 2)
     for (root in extra_module_roots) {
@@ -1682,11 +1443,9 @@ def public with_imgui_app(feature_path : string;
     argv |> push("--no-imgui-ini")
     if (playwright_wants_headless()) {
         argv |> push("--headless")
-        // Cascade guard: harness self-exits a few seconds before the popen
-        // watchdog gives up. If body panics and /shutdown is never sent
-        // (e.g. expect_value timeout — daslang's `finally` is skipped on
-        // panic), the subprocess still releases its port before the next
-        // test spawns, instead of zombifying.
+        // Cascade guard: harness self-exits a few seconds before the popen watchdog gives up. If body
+        // panics and /shutdown is never sent (e.g. expect_value timeout — `finally` is skipped on panic),
+        // the subprocess still releases its port before the next test spawns, instead of zombifying.
         let harness_budget = test_timeout_sec - 5.0f
         if (harness_budget > 5.0f) {
             argv |> push("--headless-timeout-sec={harness_budget}")
@@ -1733,10 +1492,9 @@ def public with_recording_app(feature_path : string;
                               output_apng_basename : string;
                               max_seconds : int;
                               body : block<(app : ImguiApp) : void>) {
-    //! Native-fps form (the common case). Delegates to the 4-arg overload —
-    //! daslang's gen2 trailing-block sugar can't see through a default
-    //! parameter sitting between the last positional and the block, so
-    //! the overload pair keeps the common call site clean.
+    //! Native-fps form (the common case). Delegates to the 4-arg overload — gen2's trailing-block sugar
+    //! can't see through a default parameter between the last positional and the block, so the overload
+    //! pair keeps the common call site clean.
     with_recording_app(feature_path, output_apng_basename, max_seconds, RECORD_FPS_DEFAULT, body)
 }
 
@@ -1762,35 +1520,11 @@ def public with_recording_app(feature_path : string;
                               feature_root : string;
                               asset_root : string;
                               body : block<(app : ImguiApp) : void>) {
-    //! Run a recording session against ``feature_path``. If a daslang-live
-    //! host is already serving at the live-API port, **attach** to it (the
-    //! running host's current HDPI/style — dev workflow: iterate live, then
-    //! flip the recorder on without restarting). Otherwise **spawn** a new
-    //! host at logical 1x (passes ``--imgui-content-scale=1.0`` +
-    //! ``--no-hdpi-framebuffer`` after ``--`` so framebuffer + ImGui style
-    //! both stay at logical resolution; APNGs stay encoder-friendly even on
-    //! retina — canonical-recording workflow). Toggles visual aids, posts
-    //! ``record_start``, runs ``body`` for the narrate/click/drag timeline,
-    //! then ``record_stop``. Spawned host gets ``/shutdown`` + drain;
-    //! attached host is left running.
-    //!
-    //! In attach mode the caller owns whatever feature is loaded — the
-    //! helper does NOT post a switch-feature command. If the running host
-    //! has a different feature loaded, the driver body's
-    //! ``wait_for_render`` call will time out and the driver panics with
-    //! the standard "{ident} never rendered — wrong app running?" message.
-    //!
-    //! Spawns ``daslang-live`` with ``-load_module`` for dasImgui plus each
-    //! root in ``extra_module_roots`` (after dasImgui's, so dependency order
-    //! holds) — this is how another package (dasImguiNodeEditor) records a
-    //! feature whose ``require`` chain needs its module too. A relative
-    //! ``feature_path`` resolves under ``feature_root``; the APNG lands under
-    //! ``<asset_root>/doc/source/_static/tutorials/`` regardless of caller cwd.
-    //! ``fps`` defaults to ``RECORD_FPS`` (the nominal capture+playback grid). Panics on
-    //! non-zero exit / readiness or test timeout so the driver fails loudly.
-    // Relative feature_path resolves under feature_root (the calling package's
-    // module root, where examples/tutorial/ + examples/features/ live); the
-    // APNG lands under asset_root. The 5-arg delegate defaults both to dasImgui.
+    //! Run a recording session against ``feature_path``: **attach** to a daslang-live already serving the
+    //! live-API port (dev workflow: iterate live, flip the recorder on), else **spawn** one at logical 1x
+    //! (``--imgui-content-scale=1.0`` + ``--no-hdpi-framebuffer`` keep APNGs encoder-friendly on retina). Attach mode leaves the host running and owns whatever feature is loaded.
+
+    // Relative feature_path resolves under feature_root; the APNG lands under asset_root. The 5-arg delegate defaults both to dasImgui.
     var app_path = feature_path
     if (!is_absolute(app_path)) {
         app_path = path_join(feature_root, app_path)
@@ -1844,12 +1578,9 @@ def public with_recording_app(feature_path : string;
     }
 
     let exe = daslang_live_exe()
-    // -load_module dasImgui (+ each extra root after it, dependency order) so
-    // the spawned host resolves the feature's `require imgui/...` chain
-    // regardless of layout — same explicit-load model as with_imgui_app. In CI
-    // dasImgui is on the module search path so its entry is a harmless
-    // duplicate; locally it's load-bearing. Extra roots let a dependent package
-    // (e.g. node-editor, which requires dasImgui) load after it.
+    // -load_module dasImgui (+ each extra root after it, dependency order) so the spawned host resolves
+    // the feature's `require imgui/...` regardless of layout (harmless duplicate in CI, load-bearing
+    // locally). Same explicit-load model as with_imgui_app.
     var argv <- [exe, "-load_module", dasimgui_module_root()]
     argv |> reserve(length(argv) + length(extra_module_roots) * 2)
     for (extra_root in extra_module_roots) {
@@ -1859,10 +1590,9 @@ def public with_recording_app(feature_path : string;
     argv |> push(app_path)
     argv |> push("--")
     argv |> push("--imgui-content-scale=1.0")
-    // Ask glfw_live to skip the HDPI backing on retina / Windows DPI so the
-    // framebuffer (and the APNG capture that reads it via glReadPixels) match
-    // the requested logical size. Without this, captures stay at physical 2x
-    // even when the style is 1x — UI is small inside a big frame.
+    // Ask glfw_live to skip the HDPI backing on retina / Windows DPI so the framebuffer (and the APNG
+    // capture that reads it via glReadPixels) match the requested logical size. Without this, captures
+    // stay at physical 2x even when the style is 1x — UI small inside a big frame.
     argv |> push("--no-hdpi-framebuffer")
 
     var captured : string
@@ -1886,10 +1616,9 @@ def public with_recording_app(feature_path : string;
             fps = fps,
             max_seconds = eff_max_seconds
         )))
-        // The body never panics on a failed interaction — it accumulates misses into
-        // g_record_failures (recovering-and-continuing from a daslang panic isn't supported, so we
-        // can't catch mid-body and still shut down cleanly). So record_stop + /shutdown always run;
-        // the misses are surfaced after popen drains, below.
+        // The body never panics on a failed interaction — it accumulates misses into g_record_failures
+        // (recovering from a daslang panic isn't supported, so we can't catch mid-body and shut down
+        // cleanly). So record_stop + /shutdown always run; misses are surfaced after popen drains, below.
         g_record_fps = fps   // lockstep: gate say/hold_content by captured-frame count
         g_stall_warned = false
         invoke(body, app)

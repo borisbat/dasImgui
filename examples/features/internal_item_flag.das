@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 
 require imgui/imgui_harness
 
@@ -49,11 +50,9 @@ def update() {
         }
         separator()
 
-        // ReadOnly | NoNav — two flags combined into one push via the | operator
-        // (imgui_enums). ReadOnly freezes the value on drag; NoNav skips the slider
-        // in keyboard/gamepad navigation. ReadOnly lives in the private
-        // ImGuiItemFlagsPrivate enum; the cross-enum | (imgui_enums) combines it with
-        // the public NoNav into one ImGuiItemFlags.
+        // ReadOnly | NoNav — combined into one push via the cross-enum | operator
+        // (imgui_enums): ReadOnly (private ImGuiItemFlagsPrivate) freezes the value
+        // on drag, NoNav (public) skips the slider in keyboard/gamepad nav.
         text("ReadOnly | NoNav (flags combined with the | operator):")
         slider_float(SL_RW, (text = "editable"))
         with_item_flag(ImGuiItemFlagsPrivate.ReadOnly | ImGuiItemFlags.NoNav, true) {

@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options rtti
 
@@ -133,12 +134,9 @@ def main : int {
     }
     to_log(LOG_INFO, "[convert] music: {music_wav} ({length(msamples) / max(mchannels, 1)} frames @ {mrate}Hz)\n")
 
-    // The APNG carries the recorder's per-frame delays, but "skip-missed" scheduling drops stalled
-    // time so those delays sum SHORTER than wall-clock (e.g. 53.9s APNG vs 74.9s recorded). ffmpeg
-    // would then play the video on that compressed clock while the voiceovers sit on wall-clock —
-    // every caption races ahead of its voice. Force the video onto a constant frames/duration grid
-    // (`-r fps_eff` before `-i`) and anchor each voiceover to its FRAME index on that SAME grid
-    // (frame/fps_eff). Box and voice then share one clock and stay locked together.
+    // "skip-missed" scheduling drops stalled time, so the APNG's per-frame delays sum SHORTER than
+    // wall-clock (e.g. 53.9s vs 74.9s) — captions would race ahead of their wall-clock voices. Force
+    // the video onto a constant grid (`-r fps_eff`) and anchor each voice to its frame index on it.
     let fps_eff = sc.frames > 0 ? float(sc.frames) / dur : float(sc.fps)
 
     // --- build the ffmpeg filtergraph: faded low music bed + each voiceover delayed to its frame ---
@@ -162,8 +160,7 @@ def main : int {
     // inputs: 0 = video (forced CFR via -r), 1 = music bed, 2+ = voiceover wavs ("-i" <path>, order)
     let vo_inputs <- [for (k in range(n_vo * 2)); k % 2 == 0 ? "-i" : path_join(vo_dir, sc.voiceovers[k / 2].wav)]
     var fargs <- ["ffmpeg", "-y", "-r", "{fps_eff}", "-i", cfg.apng, "-i", music_wav]
-    fargs |> push_from(vo_inputs)
-    fargs |> push_from(["-filter_complex", fg, "-map", "0:v", "-map", "[aout]",
+    fargs |> push_from(vo_inputs, ["-filter_complex", fg, "-map", "0:v", "-map", "[aout]",
         "-c:v", "libx264", "-preset", cfg.preset, "-crf", "{cfg.crf}", "-pix_fmt", "yuv420p",
         "-movflags", "+faststart", "-shortest", out_mp4])
 

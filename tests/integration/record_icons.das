@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
@@ -10,7 +11,7 @@ require daslib/json_boost public
 
 //! Driver script: record ``icons.apng`` against
 //! ``examples/tutorial/icons.das``. Tours the asset-free vector icon set —
-//! clickable ``icon_button``s (a transport bar, then an edit toolbar with
+//! clickable ``icon_button`` controls (a transport bar, then an edit toolbar with
 //! hover tips), then ``icon()`` draw-only glyphs at several sizes, then the
 //! catalog enumeration. Each icon_button stage clicks UNDER its voice line and
 //! verifies the click_count tick; the draw-only + catalog stages narrate.

@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 
 module about
@@ -12,12 +13,9 @@ require daslib/safe_addr
 var ABOUT_SHOW_CONFIG_INFO = false
 var private BUTTON_COPY : ClickState
 
-// Mirrors imgui_demo.cpp:6460-6622 — void ImGui::ShowAboutWindow(bool* p_open).
-// Notes on the daslang port:
-//   - The ~50 `#ifdef DEFINE_NAME` Text() lines in C++ list compile-time
-//     preprocessor defines for the *Dear ImGui C++ build*. They have no
-//     meaningful translation to a daslang-hosted demo and are elided.
-//   - The C++ pointer-to-clipboard log path is preserved.
+// Mirrors imgui_demo.cpp:6460-6622 — ImGui::ShowAboutWindow.
+// The ~50 C++ `#ifdef DEFINE_NAME` build-define Text() lines have no
+// daslang-hosted equivalent and are elided; clipboard log path preserved.
 def ShowAboutWindow() {
     window(ABOUT_WINDOW, (text = "About Dear ImGui", closable = false,
                           flags = ImGuiWindowFlags.AlwaysAutoResize)) {

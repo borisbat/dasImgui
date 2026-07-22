@@ -1,4 +1,5 @@
 options gen2
+options _comment_hygiene = true
 options indenting = 4
 options no_unused_block_arguments = false
 options no_unused_function_arguments = false
@@ -35,14 +36,9 @@ def test_visual_aids_focus_rect(t : T?) {
         }
         reset(d)
 
-        //! `paint_focus_rect` reads `active_widget_path()` and then
-        //! `widget_rect(path)` to know where to draw. This subtest verifies the
-        //! two inputs the overlay actually consumes: that focus dispatch
-        //! settles NAME_INPUT, and that `widget_rect` returns a non-empty
-        //! bbox via the snapshot. Reading `io.active_widget` directly is
-        //! brittle because ImGui's ActiveID lifecycle for InputText doesn't
-        //! mirror keyboard focus 1:1 — focus settling is the load-bearing
-        //! signal for our overlay.
+        // paint_focus_rect reads active_widget_path() then widget_rect(path). This verifies the two
+        // inputs the overlay consumes: focus dispatch settles NAME_INPUT, and widget_rect returns a
+        // non-empty bbox. Focus settling is the signal (ImGui's InputText ActiveID isn't 1:1 with focus).
         t |> run("resolves_active_widget") <| @(t : T?) {
             var snap0 = wait_for_render(d, "MAIN_WIN/NAME_INPUT", 15.0f)
             if (snap0 == null) {
