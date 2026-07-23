@@ -19,7 +19,8 @@ def build() {
 [export]
 def release() {
     // Web build: the EMSCRIPTEN branch in CMakeLists.txt emits 3 dasImgui
-    // archives plus the pinned FreeType dependency.
+    // archives plus the pinned FreeType dependency. dasImgui also calls the
+    // SDK clipboard module, which daspkg build --wasm has already built.
     // daspkg runs this (cwd = module dir) on demand when a released app links dasImgui
     // and stages the declared archives into the wasm lib dir. get_das_root() resolves
     // to the SDK root when this .das_package runs.
@@ -28,6 +29,7 @@ def release() {
     release_wasm_archive("_wasm/liblibImguiApp.a")
     release_wasm_archive("_wasm/liblibImguiAppHeadless.a")
     release_wasm_archive("_wasm_build/_deps/freetype_src-build/libfreetype.a")
+    release_wasm_archive("liblibDasModuleClipboard.a")
     // Embed the bundled font into MEMFS so load_daslang_font's AddFontFromFileTTF finds
     // it at run time (mirrors dasStbImage's HUD-font embed). src is module-relative
     // (resolved against this .das_package's dir), so it works for an external module
