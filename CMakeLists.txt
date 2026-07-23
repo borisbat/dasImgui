@@ -308,11 +308,15 @@ ELSEIF(EMSCRIPTEN)
         -fno-rtti
         -msimd128 -msse2 -mnontrapping-fptoint
         -fwasm-exceptions -sWASM_LEGACY_EXCEPTIONS=0)
+    TARGET_COMPILE_OPTIONS(freetype PRIVATE
+        -fwasm-exceptions -sWASM_LEGACY_EXCEPTIONS=0)
     IF(DAS_IMGUI_WASM_MEMORY64)
         LIST(APPEND IMGUI_WASM_FLAGS -sMEMORY64=1)
+        TARGET_COMPILE_OPTIONS(freetype PRIVATE -sMEMORY64=1)
     ENDIF()
     IF(DAS_IMGUI_WASM_PTHREADS)
         LIST(APPEND IMGUI_WASM_FLAGS -pthread)
+        TARGET_COMPILE_OPTIONS(freetype PRIVATE -pthread)
     ENDIF()
     # Output dir per ABI flavor (different ABI, same archive names — must not collide):
     #   _wasm     = memory64 (+pthread) : the cross-compiled examples-card apps
