@@ -73,4 +73,6 @@ html_context = {
 # the daslang docs theme evolves.
 html_css_files = ['custom.css', 'custom-patch.css']
 
+html_js_files = ['sidebar.js']
+
 htmlhelp_basename = 'dasimgui_doc'
