@@ -24,6 +24,7 @@ struct public ImGuiTerminalStyle {
     cell_width : float = 0.0f
     line_height : float = 0.0f
     view_height : float = 0.0f
+    cell_backgrounds : bool = true
     external_input : bool  // Return encoded input to the caller instead of writing this terminal's PTY.
 }
 
@@ -148,6 +149,15 @@ def private resolve_color(color : TerminalColor const; fallback : float4) : floa
     return fallback
 }
 
+def private faint_color(foreground, background : float4) : float4 {
+    let strength = 0.44f
+    return float4(
+        background.x + (foreground.x - background.x) * strength,
+        background.y + (foreground.y - background.y) * strength,
+        background.z + (foreground.z - background.z) * strength,
+        foreground.w)
+}
+
 def private effective_background(cell : TerminalCell const;
                                  style : ImGuiTerminalStyle const) : float4 {
     if ((cell.attributes & TERMINAL_ATTR_INVERSE) != 0) {
@@ -162,7 +172,7 @@ def private draw_terminal_background_runs(var dl : ImDrawList?;
                                           origin : float2; cell_width, line_height : float;
                                           style : ImGuiTerminalStyle const;
                                           var state : ImGuiTerminalState) {
-    if (columns <= 0 || empty(cells)) return
+    if (!style.cell_backgrounds || columns <= 0 || empty(cells)) return
     let row_count = length(cells) / columns
     for (row in range(row_count)) {
         let display_row = row_base + row - visible_start_row
@@ -230,7 +240,7 @@ def private draw_terminal_cell_chrome(var dl : ImDrawList?; cell : TerminalCell 
     let p1 = p0 + float2(cell_width * float(max(1, cell.width)), line_height)
     var fg = resolve_color(cell.foreground, style.foreground)
     var bg = resolve_color(cell.background, style.background)
-    if (inverse) {
+    if (inverse && style.cell_backgrounds) {
         let swap = fg
         fg = bg
         bg = swap
@@ -315,9 +325,14 @@ def private draw_terminal_fallback_cells(var dl : ImDrawList?;
         let display_row = global_row - visible_start_row
         if (display_row < 0 || display_row >= state.rows) continue
         let inverse = (cell.attributes & 32) != 0
-        let color = (inverse
+        var color = (inverse && style.cell_backgrounds
             ? resolve_color(cell.background, style.background)
             : resolve_color(cell.foreground, style.foreground))
+        if ((cell.attributes & TERMINAL_ATTR_FAINT) != 0) {
+            let background = (style.cell_backgrounds
+                ? effective_background(cell, style) : style.background)
+            color = faint_color(color, background)
+        }
         let p0 = origin + float2(float(cell.column) * cell_width,
             float(display_row) * line_height)
         *dl |> AddText(p0, GetColorU32(color), cell.grapheme)
@@ -430,7 +445,10 @@ def private dispatch_input(terminal : Terminal const; text : string;
 def private send_special(terminal : Terminal const; key : ImGuiKey;
                          terminal_key : TerminalKey; io : ImGuiIO const;
                          external_input : bool; var output : string&) : bool {
-    if (!pressed(key)) return false
+    // Printable keys repeat through InputQueueCharacters. Special terminal keys
+    // need ImGui's repeat path explicitly or a held Backspace/Delete/arrow only
+    // emits its initial press.
+    if (!IsKeyPressed(key, true)) return false
     let encoded = terminal_encode_key(terminal, TerminalKeyEvent(
         key = terminal_key, shift = io.KeyShift, alt = io.KeyAlt,
         control = io.KeyCtrl))
